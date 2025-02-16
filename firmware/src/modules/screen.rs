@@ -5,30 +5,28 @@ use defmt::*;
 
 use embedded_hal::timer::CountDown as _;
 use jukebox_util::color::{hsv2rgb, rgb565};
-use rp_pico::{
-    hal::{
-        fugit::ExtU32,
-        gpio::{DynPinId, FunctionPio1, Pin, PullDown},
-        pio::SM1,
-        timer::{CountDown, Instant},
-        Timer,
-    },
+use rp2040_hal::{
+    fugit::ExtU32,
+    gpio::{DynPinId, FunctionPio1, Pin, PullDown},
     pac::PIO1,
+    pio::SM1,
+    timer::{CountDown, Instant},
+    Timer,
 };
 
 use crate::st7789::St7789;
 
 const REFRESH_RATE: u32 = 50;
 
-pub struct ScreenMod<'timer> {
-    st: St7789<'timer, PIO1, SM1, Pin<DynPinId, FunctionPio1, PullDown>>,
-    timer: CountDown<'timer>,
+pub struct ScreenMod {
+    st: St7789<PIO1, SM1, Pin<DynPinId, FunctionPio1, PullDown>>,
+    timer: CountDown,
 }
 
-impl<'timer> ScreenMod<'timer> {
+impl ScreenMod {
     pub fn new(
-        st: St7789<'timer, PIO1, SM1, Pin<DynPinId, FunctionPio1, PullDown>>,
-        mut count_down: CountDown<'timer>,
+        st: St7789<PIO1, SM1, Pin<DynPinId, FunctionPio1, PullDown>>,
+        mut count_down: CountDown,
     ) -> Self {
         count_down.start(REFRESH_RATE.millis());
 

@@ -2,7 +2,7 @@
 
 use embedded_hal::digital::v2::OutputPin;
 use embedded_hal::timer::CountDown as _;
-use rp_pico::hal::{
+use rp2040_hal::{
     fugit::ExtU32,
     gpio::{DynPinId, FunctionSioOutput, Pin, PullDown},
     timer::CountDown,
@@ -10,16 +10,16 @@ use rp_pico::hal::{
 
 const BLINK_TIME: u32 = 500;
 
-pub struct LedMod<'timer> {
+pub struct LedMod {
     led_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
-    timer: CountDown<'timer>,
+    timer: CountDown,
     led_on: bool,
 }
 
-impl<'timer> LedMod<'timer> {
+impl LedMod {
     pub fn new(
         led_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
-        mut count_down: CountDown<'timer>,
+        mut count_down: CountDown,
     ) -> Self {
         count_down.start(BLINK_TIME.millis());
 

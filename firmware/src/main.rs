@@ -31,7 +31,7 @@ use mutex::Mutex;
 use embedded_hal::timer::CountDown as _;
 use panic_probe as _;
 use peripheral::inputs_default;
-use rp_pico::hal::{
+use rp2040_hal::{
     clocks::init_clocks_and_plls,
     fugit::ExtU32,
     multicore::{Multicore, Stack},
@@ -43,7 +43,7 @@ use rp_pico::hal::{
     watchdog::Watchdog,
     Clock, Timer,
 };
-use rp_pico::{entry, Pins};
+use rp2040_hal::{entry, gpio::Pins};
 
 use usb_device::{class_prelude::*, prelude::*};
 use usbd_hid::prelude::*;
@@ -54,7 +54,7 @@ use usbd_serial::SerialPort;
 use defmt::*;
 use defmt_rtt as _;
 
-static mut CORE1_STACK: Stack<8192> = Stack::new();
+static CORE1_STACK: Stack<8192> = Stack::new();
 
 // inter-core mutexes
 static PERIPHERAL_INPUTS: Mutex<1, JBInputs> = Mutex::new(inputs_default());
@@ -71,7 +71,7 @@ fn main() -> ! {
     let mut pac = Peripherals::take().unwrap();
     let mut watchdog = Watchdog::new(pac.WATCHDOG);
     let clocks = init_clocks_and_plls(
-        rp_pico::XOSC_CRYSTAL_FREQ,
+        12_000_000u32,
         pac.XOSC,
         pac.CLOCKS,
         pac.PLL_SYS,
@@ -129,7 +129,7 @@ fn main() -> ! {
 
     // core 1 event loop (GPIO)
     core1
-        .spawn(unsafe { &mut CORE1_STACK.mem }, move || {
+        .spawn(CORE1_STACK.take().unwrap(), move || {
             let mut pac = unsafe { Peripherals::steal() };
             let pins = Pins::new(
                 pac.IO_BANK0,
@@ -182,7 +182,7 @@ fn main() -> ! {
             };
 
             let mut led_mod = {
-                let led_pin = pins.led.into_function().into_dyn_pin().into_pull_type();
+                let led_pin = pins.gpio25.into_function().into_dyn_pin().into_pull_type();
                 led::LedMod::new(led_pin, timer.count_down())
             };
             let mut rgb_mod = {

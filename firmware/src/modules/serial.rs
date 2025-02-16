@@ -16,7 +16,7 @@ use jukebox_util::{
     },
 };
 use ringbuffer::{ConstGenericRingBuffer, RingBuffer};
-use rp_pico::hal::{fugit::ExtU32, timer::CountDown, usb::UsbBus};
+use rp2040_hal::{fugit::ExtU32, timer::CountDown, usb::UsbBus};
 use usbd_serial::SerialPort;
 
 use crate::mutex::Mutex;
@@ -26,14 +26,14 @@ const BUFFER_SIZE: usize = 2048;
 
 const KEEPALIVE: u32 = 250;
 
-pub struct SerialMod<'timer> {
+pub struct SerialMod {
     buffer: ConstGenericRingBuffer<u8, BUFFER_SIZE>,
     state: Connection,
-    keepalive_timer: CountDown<'timer>,
+    keepalive_timer: CountDown,
 }
 
-impl<'timer> SerialMod<'timer> {
-    pub fn new(mut timer: CountDown<'timer>) -> Self {
+impl SerialMod {
+    pub fn new(mut timer: CountDown) -> Self {
         timer.start(KEEPALIVE.millis());
 
         SerialMod {

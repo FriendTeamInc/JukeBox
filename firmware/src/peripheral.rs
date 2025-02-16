@@ -1,5 +1,5 @@
 use jukebox_util::peripheral::{JBInputs, KeyInputs, KnobInputs, PedalInputs};
-use rp_pico::hal::usb::UsbBus;
+use rp2040_hal::usb::UsbBus;
 use usbd_serial::SerialPort;
 
 pub const fn inputs_default() -> JBInputs {

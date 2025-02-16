@@ -2,7 +2,7 @@ use core::u32;
 
 use cortex_m::prelude::_embedded_hal_timer_CountDown;
 use embedded_hal::digital::v2::OutputPin as _;
-use rp_pico::hal::{
+use rp2040_hal::{
     fugit::{ExtU64, MicrosDurationU64},
     gpio::{AnyPin, DynPinId, FunctionSioOutput, Pin, PullDown},
     pio::{PIOBuilder, PIOExt, StateMachineIndex, Tx, UninitStateMachine, PIO},
@@ -14,7 +14,7 @@ const SCR_H: usize = 320;
 static mut FB: [[u16; SCR_W]; SCR_H] = [[0x00FFu16; SCR_W]; SCR_H];
 // The framebuffer is a static so that it does not end up on core1's stack.
 
-pub struct St7789<'timer, P, SM, I>
+pub struct St7789<P, SM, I>
 where
     I: AnyPin<Function = P::PinFunction>,
     SM: StateMachineIndex,
@@ -27,10 +27,10 @@ where
     dc_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
     cs_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
     _rst_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
-    timer: CountDown<'timer>,
+    timer: CountDown,
 }
 
-impl<'timer, P, SM, I> St7789<'timer, P, SM, I>
+impl<P, SM, I> St7789<P, SM, I>
 where
     I: AnyPin<Function = P::PinFunction>,
     P: PIOExt,
@@ -45,7 +45,7 @@ where
         mut dc_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
         mut rst_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
         mut backlight_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
-        timer: CountDown<'timer>,
+        timer: CountDown,
     ) -> Self {
         backlight_pin.set_low().unwrap();
         dc_pin.set_low().unwrap();
@@ -70,8 +70,8 @@ where
             .side_set_pin_base(clock_pin.id().num)
             .out_pins(data_pin.id().num, 1)
             // buffer config
-            .buffers(rp_pico::hal::pio::Buffers::OnlyTx)
-            .out_shift_direction(rp_pico::hal::pio::ShiftDirection::Left)
+            .buffers(rp2040_hal::pio::Buffers::OnlyTx)
+            .out_shift_direction(rp2040_hal::pio::ShiftDirection::Left)
             .autopull(true)
             .pull_threshold(8)
             // misc config
@@ -79,8 +79,8 @@ where
             .build(sm);
 
         sm.set_pindirs([
-            (data_pin.id().num, rp_pico::hal::pio::PinDir::Output),
-            (clock_pin.id().num, rp_pico::hal::pio::PinDir::Output),
+            (data_pin.id().num, rp2040_hal::pio::PinDir::Output),
+            (clock_pin.id().num, rp2040_hal::pio::PinDir::Output),
         ]);
 
         sm.start();

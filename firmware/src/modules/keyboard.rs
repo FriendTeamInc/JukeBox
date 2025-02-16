@@ -2,7 +2,7 @@
 
 use embedded_hal::digital::v2::{InputPin, OutputPin};
 use embedded_hal::timer::CountDown as _;
-use rp_pico::hal::{
+use rp2040_hal::{
     fugit::ExtU32,
     gpio::{DynPinId, FunctionSioInput, FunctionSioOutput, Pin, PullDown},
     timer::CountDown,
@@ -16,18 +16,18 @@ const POLL_RATE: u32 = 5;
 pub const KEY_ROWS: usize = 3;
 pub const KEY_COLS: usize = 4;
 
-pub struct KeyboardMod<'timer> {
+pub struct KeyboardMod {
     col_pins: [Pin<DynPinId, FunctionSioInput, PullDown>; KEY_COLS],
     row_pins: [Pin<DynPinId, FunctionSioOutput, PullDown>; KEY_ROWS],
-    poll_timer: CountDown<'timer>,
+    poll_timer: CountDown,
     pressed_keys: [bool; 16],
 }
 
-impl<'timer> KeyboardMod<'timer> {
+impl KeyboardMod {
     pub fn new(
         col_pins: [Pin<DynPinId, FunctionSioInput, PullDown>; KEY_COLS],
         row_pins: [Pin<DynPinId, FunctionSioOutput, PullDown>; KEY_ROWS],
-        mut count_down: CountDown<'timer>,
+        mut count_down: CountDown,
     ) -> Self {
         count_down.start(POLL_RATE.millis());
 

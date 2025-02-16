@@ -1,6 +1,6 @@
 use core::cell::UnsafeCell;
 
-use rp_pico::hal::sio::{Spinlock, SpinlockValid};
+use rp2040_hal::sio::{Spinlock, SpinlockValid};
 
 pub struct Mutex<const N: usize, T: ?Sized>
 where

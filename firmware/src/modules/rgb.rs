@@ -2,14 +2,12 @@
 
 use embedded_hal::timer::CountDown as _;
 use jukebox_util::color::hsv2rgb;
-use rp_pico::{
-    hal::{
-        fugit::ExtU32,
-        gpio::{DynPinId, FunctionPio0, Pin, PullDown},
-        pio::SM0,
-        timer::{CountDown, Instant},
-    },
+use rp2040_hal::{
+    fugit::ExtU32,
+    gpio::{DynPinId, FunctionPio0, Pin, PullDown},
     pac::PIO0,
+    pio::SM0,
+    timer::{CountDown, Instant},
 };
 use smart_leds::brightness;
 use smart_leds_trait::{SmartLedsWrite, RGB8};
@@ -18,17 +16,17 @@ use ws2812_pio::Ws2812;
 const RGB_LEN: usize = 12;
 const FRAME_TIME: u32 = 33;
 
-pub struct RgbMod<'timer> {
-    ws: Ws2812<PIO0, SM0, CountDown<'timer>, Pin<DynPinId, FunctionPio0, PullDown>>,
+pub struct RgbMod {
+    ws: Ws2812<PIO0, SM0, CountDown, Pin<DynPinId, FunctionPio0, PullDown>>,
     brightness: u8,
     buffer: [RGB8; RGB_LEN],
-    timer: CountDown<'timer>,
+    timer: CountDown,
 }
 
-impl<'timer> RgbMod<'timer> {
+impl RgbMod {
     pub fn new(
-        ws: Ws2812<PIO0, SM0, CountDown<'timer>, Pin<DynPinId, FunctionPio0, PullDown>>,
-        mut count_down: CountDown<'timer>,
+        ws: Ws2812<PIO0, SM0, CountDown, Pin<DynPinId, FunctionPio0, PullDown>>,
+        mut count_down: CountDown,
     ) -> Self {
         count_down.start(FRAME_TIME.millis());
 
