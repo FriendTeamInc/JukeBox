@@ -331,9 +331,9 @@ dependencies = [
 
 [[package]]
 name = "itertools"
-version = "0.13.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
+checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
 dependencies = [
  "either",
 ]
@@ -347,7 +347,7 @@ dependencies = [
  "defmt",
  "defmt-rtt",
  "embedded-hal 0.2.7",
- "itertools 0.13.0",
+ "itertools 0.14.0",
  "jukebox_util",
  "mutually_exclusive_features",
  "panic-probe",
@@ -355,9 +355,9 @@ dependencies = [
  "ringbuffer",
  "rp2040-boot2",
  "rp2040-flash",
- "rp2040-hal 0.11.0",
+ "rp2040-hal",
  "smart-leds",
- "smart-leds-trait 0.2.1",
+ "smart-leds-trait 0.3.1",
  "usb-device",
  "usbd-human-interface-device",
  "usbd-serial",
@@ -585,40 +585,11 @@ dependencies = [
 
 [[package]]
 name = "rp2040-flash"
-version = "0.5.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1e41f3c56e59be77dba9b64f06f8b6944e51b241bf750595525fb1b33ba84180"
+checksum = "d7f460b98d84a71ee3b03930820ff9bbb6927b17b4a2f9724d3cfaa4a8d2d344"
 dependencies = [
- "rp2040-hal 0.10.2",
-]
-
-[[package]]
-name = "rp2040-hal"
-version = "0.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d11e711940087f2cdff8aeae9f4b902e2014c06a00b39a1092686b81ec973d6f"
-dependencies = [
- "bitfield 0.14.0",
- "cortex-m",
- "critical-section",
- "embedded-dma",
- "embedded-hal 0.2.7",
- "embedded-hal 1.0.0",
- "embedded-hal-async",
- "embedded-hal-nb",
- "embedded-io",
- "frunk",
- "fugit",
- "itertools 0.10.5",
- "nb 1.1.0",
- "paste",
- "pio",
- "rand_core",
- "rp2040-hal-macros",
- "rp2040-pac",
- "usb-device",
- "vcell",
- "void",
+ "rp2040-hal",
 ]
 
 [[package]]
@@ -630,6 +601,7 @@ dependencies = [
  "bitfield 0.14.0",
  "cortex-m",
  "critical-section",
+ "defmt",
  "embedded-dma",
  "embedded-hal 0.2.7",
  "embedded-hal 1.0.0",
@@ -861,7 +833,7 @@ dependencies = [
  "fugit",
  "nb 1.1.0",
  "pio",
- "rp2040-hal 0.11.0",
+ "rp2040-hal",
  "smart-leds-trait 0.2.1",
  "smart-leds-trait 0.3.1",
 ]
