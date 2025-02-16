@@ -44,8 +44,8 @@ pub struct JukeBoxConfig {
 impl Default for JukeBoxConfig {
     fn default() -> Self {
         JukeBoxConfig {
-            current_profile: "Default".to_string(),
-            profiles: HashMap::from([("Default".to_string(), HashMap::new())]),
+            current_profile: "Default Profile".to_string(),
+            profiles: HashMap::from([("Default Profile".to_string(), HashMap::new())]),
         }
     }
 }
@@ -385,11 +385,14 @@ impl JukeBoxGui {
                     GuiTab::Settings => self.gui_tab = GuiTab::Device,
                 }
             }
+
+            self.draw_connection_status(ui);
         });
     }
 
     fn draw_keyboard(&mut self, ui: &mut Ui) {
         let s = Sense::hover();
+        ui.allocate_exact_size([0.0, 7.5].into(), s);
         ui.horizontal(|ui| {
             ui.allocate_exact_size([62.0, 0.0].into(), s);
             Grid::new("KBGrid").show(ui, |ui| {
@@ -447,6 +450,7 @@ impl JukeBoxGui {
                 }
             });
         });
+        ui.allocate_exact_size([0.0, 7.5].into(), s);
     }
 
     fn draw_jukebox_logo(&mut self, ui: &mut Ui) {
@@ -457,20 +461,25 @@ impl JukeBoxGui {
                     .color(Color32::from_rgb(255, 200, 100)),
             );
             ui.label(format!("-  v{}", APP_VERSION));
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                let res = match self.conn_status {
-                    ConnectionStatus::Connected => ("Connected.", Color32::from_rgb(50, 200, 50)),
-                    ConnectionStatus::Disconnected => {
-                        ("Not connected.", Color32::from_rgb(200, 200, 50))
-                    }
-                    ConnectionStatus::LostConnection => {
-                        ("Lost connection!", Color32::from_rgb(200, 50, 50))
-                    }
-                };
-
-                ui.label(RichText::new(res.0).color(res.1));
-            });
+            // ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+            //     self.draw_connection_status(ui);
+            // });
         });
+    }
+
+    fn draw_connection_status(&self, ui: &mut Ui) {
+        let t = (
+            ("Connected.", Color32::from_rgb(50, 200, 50)),
+            ("Not connected.", Color32::from_rgb(200, 200, 50)),
+            ("Lost connection!", Color32::from_rgb(200, 50, 50)),
+        );
+        let res = match self.conn_status {
+            ConnectionStatus::Connected => t.0,
+            ConnectionStatus::Disconnected => t.1,
+            ConnectionStatus::LostConnection => t.2,
+        };
+
+        ui.label(RichText::new(res.0).color(res.1));
     }
 
     fn draw_update_button(&mut self, ui: &mut Ui, s_cmd_tx: &Sender<SerialCommand>) {
