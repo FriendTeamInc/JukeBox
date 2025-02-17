@@ -7,7 +7,7 @@ use jukebox_util::peripheral::JBInputs;
 use mutually_exclusive_features::exactly_one_of;
 exactly_one_of!("keypad", "knobpad", "pedalpad");
 
-#[link_section = ".boot_loader"]
+#[link_section = ".boot2"]
 #[used]
 pub static BOOT_LOADER: [u8; 256] = rp2040_boot2::BOOT_LOADER_GENERIC_03H;
 
@@ -33,7 +33,9 @@ use panic_probe as _;
 use peripheral::inputs_default;
 use rp2040_hal::{
     clocks::init_clocks_and_plls,
+    entry,
     fugit::ExtU32,
+    gpio::Pins,
     multicore::{Multicore, Stack},
     pac::Peripherals,
     pio::PIOExt,
@@ -43,7 +45,6 @@ use rp2040_hal::{
     watchdog::Watchdog,
     Clock, Timer,
 };
-use rp2040_hal::{entry, gpio::Pins};
 
 use usb_device::{class_prelude::*, prelude::*};
 use usbd_hid::prelude::*;

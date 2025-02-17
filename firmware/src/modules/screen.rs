@@ -16,7 +16,7 @@ use rp2040_hal::{
 
 use crate::st7789::St7789;
 
-const REFRESH_RATE: u32 = 50;
+const REFRESH_RATE: u32 = 30;
 
 pub struct ScreenMod {
     st: St7789<PIO1, SM1, Pin<DynPinId, FunctionPio1, PullDown>>,
@@ -51,14 +51,14 @@ impl ScreenMod {
         let rgb = hsv2rgb(t, 1.0, 1.0);
         let rgb = rgb565(rgb.0, rgb.1, rgb.2);
 
-        // let time_start = _timer.get_counter();
+        let time_start = _timer.get_counter();
         self.st.fill_framebuffer(rgb);
-        // let elapse1 = (_timer.get_counter() - time_start).to_micros();
+        let elapse1 = (_timer.get_counter() - time_start).to_micros();
 
-        // let time_start = _timer.get_counter();
+        let time_start = _timer.get_counter();
         self.st.push_framebuffer();
-        // let elapse2 = (_timer.get_counter() - time_start).to_micros();
+        let elapse2 = (_timer.get_counter() - time_start).to_micros();
 
-        // info!("times: fill-fb={}us, write-fb={}us", elapse1, elapse2);
+        info!("times: fill-fb={}us, push-fb={}us", elapse1, elapse2);
     }
 }
