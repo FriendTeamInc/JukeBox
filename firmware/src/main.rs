@@ -3,13 +3,25 @@
 #![no_std]
 #![no_main]
 
-use jukebox_util::peripheral::JBInputs;
-use mutually_exclusive_features::exactly_one_of;
-exactly_one_of!("keypad", "knobpad", "pedalpad");
-
 #[link_section = ".boot2"]
 #[used]
 pub static BOOT_LOADER: [u8; 256] = rp2040_boot2::BOOT_LOADER_GENERIC_03H;
+
+#[link_section = ".bi_entries"]
+#[used]
+pub static PICOTOOL_ENTRIES: [binary_info::EntryAddr; 7] = [
+    binary_info::rp_program_name!(c"JukeBox Firmware"),
+    binary_info::rp_cargo_version!(),
+    binary_info::rp_program_build_attribute!(),
+    binary_info::rp_pico_board!(c"pico"),
+    binary_info::rp_boot2_name(c"boot2_generic_03h").addr(),
+    binary_info::rp_program_description!(c"Firmware for JukeBox V5."),
+    binary_info::rp_program_url!(c"https://jukebox.friendteam.biz"),
+];
+
+use jukebox_util::peripheral::JBInputs;
+use mutually_exclusive_features::exactly_one_of;
+exactly_one_of!("keypad", "knobpad", "pedalpad");
 
 mod mutex;
 mod peripheral;
@@ -32,6 +44,7 @@ use embedded_hal::timer::CountDown as _;
 use panic_probe as _;
 use peripheral::inputs_default;
 use rp2040_hal::{
+    binary_info,
     clocks::init_clocks_and_plls,
     entry,
     fugit::ExtU32,
@@ -63,11 +76,6 @@ static UPDATE_TRIGGER: Mutex<2, bool> = Mutex::new(false);
 
 #[entry]
 fn main() -> ! {
-    // load unique flash id
-    let ver = env!("CARGO_PKG_VERSION");
-    let uid = uid::get_flash_uid();
-    info!("ver:{}, uid:{}", ver, uid);
-
     // set up hardware interfaces
     let mut pac = Peripherals::take().unwrap();
     let mut watchdog = Watchdog::new(pac.WATCHDOG);
@@ -93,6 +101,11 @@ fn main() -> ! {
     hid_tick.start(4.millis());
     let mut nkro_tick = timer.count_down();
     nkro_tick.start(1.millis());
+
+    // load unique flash id
+    let ver = env!("CARGO_PKG_VERSION");
+    let uid = uid::get_flash_uid();
+    info!("ver:{}, uid:{}", ver, uid);
 
     // set up usb
     let usb_bus = UsbBusAllocator::new(usb::UsbBus::new(

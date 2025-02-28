@@ -7,10 +7,11 @@ license = "MIT"
 [dependencies]
 jukebox_util = { path = "../software/jukebox_util" }
 rp2040-hal = { version = "0.11", features = [
-    "rt",
+    "binary-info",
     "critical-section-impl",
     # "defmt",
     # "rom-func-cache",
+    "rt",
 ] }
 rp2040-boot2 = "0.3"
 rp2040-flash = "0.6"
