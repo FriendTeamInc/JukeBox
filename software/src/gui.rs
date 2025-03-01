@@ -10,14 +10,14 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use eframe::egui::{
-    vec2, Align, Button, CentralPanel, Color32, ComboBox, Grid, Layout, RichText, Rounding, Sense,
-    TextBuffer, TextEdit, Ui, ViewportBuilder,
+    vec2, Align, Button, CentralPanel, CollapsingHeader, Color32, ComboBox, Grid, Layout, RichText,
+    ScrollArea, TextBuffer, TextEdit, Ui, ViewportBuilder,
 };
 use egui_phosphor::regular as phos;
 use rand::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::reaction::{reaction_task, InputKey, ReactionConfig};
+use crate::reaction::{reaction_list, reaction_task, InputKey, ReactionConfig};
 use crate::serial::{serial_task, SerialCommand, SerialConnectionDetails, SerialEvent};
 use crate::splash::SPLASH_MESSAGES;
 
@@ -26,6 +26,7 @@ const APP_VERSION: &'static str = env!("CARGO_PKG_VERSION");
 #[derive(PartialEq)]
 enum GuiTab {
     Device,
+    Editing,
     Settings,
 }
 
@@ -174,7 +175,7 @@ impl JukeBoxGui {
             CentralPanel::default().show(ctx, |ui| {
                 ui.horizontal(|ui| {
                     self.draw_profile_management(ui);
-                    self.draw_settings_toggle(ui); // TODO: hide button when editing reaction
+                    self.draw_settings_toggle(ui);
                 });
 
                 ui.separator();
@@ -182,11 +183,24 @@ impl JukeBoxGui {
                 ui.allocate_ui(vec2(464.0, 252.0), |ui| match self.gui_tab {
                     GuiTab::Device => self.draw_device_page(ui),
                     GuiTab::Settings => self.draw_settings_page(ui, &s_cmd_tx),
+                    GuiTab::Editing => self.draw_edit_reaction(ui),
                 });
 
-                ui.separator();
+                // ui.separator();
 
-                self.draw_splash_text(ui);
+                ui.columns(2, |c| {
+                    c[0].with_layout(Layout::left_to_right(Align::BOTTOM), |ui| {
+                        let back_btn = ui.add_enabled(
+                            self.gui_tab == GuiTab::Editing || self.gui_tab == GuiTab::Settings,
+                            Button::new(RichText::new(phos::ARROW_BEND_UP_LEFT)),
+                        );
+                        if back_btn.clicked() {
+                            self.gui_tab = GuiTab::Device;
+                        }
+                    });
+
+                    self.draw_splash_text(&mut c[1]);
+                });
             });
 
             // Call a new frame every frame, bypassing the limited updates.
@@ -260,11 +274,7 @@ impl JukeBoxGui {
 
     fn draw_profile_management(&mut self, ui: &mut Ui) {
         ui.scope(|ui| {
-            // TODO
-            // if editing_key_reaction {
-            //     ui.disable();
-            // }
-            if self.gui_tab != GuiTab::Device {
+            if self.gui_tab == GuiTab::Settings || self.gui_tab == GuiTab::Editing {
                 ui.disable();
             }
 
@@ -373,28 +383,34 @@ impl JukeBoxGui {
 
     fn draw_settings_toggle(&mut self, ui: &mut Ui) {
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            let settings_btn = ui
-                .selectable_label(
-                    self.gui_tab == GuiTab::Settings,
-                    RichText::new(phos::GEAR_FINE),
-                )
-                .on_hover_text_at_pointer("Settings");
-            if settings_btn.clicked() {
-                match self.gui_tab {
-                    GuiTab::Device => self.gui_tab = GuiTab::Settings,
-                    GuiTab::Settings => self.gui_tab = GuiTab::Device,
+            ui.scope(|ui| {
+                if self.gui_tab != GuiTab::Settings && self.gui_tab != GuiTab::Device {
+                    ui.disable();
                 }
-            }
+
+                let settings_btn = ui
+                    .selectable_label(
+                        self.gui_tab == GuiTab::Settings,
+                        RichText::new(phos::GEAR_FINE),
+                    )
+                    .on_hover_text_at_pointer("Settings");
+                if settings_btn.clicked() {
+                    match self.gui_tab {
+                        GuiTab::Device => self.gui_tab = GuiTab::Settings,
+                        GuiTab::Settings => self.gui_tab = GuiTab::Device,
+                        _ => (),
+                    }
+                }
+            });
 
             self.draw_connection_status(ui);
         });
     }
 
     fn draw_keyboard(&mut self, ui: &mut Ui) {
-        let s = Sense::hover();
-        ui.allocate_exact_size([0.0, 7.5].into(), s);
+        ui.allocate_space(vec2(0.0, 7.5));
         ui.horizontal(|ui| {
-            ui.allocate_exact_size([62.0, 0.0].into(), s);
+            ui.allocate_space(vec2(62.0, 0.0));
             Grid::new("KBGrid").show(ui, |ui| {
                 let keys = [
                     [
@@ -428,20 +444,13 @@ impl JukeBoxGui {
                         let rt = RichText::new(s).heading();
                         let mut b = Button::new(rt);
                         if self.device_inputs.contains(k) {
-                            let r = 20.0;
-                            b = b.rounding(Rounding {
-                                nw: r,
-                                ne: r,
-                                sw: r,
-                                se: r,
-                            });
+                            b = b.corner_radius(20u8);
                         }
                         let btn = ui.add_sized([75.0, 75.0], b);
 
                         if btn.clicked() {
                             log::info!("F{} clicked", 12 + x + y * 4 + 1);
-                            // TODO: add config menu when button is clicked
-                            // TODO: highlight button when press signal is recieved
+                            self.gui_tab = GuiTab::Editing;
                             // TODO: display some better text in the buttons
                             // TODO: add hover text for button info
                         }
@@ -450,7 +459,41 @@ impl JukeBoxGui {
                 }
             });
         });
-        ui.allocate_exact_size([0.0, 7.5].into(), s);
+        ui.allocate_space(vec2(0.0, 7.5));
+    }
+
+    fn draw_edit_reaction(&mut self, ui: &mut Ui) {
+        ui.columns(2, |c| {
+            c[0].horizontal(|ui| {
+                let rt = RichText::new(phos::APERTURE).heading();
+                if ui.add_sized([75.0, 75.0], Button::new(rt)).clicked() {
+                    log::info!("click!")
+                }
+            });
+
+            c[1].allocate_ui(vec2(228.0, 252.0), |ui| {
+                ScrollArea::vertical().show(ui, |ui| {
+                    ui.allocate_space(vec2(100.0, 0.0));
+                    Grid::new("ReactionsGrid")
+                        .num_columns(1)
+                        .min_col_width(228.0)
+                        .striped(true)
+                        .show(ui, |ui| {
+                            for r in reaction_list() {
+                                CollapsingHeader::new(RichText::new(r.0).strong())
+                                    .default_open(true)
+                                    .show(ui, |ui| {
+                                        for i in r.1 {
+                                            ui.label(format!("{}", i));
+                                        }
+                                    });
+                                ui.end_row();
+                            }
+                        });
+                    ui.allocate_space(ui.available_size_before_wrap());
+                });
+            });
+        });
     }
 
     fn draw_jukebox_logo(&mut self, ui: &mut Ui) {

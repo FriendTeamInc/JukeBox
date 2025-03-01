@@ -128,6 +128,68 @@ pub trait Reaction {
     fn on_release(&self, key: InputKey);
 }
 
+pub fn reaction_list() -> Vec<(String, Vec<String>)> {
+    vec![
+        (
+            "Meta".to_string(),
+            vec![
+                "Test".to_string(),
+                "Switch Profile".to_string(),
+                "Copy From Profile".to_string(),
+            ],
+        ),
+        (
+            "Input".to_string(),
+            vec![
+                "Press Key".to_string(),
+                "Click Mouse".to_string(),
+                "Move Mouse".to_string(),
+                "Scroll Mouse".to_string(),
+            ],
+        ),
+        (
+            "System".to_string(),
+            vec![
+                "Launch Application".to_string(),
+                "Open Website".to_string(),
+                "Audio Input Control".to_string(),
+                "Audio Output Control".to_string(),
+            ],
+        ),
+        ("Soundboard".to_string(), vec!["Play Sound".to_string()]),
+        (
+            "Discord".to_string(),
+            vec![
+                "Toggle Mute".to_string(),
+                "Toggle Deafen".to_string(),
+                "Push to Talk".to_string(),
+                "Push to Mute".to_string(),
+                "Toggle Camera".to_string(),
+                // "Toggle Stream".to_string(),
+            ],
+        ),
+        (
+            "OBS".to_string(),
+            vec![
+                "Toggle Stream".to_string(),
+                "Toggle Record".to_string(),
+                "Pause Recording".to_string(),
+                "Toggle Replay Buffer".to_string(),
+                "Save Replay".to_string(),
+                "Save Screenshot".to_string(),
+                "Toggle Source".to_string(),
+                "Toggle Mute Audio Source".to_string(),
+                "Switch to Scene".to_string(),
+                "Switch to Scene Collection".to_string(),
+                "Switch to Preview Scene".to_string(),
+                "Toggle Filter".to_string(),
+                "Switch to Transition".to_string(),
+                "Add Chapter Marker".to_string(),
+            ],
+        ),
+    ]
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub enum ReactionConfig {
     // Meta
@@ -157,7 +219,22 @@ pub enum ReactionConfig {
     DiscordPushToMute(),
     DiscordToggleCamera(),
     DiscordToggleStream(),
+
     // OBS
+    ObsStream(),
+    ObsRecord(),
+    ObsPauseRecord(),
+    ObsReplayBuffer(),
+    ObsSaveReplay(),
+    ObsSaveScreenshot(),
+    ObsSource(),
+    ObsMute(),
+    ObsSceneSwitch(),
+    ObsSceneCollectionSwitch(),
+    ObsPreviewScene(),
+    ObsFilter(),
+    ObsTransition(),
+    ObsChapterMarker(),
 }
 
 #[derive(Serialize, Deserialize, Clone)]
