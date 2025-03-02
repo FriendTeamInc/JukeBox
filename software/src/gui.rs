@@ -135,17 +135,29 @@ struct JukeBoxGui {
 }
 impl JukeBoxGui {
     fn new() -> Self {
-        // TODO: rework later for file configs
         let config = JukeBoxConfig::load();
         config.save();
+        let devices: HashMap<String, (DeviceType, String, String, bool, HashSet<InputKey>)> =
+            config
+                .devices
+                .clone()
+                .iter()
+                .map(|(k, v)| {
+                    (
+                        k.clone(),
+                        (v.0, v.1.clone(), "?".to_string(), false, HashSet::new()),
+                    )
+                })
+                .collect();
+        let current_device = devices.keys().next().unwrap_or(&String::new()).to_string();
         let config = Arc::new(Mutex::new(JukeBoxConfig::load()));
 
         JukeBoxGui {
             splash_timer: Instant::now(),
             splash_index: 0usize,
             gui_tab: GuiTab::Device,
-            current_device: String::new(),
-            devices: HashMap::new(),
+            current_device: current_device,
+            devices: devices,
             config: config,
             config_renaming_profile: false,
             config_profile_name_entry: String::new(),
@@ -277,7 +289,7 @@ impl JukeBoxGui {
                             }
                         }
                     }
-                    // TODO: save config
+                    conf.save();
                     drop(conf);
 
                     if self.current_device.is_empty() {
@@ -305,14 +317,18 @@ impl JukeBoxGui {
                     }
                 }
                 SerialEvent::LostConnection(device_uid) => {
-                    let v = self.devices.get_mut(&device_uid).unwrap();
-                    v.3 = false;
-                    v.4.clear();
+                    if self.devices.contains_key(&device_uid) {
+                        let v = self.devices.get_mut(&device_uid).unwrap();
+                        v.3 = false;
+                        v.4.clear();
+                    }
                 }
                 SerialEvent::Disconnected(device_uid) => {
-                    let v = self.devices.get_mut(&device_uid).unwrap();
-                    v.3 = false;
-                    v.4.clear();
+                    if self.devices.contains_key(&device_uid) {
+                        let v = self.devices.get_mut(&device_uid).unwrap();
+                        v.3 = false;
+                        v.4.clear();
+                    }
                 }
                 SerialEvent::GetInputKeys((device_uid, input_keys)) => {
                     if self.devices.contains_key(&device_uid) {
@@ -366,7 +382,7 @@ impl JukeBoxGui {
                     let mut conf = self.config.lock().unwrap();
                     let c = conf.devices.get_mut(&self.current_device).expect("");
                     c.1 = self.config_device_name_entry.clone();
-                    // TODO: immediately save config to file
+                    conf.save();
                 }
                 if !edit.has_focus() {
                     edit.request_focus();
@@ -428,12 +444,14 @@ impl JukeBoxGui {
                         .devices
                         .keys()
                         .next()
-                        .unwrap_or(&"".to_string())
+                        .unwrap_or(&String::new())
                         .to_string();
 
                     let mut conf = self.config.lock().unwrap();
                     conf.devices.remove(&old_device);
-                    // TODO: immediately save config to file
+                    conf.save();
+
+                    // TODO: disconnect device over serial?
                 }
             })
         });
@@ -468,6 +486,7 @@ impl JukeBoxGui {
                         .insert(self.config_profile_name_entry.to_string(), c);
                     conf.current_profile
                         .replace_with(&self.config_profile_name_entry);
+                    conf.save();
                 }
                 if !edit.has_focus() {
                     edit.request_focus();
@@ -484,7 +503,7 @@ impl JukeBoxGui {
                             let u = ui.selectable_label(*k == current, &*k.clone());
                             if u.clicked() {
                                 conf.current_profile = k.to_string();
-                                // TODO: immediately save config to file
+                                conf.save();
                             }
                         }
                     })
@@ -504,7 +523,7 @@ impl JukeBoxGui {
                         let name = format!("Profile {}", idx);
                         if !conf.profiles.contains_key(&name) {
                             conf.profiles.insert(name, HashMap::new());
-                            // TODO: immediately save config to file
+                            conf.save();
                             break;
                         }
                         idx += 1;
@@ -533,7 +552,7 @@ impl JukeBoxGui {
                     let p = conf.current_profile.clone();
                     conf.profiles.remove(&p);
                     conf.current_profile = conf.profiles.keys().next().expect("").to_string();
-                    // TODO: immediately save config to file
+                    conf.save();
                 }
             });
         });
@@ -688,7 +707,7 @@ impl JukeBoxGui {
                     });
                     ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
                         ui.label(
-                            RichText::new(format!("Firmware: {}", i.1))
+                            RichText::new(format!("Firmware: {}", i.2))
                                 .monospace()
                                 .size(5.0),
                         );
