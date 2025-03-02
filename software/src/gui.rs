@@ -68,17 +68,14 @@ pub struct JukeBoxConfig {
     pub profiles: HashMap<String, HashMap<String, HashMap<InputKey, ReactionConfig>>>,
     // Profile Name -> ( Device UID -> ( Input Key -> Reaction Config ) )
 
-    // Device UID
-    pub current_device: String, // TODO: move this out of config and into JukeBoxGui
-    pub devices: HashMap<String, (DeviceType, String)>,
     // Device UID -> (Device Type, Device Nickname)
+    pub devices: HashMap<String, (DeviceType, String)>,
 }
 impl Default for JukeBoxConfig {
     fn default() -> Self {
         JukeBoxConfig {
             current_profile: "Default Profile".to_string(),
             profiles: HashMap::from([("Default Profile".to_string(), HashMap::new())]),
-            current_device: String::new(),
             devices: HashMap::new(),
         }
     }
@@ -126,7 +123,9 @@ struct JukeBoxGui {
 
     gui_tab: GuiTab,
 
-    devices: HashMap<String, (DeviceType, String, bool, HashSet<InputKey>)>,
+    current_device: String,
+    // Device UID -> (DeviceType, Device Nickname, Firmware Version, Connected?, Device Inputs)
+    devices: HashMap<String, (DeviceType, String, String, bool, HashSet<InputKey>)>,
 
     config: Arc<Mutex<JukeBoxConfig>>,
     config_renaming_profile: bool,
@@ -145,6 +144,7 @@ impl JukeBoxGui {
             splash_timer: Instant::now(),
             splash_index: 0usize,
             gui_tab: GuiTab::Device,
+            current_device: String::new(),
             devices: HashMap::new(),
             config: config,
             config_renaming_profile: false,
@@ -257,72 +257,88 @@ impl JukeBoxGui {
                     let device_type = d.input_identifier;
                     let firmware_version = d.firmware_version;
 
+                    let short_uid = device_uid[..4].to_string();
+                    let device_name = match Into::<DeviceType>::into(device_type) {
+                        DeviceType::Unknown => format!("Unknown Device {}", device_uid.clone()),
+                        DeviceType::KeyPad => format!("JukeBox KeyPad {}", short_uid),
+                        DeviceType::KnobPad => format!("JukeBox KnobPad {}", short_uid),
+                        DeviceType::PedalPad => format!("JukeBox PedalPad {}", short_uid),
+                    };
+
                     let mut conf = self.config.lock().unwrap();
                     if !conf.devices.contains_key(&device_uid) {
-                        let short_uid = device_uid[..4].to_string();
-                        let device_name = match Into::<DeviceType>::into(device_type) {
-                            DeviceType::Unknown => format!("Unknown Device {}", device_uid.clone()),
-                            DeviceType::KeyPad => format!("JukeBox KeyPad {}", short_uid),
-                            DeviceType::KnobPad => format!("JukeBox KnobPad {}", short_uid),
-                            DeviceType::PedalPad => format!("JukeBox PedalPad {}", short_uid),
-                        };
-                        conf.devices
-                            .insert(device_uid.clone(), (device_type.into(), device_name));
+                        conf.devices.insert(
+                            device_uid.clone(),
+                            (device_type.into(), device_name.clone()),
+                        );
                         for (_, v) in conf.profiles.iter_mut() {
                             if !v.contains_key(&device_uid) {
                                 v.insert(device_uid.clone(), HashMap::new());
                             }
                         }
                     }
-                    if conf.current_device.is_empty() {
-                        conf.current_device = device_uid.clone();
-                    }
+                    // TODO: save config
                     drop(conf);
+
+                    if self.current_device.is_empty() {
+                        self.current_device = device_uid.clone();
+                    }
 
                     if self.devices.contains_key(&device_uid) {
                         let v = self.devices.get_mut(&device_uid).unwrap();
                         v.0 = device_type.into();
-                        v.1 = firmware_version;
-                        v.2 = true;
-                        v.3.clear();
+                        v.1 = device_name;
+                        v.2 = firmware_version;
+                        v.3 = true;
+                        v.4.clear();
                     } else {
                         self.devices.insert(
                             device_uid,
-                            (device_type.into(), firmware_version, true, HashSet::new()),
+                            (
+                                device_type.into(),
+                                device_name,
+                                firmware_version,
+                                true,
+                                HashSet::new(),
+                            ),
                         );
                     }
                 }
                 SerialEvent::LostConnection(device_uid) => {
                     let v = self.devices.get_mut(&device_uid).unwrap();
-                    v.2 = false;
-                    v.3.clear();
+                    v.3 = false;
+                    v.4.clear();
                 }
                 SerialEvent::Disconnected(device_uid) => {
                     let v = self.devices.get_mut(&device_uid).unwrap();
-                    v.2 = false;
-                    v.3.clear();
+                    v.3 = false;
+                    v.4.clear();
                 }
                 SerialEvent::GetInputKeys((device_uid, input_keys)) => {
-                    let v = self.devices.get_mut(&device_uid).unwrap();
-                    v.3 = input_keys;
+                    if self.devices.contains_key(&device_uid) {
+                        let v = self.devices.get_mut(&device_uid).unwrap();
+                        v.4 = input_keys;
+                    }
                 }
             }
         }
     }
 
     fn draw_device_page(&mut self, ui: &mut Ui, s_cmd_tx: &Sender<SerialCommand>) {
-        let (devices, current_device) = {
-            let conf = self.config.lock().unwrap();
-            (conf.devices.clone(), conf.current_device.clone())
-        };
+        let devices = &self.devices;
+        let current_device = &self.current_device;
 
         if devices.len() <= 0 || current_device.is_empty() {
             self.draw_empty_device(ui);
             return;
         }
 
-        let binding = (DeviceType::Unknown, "".to_string());
-        let (device_type, _device_name) = devices.get(&current_device).unwrap_or(&binding);
+        let device_type = if let Some(b) = devices.get(current_device) {
+            b.0
+        } else {
+            DeviceType::Unknown
+        };
+
         match device_type {
             DeviceType::Unknown => self.draw_empty_device(ui),
             DeviceType::KeyPad => self.draw_keyboard_device(ui, s_cmd_tx),
@@ -344,33 +360,29 @@ impl JukeBoxGui {
                 );
                 if edit.lost_focus() && self.config_device_name_entry.len() > 0 {
                     self.config_renaming_device = false;
-                    let mut conf = self.config.lock().unwrap();
+                    let d = self.devices.get_mut(&self.current_device).expect("");
+                    d.1 = self.config_device_name_entry.clone();
 
-                    let d = conf.current_device.clone();
-                    let c = conf.devices.remove(&d).expect("");
-                    conf.devices
-                        .insert(d.clone(), (c.0, self.config_device_name_entry.to_string()));
+                    let mut conf = self.config.lock().unwrap();
+                    let c = conf.devices.get_mut(&self.current_device).expect("");
+                    c.1 = self.config_device_name_entry.clone();
                     // TODO: immediately save config to file
                 }
                 if !edit.has_focus() {
                     edit.request_focus();
                 }
             } else {
-                let mut conf = self.config.lock().unwrap();
-                let devices = conf.devices.clone();
-                // let current = conf.current_device.clone();
-                let current_name = conf
-                    .devices
-                    .get(&conf.current_device)
-                    .unwrap_or(&(DeviceType::Unknown, "".to_string()))
-                    .1
-                    .clone();
+                let current_name = if !self.current_device.is_empty() {
+                    &self.devices.get(&self.current_device).unwrap().1
+                } else {
+                    &String::new()
+                };
                 ComboBox::from_id_salt("DeviceSelect")
                     .selected_text(current_name.clone())
                     .width(200.0)
                     .truncate()
                     .show_ui(ui, |ui| {
-                        for (k, v) in &devices {
+                        for (k, v) in &self.devices {
                             let s = format!(
                                 "{} {}",
                                 v.1,
@@ -382,10 +394,9 @@ impl JukeBoxGui {
                                     DeviceType::PedalPad => phos::GUITAR,
                                 }
                             );
-                            let u = ui.selectable_label(v.1 == current_name, s);
+                            let u = ui.selectable_label(v.1 == *current_name, s);
                             if u.clicked() {
-                                conf.current_device = k.clone();
-                                // TODO: immediately save config to file
+                                self.current_device = k.clone();
                             }
                         }
                     })
@@ -394,8 +405,7 @@ impl JukeBoxGui {
             }
 
             ui.add_enabled_ui(!self.config_renaming_device, |ui| {
-                let mut conf = self.config.lock().unwrap();
-                if conf.devices.keys().len() <= 0 {
+                if self.devices.keys().len() <= 0 {
                     ui.disable();
                 }
 
@@ -405,21 +415,24 @@ impl JukeBoxGui {
                 if edit_btn.clicked() {
                     self.config_renaming_device = true;
                     self.config_device_name_entry
-                        .replace_with(&conf.devices.get(&conf.current_device).unwrap().1);
+                        .replace_with(&self.devices.get(&self.current_device).unwrap().1);
                 }
 
                 let delete_btn = ui
                     .button(RichText::new(phos::TRASH))
                     .on_hover_text_at_pointer("Forget Device");
                 if delete_btn.clicked() {
-                    let p = conf.current_device.clone();
-                    conf.devices.remove(&p);
-                    conf.current_device = conf
+                    let old_device = self.current_device.clone();
+                    self.devices.remove(&old_device);
+                    self.current_device = self
                         .devices
                         .keys()
                         .next()
                         .unwrap_or(&"".to_string())
                         .to_string();
+
+                    let mut conf = self.config.lock().unwrap();
+                    conf.devices.remove(&old_device);
                     // TODO: immediately save config to file
                 }
             })
@@ -611,12 +624,8 @@ impl JukeBoxGui {
                         let s = format!("F{}", 12 + x + y * 4 + 1);
                         let rt = RichText::new(s).heading();
                         let mut b = Button::new(rt);
-                        let current_device = {
-                            let conf = self.config.lock().unwrap();
-                            conf.current_device.clone()
-                        };
-                        let inputs = if let Some(s) = self.devices.get(&current_device) {
-                            s.3.clone()
+                        let inputs = if let Some(s) = self.devices.get(&self.current_device) {
+                            s.4.clone()
                         } else {
                             HashSet::new()
                         };
@@ -640,20 +649,16 @@ impl JukeBoxGui {
 
             ui.allocate_ui(vec2(60.0, 231.5), |ui| {
                 ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
-                    let current_device = {
-                        let conf = self.config.lock().unwrap();
-                        conf.current_device.clone()
-                    };
-                    let i = self.devices.get(&current_device).unwrap();
+                    let i = self.devices.get(&self.current_device).unwrap();
                     ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
-                        let s = match i.2 {
+                        let s = match i.3 {
                             true => RichText::new(phos::PLUGS_CONNECTED)
                                 .color(Color32::from_rgb(63, 192, 63)),
                             false => {
                                 RichText::new(phos::PLUGS).color(Color32::from_rgb(192, 63, 63))
                             }
                         };
-                        ui.add_enabled_ui(i.2, |ui| {
+                        ui.add_enabled_ui(i.3, |ui| {
                             if ui
                                 .button(s)
                                 .on_hover_text_at_pointer("Connected!")
@@ -676,7 +681,7 @@ impl JukeBoxGui {
                     });
                     ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
                         ui.label(
-                            RichText::new(format!("ID: {}", current_device))
+                            RichText::new(format!("ID: {}", self.current_device))
                                 .monospace()
                                 .size(5.0),
                         );

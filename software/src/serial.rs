@@ -358,6 +358,7 @@ pub fn serial_task(
             Ok(f) => f,
         };
 
+        // TODO: spin this off as its own thread
         let _ = serial_comms(&mut f, &s_cmd_rx, &s_evnt_tx);
     }
 
