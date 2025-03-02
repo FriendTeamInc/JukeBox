@@ -70,6 +70,8 @@ pub struct JukeBoxConfig {
 
     // Device UID -> (Device Type, Device Nickname)
     pub devices: HashMap<String, (DeviceType, String)>,
+
+    pub enable_splash: bool,
 }
 impl Default for JukeBoxConfig {
     fn default() -> Self {
@@ -77,6 +79,7 @@ impl Default for JukeBoxConfig {
             current_profile: "Default Profile".to_string(),
             profiles: HashMap::from([("Default Profile".to_string(), HashMap::new())]),
             devices: HashMap::new(),
+            enable_splash: true,
         }
     }
 }
@@ -132,11 +135,12 @@ struct JukeBoxGui {
     config_profile_name_entry: String,
     config_renaming_device: bool,
     config_device_name_entry: String,
+    config_enable_splash: bool,
 }
 impl JukeBoxGui {
     fn new() -> Self {
         let config = JukeBoxConfig::load();
-        config.save();
+        config.save(); // Immediately save, in case the config was the loaded default
         let devices: HashMap<String, (DeviceType, String, String, bool, HashSet<InputKey>)> =
             config
                 .devices
@@ -150,19 +154,24 @@ impl JukeBoxGui {
                 })
                 .collect();
         let current_device = devices.keys().next().unwrap_or(&String::new()).to_string();
+        let config_enable_splash = config.enable_splash;
         let config = Arc::new(Mutex::new(JukeBoxConfig::load()));
 
         JukeBoxGui {
             splash_timer: Instant::now(),
             splash_index: 0usize,
+
             gui_tab: GuiTab::Device,
+
             current_device: current_device,
             devices: devices,
+
             config: config,
             config_renaming_profile: false,
             config_profile_name_entry: String::new(),
             config_renaming_device: false,
             config_device_name_entry: String::new(),
+            config_enable_splash: config_enable_splash,
         }
     }
 
@@ -365,6 +374,20 @@ impl JukeBoxGui {
 
     fn draw_settings_page(&mut self, ui: &mut Ui) {
         self.draw_jukebox_logo(ui);
+        ui.label("");
+
+        if ui
+            .checkbox(
+                &mut self.config_enable_splash,
+                " - Enable splash text in bottom right.",
+            )
+            .changed()
+        {
+            let mut conf = self.config.lock().unwrap();
+            conf.enable_splash = self.config_enable_splash;
+            conf.save();
+        }
+
         self.draw_settings_bottom(ui);
     }
 
@@ -700,7 +723,7 @@ impl JukeBoxGui {
                     });
                     ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
                         ui.label(
-                            RichText::new(format!("ID: {}", self.current_device))
+                            RichText::new(format!("ID:{}", self.current_device))
                                 .monospace()
                                 .size(5.0),
                         );
@@ -790,13 +813,15 @@ impl JukeBoxGui {
             }
             self.splash_timer = Instant::now() + Duration::from_secs(30);
         }
-        ui.with_layout(Layout::right_to_left(Align::BOTTOM), |ui| {
-            ui.label(
-                RichText::new(SPLASH_MESSAGES[self.splash_index])
-                    .monospace()
-                    .size(6.0),
-            );
-        });
+        if self.config_enable_splash {
+            ui.with_layout(Layout::right_to_left(Align::BOTTOM), |ui| {
+                ui.label(
+                    RichText::new(SPLASH_MESSAGES[self.splash_index])
+                        .monospace()
+                        .size(6.0),
+                );
+            });
+        }
     }
 }
 
