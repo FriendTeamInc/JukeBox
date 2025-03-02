@@ -1,7 +1,7 @@
 // Defining reactions to perform when actions happen (key pressed, knob turned, etc.)
 
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     sync::{
         atomic::AtomicBool,
         mpsc::{Receiver, Sender},
@@ -287,25 +287,28 @@ pub fn reaction_task(
                 .send(evnt.clone())
                 .context("failed to send event to gui")?;
             match evnt {
-                SerialEvent::GetInputKeys(keys) => {
-                    let c = config.lock().unwrap();
-                    let profiles = c.profiles.clone();
-                    let current = c.current_profile.clone();
-                    drop(c);
+                SerialEvent::GetInputKeys((device_uid, keys)) => {
+                    let current_profile = {
+                        let c = config.lock().unwrap();
+                        let h = &HashMap::new();
+                        let profiles = c.profiles.get(&device_uid).unwrap_or(h);
+                        profiles
+                            .get(&c.current_profile)
+                            .unwrap_or(&HashMap::new())
+                            .clone()
+                    };
 
                     let pressed = keys.difference(&prevkeys);
                     let released = prevkeys.difference(&keys);
 
                     for p in pressed {
-                        let c = profiles.get(&current).unwrap();
-                        if let Some(r) = c.get(&p) {
+                        if let Some(r) = current_profile.get(&p) {
                             let _ = run_key(r, *p, true);
                         }
                     }
 
                     for p in released {
-                        let c = profiles.get(&current).unwrap();
-                        if let Some(r) = c.get(&p) {
+                        if let Some(r) = current_profile.get(&p) {
                             let _ = run_key(r, *p, false);
                         }
                     }
