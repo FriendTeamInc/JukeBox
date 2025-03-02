@@ -1,5 +1,7 @@
 //! Keyboard processing module
 
+#![allow(dead_code)]
+
 use embedded_hal::digital::v2::{InputPin, OutputPin};
 use embedded_hal::timer::CountDown as _;
 use rp2040_hal::{
@@ -7,10 +9,6 @@ use rp2040_hal::{
     gpio::{DynPinId, FunctionSioInput, FunctionSioOutput, Pin, PullDown},
     timer::CountDown,
 };
-// use usbd_human_interface_device::page::Keyboard;
-
-// use crate::mutex::Mutex;
-// use crate::peripheral::JBInputs;
 
 const POLL_RATE: u32 = 5;
 pub const KEY_ROWS: usize = 3;
@@ -20,7 +18,7 @@ pub struct KeyboardMod {
     col_pins: [Pin<DynPinId, FunctionSioInput, PullDown>; KEY_COLS],
     row_pins: [Pin<DynPinId, FunctionSioOutput, PullDown>; KEY_ROWS],
     poll_timer: CountDown,
-    pressed_keys: [bool; 16],
+    pressed_keys: [bool; 16], // TODO: change to KEY_ROWS * KEY_COLS
 }
 
 impl KeyboardMod {

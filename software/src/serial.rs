@@ -251,7 +251,10 @@ pub fn serial_get_device() -> Result<Box<dyn SerialPort>> {
     let ports: Vec<_> = ports
         .iter()
         .filter(|p| match &p.port_type {
-            serialport::SerialPortType::UsbPort(p) => p.vid == 0x1209 && p.pid == 0xF20A,
+            serialport::SerialPortType::UsbPort(p) => {
+                p.vid == 0x1209
+                    && (p.pid == 0xF209 || p.pid == 0xF20A || p.pid == 0xF20B || p.pid == 0xF20C)
+            }
             _ => false,
         })
         .collect();

@@ -1,5 +1,7 @@
 //! Screen for fun graphics
 
+#![allow(dead_code)]
+
 #[allow(unused_imports)]
 use defmt::*;
 
@@ -51,14 +53,14 @@ impl ScreenMod {
         let rgb = hsv2rgb(t, 1.0, 1.0);
         let rgb = rgb565(rgb.0, rgb.1, rgb.2);
 
-        let time_start = _timer.get_counter();
+        // let time_start = _timer.get_counter();
         self.st.fill_framebuffer(rgb);
-        let elapse1 = (_timer.get_counter() - time_start).to_micros();
+        // let elapse1 = (_timer.get_counter() - time_start).to_micros();
 
-        let time_start = _timer.get_counter();
+        // let time_start = _timer.get_counter();
         self.st.push_framebuffer();
-        let elapse2 = (_timer.get_counter() - time_start).to_micros();
+        // let elapse2 = (_timer.get_counter() - time_start).to_micros();
 
-        info!("times: fill-fb={}us, push-fb={}us", elapse1, elapse2);
+        // info!("times: fill-fb={}us, push-fb={}us", elapse1, elapse2);
     }
 }

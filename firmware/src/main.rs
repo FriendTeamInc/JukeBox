@@ -31,6 +31,8 @@ mod modules {
     #[cfg(feature = "keypad")]
     pub mod keyboard;
     pub mod led;
+    #[cfg(feature = "pedalpad")]
+    pub mod pedals;
     pub mod rgb;
     #[cfg(feature = "keypad")]
     pub mod screen;
@@ -43,6 +45,7 @@ use mutex::Mutex;
 use embedded_hal::timer::CountDown as _;
 use panic_probe as _;
 use peripheral::inputs_default;
+
 use rp2040_hal::{
     binary_info,
     clocks::init_clocks_and_plls,
@@ -51,13 +54,14 @@ use rp2040_hal::{
     gpio::Pins,
     multicore::{Multicore, Stack},
     pac::Peripherals,
-    pio::PIOExt,
     rom_data::reset_to_usb_boot,
     sio::Sio,
     usb,
     watchdog::Watchdog,
-    Clock, Timer,
+    Timer,
 };
+#[allow(unused_imports)]
+use rp2040_hal::{pio::PIOExt, Clock};
 
 use usb_device::{class_prelude::*, prelude::*};
 use usbd_hid::prelude::*;
@@ -195,10 +199,7 @@ fn main() -> ! {
                 screen::ScreenMod::new(st, timer.count_down())
             };
 
-            let mut led_mod = {
-                let led_pin = pins.gpio25.into_function().into_dyn_pin().into_pull_type();
-                led::LedMod::new(led_pin, timer.count_down())
-            };
+            #[cfg(feature = "keypad")]
             let mut rgb_mod = {
                 let rgb_pin = pins.gpio2.into_function().into_dyn_pin().into_pull_type();
                 let (mut pio0, sm0, _, _, _) = pac.PIO0.split(&mut pac.RESETS);
@@ -212,6 +213,21 @@ fn main() -> ! {
                 rgb::RgbMod::new(ws, timer.count_down())
             };
 
+            #[cfg(feature = "pedalpad")]
+            let pedal_mod = {
+                let pedal_pins = [
+                    pins.gpio2.into_function().into_dyn_pin().into_pull_type(),
+                    pins.gpio3.into_function().into_dyn_pin().into_pull_type(),
+                    pins.gpio4.into_function().into_dyn_pin().into_pull_type(),
+                ];
+                pedals::PedalMod::new(pedal_pins, timer.count_down())
+            };
+
+            let mut led_mod = {
+                let led_pin = pins.gpio25.into_function().into_dyn_pin().into_pull_type();
+                led::LedMod::new(led_pin, timer.count_down())
+            };
+
             loop {
                 // update input devices
                 #[cfg(feature = "keypad")]
@@ -223,6 +239,10 @@ fn main() -> ! {
                     {
                         *i = JBInputs::KeyPad(keyboard_mod.get_pressed_keys().into());
                     }
+                    #[cfg(feature = "pedalpad")]
+                    {
+                        *i = JBInputs::PedalPad(pedal_mod.get_pressed_pedals().into());
+                    }
                 });
 
                 // check if we need to shutdown "cleanly" for update
@@ -231,8 +251,10 @@ fn main() -> ! {
                         #[cfg(feature = "keypad")]
                         screen_mod.clear();
 
-                        led_mod.clear();
+                        #[cfg(feature = "keypad")]
                         rgb_mod.clear();
+
+                        led_mod.clear();
 
                         // wait a few cycles for the IO to finish
                         for _ in 0..100 {
@@ -245,6 +267,8 @@ fn main() -> ! {
 
                 // update accessories
                 led_mod.update();
+
+                #[cfg(feature = "keypad")]
                 rgb_mod.update(timer.get_counter());
 
                 #[cfg(feature = "keypad")]

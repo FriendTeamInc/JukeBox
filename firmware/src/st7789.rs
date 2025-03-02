@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use core::u32;
 
 use cortex_m::prelude::_embedded_hal_timer_CountDown;

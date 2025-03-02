@@ -1,5 +1,7 @@
 //! RGB LEDs under the keys
 
+#![allow(dead_code)]
+
 use embedded_hal::timer::CountDown as _;
 use jukebox_util::color::hsv2rgb;
 use rp2040_hal::{

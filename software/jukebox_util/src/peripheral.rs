@@ -344,6 +344,15 @@ impl PedalInputs {
         }
     }
 }
+impl Into<PedalInputs> for [bool; 3] {
+    fn into(self) -> PedalInputs {
+        PedalInputs {
+            left: self[0].into(),
+            middle: self[1].into(),
+            right: self[2].into(),
+        }
+    }
+}
 
 #[derive(Clone, Copy)]
 pub enum JBInputs {
