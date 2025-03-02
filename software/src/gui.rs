@@ -33,13 +33,6 @@ enum GuiTab {
     Settings,
 }
 
-// #[derive(PartialEq)]
-// enum ConnectionStatus {
-//     Connected,
-//     LostConnection,
-//     Disconnected,
-// }
-
 #[derive(Serialize, Deserialize, PartialEq, Clone, Copy)]
 pub enum DeviceType {
     Unknown,
@@ -76,7 +69,7 @@ pub struct JukeBoxConfig {
     // Profile Name -> ( Device UID -> ( Input Key -> Reaction Config ) )
 
     // Device UID
-    pub current_device: String,
+    pub current_device: String, // TODO: move this out of config and into JukeBoxGui
     pub devices: HashMap<String, (DeviceType, String)>,
     // Device UID -> (Device Type, Device Nickname)
 }
@@ -218,8 +211,8 @@ impl JukeBoxGui {
                 ui.separator();
 
                 ui.allocate_ui(vec2(464.0, 245.0), |ui| match self.gui_tab {
-                    GuiTab::Device => self.draw_device_page(ui),
-                    GuiTab::Settings => self.draw_settings_page(ui, &s_cmd_tx),
+                    GuiTab::Device => self.draw_device_page(ui, &s_cmd_tx),
+                    GuiTab::Settings => self.draw_settings_page(ui),
                     GuiTab::Editing => self.draw_edit_reaction(ui),
                 });
 
@@ -299,14 +292,14 @@ impl JukeBoxGui {
                         );
                     }
                 }
-                // SerialEvent::LostConnection(device_uid) => {
-                //     let v = self.devices.get_mut(&device_uid).unwrap();
-                //     v.2 = true;
-                //     v.3.clear();
-                // }
+                SerialEvent::LostConnection(device_uid) => {
+                    let v = self.devices.get_mut(&device_uid).unwrap();
+                    v.2 = false;
+                    v.3.clear();
+                }
                 SerialEvent::Disconnected(device_uid) => {
                     let v = self.devices.get_mut(&device_uid).unwrap();
-                    v.2 = true;
+                    v.2 = false;
                     v.3.clear();
                 }
                 SerialEvent::GetInputKeys((device_uid, input_keys)) => {
@@ -317,7 +310,7 @@ impl JukeBoxGui {
         }
     }
 
-    fn draw_device_page(&mut self, ui: &mut Ui) {
+    fn draw_device_page(&mut self, ui: &mut Ui, s_cmd_tx: &Sender<SerialCommand>) {
         let (devices, current_device) = {
             let conf = self.config.lock().unwrap();
             (conf.devices.clone(), conf.current_device.clone())
@@ -332,18 +325,14 @@ impl JukeBoxGui {
         let (device_type, _device_name) = devices.get(&current_device).unwrap_or(&binding);
         match device_type {
             DeviceType::Unknown => self.draw_empty_device(ui),
-            DeviceType::KeyPad => self.draw_keyboard_device(ui),
+            DeviceType::KeyPad => self.draw_keyboard_device(ui, s_cmd_tx),
             DeviceType::KnobPad => todo!(),
             DeviceType::PedalPad => todo!(),
         }
     }
 
-    fn draw_settings_page(&mut self, ui: &mut Ui, s_cmd_tx: &Sender<SerialCommand>) {
+    fn draw_settings_page(&mut self, ui: &mut Ui) {
         self.draw_jukebox_logo(ui);
-        // ui.label("");
-        // ui.label("");
-        // self.draw_update_button(ui, &s_cmd_tx);
-        // ui.label("");
         self.draw_settings_bottom(ui);
     }
 
@@ -438,8 +427,13 @@ impl JukeBoxGui {
     }
 
     fn draw_profile_management(&mut self, ui: &mut Ui) {
+        // back button
         ui.add_enabled_ui(self.gui_tab != GuiTab::Device, |ui| {
-            if ui.button(RichText::new(phos::ARROW_BEND_UP_LEFT)).clicked() {
+            if ui
+                .button(RichText::new(phos::ARROW_BEND_UP_LEFT))
+                .on_hover_text_at_pointer("Back")
+                .clicked()
+            {
                 self.gui_tab = GuiTab::Device;
             }
         });
@@ -553,8 +547,6 @@ impl JukeBoxGui {
                     }
                 }
             });
-
-            // self.draw_connection_status(ui);
         });
     }
 
@@ -562,10 +554,31 @@ impl JukeBoxGui {
         ui.allocate_space(ui.available_size_before_wrap());
     }
 
-    fn draw_keyboard_device(&mut self, ui: &mut Ui) {
+    fn draw_keyboard_device(&mut self, ui: &mut Ui, s_cmd_tx: &Sender<SerialCommand>) {
         ui.allocate_space(vec2(0.0, 4.0));
-        ui.horizontal(|ui| {
-            ui.allocate_space(vec2(62.0, 0.0));
+        ui.horizontal_top(|ui| {
+            ui.allocate_ui(vec2(62.0, 231.5), |ui| {
+                ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
+                    ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
+                        if ui
+                            .button(phos::SIREN)
+                            .on_hover_text_at_pointer("RGB Control")
+                            .clicked()
+                        {
+                            log::info!("TODO: RGB Control");
+                        }
+                        if ui
+                            .button(phos::MONITOR)
+                            .on_hover_text_at_pointer("Screen Control")
+                            .clicked()
+                        {
+                            log::info!("TODO: Screen Control");
+                        }
+                    });
+                    ui.allocate_space(ui.available_size_before_wrap());
+                });
+            });
+
             Grid::new("KBGrid").show(ui, |ui| {
                 let keys = [
                     [
@@ -624,6 +637,60 @@ impl JukeBoxGui {
                     ui.end_row();
                 }
             });
+
+            ui.allocate_ui(vec2(60.0, 231.5), |ui| {
+                ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
+                    let current_device = {
+                        let conf = self.config.lock().unwrap();
+                        conf.current_device.clone()
+                    };
+                    let i = self.devices.get(&current_device).unwrap();
+                    ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
+                        let s = match i.2 {
+                            true => RichText::new(phos::PLUGS_CONNECTED)
+                                .color(Color32::from_rgb(63, 192, 63)),
+                            false => {
+                                RichText::new(phos::PLUGS).color(Color32::from_rgb(192, 63, 63))
+                            }
+                        };
+                        ui.add_enabled_ui(i.2, |ui| {
+                            if ui
+                                .button(s)
+                                .on_hover_text_at_pointer("Connected!")
+                                .clicked()
+                            {
+                                log::info!("TODO: Identify Device");
+                            }
+
+                            if ui
+                                .button(phos::DOWNLOAD)
+                                .on_hover_text_at_pointer("Update Device")
+                                .clicked()
+                            {
+                                // TODO: more comprehensive updating
+                                s_cmd_tx
+                                    .send(SerialCommand::UpdateDevice)
+                                    .expect("failed to send update command");
+                            }
+                        });
+                    });
+                    ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
+                        ui.label(
+                            RichText::new(format!("ID: {}", current_device))
+                                .monospace()
+                                .size(5.0),
+                        );
+                    });
+                    ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
+                        ui.label(
+                            RichText::new(format!("Firmware: {}", i.1))
+                                .monospace()
+                                .size(5.0),
+                        );
+                    });
+                    ui.allocate_space(ui.available_size_before_wrap());
+                });
+            });
         });
         ui.allocate_space(ui.available_size_before_wrap());
     }
@@ -670,65 +737,20 @@ impl JukeBoxGui {
                     .color(Color32::from_rgb(255, 200, 100)),
             );
             ui.label(format!("-  v{}", APP_VERSION));
-            // ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-            //     self.draw_connection_status(ui);
-            // });
         });
     }
 
-    // fn draw_connection_status(&self, ui: &mut Ui) {
-    //     let t = (
-    //         ("Connected.", Color32::from_rgb(50, 200, 50)),
-    //         ("Not connected.", Color32::from_rgb(200, 200, 50)),
-    //         ("Lost connection!", Color32::from_rgb(200, 50, 50)),
-    //     );
-    //     let res = match self.conn_status {
-    //         ConnectionStatus::Connected => t.0,
-    //         ConnectionStatus::Disconnected => t.1,
-    //         ConnectionStatus::LostConnection => t.2,
-    //     };
-    //     ui.label(RichText::new(res.0).color(res.1));
-    // }
-
-    // fn draw_update_button(&mut self, ui: &mut Ui, s_cmd_tx: &Sender<SerialCommand>) {
-    //     ui.horizontal(|ui| {
-    //         if self.conn_status != ConnectionStatus::Connected {
-    //             ui.disable();
-    //         }
-    //         if ui.button("Update JukeBox").clicked() {
-    //             s_cmd_tx
-    //                 .send(SerialCommand::UpdateDevice)
-    //                 .expect("failed to send update command");
-    //         }
-    //         ui.label(" - ");
-    //         ui.label("Reboots the connected JukeBox into Update Mode.")
-    //     });
-    // }
-
     fn draw_settings_bottom(&mut self, ui: &mut Ui) {
-        ui.with_layout(Layout::bottom_up(Align::LEFT), |ui| {
-            ui.horizontal(|ui| {
-                // if let Some(i) = &self.device_info {
-                //     ui.label(format!("Firmware Version: {}", i.firmware_version));
-                // }
-
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    ui.label("Made w/ <3 by Friend Team Inc. (c) 2024");
-                });
+        ui.with_layout(Layout::bottom_up(Align::RIGHT), |ui| {
+            ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
+                ui.hyperlink_to("Donate", "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
+                ui.label(" - ");
+                ui.hyperlink_to("Repository", "https://github.com/FriendTeamInc/JukeBox");
+                ui.label(" - ");
+                ui.hyperlink_to("Homepage", "https://friendteam.biz");
             });
-
-            ui.horizontal(|ui| {
-                // if let Some(i) = &self.device_info {
-                //     ui.label(format!("Device UID: {}", i.device_uid));
-                // }
-
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    ui.hyperlink_to("Donate", "https://www.youtube.com/watch?v=dQw4w9WgXcQ");
-                    ui.label(" - ");
-                    ui.hyperlink_to("Repository", "https://github.com/FriendTeamInc/JukeBox");
-                    ui.label(" - ");
-                    ui.hyperlink_to("Homepage", "https://friendteam.biz");
-                });
+            ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
+                ui.label("Made w/ <3 by Friend Team Inc. (c) 2024");
             });
         });
     }

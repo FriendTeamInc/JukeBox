@@ -40,7 +40,7 @@ pub enum SerialEvent {
     Connected(SerialConnectionDetails),
     GetInputKeys((String, HashSet<InputKey>)),
     // GetPeripherals(HashSet<Peripheral>),
-    // LostConnection(String),
+    LostConnection(String),
     Disconnected(String),
 }
 
@@ -50,13 +50,17 @@ fn get_serial_string(f: &mut Box<dyn SerialPort>) -> Result<Vec<u8>> {
 
     loop {
         if Instant::now() >= timeout {
-            bail!("read timed out");
+            bail!("serial read timed out");
         }
 
         let mut b = [0u8; 1];
         let res = f.read(&mut b);
-        if res.is_err() {
-            continue;
+        match res {
+            Err(e) => match e.kind() {
+                std::io::ErrorKind::BrokenPipe => bail!("broken serial pipe"),
+                _ => continue,
+            },
+            _ => (),
         }
         buf.push(b[0]);
 
@@ -283,37 +287,52 @@ pub fn serial_comms(
         .send(SerialEvent::Connected(device_info))
         .context("failed to send device info")?;
 
-    let mut timer = Instant::now();
-    'forv: loop {
-        if Instant::now() < timer {
-            yield_now();
-            continue;
-        }
-        timer = Instant::now() + Duration::from_millis(25);
+    match (|| -> Result<()> {
+        let mut timer = Instant::now();
+        'forv: loop {
+            if Instant::now() < timer {
+                yield_now();
+                continue;
+            }
+            timer = Instant::now() + Duration::from_millis(25);
 
-        let keys = transmit_get_input_keys(f)?;
-        serialevent_tx
-            .send(SerialEvent::GetInputKeys((device_uid.clone(), keys)))
-            .context("failed to send input info")?;
+            let keys = transmit_get_input_keys(f)?;
+            serialevent_tx
+                .send(SerialEvent::GetInputKeys((device_uid.clone(), keys)))
+                .context("failed to send input info")?;
 
-        while let Ok(cmd) = serialcommand_rx.try_recv() {
-            match cmd {
-                SerialCommand::UpdateDevice => {
-                    transmit_update_signal(f)?;
-                    serialevent_tx
-                        .send(SerialEvent::Disconnected(device_uid))
-                        .context("failed to send disconnect info")?;
-                    break 'forv; // The device has disconnected, we should too.
-                }
-                SerialCommand::DisconnectDevice => {
-                    transmit_disconnect_signal(f)?;
-                    serialevent_tx
-                        .send(SerialEvent::Disconnected(device_uid))
-                        .context("failed to send disconnect info")?;
-                    break 'forv; // The device has disconnected, we should too.
+            while let Ok(cmd) = serialcommand_rx.try_recv() {
+                match cmd {
+                    SerialCommand::UpdateDevice => {
+                        transmit_update_signal(f)?;
+                        serialevent_tx
+                            .send(SerialEvent::Disconnected(device_uid.clone()))
+                            .context("failed to send disconnect info")?;
+                        break 'forv; // The device has disconnected, we should too.
+                    }
+                    SerialCommand::DisconnectDevice => {
+                        transmit_disconnect_signal(f)?;
+                        serialevent_tx
+                            .send(SerialEvent::Disconnected(device_uid.clone()))
+                            .context("failed to send disconnect info")?;
+                        break 'forv; // The device has disconnected, we should too.
+                    }
                 }
             }
         }
+
+        Ok(())
+    })() {
+        Err(e) => {
+            log::warn!("Serial device error: {:#}", e);
+            serialevent_tx
+                .send(SerialEvent::LostConnection(device_uid))
+                .context("failed to send lost connection")?;
+        }
+        Ok(_) => log::info!(
+            "Serial device {} successfully disconnected. Looping...",
+            device_uid
+        ),
     }
 
     Ok(())
@@ -339,15 +358,7 @@ pub fn serial_task(
             Ok(f) => f,
         };
 
-        match serial_comms(&mut f, &s_cmd_rx, &s_evnt_tx) {
-            Err(e) => {
-                log::warn!("Serial device error: {:#}", e);
-                // s_evnt_tx
-                //     .send(SerialEvent::LostConnection())
-                //     .context("failed to send lost connection")?;
-            }
-            Ok(_) => log::info!("Serial device successfully disconnected. Looping..."),
-        };
+        let _ = serial_comms(&mut f, &s_cmd_rx, &s_evnt_tx);
     }
 
     Ok(())
