@@ -373,9 +373,9 @@ impl JukeBoxGui {
 
         match device_type {
             DeviceType::Unknown => self.draw_empty_device(ui),
-            DeviceType::KeyPad => self.draw_keyboard_device(ui, gs_cmd_txs),
+            DeviceType::KeyPad => self.draw_keypad_device(ui, gs_cmd_txs),
             DeviceType::KnobPad => self.draw_empty_device(ui),
-            DeviceType::PedalPad => self.draw_empty_device(ui),
+            DeviceType::PedalPad => self.draw_pedalpad_device(ui, gs_cmd_txs),
         }
     }
 
@@ -616,7 +616,7 @@ impl JukeBoxGui {
         ui.allocate_space(ui.available_size_before_wrap());
     }
 
-    fn draw_keyboard_device(
+    fn draw_keypad_device(
         &mut self,
         ui: &mut Ui,
         gs_cmd_txs: &Arc<Mutex<HashMap<String, Sender<SerialCommand>>>>,
@@ -698,6 +698,124 @@ impl JukeBoxGui {
                     }
                     ui.end_row();
                 }
+            });
+
+            ui.allocate_ui(vec2(60.0, 231.5), |ui| {
+                ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
+                    let i = self.devices.get(&self.current_device).unwrap();
+                    ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
+                        let s = match i.3 {
+                            true => RichText::new(phos::PLUGS_CONNECTED)
+                                .color(Color32::from_rgb(63, 192, 63)),
+                            false => {
+                                RichText::new(phos::PLUGS).color(Color32::from_rgb(192, 63, 63))
+                            }
+                        };
+                        ui.add_enabled_ui(i.3, |ui| {
+                            if ui
+                                .button(s)
+                                .on_hover_text_at_pointer("Connected!")
+                                .clicked()
+                            {
+                                log::info!("TODO: Identify Device");
+                            }
+
+                            if ui
+                                .button(phos::DOWNLOAD)
+                                .on_hover_text_at_pointer("Update Device")
+                                .clicked()
+                            {
+                                // TODO: more comprehensive updating
+                                let gs_cmd_txs = gs_cmd_txs.lock().unwrap();
+                                if let Some(tx) = gs_cmd_txs.get(&self.current_device) {
+                                    tx.send(SerialCommand::UpdateDevice)
+                                        .expect("failed to send update command");
+                                }
+                            }
+                        });
+                    });
+                    ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
+                        ui.label(
+                            RichText::new(format!("ID:{}", self.current_device))
+                                .monospace()
+                                .size(5.0),
+                        );
+                    });
+                    ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
+                        ui.label(
+                            RichText::new(format!("Firmware: {}", i.2))
+                                .monospace()
+                                .size(5.0),
+                        );
+                    });
+                    ui.allocate_space(ui.available_size_before_wrap());
+                });
+            });
+        });
+        ui.allocate_space(ui.available_size_before_wrap());
+    }
+
+    fn draw_pedalpad_device(
+        &mut self,
+        ui: &mut Ui,
+        gs_cmd_txs: &Arc<Mutex<HashMap<String, Sender<SerialCommand>>>>,
+    ) {
+        ui.allocate_space(vec2(0.0, 4.0));
+        ui.horizontal_top(|ui| {
+            ui.allocate_ui(vec2(62.0, 231.5), |ui| {
+                ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
+                    ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
+                        if ui
+                            .button(phos::SIREN)
+                            .on_hover_text_at_pointer("RGB Control")
+                            .clicked()
+                        {
+                            log::info!("TODO: RGB Control");
+                        }
+                        if ui
+                            .button(phos::MONITOR)
+                            .on_hover_text_at_pointer("Screen Control")
+                            .clicked()
+                        {
+                            log::info!("TODO: Screen Control");
+                        }
+                    });
+                    ui.allocate_space(ui.available_size_before_wrap());
+                });
+            });
+
+            ui.allocate_ui([324.0, 231.0].into(), |ui| {
+                ui.columns_const(|[c1, c2, c3]| {
+                    let inputs = if let Some(s) = self.devices.get(&self.current_device) {
+                        s.4.clone()
+                    } else {
+                        HashSet::new()
+                    };
+
+                    let p1 = Button::new(RichText::new("L").heading());
+                    let p2 = Button::new(RichText::new("M").heading());
+                    let p3 = Button::new(RichText::new("R").heading());
+
+                    let mut i = |c: &mut Ui, mut p: Button<'_>, b| {
+                        if inputs.contains(&b) {
+                            p = p.corner_radius(20u8);
+                        }
+                        let btn = c.add_sized([100.0, 231.0], p);
+
+                        if btn.clicked() {
+                            log::info!("{:?} ui clicked", b);
+                            self.config_renaming_device = false;
+                            self.config_renaming_profile = false;
+                            self.gui_tab = GuiTab::Editing;
+                            // TODO: display some better text in the buttons
+                            // TODO: add hover text for button info
+                        }
+                    };
+
+                    i(c1, p1, InputKey::PedalLeft);
+                    i(c2, p2, InputKey::PedalMiddle);
+                    i(c3, p3, InputKey::PedalRight);
+                });
             });
 
             ui.allocate_ui(vec2(60.0, 231.5), |ui| {

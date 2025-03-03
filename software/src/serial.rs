@@ -4,7 +4,6 @@ use crate::reaction::InputKey;
 
 use std::collections::{HashMap, HashSet};
 use std::io::Read;
-// use std::result::Result::Ok;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
