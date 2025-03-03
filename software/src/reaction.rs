@@ -2,16 +2,12 @@
 
 use std::{
     collections::{HashMap, HashSet},
-    sync::{
-        atomic::AtomicBool,
-        mpsc::{Receiver, Sender},
-        Arc, Mutex,
-    },
+    sync::{atomic::AtomicBool, mpsc::Receiver, Arc, Mutex},
     thread::yield_now,
     time::{Duration, Instant},
 };
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use jukebox_util::peripheral::{KeyInputs, KnobInputs, PedalInputs};
 use serde::{Deserialize, Serialize};
 
@@ -265,7 +261,6 @@ fn run_key(reaction_config: &ReactionConfig, key: InputKey, pressed: bool) {
 pub fn reaction_task(
     brkr: Arc<AtomicBool>,
     s_evnt_rx: Receiver<SerialEvent>,
-    r_evnt_tx: Sender<SerialEvent>,
     config: Arc<Mutex<JukeBoxConfig>>,
 ) -> Result<()> {
     let mut prevkeys = HashSet::<InputKey>::new();
@@ -278,14 +273,7 @@ pub fn reaction_task(
         }
         timer = Instant::now() + Duration::from_millis(1);
 
-        if brkr.load(std::sync::atomic::Ordering::Relaxed) {
-            break;
-        }
-
         while let Ok(evnt) = s_evnt_rx.try_recv() {
-            r_evnt_tx
-                .send(evnt.clone())
-                .context("failed to send event to gui")?;
             match evnt {
                 SerialEvent::GetInputKeys((device_uid, keys)) => {
                     let current_profile = {
@@ -317,6 +305,10 @@ pub fn reaction_task(
                 }
                 _ => {}
             }
+        }
+
+        if brkr.load(std::sync::atomic::Ordering::Relaxed) {
+            break;
         }
     }
 

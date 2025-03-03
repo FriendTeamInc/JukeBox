@@ -177,27 +177,29 @@ impl JukeBoxGui {
 
     fn run(mut self) {
         // channels cannot be a part of Self due to partial move errors
-        let (s_evnt_tx, s_evnt_rx) = channel::<SerialEvent>(); // serial thread sends events to reaction thread
-        let (r_evnt_tx, r_evnt_rx) = channel::<SerialEvent>(); // reaction thread sends events to gui thread
-        let (s_cmd_tx, s_cmd_rx) = channel::<SerialCommand>(); // gui thread sends commands to serial thread
 
+        let (sr_tx, sr_rx) = channel::<SerialEvent>(); // serial threads send events to reaction thread
+        let (sg_tx, sg_rx) = channel::<SerialEvent>(); // serial threads send events to gui thread
+        let gs_cmd_txs: Arc<Mutex<HashMap<String, Sender<SerialCommand>>>> =
+            Arc::new(Mutex::new(HashMap::new()));
+        // gui thread sends events to serial threads (specific Device ID -> Device specific Serial Thread)
+        // serial thread spawns the channels and gives the sender to the gui thread through this
+
+        // when gui exits, we use these to signal the other threads to stop
         let brkr = Arc::new(AtomicBool::new(false)); // ends other threads from gui
         let brkr_serial = brkr.clone();
         let brkr_reaction = brkr.clone();
-
-        let s_evnt_tx_serial = s_evnt_tx.clone();
-        let s_cmd_tx2 = s_cmd_tx.clone();
-
-        let config_reaction = self.config.clone();
+        let gs_cmd_txs_serial = gs_cmd_txs.clone();
+        let gs_cmd_txs_end = gs_cmd_txs.clone();
 
         // serial comms thread
-        let serialcomms =
-            thread::spawn(move || serial_task(brkr_serial, s_cmd_rx, s_evnt_tx_serial));
+        let thread_serial =
+            thread::spawn(move || serial_task(brkr_serial, gs_cmd_txs_serial, sg_tx, sr_tx));
 
         // reaction comms thread
-        let reactioncomms = thread::spawn(move || {
-            reaction_task(brkr_reaction, s_evnt_rx, r_evnt_tx, config_reaction)
-        });
+        let reaction_config = self.config.clone();
+        let thread_reaction =
+            thread::spawn(move || reaction_task(brkr_reaction, sr_rx, reaction_config));
 
         let options = eframe::NativeOptions {
             viewport: ViewportBuilder::default()
@@ -221,7 +223,7 @@ impl JukeBoxGui {
             egui_phosphor::add_to_fonts(&mut fonts, egui_phosphor::Variant::Regular);
             ctx.set_fonts(fonts);
 
-            self.handle_serial_events(&r_evnt_rx);
+            self.handle_serial_events(&sg_rx);
 
             CentralPanel::default().show(ctx, |ui| {
                 ui.horizontal(|ui| {
@@ -232,7 +234,7 @@ impl JukeBoxGui {
                 ui.separator();
 
                 ui.allocate_ui(vec2(464.0, 245.0), |ui| match self.gui_tab {
-                    GuiTab::Device => self.draw_device_page(ui, &s_cmd_tx),
+                    GuiTab::Device => self.draw_device_page(ui, &gs_cmd_txs),
                     GuiTab::Settings => self.draw_settings_page(ui),
                     GuiTab::Editing => self.draw_edit_reaction(ui),
                 });
@@ -255,19 +257,20 @@ impl JukeBoxGui {
         })
         .expect("eframe error");
 
+        for (k, tx) in gs_cmd_txs_end.lock().unwrap().iter() {
+            tx.send(SerialCommand::DisconnectDevice)
+                .expect(&format!("could not send disconnect signal to device {}", k));
+        }
+
         brkr.store(true, std::sync::atomic::Ordering::Relaxed);
 
-        s_cmd_tx2
-            .send(SerialCommand::DisconnectDevice)
-            .expect("could not send disconnect signal");
-
-        let _ = serialcomms
+        let _ = thread_serial
             .join()
-            .expect("could not rejoin serialcomms thread");
+            .expect("could not rejoin serial thread");
 
-        let _ = reactioncomms
+        let _ = thread_reaction
             .join()
-            .expect("could not rejoin reactioncomms thread");
+            .expect("could not rejoin reaction thread");
     }
 
     fn handle_serial_events(&mut self, s_evnt_rx: &Receiver<SerialEvent>) {
@@ -308,7 +311,7 @@ impl JukeBoxGui {
                     if self.devices.contains_key(&device_uid) {
                         let v = self.devices.get_mut(&device_uid).unwrap();
                         v.0 = device_type.into();
-                        v.1 = device_name;
+                        // v.1 = device_name;
                         v.2 = firmware_version;
                         v.3 = true;
                         v.4.clear();
@@ -349,7 +352,11 @@ impl JukeBoxGui {
         }
     }
 
-    fn draw_device_page(&mut self, ui: &mut Ui, s_cmd_tx: &Sender<SerialCommand>) {
+    fn draw_device_page(
+        &mut self,
+        ui: &mut Ui,
+        gs_cmd_txs: &Arc<Mutex<HashMap<String, Sender<SerialCommand>>>>,
+    ) {
         let devices = &self.devices;
         let current_device = &self.current_device;
 
@@ -366,9 +373,9 @@ impl JukeBoxGui {
 
         match device_type {
             DeviceType::Unknown => self.draw_empty_device(ui),
-            DeviceType::KeyPad => self.draw_keyboard_device(ui, s_cmd_tx),
-            DeviceType::KnobPad => todo!(),
-            DeviceType::PedalPad => todo!(),
+            DeviceType::KeyPad => self.draw_keyboard_device(ui, gs_cmd_txs),
+            DeviceType::KnobPad => self.draw_empty_device(ui),
+            DeviceType::PedalPad => self.draw_empty_device(ui),
         }
     }
 
@@ -609,7 +616,11 @@ impl JukeBoxGui {
         ui.allocate_space(ui.available_size_before_wrap());
     }
 
-    fn draw_keyboard_device(&mut self, ui: &mut Ui, s_cmd_tx: &Sender<SerialCommand>) {
+    fn draw_keyboard_device(
+        &mut self,
+        ui: &mut Ui,
+        gs_cmd_txs: &Arc<Mutex<HashMap<String, Sender<SerialCommand>>>>,
+    ) {
         ui.allocate_space(vec2(0.0, 4.0));
         ui.horizontal_top(|ui| {
             ui.allocate_ui(vec2(62.0, 231.5), |ui| {
@@ -715,9 +726,11 @@ impl JukeBoxGui {
                                 .clicked()
                             {
                                 // TODO: more comprehensive updating
-                                s_cmd_tx
-                                    .send(SerialCommand::UpdateDevice)
-                                    .expect("failed to send update command");
+                                let gs_cmd_txs = gs_cmd_txs.lock().unwrap();
+                                if let Some(tx) = gs_cmd_txs.get(&self.current_device) {
+                                    tx.send(SerialCommand::UpdateDevice)
+                                        .expect("failed to send update command");
+                                }
                             }
                         });
                     });

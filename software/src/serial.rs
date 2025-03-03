@@ -2,12 +2,13 @@
 
 use crate::reaction::InputKey;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::io::Read;
+// use std::result::Result::Ok;
 use std::sync::atomic::AtomicBool;
-use std::sync::mpsc::{Receiver, Sender};
-use std::sync::Arc;
-use std::thread::{sleep, yield_now};
+use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::{Arc, Mutex};
+use std::thread::{self, sleep, yield_now};
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, bail, Context, Result};
@@ -265,7 +266,6 @@ pub fn serial_get_device() -> Result<Box<dyn SerialPort>> {
         bail!("failed to find any jukebox serial ports");
     }
 
-    // TODO: provide an argument to choose from this vector
     let port = ports.get(0).unwrap();
 
     Ok(serialport::new(port.port_name.clone(), 115200)
@@ -274,78 +274,72 @@ pub fn serial_get_device() -> Result<Box<dyn SerialPort>> {
         .context("failed to open serial port")?)
 }
 
-pub fn serial_comms(
+pub fn serial_loop(
     f: &mut Box<dyn SerialPort>,
-    serialcommand_rx: &Receiver<SerialCommand>,
-    serialevent_tx: &Sender<SerialEvent>,
+    sg_tx: Sender<SerialEvent>,
+    sr_tx: Sender<SerialEvent>,
+    device_uid: String,
+    s_cmd_rx: Receiver<SerialCommand>,
 ) -> Result<()> {
-    // Flush serial command queue
-    while let Ok(_) = serialcommand_rx.try_recv() {}
+    let mut timer = Instant::now();
+    'forv: loop {
+        if Instant::now() < timer {
+            yield_now();
+            continue;
+        }
+        timer = Instant::now() + Duration::from_millis(25);
 
-    // Greet and link up
-    let device_info = greet_host(f)?;
-    let device_uid = device_info.device_uid.clone();
-    // TODO: check that firmware version is ok
-    serialevent_tx
-        .send(SerialEvent::Connected(device_info))
-        .context("failed to send device info")?;
+        let keys = transmit_get_input_keys(f)?;
+        sr_tx
+            .send(SerialEvent::GetInputKeys((
+                device_uid.clone(),
+                keys.clone(),
+            )))
+            .context("failed to send input info to react")?;
+        sg_tx
+            .send(SerialEvent::GetInputKeys((device_uid.clone(), keys)))
+            .context("failed to send input info to gui")?;
 
-    match (|| -> Result<()> {
-        let mut timer = Instant::now();
-        'forv: loop {
-            if Instant::now() < timer {
-                yield_now();
-                continue;
-            }
-            timer = Instant::now() + Duration::from_millis(25);
-
-            let keys = transmit_get_input_keys(f)?;
-            serialevent_tx
-                .send(SerialEvent::GetInputKeys((device_uid.clone(), keys)))
-                .context("failed to send input info")?;
-
-            while let Ok(cmd) = serialcommand_rx.try_recv() {
-                match cmd {
-                    SerialCommand::UpdateDevice => {
-                        transmit_update_signal(f)?;
-                        serialevent_tx
-                            .send(SerialEvent::Disconnected(device_uid.clone()))
-                            .context("failed to send disconnect info")?;
-                        break 'forv; // The device has disconnected, we should too.
-                    }
-                    SerialCommand::DisconnectDevice => {
-                        transmit_disconnect_signal(f)?;
-                        serialevent_tx
-                            .send(SerialEvent::Disconnected(device_uid.clone()))
-                            .context("failed to send disconnect info")?;
-                        break 'forv; // The device has disconnected, we should too.
-                    }
+        while let Ok(cmd) = s_cmd_rx.try_recv() {
+            match cmd {
+                SerialCommand::UpdateDevice => {
+                    transmit_update_signal(f)?;
+                    sr_tx
+                        .send(SerialEvent::Disconnected(device_uid.clone()))
+                        .context("failed to send disconnect (for update) info to react")?;
+                    sg_tx
+                        .send(SerialEvent::Disconnected(device_uid.clone()))
+                        .context("failed to send disconnect (for update) info to gui")?;
+                    break 'forv; // The device has disconnected, we should too.
+                }
+                SerialCommand::DisconnectDevice => {
+                    transmit_disconnect_signal(f)?;
+                    sr_tx
+                        .send(SerialEvent::Disconnected(device_uid.clone()))
+                        .context("failed to send disconnect info to react")?;
+                    sg_tx
+                        .send(SerialEvent::Disconnected(device_uid.clone()))
+                        .context("failed to send disconnect info to gui")?;
+                    break 'forv; // The device has disconnected, we should too.
                 }
             }
         }
-
-        Ok(())
-    })() {
-        Err(e) => {
-            log::warn!("Serial device error: {:#}", e);
-            serialevent_tx
-                .send(SerialEvent::LostConnection(device_uid))
-                .context("failed to send lost connection")?;
-        }
-        Ok(_) => log::info!(
-            "Serial device {} successfully disconnected. Looping...",
-            device_uid
-        ),
     }
+
+    log::info!("exiting device thread {}", device_uid);
 
     Ok(())
 }
 
 pub fn serial_task(
     brkr: Arc<AtomicBool>,
-    s_cmd_rx: Receiver<SerialCommand>,
-    s_evnt_tx: Sender<SerialEvent>,
+    gs_cmd_txs: Arc<Mutex<HashMap<String, Sender<SerialCommand>>>>,
+    // s_cmd_rx: Receiver<SerialCommand>,
+    sg_tx: Sender<SerialEvent>,
+    sr_tx: Sender<SerialEvent>,
 ) -> Result<()> {
+    let mut handles = Vec::new();
+
     // TODO: check application cpu usage when device is connected
     loop {
         if brkr.load(std::sync::atomic::Ordering::Relaxed) {
@@ -360,9 +354,75 @@ pub fn serial_task(
             }
             Ok(f) => f,
         };
+        // let f = &mut f;
 
-        // TODO: spin this off as its own thread
-        let _ = serial_comms(&mut f, &s_cmd_rx, &s_evnt_tx);
+        let (s_cmd_tx, s_cmd_rx) = channel::<SerialCommand>();
+        let gs_cmd_txs = gs_cmd_txs.clone();
+        let mut gs_cmd_txs_lock = gs_cmd_txs.lock().unwrap();
+
+        // Greet and link up
+        let device_info = greet_host(&mut f)?;
+        let device_uid = device_info.device_uid.clone();
+        // TODO: check that firmware version is ok
+        let sg_tx2 = sg_tx.clone();
+        let sr_tx2 = sr_tx.clone();
+
+        gs_cmd_txs_lock.insert(device_uid.clone(), s_cmd_tx);
+        drop(gs_cmd_txs_lock);
+
+        let handle = thread::spawn(move || {
+            let gs_cmd_txs = gs_cmd_txs.clone();
+
+            sg_tx2
+                .clone()
+                .send(SerialEvent::Connected(device_info.clone()))
+                .context("failed to send device info to gui")?;
+            sr_tx2
+                .clone()
+                .send(SerialEvent::Connected(device_info))
+                .context("failed to send device info to react")?;
+
+            match serial_loop(
+                &mut f,
+                sg_tx2.clone(),
+                sr_tx2.clone(),
+                device_uid.clone(),
+                s_cmd_rx,
+            ) {
+                Err(e) => {
+                    log::warn!("Serial device {} error: {:#}", device_uid, e);
+                    if let Err(e) = sg_tx2.send(SerialEvent::LostConnection(device_uid.clone())) {
+                        log::warn!(
+                            "failed to send lost connection for {} to gui ({})",
+                            device_uid,
+                            e
+                        );
+                    }
+                    if let Err(e) = sr_tx2.send(SerialEvent::LostConnection(device_uid.clone())) {
+                        log::warn!(
+                            "failed to send lost connection for {} to react ({})",
+                            device_uid,
+                            e
+                        );
+                    }
+                }
+                _ => log::info!(
+                    "Serial device {} successfully disconnected. Looping...",
+                    device_uid
+                ),
+            };
+
+            let mut gs_cmd_txs_lock = gs_cmd_txs.lock().unwrap();
+            gs_cmd_txs_lock.remove(&device_uid);
+
+            Ok(())
+        });
+
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        let _: Result<()> = handle.join().expect("failed to join thread");
     }
 
     Ok(())
