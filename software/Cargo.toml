@@ -20,6 +20,7 @@ egui-theme-switch = "0.3.0"
 typetag = "0.2.20"
 dyn-clone = "1.0.18"
 open = "5.3.2"
+rfd = "0.15.2"
 
 [build-dependencies]
 winresource = "0.1.17"

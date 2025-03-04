@@ -7,7 +7,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::input::InputKey;
 
-use super::{meta::ReactionMetaTest, system::ReactionSystemOpenWebsite};
+use super::{
+    meta::ActMetaTest,
+    system::{ActSystemLaunchApplication, ActSystemOpenWebsite},
+};
 
 #[typetag::serde(tag = "type")]
 pub trait Reaction: Send + DynClone {
@@ -69,9 +72,11 @@ pub enum ReactionType {
 }
 
 pub fn reaction_enum_to_new(t: ReactionType) -> Box<dyn Reaction> {
+    use ReactionType as r;
     match t {
-        ReactionType::MetaTest => Box::new(ReactionMetaTest::default()),
-        ReactionType::SystemOpenWebsite => Box::new(ReactionSystemOpenWebsite::default()),
+        r::MetaTest => Box::new(ActMetaTest::default()),
+        r::SystemLaunchApplication => Box::new(ActSystemLaunchApplication::default()),
+        r::SystemOpenWebsite => Box::new(ActSystemOpenWebsite::default()),
         _ => todo!(),
     }
 }

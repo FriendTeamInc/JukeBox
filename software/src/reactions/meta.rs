@@ -6,9 +6,9 @@ use crate::input::InputKey;
 use super::types::{Reaction, ReactionType};
 
 #[derive(Default, Serialize, Deserialize, Clone)]
-pub struct ReactionMetaTest {}
+pub struct ActMetaTest {}
 #[typetag::serde]
-impl Reaction for ReactionMetaTest {
+impl Reaction for ActMetaTest {
     fn on_press(&self, key: InputKey) -> () {
         log::info!("METATEST: Pressed {:?} !", key);
     }

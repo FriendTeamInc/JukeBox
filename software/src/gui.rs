@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 use crate::config::JukeBoxConfig;
 use crate::input::InputKey;
 use crate::reaction::reaction_task;
-use crate::reactions::meta::ReactionMetaTest;
+use crate::reactions::meta::ActMetaTest;
 use crate::reactions::types::{reaction_enum_to_new, reaction_ui_list, Reaction, ReactionType};
 use crate::serial::{serial_task, SerialCommand, SerialEvent};
 use crate::splash::SPLASH_MESSAGES;
@@ -120,7 +120,7 @@ impl JukeBoxGui {
             config_device_name_entry: String::new(),
             config_editing_key: InputKey::UnknownKey,
             config_editing_reaction_type: ReactionType::Unknown,
-            config_editing_reaction: Box::new(ReactionMetaTest::default()),
+            config_editing_reaction: Box::new(ActMetaTest::default()),
             config_enable_splash: config_enable_splash,
         }
     }
@@ -800,7 +800,7 @@ impl JukeBoxGui {
                 self.config_editing_reaction = r.clone();
             } else {
                 self.config_editing_reaction_type = ReactionType::Unknown;
-                self.config_editing_reaction = Box::new(ReactionMetaTest::default());
+                self.config_editing_reaction = Box::new(ActMetaTest::default());
             }
         };
     }
@@ -846,8 +846,10 @@ impl JukeBoxGui {
                     c.save();
                 }
             });
+            c1.allocate_space(vec2(0.0, 5.0));
             c1.separator();
-            c1.allocate_ui(vec2(228.0, 150.0), |ui| {
+            c1.allocate_space(vec2(0.0, 4.0));
+            c1.allocate_ui(vec2(228.0, 135.0), |ui| {
                 ScrollArea::vertical()
                     .id_salt("ReactionEdit")
                     .show(ui, |ui| {
