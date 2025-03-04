@@ -138,7 +138,6 @@ impl JukeBoxGui {
         // when gui exits, we use these to signal the other threads to stop
         let brkr = Arc::new(AtomicBool::new(false)); // ends other threads from gui
         let brkr_serial = brkr.clone();
-        let brkr_reaction = brkr.clone();
         let gs_cmd_txs_serial = gs_cmd_txs.clone();
         let gs_cmd_txs_end = gs_cmd_txs.clone();
 
@@ -148,8 +147,7 @@ impl JukeBoxGui {
 
         // reaction comms thread
         let reaction_config = self.config.clone();
-        let thread_reaction =
-            thread::spawn(move || reaction_task(brkr_reaction, sr_rx, reaction_config));
+        let thread_reaction = thread::spawn(move || reaction_task(sr_rx, reaction_config));
 
         let options = eframe::NativeOptions {
             viewport: ViewportBuilder::default()

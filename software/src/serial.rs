@@ -333,18 +333,13 @@ pub fn serial_loop(
 pub fn serial_task(
     brkr: Arc<AtomicBool>,
     gs_cmd_txs: Arc<Mutex<HashMap<String, Sender<SerialCommand>>>>,
-    // s_cmd_rx: Receiver<SerialCommand>,
     sg_tx: Sender<SerialEvent>,
     sr_tx: Sender<SerialEvent>,
 ) -> Result<()> {
     let mut handles = Vec::new();
 
     // TODO: check application cpu usage when device is connected
-    loop {
-        if brkr.load(std::sync::atomic::Ordering::Relaxed) {
-            break;
-        }
-
+    while !brkr.load(std::sync::atomic::Ordering::Relaxed) {
         let mut f = match serial_get_device() {
             Err(e) => {
                 log::debug!("get_serial_device() failure: {:#}", e);
@@ -353,7 +348,6 @@ pub fn serial_task(
             }
             Ok(f) => f,
         };
-        // let f = &mut f;
 
         let (s_cmd_tx, s_cmd_rx) = channel::<SerialCommand>();
         let gs_cmd_txs = gs_cmd_txs.clone();
