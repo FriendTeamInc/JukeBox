@@ -1,12 +1,13 @@
 // Types of reactions and their associations
 
 use dyn_clone::{clone_trait_object, DynClone};
+use eframe::egui::Ui;
 use egui_phosphor::regular as phos;
 use serde::{Deserialize, Serialize};
 
 use crate::input::InputKey;
 
-use super::meta::ReactionMetaTest;
+use super::{meta::ReactionMetaTest, system::ReactionSystemOpenWebsite};
 
 #[typetag::serde(tag = "type")]
 pub trait Reaction: Send + DynClone {
@@ -14,6 +15,7 @@ pub trait Reaction: Send + DynClone {
     fn on_press(&self, key: InputKey);
     fn on_release(&self, key: InputKey);
     fn get_type(&self) -> ReactionType;
+    fn edit_ui(&mut self, ui: &mut Ui);
 }
 clone_trait_object!(Reaction);
 
@@ -34,8 +36,8 @@ pub enum ReactionType {
     InputScrollMouse,
 
     // System
-    SystemLaunch,
-    SystemWebsite,
+    SystemLaunchApplication,
+    SystemOpenWebsite,
     SystemAudioInputControl,
     SystemAudioOutputControl,
 
@@ -67,10 +69,11 @@ pub enum ReactionType {
 }
 
 pub fn reaction_enum_to_new(t: ReactionType) -> Box<dyn Reaction> {
-    Box::new(match t {
-        ReactionType::MetaTest => ReactionMetaTest::default(),
+    match t {
+        ReactionType::MetaTest => Box::new(ReactionMetaTest::default()),
+        ReactionType::SystemOpenWebsite => Box::new(ReactionSystemOpenWebsite::default()),
         _ => todo!(),
-    })
+    }
 }
 
 pub fn reaction_ui_list() -> Vec<(String, Vec<(ReactionType, String)>)> {
@@ -101,8 +104,11 @@ pub fn reaction_ui_list() -> Vec<(String, Vec<(ReactionType, String)>)> {
         (
             format!("{} System", phos::DESKTOP_TOWER),
             vec![
-                (ReactionType::SystemLaunch, "Launch Application".to_string()),
-                (ReactionType::SystemWebsite, "Open Website".to_string()),
+                (
+                    ReactionType::SystemLaunchApplication,
+                    "Launch Application".to_string(),
+                ),
+                (ReactionType::SystemOpenWebsite, "Open Website".to_string()),
                 (
                     ReactionType::SystemAudioInputControl,
                     "Audio Input Control".to_string(),

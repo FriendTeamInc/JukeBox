@@ -1,3 +1,4 @@
+use eframe::egui::Ui;
 use serde::{Deserialize, Serialize};
 
 use crate::input::InputKey;
@@ -19,4 +20,6 @@ impl Reaction for ReactionMetaTest {
     fn get_type(&self) -> ReactionType {
         ReactionType::MetaTest
     }
+
+    fn edit_ui(&mut self, _ui: &mut Ui) {}
 }

@@ -846,39 +846,53 @@ impl JukeBoxGui {
                     c.save();
                 }
             });
+            c1.separator();
+            c1.allocate_ui(vec2(228.0, 150.0), |ui| {
+                ScrollArea::vertical()
+                    .id_salt("ReactionEdit")
+                    .show(ui, |ui| {
+                        ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
+                            self.config_editing_reaction.edit_ui(ui);
+                            ui.allocate_space(ui.available_size_before_wrap());
+                        });
+                    });
+            });
 
             c2.allocate_ui(vec2(228.0, 245.0), |ui| {
-                ScrollArea::vertical().show(ui, |ui| {
-                    ui.allocate_space(vec2(100.0, 0.0));
-                    Grid::new("ReactionsGrid")
-                        .num_columns(1)
-                        .min_col_width(228.0)
-                        .striped(true)
-                        .show(ui, |ui| {
-                            for (header, options) in reaction_ui_list {
-                                CollapsingHeader::new(RichText::new(header).strong())
-                                    .default_open(true)
-                                    .show(ui, |ui| {
-                                        for (reaction_type, label) in options {
-                                            if ui
-                                                .selectable_value(
-                                                    &mut self.config_editing_reaction_type,
-                                                    *reaction_type,
-                                                    label,
-                                                )
-                                                .changed()
-                                            {
-                                                self.config_editing_reaction = reaction_enum_to_new(
-                                                    self.config_editing_reaction_type,
-                                                );
-                                            };
-                                        }
-                                    });
-                                ui.end_row();
-                            }
-                        });
-                    ui.allocate_space(ui.available_size_before_wrap());
-                });
+                ScrollArea::vertical()
+                    .id_salt("ReactionChooser")
+                    .show(ui, |ui| {
+                        ui.allocate_space(vec2(100.0, 0.0));
+                        Grid::new("ReactionsGrid")
+                            .num_columns(1)
+                            .min_col_width(228.0)
+                            .striped(true)
+                            .show(ui, |ui| {
+                                for (header, options) in reaction_ui_list {
+                                    CollapsingHeader::new(RichText::new(header).strong())
+                                        .default_open(true)
+                                        .show(ui, |ui| {
+                                            for (reaction_type, label) in options {
+                                                if ui
+                                                    .selectable_value(
+                                                        &mut self.config_editing_reaction_type,
+                                                        *reaction_type,
+                                                        label,
+                                                    )
+                                                    .changed()
+                                                {
+                                                    self.config_editing_reaction =
+                                                        reaction_enum_to_new(
+                                                            self.config_editing_reaction_type,
+                                                        );
+                                                };
+                                            }
+                                        });
+                                    ui.end_row();
+                                }
+                            });
+                        ui.allocate_space(ui.available_size_before_wrap());
+                    });
             });
         });
     }
