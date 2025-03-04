@@ -1,15 +1,17 @@
 // Types of reactions and their associations
 
+use std::collections::HashMap;
+
 use dyn_clone::{clone_trait_object, DynClone};
 use eframe::egui::Ui;
 use egui_phosphor::regular as phos;
 use serde::{Deserialize, Serialize};
 
-use crate::input::InputKey;
+use crate::{gui::DeviceType, input::InputKey};
 
 use super::{
-    meta::ActMetaTest,
-    system::{ActSystemLaunchApplication, ActSystemOpenWebsite},
+    meta::MetaNoAction,
+    system::{SystemLaunchApplication, SystemOpenWebsite},
 };
 
 #[typetag::serde(tag = "type")]
@@ -19,16 +21,14 @@ pub trait Reaction: Send + DynClone {
     fn on_release(&self, key: InputKey);
     fn get_type(&self) -> ReactionType;
     fn edit_ui(&mut self, ui: &mut Ui);
+    fn help(&self) -> String;
 }
 clone_trait_object!(Reaction);
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Copy, Debug)]
 pub enum ReactionType {
-    // Self
-    Unknown,
-
     // Meta
-    MetaTest,
+    MetaNoAction,
     MetaSwitchProfile,
     MetaCopyFromProfile,
 
@@ -74,11 +74,52 @@ pub enum ReactionType {
 pub fn reaction_enum_to_new(t: ReactionType) -> Box<dyn Reaction> {
     use ReactionType as r;
     match t {
-        r::MetaTest => Box::new(ActMetaTest::default()),
-        r::SystemLaunchApplication => Box::new(ActSystemLaunchApplication::default()),
-        r::SystemOpenWebsite => Box::new(ActSystemOpenWebsite::default()),
+        r::MetaNoAction => Box::new(MetaNoAction::default()),
+        r::SystemLaunchApplication => Box::new(SystemLaunchApplication::default()),
+        r::SystemOpenWebsite => Box::new(SystemOpenWebsite::default()),
         _ => todo!(),
     }
+}
+
+pub fn default_reaction_config(d: DeviceType) -> HashMap<InputKey, Box<dyn Reaction>> {
+    let keys = match d {
+        DeviceType::Unknown => &[][..],
+        DeviceType::KeyPad => &[
+            InputKey::KeySwitch1,
+            InputKey::KeySwitch1,
+            InputKey::KeySwitch2,
+            InputKey::KeySwitch3,
+            InputKey::KeySwitch4,
+            InputKey::KeySwitch5,
+            InputKey::KeySwitch6,
+            InputKey::KeySwitch7,
+            InputKey::KeySwitch8,
+            InputKey::KeySwitch9,
+            InputKey::KeySwitch10,
+            InputKey::KeySwitch11,
+            InputKey::KeySwitch12,
+        ][..],
+        DeviceType::KnobPad => &[
+            InputKey::KnobLeftSwitch,
+            InputKey::KnobLeftClockwise,
+            InputKey::KnobLeftCounterClockwise,
+            InputKey::KnobRightSwitch,
+            InputKey::KnobRightClockwise,
+            InputKey::KnobRightCounterClockwise,
+        ][..],
+        DeviceType::PedalPad => &[
+            InputKey::PedalLeft,
+            InputKey::PedalMiddle,
+            InputKey::PedalRight,
+        ][..],
+    };
+
+    let mut c = HashMap::new();
+    for k in keys {
+        c.insert(*k, reaction_enum_to_new(ReactionType::MetaNoAction));
+    }
+
+    c
 }
 
 pub fn reaction_ui_list() -> Vec<(String, Vec<(ReactionType, String)>)> {
@@ -86,7 +127,7 @@ pub fn reaction_ui_list() -> Vec<(String, Vec<(ReactionType, String)>)> {
         (
             format!("{} Meta", phos::GEAR),
             vec![
-                (ReactionType::MetaTest, "Test Key".to_string()),
+                (ReactionType::MetaNoAction, "No Action".to_string()),
                 (
                     ReactionType::MetaSwitchProfile,
                     "Switch Profile".to_string(),

@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use eframe::egui::scroll_area::ScrollBarVisibility;
 use eframe::egui::{
     vec2, Align, Button, CentralPanel, CollapsingHeader, Color32, ComboBox, Grid, Layout, RichText,
     ScrollArea, TextBuffer, TextEdit, Ui, ViewportBuilder,
@@ -22,8 +23,10 @@ use serde::{Deserialize, Serialize};
 use crate::config::JukeBoxConfig;
 use crate::input::InputKey;
 use crate::reaction::reaction_task;
-use crate::reactions::meta::ActMetaTest;
-use crate::reactions::types::{reaction_enum_to_new, reaction_ui_list, Reaction, ReactionType};
+use crate::reactions::meta::MetaNoAction;
+use crate::reactions::types::{
+    default_reaction_config, reaction_enum_to_new, reaction_ui_list, Reaction, ReactionType,
+};
 use crate::serial::{serial_task, SerialCommand, SerialEvent};
 use crate::splash::SPLASH_MESSAGES;
 
@@ -119,8 +122,8 @@ impl JukeBoxGui {
             config_renaming_device: false,
             config_device_name_entry: String::new(),
             config_editing_key: InputKey::UnknownKey,
-            config_editing_reaction_type: ReactionType::Unknown,
-            config_editing_reaction: Box::new(ActMetaTest::default()),
+            config_editing_reaction_type: ReactionType::MetaNoAction,
+            config_editing_reaction: Box::new(MetaNoAction::default()),
             config_enable_splash: config_enable_splash,
         }
     }
@@ -247,7 +250,10 @@ impl JukeBoxGui {
                         );
                         for (_, v) in conf.profiles.iter_mut() {
                             if !v.contains_key(&device_uid) {
-                                v.insert(device_uid.clone(), HashMap::new());
+                                v.insert(
+                                    device_uid.clone(),
+                                    default_reaction_config(device_type.into()),
+                                );
                             }
                         }
                     }
@@ -403,6 +409,7 @@ impl JukeBoxGui {
                         .width(200.0)
                         .truncate()
                         .show_ui(ui, |ui| {
+                            // TODO: sort this alphabetically
                             for (k, v) in &self.devices {
                                 let u = ui.selectable_label(v.1 == *current_name, v.1.clone());
                                 if u.clicked() {
@@ -495,6 +502,7 @@ impl JukeBoxGui {
                     .selected_text(conf.current_profile.clone())
                     .width(150.0)
                     .show_ui(ui, |ui| {
+                        // TODO: sort this alphabetically
                         for (k, _) in &profiles {
                             let u = ui.selectable_label(*k == current, &*k.clone());
                             if u.clicked() {
@@ -783,7 +791,7 @@ impl JukeBoxGui {
     }
 
     fn enter_reaction_editor(&mut self, key: InputKey) {
-        log::info!("{:?} ui clicked", key);
+        // log::info!("{:?} ui clicked", key);
         self.config_renaming_device = false;
         self.config_renaming_profile = false;
         self.gui_tab = GuiTab::Editing;
@@ -799,10 +807,63 @@ impl JukeBoxGui {
                 self.config_editing_reaction_type = r.get_type();
                 self.config_editing_reaction = r.clone();
             } else {
-                self.config_editing_reaction_type = ReactionType::Unknown;
-                self.config_editing_reaction = Box::new(ActMetaTest::default());
+                self.config_editing_reaction_type = ReactionType::MetaNoAction;
+                self.config_editing_reaction =
+                    reaction_enum_to_new(self.config_editing_reaction_type);
             }
         };
+    }
+
+    fn reset_editing_reaction(&mut self) {
+        self.config_editing_reaction = reaction_enum_to_new(self.config_editing_reaction_type);
+    }
+
+    fn save_reaction_and_exit(&mut self) {
+        // TODO: have config validate input?
+        self.gui_tab = GuiTab::Device;
+        let mut c = self.config.lock().unwrap();
+        let current_profile = c.current_profile.clone();
+        let profile = c.profiles.get_mut(&current_profile).unwrap();
+        if let Some(d) = profile.get_mut(&self.current_device) {
+            d.insert(
+                self.config_editing_key.clone(),
+                self.config_editing_reaction.clone(),
+            );
+        } else {
+            let mut d = HashMap::new();
+            d.insert(
+                self.config_editing_key.clone(),
+                self.config_editing_reaction.clone(),
+            );
+            profile.insert(self.current_device.clone(), d);
+        }
+        c.save();
+    }
+
+    fn draw_reaction_list(
+        &mut self,
+        ui: &mut Ui,
+        reaction_ui_list: &Vec<(String, Vec<(ReactionType, String)>)>,
+    ) {
+        for (header, options) in reaction_ui_list {
+            CollapsingHeader::new(RichText::new(header).strong())
+                .default_open(true)
+                .show(ui, |ui| {
+                    for (reaction_type, label) in options {
+                        if ui
+                            .selectable_value(
+                                &mut self.config_editing_reaction_type,
+                                *reaction_type,
+                                label,
+                            )
+                            .changed()
+                        {
+                            self.reset_editing_reaction();
+                        };
+                    }
+                });
+            ui.end_row();
+        }
     }
 
     fn draw_edit_reaction(
@@ -812,46 +873,46 @@ impl JukeBoxGui {
     ) {
         ui.columns_const(|[c1, c2]| {
             c1.horizontal(|ui| {
-                if ui
+                let test_btn = ui
                     .add_sized(
-                        [75.0, 75.0],
-                        Button::new(RichText::new(phos::APERTURE).heading()),
+                        [50.0, 50.0],
+                        Button::new(RichText::new(phos::APERTURE).heading().strong()),
                     )
-                    .clicked()
-                {
-                    log::info!("change icon click!")
+                    .on_hover_text_at_pointer("Test reaction");
+                if test_btn.clicked() {
+                    // TODO: change input to "TestKey" ?
+                    self.config_editing_reaction.on_press(InputKey::UnknownKey);
+                    self.config_editing_reaction
+                        .on_release(InputKey::UnknownKey);
                 }
-
-                if ui
-                    .button(RichText::new(phos::FLOPPY_DISK).heading())
-                    .clicked()
-                {
-                    self.gui_tab = GuiTab::Device;
-                    let mut c = self.config.lock().unwrap();
-                    let current_profile = c.current_profile.clone();
-                    let profile = c.profiles.get_mut(&current_profile).unwrap();
-                    if let Some(d) = profile.get_mut(&self.current_device) {
-                        d.insert(
-                            self.config_editing_key.clone(),
-                            self.config_editing_reaction.clone(),
-                        );
-                    } else {
-                        let mut d = HashMap::new();
-                        d.insert(
-                            self.config_editing_key.clone(),
-                            self.config_editing_reaction.clone(),
-                        );
-                        profile.insert(self.current_device.clone(), d);
+                ui.vertical(|ui| {
+                    ui.allocate_space(vec2(0.0, 2.0));
+                    if ui
+                        .button(RichText::new(phos::FOLDER))
+                        .on_hover_text_at_pointer("Choose image icon")
+                        .clicked()
+                    {
+                        log::info!("TODO: choose image icon");
                     }
-                    c.save();
-                }
+                    if ui
+                        .button(RichText::new(phos::SEAL))
+                        .on_hover_text_at_pointer("Choose glyph icon")
+                        .clicked()
+                    {
+                        log::info!("TODO: choose glyph icon");
+                    }
+                });
+                ui.vertical_centered(|ui| {
+                    ui.label(RichText::new(self.config_editing_reaction.help()));
+                });
             });
-            c1.allocate_space(vec2(0.0, 5.0));
+            c1.allocate_space(vec2(0.0, 2.0));
             c1.separator();
-            c1.allocate_space(vec2(0.0, 4.0));
-            c1.allocate_ui(vec2(228.0, 135.0), |ui| {
+            c1.allocate_space(vec2(0.0, 2.0));
+            c1.allocate_ui(vec2(228.0, 144.0), |ui| {
                 ScrollArea::vertical()
                     .id_salt("ReactionEdit")
+                    .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
                     .show(ui, |ui| {
                         ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
                             self.config_editing_reaction.edit_ui(ui);
@@ -859,39 +920,39 @@ impl JukeBoxGui {
                         });
                     });
             });
+            c1.allocate_space(vec2(0.0, 4.0));
+            c1.horizontal(|ui| {
+                ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+                    if ui
+                        .button(RichText::new(phos::FLOPPY_DISK))
+                        .on_hover_text_at_pointer("Save reaction")
+                        .clicked()
+                    {
+                        self.save_reaction_and_exit();
+                    }
+                });
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    if ui
+                        .button(RichText::new(phos::ARROW_COUNTER_CLOCKWISE))
+                        .on_hover_text_at_pointer("Reset reaction")
+                        .clicked()
+                    {
+                        self.reset_editing_reaction();
+                    }
+                });
+            });
 
             c2.allocate_ui(vec2(228.0, 245.0), |ui| {
                 ScrollArea::vertical()
                     .id_salt("ReactionChooser")
+                    .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
                     .show(ui, |ui| {
-                        ui.allocate_space(vec2(100.0, 0.0));
                         Grid::new("ReactionsGrid")
                             .num_columns(1)
                             .min_col_width(228.0)
                             .striped(true)
                             .show(ui, |ui| {
-                                for (header, options) in reaction_ui_list {
-                                    CollapsingHeader::new(RichText::new(header).strong())
-                                        .default_open(true)
-                                        .show(ui, |ui| {
-                                            for (reaction_type, label) in options {
-                                                if ui
-                                                    .selectable_value(
-                                                        &mut self.config_editing_reaction_type,
-                                                        *reaction_type,
-                                                        label,
-                                                    )
-                                                    .changed()
-                                                {
-                                                    self.config_editing_reaction =
-                                                        reaction_enum_to_new(
-                                                            self.config_editing_reaction_type,
-                                                        );
-                                                };
-                                            }
-                                        });
-                                    ui.end_row();
-                                }
+                                self.draw_reaction_list(ui, reaction_ui_list);
                             });
                         ui.allocate_space(ui.available_size_before_wrap());
                     });

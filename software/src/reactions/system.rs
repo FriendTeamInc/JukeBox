@@ -10,19 +10,19 @@ use crate::input::InputKey;
 use super::types::{Reaction, ReactionType};
 
 #[derive(Default, Serialize, Deserialize, Clone)]
-pub struct ActSystemLaunchApplication {
+pub struct SystemLaunchApplication {
     filepath: String,
     arguments: Vec<String>,
 }
 #[typetag::serde]
-impl Reaction for ActSystemLaunchApplication {
-    fn on_press(&self, _key: InputKey) -> () {}
-
-    fn on_release(&self, _key: InputKey) -> () {
+impl Reaction for SystemLaunchApplication {
+    fn on_press(&self, _key: InputKey) -> () {
         let _ = Command::new(self.filepath.clone())
             .args(self.arguments.clone())
             .spawn();
     }
+
+    fn on_release(&self, _key: InputKey) -> () {}
 
     fn get_type(&self) -> ReactionType {
         ReactionType::SystemLaunchApplication
@@ -55,19 +55,23 @@ impl Reaction for ActSystemLaunchApplication {
             self.arguments.remove(i);
         }
     }
+
+    fn help(&self) -> String {
+        "Launches a system application on press.".to_string()
+    }
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
-pub struct ActSystemOpenWebsite {
+pub struct SystemOpenWebsite {
     url: String,
 }
 #[typetag::serde]
-impl Reaction for ActSystemOpenWebsite {
-    fn on_press(&self, _key: InputKey) -> () {}
-
-    fn on_release(&self, _key: InputKey) -> () {
+impl Reaction for SystemOpenWebsite {
+    fn on_press(&self, _key: InputKey) -> () {
         let _ = open::that(self.url.clone());
     }
+
+    fn on_release(&self, _key: InputKey) -> () {}
 
     fn get_type(&self) -> ReactionType {
         ReactionType::SystemOpenWebsite
@@ -76,5 +80,9 @@ impl Reaction for ActSystemOpenWebsite {
     fn edit_ui(&mut self, ui: &mut Ui) {
         ui.label("URL:");
         ui.text_edit_singleline(&mut self.url);
+    }
+
+    fn help(&self) -> String {
+        "Opens a website on press.".to_string()
     }
 }

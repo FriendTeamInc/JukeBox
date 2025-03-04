@@ -6,20 +6,24 @@ use crate::input::InputKey;
 use super::types::{Reaction, ReactionType};
 
 #[derive(Default, Serialize, Deserialize, Clone)]
-pub struct ActMetaTest {}
+pub struct MetaNoAction {}
 #[typetag::serde]
-impl Reaction for ActMetaTest {
+impl Reaction for MetaNoAction {
     fn on_press(&self, key: InputKey) -> () {
-        log::info!("METATEST: Pressed {:?} !", key);
+        log::info!("META NO ACTION: Pressed {:?} !", key);
     }
 
     fn on_release(&self, key: InputKey) -> () {
-        log::info!("METATEST: Released {:?} !", key);
+        log::info!("META NO ACTION: Released {:?} !", key);
     }
 
     fn get_type(&self) -> ReactionType {
-        ReactionType::MetaTest
+        ReactionType::MetaNoAction
     }
 
     fn edit_ui(&mut self, _ui: &mut Ui) {}
+
+    fn help(&self) -> String {
+        "Does nothing!".to_string()
+    }
 }

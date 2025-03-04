@@ -44,14 +44,18 @@ impl JukeBoxConfig {
     pub fn load() -> Self {
         let path = Self::get_path();
         let file = match File::open(path) {
-            Err(_) => {
+            Err(e) => {
+                log::error!("failed to open config file: {}", e);
+                // TODO: panic?
                 return JukeBoxConfig::default();
             }
             Ok(f) => f,
         };
 
         let conf = match serde_json::from_reader(file) {
-            Err(_) => {
+            Err(e) => {
+                log::error!("failed to parse config file: {}", e);
+                // TODO: rename old config so that it isnt overwritten by new default config
                 return JukeBoxConfig::default();
             }
             Ok(c) => c,
