@@ -214,7 +214,7 @@ fn main() -> ! {
             };
 
             #[cfg(feature = "pedalpad")]
-            let pedal_mod = {
+            let mut pedal_mod = {
                 let pedal_pins = [
                     pins.gpio2.into_function().into_dyn_pin().into_pull_type(),
                     pins.gpio3.into_function().into_dyn_pin().into_pull_type(),
@@ -232,6 +232,9 @@ fn main() -> ! {
                 // update input devices
                 #[cfg(feature = "keypad")]
                 keyboard_mod.update();
+
+                #[cfg(feature = "pedalpad")]
+                pedal_mod.update();
 
                 // update mutexes
                 PERIPHERAL_INPUTS.with_mut_lock(|i| {

@@ -2,10 +2,16 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // disables console spawning for release build
 
+mod config;
 mod gui;
+mod input;
 mod reaction;
 mod serial;
 mod splash;
+mod reactions {
+    pub mod meta;
+    pub mod types;
+}
 
 use anyhow::Result;
 

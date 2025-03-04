@@ -1,6 +1,6 @@
 // Serial communication
 
-use crate::reaction::InputKey;
+use crate::input::InputKey;
 
 use std::collections::{HashMap, HashSet};
 use std::io::Read;
