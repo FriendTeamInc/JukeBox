@@ -56,8 +56,8 @@ pub fn reaction_task(
                     let current_profile = {
                         let c = config.lock().unwrap();
                         c.profiles
-                            .get(&device_uid)
-                            .and_then(|p| p.get(&c.current_profile))
+                            .get(&c.current_profile)
+                            .and_then(|p| p.get(&device_uid))
                             .and_then(|p| Some(p.clone()))
                             .unwrap_or(HashMap::new())
                     };
@@ -92,8 +92,7 @@ pub fn reaction_task(
                     }
                     let prevkeys = prevkeys.get_mut(&device_uid).unwrap();
                     prevkeys.clear();
-                }
-                _ => {}
+                } // _ => {}
             }
         }
 

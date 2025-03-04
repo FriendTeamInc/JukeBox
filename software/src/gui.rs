@@ -22,7 +22,8 @@ use serde::{Deserialize, Serialize};
 use crate::config::JukeBoxConfig;
 use crate::input::InputKey;
 use crate::reaction::reaction_task;
-use crate::reactions::types::{reaction_ui_list, ReactionType};
+use crate::reactions::meta::ReactionMetaTest;
+use crate::reactions::types::{reaction_enum_to_new, reaction_ui_list, Reaction, ReactionType};
 use crate::serial::{serial_task, SerialCommand, SerialEvent};
 use crate::splash::SPLASH_MESSAGES;
 
@@ -80,6 +81,7 @@ struct JukeBoxGui {
     config_device_name_entry: String,
     config_editing_key: InputKey,
     config_editing_reaction_type: ReactionType,
+    config_editing_reaction: Box<dyn Reaction>,
     config_enable_splash: bool,
 }
 impl JukeBoxGui {
@@ -118,6 +120,7 @@ impl JukeBoxGui {
             config_device_name_entry: String::new(),
             config_editing_key: InputKey::UnknownKey,
             config_editing_reaction_type: ReactionType::Unknown,
+            config_editing_reaction: Box::new(ReactionMetaTest::default()),
             config_enable_splash: config_enable_splash,
         }
     }
@@ -787,14 +790,20 @@ impl JukeBoxGui {
         self.config_renaming_profile = false;
         self.gui_tab = GuiTab::Editing;
         self.config_editing_key = key;
-        self.config_editing_reaction_type = {
+        {
             let c = self.config.lock().unwrap();
-            c.profiles
+            if let Some(r) = c
+                .profiles
                 .get(&c.current_profile)
                 .and_then(|p| p.get(&self.current_device))
                 .and_then(|d| d.get(&self.config_editing_key))
-                .and_then(|r| Some(r.get_type()))
-                .unwrap_or(ReactionType::Unknown)
+            {
+                self.config_editing_reaction_type = r.get_type();
+                self.config_editing_reaction = r.clone();
+            } else {
+                self.config_editing_reaction_type = ReactionType::Unknown;
+                self.config_editing_reaction = Box::new(ReactionMetaTest::default());
+            }
         };
     }
 
@@ -805,9 +814,38 @@ impl JukeBoxGui {
     ) {
         ui.columns_const(|[c1, c2]| {
             c1.horizontal(|ui| {
-                let rt = RichText::new(phos::APERTURE).heading();
-                if ui.add_sized([75.0, 75.0], Button::new(rt)).clicked() {
+                if ui
+                    .add_sized(
+                        [75.0, 75.0],
+                        Button::new(RichText::new(phos::APERTURE).heading()),
+                    )
+                    .clicked()
+                {
                     log::info!("change icon click!")
+                }
+
+                if ui
+                    .button(RichText::new(phos::FLOPPY_DISK).heading())
+                    .clicked()
+                {
+                    self.gui_tab = GuiTab::Device;
+                    let mut c = self.config.lock().unwrap();
+                    let current_profile = c.current_profile.clone();
+                    let profile = c.profiles.get_mut(&current_profile).unwrap();
+                    if let Some(d) = profile.get_mut(&self.current_device) {
+                        d.insert(
+                            self.config_editing_key.clone(),
+                            self.config_editing_reaction.clone(),
+                        );
+                    } else {
+                        let mut d = HashMap::new();
+                        d.insert(
+                            self.config_editing_key.clone(),
+                            self.config_editing_reaction.clone(),
+                        );
+                        profile.insert(self.current_device.clone(), d);
+                    }
+                    c.save();
                 }
             });
 
@@ -824,11 +862,18 @@ impl JukeBoxGui {
                                     .default_open(true)
                                     .show(ui, |ui| {
                                         for (reaction_type, label) in options {
-                                            ui.selectable_value(
-                                                &mut self.config_editing_reaction_type,
-                                                *reaction_type,
-                                                label,
-                                            );
+                                            if ui
+                                                .selectable_value(
+                                                    &mut self.config_editing_reaction_type,
+                                                    *reaction_type,
+                                                    label,
+                                                )
+                                                .changed()
+                                            {
+                                                self.config_editing_reaction = reaction_enum_to_new(
+                                                    self.config_editing_reaction_type,
+                                                );
+                                            };
                                         }
                                     });
                                 ui.end_row();

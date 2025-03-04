@@ -6,8 +6,10 @@ use serde::{Deserialize, Serialize};
 
 use crate::input::InputKey;
 
+use super::meta::ReactionMetaTest;
+
 #[typetag::serde(tag = "type")]
-pub trait Reaction: DynClone + Send {
+pub trait Reaction: Send + DynClone {
     // TODO: add result output for error reporting
     fn on_press(&self, key: InputKey);
     fn on_release(&self, key: InputKey);
@@ -15,7 +17,7 @@ pub trait Reaction: DynClone + Send {
 }
 clone_trait_object!(Reaction);
 
-#[derive(Serialize, Deserialize, PartialEq, Clone, Copy)]
+#[derive(Serialize, Deserialize, PartialEq, Clone, Copy, Debug)]
 pub enum ReactionType {
     // Self
     Unknown,
@@ -64,7 +66,12 @@ pub enum ReactionType {
     ObsChapterMarker,
 }
 
-// pub fn reaction_enum_to_new()
+pub fn reaction_enum_to_new(t: ReactionType) -> Box<dyn Reaction> {
+    Box::new(match t {
+        ReactionType::MetaTest => ReactionMetaTest::default(),
+        _ => todo!(),
+    })
+}
 
 pub fn reaction_ui_list() -> Vec<(String, Vec<(ReactionType, String)>)> {
     vec![
