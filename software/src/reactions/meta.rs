@@ -188,10 +188,11 @@ impl Reaction for MetaCopyFromProfile {
                     {
                         continue;
                     }
+                    ui.selectable_value(&mut self.profile, k.clone(), k.clone());
 
-                    if ui.selectable_label(*k == self.profile, k.clone()).clicked() {
-                        self.profile = k.clone();
-                    }
+                    // if ui.selectable_label(*k == self.profile, k.clone()).clicked() {
+                    //     self.profile = k.clone();
+                    // }
                 }
             });
     }

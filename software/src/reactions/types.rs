@@ -11,14 +11,7 @@ use crate::{
     config::JukeBoxConfig,
     gui::DeviceType,
     input::InputKey,
-    reactions::{
-        meta::{MetaCopyFromProfile, MetaNoAction, MetaSwitchProfile},
-        soundboard::SoundboardPlaySound,
-        system::{
-            SystemAudioInputControl, SystemAudioOutputControl, SystemLaunchApplication,
-            SystemOpenWebsite,
-        },
-    },
+    reactions::{input::*, meta::*, soundboard::*, system::*},
 };
 
 #[typetag::serde(tag = "type")]
@@ -46,10 +39,9 @@ pub enum ReactionType {
     MetaCopyFromProfile,
 
     // Input
-    InputPressKey,
-    InputClickMouse,
-    InputMoveMouse,
-    InputScrollMouse,
+    InputKeyboard,
+    InputMouse,
+    // InputGamepad,
 
     // System
     SystemLaunchApplication,
@@ -90,10 +82,8 @@ pub fn reaction_enum_to_new(t: ReactionType) -> Box<dyn Reaction> {
         r::MetaNoAction => Box::new(MetaNoAction::default()),
         r::MetaSwitchProfile => Box::new(MetaSwitchProfile::default()),
         r::MetaCopyFromProfile => Box::new(MetaCopyFromProfile::default()),
-        // r::InputPressKey => Box::new(InputPressKey::default()),
-        // r::InputClickMouse => Box::new(InputClickMouse::default()),
-        // r::InputMoveMouse => Box::new(InputMoveMouse::default()),
-        // r::InputScrollMouse => Box::new(InputScrollMouse::default()),
+        r::InputKeyboard => Box::new(InputKeyboard::default()),
+        r::InputMouse => Box::new(InputMouse::default()),
         r::SystemLaunchApplication => Box::new(SystemLaunchApplication::default()),
         r::SystemOpenWebsite => Box::new(SystemOpenWebsite::default()),
         r::SystemAudioInputControl => Box::new(SystemAudioInputControl::default()),
@@ -182,10 +172,9 @@ pub fn reaction_ui_list() -> Vec<(String, Vec<(ReactionType, String)>)> {
         (
             format!("{} Input", phos::CURSOR_CLICK),
             vec![
-                (ReactionType::InputPressKey, "Press Key".to_string()),
-                (ReactionType::InputClickMouse, "Click Mouse".to_string()),
-                (ReactionType::InputMoveMouse, "Move Mouse".to_string()),
-                (ReactionType::InputScrollMouse, "Scroll Mouse".to_string()),
+                (ReactionType::InputKeyboard, "Keyboard Event".to_string()),
+                (ReactionType::InputMouse, "Mouse Event".to_string()),
+                // (ReactionType::InputGamepad, "Gamepad Event".to_string()),
             ],
         ),
         (
