@@ -246,7 +246,7 @@ fn transmit_disconnect_signal(f: &mut Box<dyn SerialPort>) -> Result<()> {
     send_expect(f, &cmd, &rsp)
 }
 
-pub fn serial_get_device() -> Result<Box<dyn SerialPort>> {
+pub fn serial_get_device(connected_uids: &HashSet<String>) -> Result<Box<dyn SerialPort>> {
     let ports = serialport::available_ports().context("failed to scan serial ports")?;
     let ports: Vec<_> = ports
         .iter()
@@ -254,12 +254,14 @@ pub fn serial_get_device() -> Result<Box<dyn SerialPort>> {
             serialport::SerialPortType::UsbPort(p) => {
                 p.vid == 0x1209
                     && (p.pid == 0xF209 || p.pid == 0xF20A || p.pid == 0xF20B || p.pid == 0xF20C)
+                    && !connected_uids.contains(&p.serial_number.clone().unwrap_or("".to_string()))
             }
             _ => false,
         })
         .collect();
 
     log::debug!("serial ports found: {:?}", ports);
+    log::debug!("serial ports connected: {:?}", connected_uids);
 
     if ports.len() == 0 {
         bail!("failed to find any jukebox serial ports");
@@ -337,16 +339,19 @@ pub fn serial_task(
     sr_tx: Sender<SerialEvent>,
 ) -> Result<()> {
     let mut handles = Vec::new();
+    let connected_uids = Arc::new(Mutex::new(HashSet::new()));
 
-    // TODO: check application cpu usage when device is connected
     while !brkr.load(std::sync::atomic::Ordering::Relaxed) {
-        let mut f = match serial_get_device() {
-            Err(e) => {
-                log::debug!("get_serial_device() failure: {:#}", e);
-                sleep(Duration::from_secs(1));
-                continue;
+        let mut f = {
+            let uids = connected_uids.lock().unwrap();
+            match serial_get_device(&uids) {
+                Err(e) => {
+                    log::debug!("get_serial_device() failure: {:#}", e);
+                    sleep(Duration::from_secs(1));
+                    continue;
+                }
+                Ok(f) => f,
             }
-            Ok(f) => f,
         };
 
         let (s_cmd_tx, s_cmd_rx) = channel::<SerialCommand>();
@@ -359,9 +364,12 @@ pub fn serial_task(
         // TODO: check that firmware version is ok
         let sg_tx2 = sg_tx.clone();
         let sr_tx2 = sr_tx.clone();
+        let connected_uids2 = connected_uids.clone();
 
         gs_cmd_txs_lock.insert(device_uid.clone(), s_cmd_tx);
         drop(gs_cmd_txs_lock);
+
+        connected_uids.lock().unwrap().insert(device_uid.clone());
 
         let handle = Builder::new()
             .name(format!("thread_thread_device_{}", device_uid.clone()))
@@ -409,8 +417,8 @@ pub fn serial_task(
                     ),
                 };
 
-                let mut gs_cmd_txs_lock = gs_cmd_txs.lock().unwrap();
-                gs_cmd_txs_lock.remove(&device_uid);
+                connected_uids2.lock().unwrap().remove(&device_uid);
+                gs_cmd_txs.lock().unwrap().remove(&device_uid);
 
                 Ok(())
             })
