@@ -477,7 +477,10 @@ impl JukeBoxGui {
                 .on_hover_text_at_pointer("Back")
                 .clicked()
             {
-                self.gui_tab = GuiTab::Device;
+                match self.gui_tab {
+                    GuiTab::Editing => self.save_reaction_and_exit(),
+                    _ => self.gui_tab = GuiTab::Device,
+                }
             }
         });
 
@@ -967,7 +970,7 @@ impl JukeBoxGui {
             c1.allocate_space(vec2(0.0, 2.0));
             c1.separator();
             c1.allocate_space(vec2(0.0, 2.0));
-            c1.allocate_ui(vec2(228.0, 144.0), |ui| {
+            c1.allocate_ui(vec2(228.0, 170.0), |ui| {
                 ScrollArea::vertical()
                     .id_salt("ReactionEdit")
                     .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
@@ -983,27 +986,6 @@ impl JukeBoxGui {
                             ui.allocate_space(ui.available_size_before_wrap());
                         });
                     });
-            });
-            c1.allocate_space(vec2(0.0, 4.0));
-            c1.horizontal(|ui| {
-                ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
-                    if ui
-                        .button(RichText::new(phos::FLOPPY_DISK))
-                        .on_hover_text_at_pointer("Save reaction")
-                        .clicked()
-                    {
-                        self.save_reaction_and_exit();
-                    }
-                });
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    if ui
-                        .button(RichText::new(phos::ARROW_COUNTER_CLOCKWISE))
-                        .on_hover_text_at_pointer("Reset reaction")
-                        .clicked()
-                    {
-                        self.reset_editing_reaction();
-                    }
-                });
             });
 
             c2.allocate_ui(vec2(228.0, 245.0), |ui| {

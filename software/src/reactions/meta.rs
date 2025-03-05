@@ -170,8 +170,8 @@ impl Reaction for MetaCopyFromProfile {
     fn edit_ui(
         &mut self,
         ui: &mut Ui,
-        _device_uid: String,
-        _key: InputKey,
+        device_uid: String,
+        key: InputKey,
         config: &mut JukeBoxConfig,
     ) {
         ui.label("Profile:");
@@ -179,8 +179,13 @@ impl Reaction for MetaCopyFromProfile {
             .selected_text(self.profile.clone())
             .width(228.0)
             .show_ui(ui, |ui| {
-                for k in config.profiles.keys() {
+                for (k, v) in &config.profiles {
                     if *k == config.current_profile {
+                        continue;
+                    }
+                    if v.get(&device_uid).unwrap().get(&key).unwrap().get_type()
+                        == ReactionType::MetaCopyFromProfile
+                    {
                         continue;
                     }
 
