@@ -7,7 +7,7 @@ use std::io::Read;
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
-use std::thread::{self, sleep, yield_now};
+use std::thread::{sleep, yield_now, Builder};
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, bail, Context, Result};
@@ -363,53 +363,58 @@ pub fn serial_task(
         gs_cmd_txs_lock.insert(device_uid.clone(), s_cmd_tx);
         drop(gs_cmd_txs_lock);
 
-        let handle = thread::spawn(move || {
-            let gs_cmd_txs = gs_cmd_txs.clone();
+        let handle = Builder::new()
+            .name(format!("thread_thread_device_{}", device_uid.clone()))
+            .spawn(move || {
+                let gs_cmd_txs = gs_cmd_txs.clone();
 
-            sg_tx2
-                .clone()
-                .send(SerialEvent::Connected(device_info.clone()))
-                .context("failed to send device info to gui")?;
-            sr_tx2
-                .clone()
-                .send(SerialEvent::Connected(device_info))
-                .context("failed to send device info to react")?;
+                sg_tx2
+                    .clone()
+                    .send(SerialEvent::Connected(device_info.clone()))
+                    .context("failed to send device info to gui")?;
+                sr_tx2
+                    .clone()
+                    .send(SerialEvent::Connected(device_info))
+                    .context("failed to send device info to react")?;
 
-            match serial_loop(
-                &mut f,
-                sg_tx2.clone(),
-                sr_tx2.clone(),
-                device_uid.clone(),
-                s_cmd_rx,
-            ) {
-                Err(e) => {
-                    log::warn!("Serial device {} error: {:#}", device_uid, e);
-                    if let Err(e) = sg_tx2.send(SerialEvent::LostConnection(device_uid.clone())) {
-                        log::warn!(
-                            "failed to send lost connection for {} to gui ({})",
-                            device_uid,
-                            e
-                        );
+                match serial_loop(
+                    &mut f,
+                    sg_tx2.clone(),
+                    sr_tx2.clone(),
+                    device_uid.clone(),
+                    s_cmd_rx,
+                ) {
+                    Err(e) => {
+                        log::warn!("Serial device {} error: {:#}", device_uid, e);
+                        if let Err(e) = sg_tx2.send(SerialEvent::LostConnection(device_uid.clone()))
+                        {
+                            log::warn!(
+                                "failed to send lost connection for {} to gui ({})",
+                                device_uid,
+                                e
+                            );
+                        }
+                        if let Err(e) = sr_tx2.send(SerialEvent::LostConnection(device_uid.clone()))
+                        {
+                            log::warn!(
+                                "failed to send lost connection for {} to react ({})",
+                                device_uid,
+                                e
+                            );
+                        }
                     }
-                    if let Err(e) = sr_tx2.send(SerialEvent::LostConnection(device_uid.clone())) {
-                        log::warn!(
-                            "failed to send lost connection for {} to react ({})",
-                            device_uid,
-                            e
-                        );
-                    }
-                }
-                _ => log::info!(
-                    "Serial device {} successfully disconnected. Looping...",
-                    device_uid
-                ),
-            };
+                    _ => log::info!(
+                        "Serial device {} successfully disconnected. Looping...",
+                        device_uid
+                    ),
+                };
 
-            let mut gs_cmd_txs_lock = gs_cmd_txs.lock().unwrap();
-            gs_cmd_txs_lock.remove(&device_uid);
+                let mut gs_cmd_txs_lock = gs_cmd_txs.lock().unwrap();
+                gs_cmd_txs_lock.remove(&device_uid);
 
-            Ok(())
-        });
+                Ok(())
+            })
+            .unwrap();
 
         handles.push(handle);
     }

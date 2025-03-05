@@ -7,19 +7,7 @@ use std::{
 
 use anyhow::Result;
 
-use crate::{
-    config::JukeBoxConfig, input::InputKey, reactions::types::Reaction, serial::SerialEvent,
-};
-
-fn run_key(reaction_config: &Box<dyn Reaction>, key: InputKey, pressed: bool) {
-    // we cannot allow any errors or panics to proceed past this point.
-    // TODO: figure out how to *do* that
-
-    match pressed {
-        true => reaction_config.on_press(key),
-        false => reaction_config.on_release(key),
-    }
-}
+use crate::{config::JukeBoxConfig, input::InputKey, serial::SerialEvent};
 
 pub fn reaction_task(
     s_evnt_rx: Receiver<SerialEvent>,
@@ -42,31 +30,37 @@ pub fn reaction_task(
                 }
                 let prevkeys = prevkeys.get_mut(&device_uid).unwrap();
 
-                let current_profile = {
-                    let c = config.lock().unwrap();
-                    c.profiles
-                        .get(&c.current_profile)
-                        .and_then(|p| p.get(&device_uid))
-                        .and_then(|p| Some(p.clone()))
-                        .unwrap_or(HashMap::new())
-                };
+                let mut c = config.lock().unwrap().clone();
+
+                let current_profile = c
+                    .profiles
+                    .get(&c.current_profile)
+                    .and_then(|p| p.get(&device_uid))
+                    .and_then(|p| Some(p.clone()))
+                    .unwrap_or(HashMap::new());
 
                 let pressed = keys.difference(&prevkeys);
                 let released = prevkeys.difference(&keys);
 
                 for p in pressed {
-                    if let Some(r) = current_profile.get(&p) {
-                        let _ = run_key(r, *p, true);
+                    if let Some(r) = current_profile.get(p) {
+                        r.on_press(device_uid.clone(), *p, &mut c);
                     }
                 }
 
                 for p in released {
-                    if let Some(r) = current_profile.get(&p) {
-                        let _ = run_key(r, *p, false);
+                    if let Some(r) = current_profile.get(p) {
+                        r.on_release(device_uid.clone(), *p, &mut c);
                     }
                 }
 
                 *prevkeys = keys;
+
+                // the current profile is the only field that actions can modify currently.
+                let mut config = config.lock().unwrap();
+                config.current_profile = c.current_profile.clone();
+                config.save();
+                // TODO: allow for editing of global configs for things like Discord and OBS
             }
             SerialEvent::LostConnection(device_uid) => {
                 if !prevkeys.contains_key(&device_uid) {

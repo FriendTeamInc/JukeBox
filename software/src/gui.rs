@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::atomic::AtomicBool;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
-use std::thread;
+use std::thread::Builder;
 use std::time::{Duration, Instant};
 
 use eframe::egui::scroll_area::ScrollBarVisibility;
@@ -145,12 +145,17 @@ impl JukeBoxGui {
         let gs_cmd_txs_end = gs_cmd_txs.clone();
 
         // serial comms thread
-        let thread_serial =
-            thread::spawn(move || serial_task(brkr_serial, gs_cmd_txs_serial, sg_tx, sr_tx));
+        let thread_serial = Builder::new()
+            .name("thread_serial_main".to_string())
+            .spawn(move || serial_task(brkr_serial, gs_cmd_txs_serial, sg_tx, sr_tx))
+            .unwrap();
 
         // reaction comms thread
         let reaction_config = self.config.clone();
-        let thread_reaction = thread::spawn(move || reaction_task(sr_rx, reaction_config));
+        let thread_reaction = Builder::new()
+            .name("thread_reaction_main".to_string())
+            .spawn(move || reaction_task(sr_rx, reaction_config))
+            .unwrap();
 
         let options = eframe::NativeOptions {
             viewport: ViewportBuilder::default()
@@ -451,6 +456,11 @@ impl JukeBoxGui {
 
                     let mut conf = self.config.lock().unwrap();
                     conf.devices.remove(&old_device);
+
+                    for (_, p) in conf.profiles.iter_mut() {
+                        p.remove_entry(&old_device);
+                    }
+
                     conf.save();
 
                     // TODO: disconnect device over serial?
@@ -479,17 +489,37 @@ impl JukeBoxGui {
                     TextEdit::singleline(&mut self.config_profile_name_entry).desired_width(142.0),
                 );
                 if edit.lost_focus() && self.config_profile_name_entry.len() > 0 {
-                    // TODO: check that a profile with this name doesnt already exist!
                     self.config_renaming_profile = false;
                     let mut conf = self.config.lock().unwrap();
 
-                    let p = conf.current_profile.clone();
-                    let c = conf.profiles.remove(&p).expect("");
-                    conf.profiles
-                        .insert(self.config_profile_name_entry.to_string(), c);
-                    conf.current_profile
-                        .replace_with(&self.config_profile_name_entry);
-                    conf.save();
+                    if !conf.profiles.contains_key(&self.config_profile_name_entry) {
+                        let p = conf.current_profile.clone();
+                        let c = conf.profiles.remove(&p).expect("");
+                        conf.profiles
+                            .insert(self.config_profile_name_entry.clone(), c);
+                        conf.current_profile
+                            .replace_with(&self.config_profile_name_entry);
+
+                        // TODO: edit configs to reference new profile instead of wiping it
+                        for (_, p) in conf.profiles.iter_mut() {
+                            for (_, d) in p.iter_mut() {
+                                for (_, k) in d.iter_mut() {
+                                    use ReactionType as r;
+                                    match k.get_type() {
+                                        r::MetaSwitchProfile => {
+                                            *k = reaction_enum_to_new(r::MetaSwitchProfile);
+                                        }
+                                        r::MetaCopyFromProfile => {
+                                            *k = reaction_enum_to_new(r::MetaCopyFromProfile);
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            }
+                        }
+
+                        conf.save();
+                    }
                 }
                 if !edit.has_focus() {
                     edit.request_focus();
@@ -523,15 +553,19 @@ impl JukeBoxGui {
                 if new_btn.clicked() {
                     let mut conf = self.config.lock().unwrap();
                     let mut idx = conf.profiles.keys().len() + 1;
-                    loop {
+                    let name = loop {
                         let name = format!("Profile {}", idx);
                         if !conf.profiles.contains_key(&name) {
-                            conf.profiles.insert(name, HashMap::new());
-                            conf.save();
-                            break;
+                            break name;
                         }
                         idx += 1;
+                    };
+                    let mut m = HashMap::new();
+                    for (d, t) in &self.devices {
+                        m.insert(d.clone(), default_reaction_config(t.0.into()));
                     }
+                    conf.profiles.insert(name, m);
+                    conf.save();
                 }
 
                 let edit_btn = ui
@@ -552,10 +586,27 @@ impl JukeBoxGui {
                     .button(RichText::new(phos::TRASH))
                     .on_hover_text_at_pointer("Delete Profile");
                 if delete_btn.clicked() {
-                    // TODO: check other profiles and make sure they dont rely on this profile
                     let p = conf.current_profile.clone();
                     conf.profiles.remove(&p);
-                    conf.current_profile = conf.profiles.keys().next().expect("").to_string();
+                    conf.current_profile = conf.profiles.keys().next().unwrap().clone();
+
+                    for (_, p) in conf.profiles.iter_mut() {
+                        for (_, d) in p.iter_mut() {
+                            for (_, k) in d.iter_mut() {
+                                use ReactionType as r;
+                                match k.get_type() {
+                                    r::MetaSwitchProfile => {
+                                        *k = reaction_enum_to_new(r::MetaSwitchProfile);
+                                    }
+                                    r::MetaCopyFromProfile => {
+                                        *k = reaction_enum_to_new(r::MetaCopyFromProfile);
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                    }
+
                     conf.save();
                 }
             });
@@ -880,10 +931,17 @@ impl JukeBoxGui {
                     )
                     .on_hover_text_at_pointer("Test reaction");
                 if test_btn.clicked() {
-                    // TODO: change input to "TestKey" ?
-                    self.config_editing_reaction.on_press(InputKey::UnknownKey);
-                    self.config_editing_reaction
-                        .on_release(InputKey::UnknownKey);
+                    let mut c = self.config.lock().unwrap().clone();
+                    self.config_editing_reaction.on_press(
+                        self.current_device.clone(),
+                        self.config_editing_key,
+                        &mut c,
+                    );
+                    self.config_editing_reaction.on_release(
+                        self.current_device.clone(),
+                        self.config_editing_key,
+                        &mut c,
+                    );
                 }
                 ui.vertical(|ui| {
                     ui.allocate_space(vec2(0.0, 2.0));
@@ -915,7 +973,13 @@ impl JukeBoxGui {
                     .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
                     .show(ui, |ui| {
                         ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
-                            self.config_editing_reaction.edit_ui(ui);
+                            let mut c = self.config.lock().unwrap().clone();
+                            self.config_editing_reaction.edit_ui(
+                                ui,
+                                self.current_device.clone(),
+                                self.config_editing_key,
+                                &mut c,
+                            );
                             ui.allocate_space(ui.available_size_before_wrap());
                         });
                     });

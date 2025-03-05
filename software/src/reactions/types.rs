@@ -7,7 +7,12 @@ use eframe::egui::Ui;
 use egui_phosphor::regular as phos;
 use serde::{Deserialize, Serialize};
 
-use crate::{gui::DeviceType, input::InputKey};
+use crate::{
+    config::JukeBoxConfig,
+    gui::DeviceType,
+    input::InputKey,
+    reactions::meta::{MetaCopyFromProfile, MetaSwitchProfile},
+};
 
 use super::{
     meta::MetaNoAction,
@@ -17,10 +22,16 @@ use super::{
 #[typetag::serde(tag = "type")]
 pub trait Reaction: Send + DynClone {
     // TODO: add result output for error reporting
-    fn on_press(&self, key: InputKey);
-    fn on_release(&self, key: InputKey);
+    fn on_press(&self, device_uid: String, key: InputKey, config: &mut JukeBoxConfig);
+    fn on_release(&self, device_uid: String, key: InputKey, config: &mut JukeBoxConfig);
     fn get_type(&self) -> ReactionType;
-    fn edit_ui(&mut self, ui: &mut Ui);
+    fn edit_ui(
+        &mut self,
+        ui: &mut Ui,
+        device_uid: String,
+        key: InputKey,
+        config: &mut JukeBoxConfig,
+    );
     fn help(&self) -> String;
 }
 clone_trait_object!(Reaction);
@@ -75,6 +86,8 @@ pub fn reaction_enum_to_new(t: ReactionType) -> Box<dyn Reaction> {
     use ReactionType as r;
     match t {
         r::MetaNoAction => Box::new(MetaNoAction::default()),
+        r::MetaSwitchProfile => Box::new(MetaSwitchProfile::default()),
+        r::MetaCopyFromProfile => Box::new(MetaCopyFromProfile::default()),
         r::SystemLaunchApplication => Box::new(SystemLaunchApplication::default()),
         r::SystemOpenWebsite => Box::new(SystemOpenWebsite::default()),
         _ => todo!(),

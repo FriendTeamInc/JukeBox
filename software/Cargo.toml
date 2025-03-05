@@ -24,3 +24,6 @@ rfd = "0.15.2"
 
 [build-dependencies]
 winresource = "0.1.17"
+
+[profile.release]
+strip = true
