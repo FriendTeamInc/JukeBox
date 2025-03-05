@@ -175,7 +175,7 @@ impl Reaction for MetaCopyFromProfile {
         config: &mut JukeBoxConfig,
     ) {
         ui.label("Profile:");
-        ComboBox::from_id_salt("MetaSwitchProfileSelect")
+        ComboBox::from_id_salt("MetaCopyFromProfile")
             .selected_text(self.profile.clone())
             .width(228.0)
             .show_ui(ui, |ui| {
@@ -188,8 +188,6 @@ impl Reaction for MetaCopyFromProfile {
                     {
                         continue;
                     }
-
-                    // TODO: check for recursion and don't allow that profile to be selected
 
                     if ui.selectable_label(*k == self.profile, k.clone()).clicked() {
                         self.profile = k.clone();

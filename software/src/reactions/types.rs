@@ -11,12 +11,11 @@ use crate::{
     config::JukeBoxConfig,
     gui::DeviceType,
     input::InputKey,
-    reactions::meta::{MetaCopyFromProfile, MetaSwitchProfile},
-};
-
-use super::{
-    meta::MetaNoAction,
-    system::{SystemLaunchApplication, SystemOpenWebsite},
+    reactions::{
+        meta::{MetaCopyFromProfile, MetaNoAction, MetaSwitchProfile},
+        soundboard::SoundboardPlaySound,
+        system::{SystemLaunchApplication, SystemOpenWebsite},
+    },
 };
 
 #[typetag::serde(tag = "type")]
@@ -88,8 +87,34 @@ pub fn reaction_enum_to_new(t: ReactionType) -> Box<dyn Reaction> {
         r::MetaNoAction => Box::new(MetaNoAction::default()),
         r::MetaSwitchProfile => Box::new(MetaSwitchProfile::default()),
         r::MetaCopyFromProfile => Box::new(MetaCopyFromProfile::default()),
+        // r::InputPressKey => Box::new(InputPressKey::default()),
+        // r::InputClickMouse => Box::new(InputClickMouse::default()),
+        // r::InputMoveMouse => Box::new(InputMoveMouse::default()),
+        // r::InputScrollMouse => Box::new(InputScrollMouse::default()),
         r::SystemLaunchApplication => Box::new(SystemLaunchApplication::default()),
         r::SystemOpenWebsite => Box::new(SystemOpenWebsite::default()),
+        // r::SystemAudioInputControl => Box::new(SystemAudioInputControl::default()),
+        // r::SystemAudioOutputControl => Box::new(SystemAudioOutputControl::default()),
+        r::SoundboardPlaySound => Box::new(SoundboardPlaySound::default()),
+        // r::DiscordToggleMute => Box::new(DiscordToggleMute::default()),
+        // r::DiscordToggleDeafen => Box::new(DiscordToggleDeafen::default()),
+        // r::DiscordPushToTalk => Box::new(DiscordPushToTalk::default()),
+        // r::DiscordPushToMute => Box::new(DiscordPushToMute::default()),
+        // r::DiscordToggleCamera => Box::new(DiscordToggleCamera::default()),
+        // r::ObsStream => Box::new(ObsStream::default()),
+        // r::ObsRecord => Box::new(ObsRecord::default()),
+        // r::ObsPauseRecord => Box::new(ObsPauseRecord::default()),
+        // r::ObsReplayBuffer => Box::new(ObsReplayBuffer::default()),
+        // r::ObsSaveReplay => Box::new(ObsSaveReplay::default()),
+        // r::ObsSaveScreenshot => Box::new(ObsSaveScreenshot::default()),
+        // r::ObsSource => Box::new(ObsSource::default()),
+        // r::ObsMute => Box::new(ObsMute::default()),
+        // r::ObsSceneSwitch => Box::new(ObsSceneSwitch::default()),
+        // r::ObsSceneCollectionSwitch => Box::new(ObsSceneCollectionSwitch::default()),
+        // r::ObsPreviewScene => Box::new(ObsPreviewScene::default()),
+        // r::ObsFilter => Box::new(ObsFilter::default()),
+        // r::ObsTransition => Box::new(ObsTransition::default()),
+        // r::ObsChapterMarker => Box::new(ObsChapterMarker::default()),
         _ => todo!(),
     }
 }

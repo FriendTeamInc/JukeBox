@@ -10,6 +10,7 @@ mod serial;
 mod splash;
 mod reactions {
     pub mod meta;
+    pub mod soundboard;
     pub mod system;
     pub mod types;
 }

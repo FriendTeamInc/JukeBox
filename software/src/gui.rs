@@ -443,8 +443,11 @@ impl JukeBoxGui {
 
                 let delete_btn = ui
                     .button(RichText::new(phos::TRASH))
-                    .on_hover_text_at_pointer("Forget Device");
+                    .on_hover_text_at_pointer("Forget Device\n(double click)");
                 if delete_btn.clicked() {
+                    // TODO: make red
+                }
+                if delete_btn.double_clicked() {
                     let old_device = self.current_device.clone();
                     self.devices.remove(&old_device);
                     self.current_device = self
@@ -587,8 +590,11 @@ impl JukeBoxGui {
                 }
                 let delete_btn = ui
                     .button(RichText::new(phos::TRASH))
-                    .on_hover_text_at_pointer("Delete Profile");
+                    .on_hover_text_at_pointer("Delete Profile\n(double click)");
                 if delete_btn.clicked() {
+                    // TODO: make red
+                }
+                if delete_btn.double_clicked() {
                     let p = conf.current_profile.clone();
                     conf.profiles.remove(&p);
                     conf.current_profile = conf.profiles.keys().next().unwrap().clone();
