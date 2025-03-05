@@ -14,7 +14,10 @@ use crate::{
     reactions::{
         meta::{MetaCopyFromProfile, MetaNoAction, MetaSwitchProfile},
         soundboard::SoundboardPlaySound,
-        system::{SystemLaunchApplication, SystemOpenWebsite},
+        system::{
+            SystemAudioInputControl, SystemAudioOutputControl, SystemLaunchApplication,
+            SystemOpenWebsite,
+        },
     },
 };
 
@@ -93,8 +96,8 @@ pub fn reaction_enum_to_new(t: ReactionType) -> Box<dyn Reaction> {
         // r::InputScrollMouse => Box::new(InputScrollMouse::default()),
         r::SystemLaunchApplication => Box::new(SystemLaunchApplication::default()),
         r::SystemOpenWebsite => Box::new(SystemOpenWebsite::default()),
-        // r::SystemAudioInputControl => Box::new(SystemAudioInputControl::default()),
-        // r::SystemAudioOutputControl => Box::new(SystemAudioOutputControl::default()),
+        r::SystemAudioInputControl => Box::new(SystemAudioInputControl::default()),
+        r::SystemAudioOutputControl => Box::new(SystemAudioOutputControl::default()),
         r::SoundboardPlaySound => Box::new(SoundboardPlaySound::default()),
         // r::DiscordToggleMute => Box::new(DiscordToggleMute::default()),
         // r::DiscordToggleDeafen => Box::new(DiscordToggleDeafen::default()),

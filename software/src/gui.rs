@@ -969,9 +969,13 @@ impl JukeBoxGui {
                         log::info!("TODO: choose glyph icon");
                     }
                 });
-                ui.vertical_centered(|ui| {
-                    ui.label(RichText::new(self.config_editing_reaction.help()));
-                });
+                ui.with_layout(
+                    Layout::centered_and_justified(eframe::egui::Direction::TopDown)
+                        .with_cross_justify(false),
+                    |ui| {
+                        ui.label(RichText::new(self.config_editing_reaction.help()).size(10.0));
+                    },
+                );
             });
             c1.allocate_space(vec2(0.0, 2.0));
             c1.separator();

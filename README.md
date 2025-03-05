@@ -2,7 +2,7 @@
 
 An affordable, adorable, powerful hotkey device to run macros, play funny sounds, mute your microphone, change paint brush settings, or manage items in OBS! It can even have RGB or show PC stats!
 
-(TODO: image here)
+(TODO: physical image here)
 
 # Disclaimer
 While this project is public, it is not ready for any sort of prime time.

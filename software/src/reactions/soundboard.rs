@@ -1,4 +1,4 @@
-use eframe::egui::{ComboBox, Slider, SliderClamping, Ui};
+use eframe::egui::{ComboBox, Slider, Ui};
 use rfd::FileDialog;
 use serde::{Deserialize, Serialize};
 
@@ -10,7 +10,7 @@ use super::types::{Reaction, ReactionType};
 pub struct SoundboardPlaySound {
     filepath: String,
     output_device: String,
-    volume: f64,
+    volume: u8,
 }
 #[typetag::serde]
 impl Reaction for SoundboardPlaySound {
@@ -49,7 +49,7 @@ impl Reaction for SoundboardPlaySound {
         ui.label("");
 
         ui.label("Volume:");
-        ui.add(Slider::new(&mut self.volume, 0.0..=100.0).clamping(SliderClamping::Always));
+        ui.add(Slider::new(&mut self.volume, 0..=100));
     }
 
     fn help(&self) -> String {

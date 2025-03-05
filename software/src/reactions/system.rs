@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use eframe::egui::Ui;
+use eframe::egui::{ComboBox, Slider, Ui};
 use egui_phosphor::regular as phos;
 use rfd::FileDialog;
 use serde::{Deserialize, Serialize};
@@ -20,6 +20,7 @@ impl Reaction for SystemLaunchApplication {
         let _ = Command::new(self.filepath.clone())
             .args(self.arguments.clone())
             .spawn();
+        // TODO: error handling
     }
 
     fn on_release(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {}
@@ -75,6 +76,7 @@ pub struct SystemOpenWebsite {
 impl Reaction for SystemOpenWebsite {
     fn on_press(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {
         let _ = open::that(self.url.clone());
+        // TODO: error handling
     }
 
     fn on_release(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {}
@@ -96,5 +98,87 @@ impl Reaction for SystemOpenWebsite {
 
     fn help(&self) -> String {
         "Opens a website on press.".to_string()
+    }
+}
+
+#[derive(Default, Serialize, Deserialize, Clone)]
+pub struct SystemAudioInputControl {
+    input_device: String,
+    vol_adjust: i8,
+}
+#[typetag::serde]
+impl Reaction for SystemAudioInputControl {
+    fn on_press(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {
+        // TODO
+    }
+
+    fn on_release(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {}
+
+    fn get_type(&self) -> ReactionType {
+        ReactionType::SystemAudioInputControl
+    }
+
+    fn edit_ui(
+        &mut self,
+        ui: &mut Ui,
+        _device_uid: String,
+        _key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) {
+        ui.label("Output device:");
+        ComboBox::from_id_salt("SystemAudioInputControlDeviceSelect")
+            .selected_text(self.input_device.clone())
+            .width(228.0)
+            .show_ui(ui, |_ui| {
+                // TODO
+            });
+
+        ui.label("Volume Adjust:");
+        ui.add(Slider::new(&mut self.vol_adjust, -100..=100));
+    }
+
+    fn help(&self) -> String {
+        "Adjust an Audio Input Device volume by specified amount on press.".to_string()
+    }
+}
+
+#[derive(Default, Serialize, Deserialize, Clone)]
+pub struct SystemAudioOutputControl {
+    input_device: String,
+    vol_adjust: i8,
+}
+#[typetag::serde]
+impl Reaction for SystemAudioOutputControl {
+    fn on_press(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {
+        // TODO
+    }
+
+    fn on_release(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {}
+
+    fn get_type(&self) -> ReactionType {
+        ReactionType::SystemAudioOutputControl
+    }
+
+    fn edit_ui(
+        &mut self,
+        ui: &mut Ui,
+        _device_uid: String,
+        _key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) {
+        ui.label("Output device:");
+        ComboBox::from_id_salt("SystemAudioOutputControlDeviceSelect")
+            .selected_text(self.input_device.clone())
+            .width(228.0)
+            .show_ui(ui, |_ui| {
+                // TODO
+            });
+
+        ui.label("Volume Adjust:");
+        ui.add(Slider::new(&mut self.vol_adjust, -100..=100));
+    }
+
+    fn help(&self) -> String {
+        "Adjust an Audio Output Device volume by specified amount on press.".to_string()
     }
 }
