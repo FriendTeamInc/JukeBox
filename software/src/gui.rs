@@ -9,8 +9,8 @@ use std::time::{Duration, Instant};
 
 use eframe::egui::scroll_area::ScrollBarVisibility;
 use eframe::egui::{
-    vec2, Align, Button, CentralPanel, CollapsingHeader, Color32, ComboBox, Grid, Layout, RichText,
-    ScrollArea, TextBuffer, TextEdit, Ui, ViewportBuilder,
+    vec2, Align, Button, CentralPanel, CollapsingHeader, Color32, ComboBox, Grid, Layout,
+    ProgressBar, RichText, ScrollArea, TextBuffer, TextEdit, Ui, ViewportBuilder,
 };
 use egui_phosphor::regular as phos;
 use egui_theme_switch::global_theme_switch;
@@ -18,6 +18,7 @@ use jukebox_util::peripheral::{
     IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT, IDENT_UNKNOWN_INPUT,
 };
 use rand::prelude::*;
+use rfd::FileDialog;
 use serde::{Deserialize, Serialize};
 
 use crate::config::JukeBoxConfig;
@@ -29,6 +30,7 @@ use crate::reactions::types::{
 };
 use crate::serial::{serial_task, SerialCommand, SerialEvent};
 use crate::splash::SPLASH_MESSAGES;
+use crate::update::{update_task, UpdateStatus};
 
 const APP_VERSION: &'static str = env!("CARGO_PKG_VERSION");
 
@@ -37,6 +39,7 @@ enum GuiTab {
     Device,
     Editing,
     Settings,
+    Updating,
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Copy)]
@@ -86,6 +89,9 @@ struct JukeBoxGui {
     config_editing_reaction_type: ReactionType,
     config_editing_reaction: Box<dyn Reaction>,
     config_enable_splash: bool,
+
+    update_progress: f32,
+    update_status: UpdateStatus,
 }
 impl JukeBoxGui {
     fn new() -> Self {
@@ -125,6 +131,9 @@ impl JukeBoxGui {
             config_editing_reaction_type: ReactionType::MetaNoAction,
             config_editing_reaction: Box::new(MetaNoAction::default()),
             config_enable_splash: config_enable_splash,
+
+            update_progress: 0.0,
+            update_status: UpdateStatus::Start,
         }
     }
 
@@ -137,6 +146,9 @@ impl JukeBoxGui {
             Arc::new(Mutex::new(HashMap::new()));
         // gui thread sends events to serial threads (specific Device ID -> Device specific Serial Thread)
         // serial thread spawns the channels and gives the sender to the gui thread through this
+
+        let (su_tx, su_rx) = channel::<(String, String)>(); // gui thread sends update signal to update thread
+        let (us_tx, us_rx) = channel::<UpdateStatus>(); // update thread sends update statuses to gui thread
 
         // when gui exits, we use these to signal the other threads to stop
         let brkr = Arc::new(AtomicBool::new(false)); // ends other threads from gui
@@ -155,6 +167,11 @@ impl JukeBoxGui {
         let thread_reaction = Builder::new()
             .name("thread_reaction_main".to_string())
             .spawn(move || reaction_task(sr_rx, reaction_config))
+            .unwrap();
+
+        let thread_update = Builder::new()
+            .name("update_thread".to_string())
+            .spawn(move || update_task(su_rx, us_tx))
             .unwrap();
 
         let options = eframe::NativeOptions {
@@ -192,9 +209,10 @@ impl JukeBoxGui {
                 ui.separator();
 
                 ui.allocate_ui(vec2(464.0, 245.0), |ui| match self.gui_tab {
-                    GuiTab::Device => self.draw_device_page(ui, &gs_cmd_txs),
+                    GuiTab::Device => self.draw_device_page(ui),
                     GuiTab::Settings => self.draw_settings_page(ui),
                     GuiTab::Editing => self.draw_edit_reaction(ui, &reaction_ui_list),
+                    GuiTab::Updating => self.draw_update_page(ui, &gs_cmd_txs, &su_tx, &us_rx),
                 });
 
                 ui.separator();
@@ -215,9 +233,9 @@ impl JukeBoxGui {
         })
         .expect("eframe error");
 
-        for (k, tx) in gs_cmd_txs_end.lock().unwrap().iter() {
-            tx.send(SerialCommand::DisconnectDevice)
-                .expect(&format!("could not send disconnect signal to device {}", k));
+        for (_k, tx) in gs_cmd_txs_end.lock().unwrap().iter() {
+            let _ = tx.send(SerialCommand::DisconnectDevice);
+            // .expect(&format!("could not send disconnect signal to device {}", k));
         }
 
         brkr.store(true, std::sync::atomic::Ordering::Relaxed);
@@ -229,6 +247,10 @@ impl JukeBoxGui {
         let _ = thread_reaction
             .join()
             .expect("could not rejoin reaction thread");
+
+        let _ = thread_update
+            .join()
+            .expect("could not rejoin update thread");
     }
 
     fn handle_serial_events(&mut self, s_evnt_rx: &Receiver<SerialEvent>) {
@@ -313,11 +335,7 @@ impl JukeBoxGui {
         }
     }
 
-    fn draw_device_page(
-        &mut self,
-        ui: &mut Ui,
-        gs_cmd_txs: &Arc<Mutex<HashMap<String, Sender<SerialCommand>>>>,
-    ) {
+    fn draw_device_page(&mut self, ui: &mut Ui) {
         let devices = &self.devices;
         let current_device = &self.current_device;
 
@@ -334,9 +352,9 @@ impl JukeBoxGui {
 
         match device_type {
             DeviceType::Unknown => self.draw_unknown_device(ui),
-            DeviceType::KeyPad => self.draw_keypad_device(ui, gs_cmd_txs),
+            DeviceType::KeyPad => self.draw_keypad_device(ui),
             DeviceType::KnobPad => self.draw_unknown_device(ui),
-            DeviceType::PedalPad => self.draw_pedalpad_device(ui, gs_cmd_txs),
+            DeviceType::PedalPad => self.draw_pedalpad_device(ui),
         }
     }
 
@@ -474,18 +492,23 @@ impl JukeBoxGui {
 
     fn draw_profile_management(&mut self, ui: &mut Ui) {
         // back button
-        ui.add_enabled_ui(self.gui_tab != GuiTab::Device, |ui| {
-            if ui
-                .button(RichText::new(phos::ARROW_BEND_UP_LEFT))
-                .on_hover_text_at_pointer("Back")
-                .clicked()
-            {
-                match self.gui_tab {
-                    GuiTab::Editing => self.save_reaction_and_exit(),
-                    _ => self.gui_tab = GuiTab::Device,
+        ui.add_enabled_ui(
+            self.gui_tab != GuiTab::Device
+                && (self.update_status == UpdateStatus::Start
+                    || self.update_status == UpdateStatus::End),
+            |ui| {
+                if ui
+                    .button(RichText::new(phos::ARROW_BEND_UP_LEFT))
+                    .on_hover_text_at_pointer("Back")
+                    .clicked()
+                {
+                    match self.gui_tab {
+                        GuiTab::Editing => self.save_reaction_and_exit(),
+                        _ => self.gui_tab = GuiTab::Device,
+                    }
                 }
-            }
-        });
+            },
+        );
 
         ui.add_enabled_ui(self.gui_tab == GuiTab::Device, |ui| {
             // Profile select/edit
@@ -657,15 +680,12 @@ impl JukeBoxGui {
         ui.with_layout(
             Layout::centered_and_justified(eframe::egui::Direction::TopDown),
             |ui| ui.label("Unknown device registered."),
+            // TODO: add update button
         );
         // ui.allocate_space(ui.available_size_before_wrap());
     }
 
-    fn draw_device_firmware_management(
-        &mut self,
-        ui: &mut Ui,
-        gs_cmd_txs: &Arc<Mutex<HashMap<String, Sender<SerialCommand>>>>,
-    ) {
+    fn draw_device_firmware_management(&mut self, ui: &mut Ui) {
         ui.allocate_ui(vec2(60.0, 231.5), |ui| {
             ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
                 let i = self.devices.get(&self.current_device).unwrap();
@@ -689,12 +709,9 @@ impl JukeBoxGui {
                             .on_hover_text_at_pointer("Update Device")
                             .clicked()
                         {
-                            // TODO: more comprehensive updating
-                            let gs_cmd_txs = gs_cmd_txs.lock().unwrap();
-                            if let Some(tx) = gs_cmd_txs.get(&self.current_device) {
-                                tx.send(SerialCommand::UpdateDevice)
-                                    .expect("failed to send update command");
-                            }
+                            self.gui_tab = GuiTab::Updating;
+                            self.update_progress = 0.0;
+                            self.update_status = UpdateStatus::Start;
                         }
                     });
                 });
@@ -717,11 +734,7 @@ impl JukeBoxGui {
         });
     }
 
-    fn draw_keypad_device(
-        &mut self,
-        ui: &mut Ui,
-        gs_cmd_txs: &Arc<Mutex<HashMap<String, Sender<SerialCommand>>>>,
-    ) {
+    fn draw_keypad_device(&mut self, ui: &mut Ui) {
         ui.allocate_space(vec2(0.0, 4.0));
         ui.horizontal_top(|ui| {
             ui.allocate_ui(vec2(62.0, 231.5), |ui| {
@@ -798,16 +811,12 @@ impl JukeBoxGui {
                 }
             });
 
-            self.draw_device_firmware_management(ui, gs_cmd_txs);
+            self.draw_device_firmware_management(ui);
         });
         ui.allocate_space(ui.available_size_before_wrap());
     }
 
-    fn draw_pedalpad_device(
-        &mut self,
-        ui: &mut Ui,
-        gs_cmd_txs: &Arc<Mutex<HashMap<String, Sender<SerialCommand>>>>,
-    ) {
+    fn draw_pedalpad_device(&mut self, ui: &mut Ui) {
         ui.allocate_space(vec2(0.0, 4.0));
         ui.horizontal_top(|ui| {
             ui.allocate_ui(vec2(62.0, 231.5), |ui| {
@@ -845,7 +854,7 @@ impl JukeBoxGui {
                 });
             });
 
-            self.draw_device_firmware_management(ui, gs_cmd_txs);
+            self.draw_device_firmware_management(ui);
         });
         ui.allocate_space(ui.available_size_before_wrap());
     }
@@ -1016,10 +1025,112 @@ impl JukeBoxGui {
         });
     }
 
+    fn send_update_signal(
+        gs_cmd_txs: &Arc<Mutex<HashMap<String, Sender<SerialCommand>>>>,
+        su_tx: &Sender<(String, String)>,
+        device_uid: String,
+        fw_path: String,
+    ) {
+        let gs_cmd_txs = gs_cmd_txs.lock().unwrap();
+        if let Some(tx) = gs_cmd_txs.get(&device_uid) {
+            tx.send(SerialCommand::UpdateDevice)
+                .expect("failed to send update command");
+        }
+        su_tx
+            .send((device_uid, fw_path))
+            .expect("failed to send update signal to update thread");
+    }
+
+    fn draw_update_page(
+        &mut self,
+        ui: &mut Ui,
+        gs_cmd_txs: &Arc<Mutex<HashMap<String, Sender<SerialCommand>>>>,
+        su_tx: &Sender<(String, String)>,
+        us_rx: &Receiver<UpdateStatus>,
+    ) {
+        ui.vertical_centered(|ui| {
+            ui.allocate_space(vec2(0.0, 10.0));
+            ui.heading("Update Device");
+
+            // TODO: add some basic info (firmware versions, "do not uplug or power off", etc)
+            ui.allocate_space(vec2(0.0, 75.0));
+
+            ui.horizontal(|ui| {
+                let dl_update = Button::new(RichText::new("Update")).min_size(vec2(150.0, 30.0));
+                let cfw_update = Button::new(RichText::new("CFW").size(8.0));
+
+                ui.allocate_space(vec2(149.0, 0.0));
+
+                if self.update_status != UpdateStatus::Start
+                // && self.update_status != UpdateStatus::End
+                {
+                    ui.disable();
+                }
+
+                if ui.add(dl_update).clicked() {
+                    // Self::send_update_signal(
+                    //     gs_cmd_txs,
+                    //     su_tx,
+                    //     self.current_device.clone(),
+                    //     "".to_string(),
+                    // );
+                }
+                if ui.add(cfw_update).clicked() {
+                    // TODO: ask for file, verify its good, then use it to update the device
+                    if let Some(f) = FileDialog::new()
+                        .add_filter("UF2 Firmware", &["uf2"])
+                        .set_directory("~")
+                        .pick_file()
+                    {
+                        Self::send_update_signal(
+                            gs_cmd_txs,
+                            su_tx,
+                            self.current_device.clone(),
+                            f.to_string_lossy().to_string(),
+                        );
+                    }
+                }
+            });
+            ui.allocate_space(vec2(0.0, 25.0));
+            ui.horizontal(|ui| {
+                ui.allocate_space(vec2(149.0, 0.0));
+
+                while let Ok(p) = us_rx.try_recv() {
+                    self.update_status = p;
+                    match p {
+                        UpdateStatus::Start => self.update_progress = 0.0,
+                        UpdateStatus::Connecting => self.update_progress = 0.05,
+                        UpdateStatus::PreparingFirmware => self.update_progress = 0.1,
+                        UpdateStatus::ErasingOldFirmware(n) => self.update_progress = 0.1 + 0.3 * n,
+                        UpdateStatus::WritingNewFirmware(n) => self.update_progress = 0.4 + 0.6 * n,
+                        UpdateStatus::End => self.update_progress = 1.0,
+                    }
+                }
+
+                let p = ProgressBar::new(self.update_progress)
+                    // .animate(true)
+                    .desired_width(150.0)
+                    .desired_height(30.0)
+                    .show_percentage();
+                ui.add(p);
+            });
+            ui.allocate_space(vec2(0.0, 10.0));
+            ui.label(match self.update_status {
+                UpdateStatus::Start => "",
+                UpdateStatus::Connecting => "Connecting to device...",
+                UpdateStatus::PreparingFirmware => "Preparing firmware...",
+                UpdateStatus::ErasingOldFirmware(_) => "Erasing old firmware...",
+                UpdateStatus::WritingNewFirmware(_) => "Writing new firmware...",
+                UpdateStatus::End => "Done!",
+            });
+        });
+        ui.allocate_space(ui.available_size_before_wrap());
+    }
+
     fn draw_splash_text(&mut self, ui: &mut Ui) {
         if Instant::now() > self.splash_timer {
             loop {
-                let new_index = rand::thread_rng().gen_range(0..SPLASH_MESSAGES.len());
+                let new_index = rand::rng().random_range(0..SPLASH_MESSAGES.len());
                 if new_index != self.splash_index {
                     self.splash_index = new_index;
                     break;

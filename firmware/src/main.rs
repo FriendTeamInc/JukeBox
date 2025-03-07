@@ -136,7 +136,15 @@ fn main() -> ! {
     let mut usb_dev = UsbDeviceBuilder::new(&usb_bus, UsbVidPid(0x1209, usb_pid))
         .strings(&[StringDescriptors::default()
             .manufacturer("FriendTeamInc")
-            .product("JukeBox V5")
+            .product(if cfg!(feature = "keypad") {
+                "JukeBox V5 KeyPad"
+            } else if cfg!(feature = "knobpad") {
+                "JukeBox V5 KnobPad"
+            } else if cfg!(feature = "pedalpad") {
+                "JukeBox V5 PedalPad"
+            } else {
+                "JukeBox V5 Unknown"
+            })
             .serial_number(&uid)])
         .unwrap()
         .composite_with_iads()

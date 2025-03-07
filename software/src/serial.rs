@@ -417,7 +417,10 @@ pub fn serial_task(
                     ),
                 };
 
-                connected_uids2.lock().unwrap().remove(&device_uid);
+                log::debug!("about to remove connected uid");
+                let mut c = connected_uids2.lock().unwrap(); // TODO: FOR SOME REASON, DOESNT WORK
+                c.remove(&device_uid);
+                log::debug!("connected_uids: {:?}", c);
                 gs_cmd_txs.lock().unwrap().remove(&device_uid);
 
                 Ok(())

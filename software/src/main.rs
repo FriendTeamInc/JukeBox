@@ -8,6 +8,7 @@ mod input;
 mod reaction;
 mod serial;
 mod splash;
+mod update;
 mod reactions {
     pub mod discord;
     pub mod input;
