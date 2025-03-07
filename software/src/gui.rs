@@ -233,9 +233,12 @@ impl JukeBoxGui {
         })
         .expect("eframe error");
 
-        for (_k, tx) in gs_cmd_txs_end.lock().unwrap().iter() {
-            let _ = tx.send(SerialCommand::DisconnectDevice);
-            // .expect(&format!("could not send disconnect signal to device {}", k));
+        {
+            for (k, tx) in gs_cmd_txs_end.lock().unwrap().iter() {
+                let _ = tx
+                    .send(SerialCommand::DisconnectDevice)
+                    .expect(&format!("could not send disconnect signal to device {}", k));
+            }
         }
 
         brkr.store(true, std::sync::atomic::Ordering::Relaxed);
@@ -1031,10 +1034,12 @@ impl JukeBoxGui {
         device_uid: String,
         fw_path: String,
     ) {
-        let gs_cmd_txs = gs_cmd_txs.lock().unwrap();
-        if let Some(tx) = gs_cmd_txs.get(&device_uid) {
-            tx.send(SerialCommand::UpdateDevice)
-                .expect("failed to send update command");
+        {
+            let gs_cmd_txs = gs_cmd_txs.lock().unwrap();
+            if let Some(tx) = gs_cmd_txs.get(&device_uid) {
+                tx.send(SerialCommand::UpdateDevice)
+                    .expect("failed to send update command");
+            }
         }
         su_tx
             .send((device_uid, fw_path))

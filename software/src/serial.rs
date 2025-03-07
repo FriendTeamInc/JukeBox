@@ -346,6 +346,7 @@ pub fn serial_task(
             let uids = connected_uids.lock().unwrap();
             match serial_get_device(&uids) {
                 Err(e) => {
+                    drop(uids); // drop lock before sleeping
                     log::debug!("get_serial_device() failure: {:#}", e);
                     sleep(Duration::from_secs(1));
                     continue;
@@ -355,8 +356,6 @@ pub fn serial_task(
         };
 
         let (s_cmd_tx, s_cmd_rx) = channel::<SerialCommand>();
-        let gs_cmd_txs = gs_cmd_txs.clone();
-        let mut gs_cmd_txs_lock = gs_cmd_txs.lock().unwrap();
 
         // Greet and link up
         let device_info = greet_host(&mut f)?;
@@ -364,17 +363,21 @@ pub fn serial_task(
         // TODO: check that firmware version is ok
         let sg_tx2 = sg_tx.clone();
         let sr_tx2 = sr_tx.clone();
-        let connected_uids2 = connected_uids.clone();
 
-        gs_cmd_txs_lock.insert(device_uid.clone(), s_cmd_tx);
-        drop(gs_cmd_txs_lock);
-
+        gs_cmd_txs
+            .lock()
+            .unwrap()
+            .insert(device_uid.clone(), s_cmd_tx);
         connected_uids.lock().unwrap().insert(device_uid.clone());
 
+        let gs_cmd_txs2 = gs_cmd_txs.clone();
+        let connected_uids2 = connected_uids.clone();
+
         let handle = Builder::new()
-            .name(format!("thread_thread_device_{}", device_uid.clone()))
+            .name(format!("thread_serial_device_{}", device_uid.clone()))
             .spawn(move || {
-                let gs_cmd_txs = gs_cmd_txs.clone();
+                let gs_cmd_txs = gs_cmd_txs2;
+                let connected_uids = connected_uids2;
 
                 sg_tx2
                     .clone()
@@ -417,10 +420,7 @@ pub fn serial_task(
                     ),
                 };
 
-                log::debug!("about to remove connected uid");
-                let mut c = connected_uids2.lock().unwrap(); // TODO: FOR SOME REASON, DOESNT WORK
-                c.remove(&device_uid);
-                log::debug!("connected_uids: {:?}", c);
+                connected_uids.lock().unwrap().remove(&device_uid);
                 gs_cmd_txs.lock().unwrap().remove(&device_uid);
 
                 Ok(())
