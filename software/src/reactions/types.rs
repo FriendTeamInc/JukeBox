@@ -2,6 +2,7 @@
 
 use std::collections::HashMap;
 
+use anyhow::Result;
 use dyn_clone::{clone_trait_object, DynClone};
 use eframe::egui::Ui;
 use egui_phosphor::regular as phos;
@@ -16,17 +17,30 @@ use crate::{
 
 #[typetag::serde(tag = "type")]
 pub trait Reaction: Send + DynClone {
-    // TODO: add result output for error reporting
-    fn on_press(&self, device_uid: String, key: InputKey, config: &mut JukeBoxConfig);
-    fn on_release(&self, device_uid: String, key: InputKey, config: &mut JukeBoxConfig);
+    fn on_press(
+        &self,
+        device_uid: &String,
+        input_key: InputKey,
+        config: &mut JukeBoxConfig,
+    ) -> Result<()>;
+
+    fn on_release(
+        &self,
+        device_uid: &String,
+        input_key: InputKey,
+        config: &mut JukeBoxConfig,
+    ) -> Result<()>;
+
     fn get_type(&self) -> ReactionType;
+
     fn edit_ui(
         &mut self,
         ui: &mut Ui,
-        device_uid: String,
-        key: InputKey,
+        device_uid: &String,
+        input_key: InputKey,
         config: &mut JukeBoxConfig,
     );
+
     fn help(&self) -> String;
 }
 clone_trait_object!(Reaction);

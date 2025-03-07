@@ -953,13 +953,13 @@ impl JukeBoxGui {
                     .on_hover_text_at_pointer("Test reaction");
                 if test_btn.clicked() {
                     let mut c = self.config.lock().unwrap().clone();
-                    self.config_editing_reaction.on_press(
-                        self.current_device.clone(),
+                    let _ = self.config_editing_reaction.on_press(
+                        &self.current_device,
                         self.config_editing_key,
                         &mut c,
                     );
-                    self.config_editing_reaction.on_release(
-                        self.current_device.clone(),
+                    let _ = self.config_editing_reaction.on_release(
+                        &self.current_device,
                         self.config_editing_key,
                         &mut c,
                     );
@@ -1001,7 +1001,7 @@ impl JukeBoxGui {
                             let mut c = self.config.lock().unwrap().clone();
                             self.config_editing_reaction.edit_ui(
                                 ui,
-                                self.current_device.clone(),
+                                &self.current_device,
                                 self.config_editing_key,
                                 &mut c,
                             );

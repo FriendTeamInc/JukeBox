@@ -1,3 +1,4 @@
+use anyhow::Result;
 use eframe::egui::{ComboBox, Slider, Ui};
 use egui_phosphor::regular as phos;
 use serde::{Deserialize, Serialize};
@@ -186,12 +187,24 @@ pub struct InputKeyboard {
 }
 #[typetag::serde]
 impl Reaction for InputKeyboard {
-    fn on_press(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {
+    fn on_press(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
         // TODO
+        Ok(())
     }
 
-    fn on_release(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {
+    fn on_release(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
         // TODO
+        Ok(())
     }
 
     fn get_type(&self) -> ReactionType {
@@ -201,8 +214,8 @@ impl Reaction for InputKeyboard {
     fn edit_ui(
         &mut self,
         ui: &mut Ui,
-        _device_uid: String,
-        _key: InputKey,
+        _device_uid: &String,
+        _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) {
         ui.horizontal(|ui| {
@@ -248,12 +261,24 @@ pub struct InputMouse {
 }
 #[typetag::serde]
 impl Reaction for InputMouse {
-    fn on_press(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {
+    fn on_press(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
         // TODO
+        Ok(())
     }
 
-    fn on_release(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {
+    fn on_release(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
         // TODO
+        Ok(())
     }
 
     fn get_type(&self) -> ReactionType {
@@ -263,8 +288,8 @@ impl Reaction for InputMouse {
     fn edit_ui(
         &mut self,
         ui: &mut Ui,
-        _device_uid: String,
-        _key: InputKey,
+        _device_uid: &String,
+        _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) {
         ui.label("Buttons:");

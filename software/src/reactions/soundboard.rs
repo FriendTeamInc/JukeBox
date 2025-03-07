@@ -1,3 +1,4 @@
+use anyhow::Result;
 use eframe::egui::{ComboBox, Slider, Ui};
 use rfd::FileDialog;
 use serde::{Deserialize, Serialize};
@@ -14,11 +15,24 @@ pub struct SoundboardPlaySound {
 }
 #[typetag::serde]
 impl Reaction for SoundboardPlaySound {
-    fn on_press(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {
+    fn on_press(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
         // TODO
+        Ok(())
     }
 
-    fn on_release(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {}
+    fn on_release(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
+        Ok(())
+    }
 
     fn get_type(&self) -> ReactionType {
         ReactionType::SoundboardPlaySound
@@ -27,8 +41,8 @@ impl Reaction for SoundboardPlaySound {
     fn edit_ui(
         &mut self,
         ui: &mut Ui,
-        _device_uid: String,
-        _key: InputKey,
+        _device_uid: &String,
+        _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) {
         if ui.button("Choose File").clicked() {

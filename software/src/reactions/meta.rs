@@ -1,3 +1,4 @@
+use anyhow::Result;
 use eframe::egui::{ComboBox, Ui};
 use serde::{Deserialize, Serialize};
 
@@ -9,12 +10,32 @@ use super::types::{Reaction, ReactionType};
 pub struct MetaNoAction {}
 #[typetag::serde]
 impl Reaction for MetaNoAction {
-    fn on_press(&self, device_uid: String, key: InputKey, _config: &mut JukeBoxConfig) -> () {
-        log::info!("META NO ACTION: Device {} Pressed {:?} !", device_uid, key);
+    fn on_press(
+        &self,
+        device_uid: &String,
+        input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
+        log::info!(
+            "META NO ACTION: Device {} Pressed {:?} !",
+            device_uid,
+            input_key
+        );
+        Ok(())
     }
 
-    fn on_release(&self, device_uid: String, key: InputKey, _config: &mut JukeBoxConfig) -> () {
-        log::info!("META NO ACTION: Device {} Released {:?} !", device_uid, key);
+    fn on_release(
+        &self,
+        device_uid: &String,
+        input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
+        log::info!(
+            "META NO ACTION: Device {} Released {:?} !",
+            device_uid,
+            input_key
+        );
+        Ok(())
     }
 
     fn get_type(&self) -> ReactionType {
@@ -24,8 +45,8 @@ impl Reaction for MetaNoAction {
     fn edit_ui(
         &mut self,
         _ui: &mut Ui,
-        _device_uid: String,
-        _key: InputKey,
+        _device_uid: &String,
+        _input_input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) {
     }
@@ -41,15 +62,28 @@ pub struct MetaSwitchProfile {
 }
 #[typetag::serde]
 impl Reaction for MetaSwitchProfile {
-    fn on_press(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {}
+    fn on_press(
+        &self,
+        _device_uid: &String,
+        _input_input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
+        Ok(())
+    }
 
-    fn on_release(&self, _device_uid: String, _key: InputKey, config: &mut JukeBoxConfig) -> () {
+    fn on_release(
+        &self,
+        _device_uid: &String,
+        _input_input_key: InputKey,
+        config: &mut JukeBoxConfig,
+    ) -> Result<()> {
         log::info!(
             "switching profile: {} -> {}",
             config.current_profile,
             self.profile
         );
         config.current_profile = self.profile.clone();
+        Ok(())
     }
 
     fn get_type(&self) -> ReactionType {
@@ -59,8 +93,8 @@ impl Reaction for MetaSwitchProfile {
     fn edit_ui(
         &mut self,
         ui: &mut Ui,
-        _device_uid: String,
-        _key: InputKey,
+        _device_uid: &String,
+        _input_input_key: InputKey,
         config: &mut JukeBoxConfig,
     ) {
         ui.label("Profile:");
@@ -91,76 +125,91 @@ pub struct MetaCopyFromProfile {
 }
 #[typetag::serde]
 impl Reaction for MetaCopyFromProfile {
-    fn on_press(&self, device_uid: String, key: InputKey, config: &mut JukeBoxConfig) -> () {
+    fn on_press(
+        &self,
+        device_uid: &String,
+        input_key: InputKey,
+        config: &mut JukeBoxConfig,
+    ) -> Result<()> {
+        // TODO: improve this pyramid of doom
         if let Some(p) = config.clone().profiles.get(&self.profile) {
-            if let Some(d) = p.get(&device_uid) {
-                if let Some(k) = d.get(&key) {
+            if let Some(d) = p.get(device_uid) {
+                if let Some(k) = d.get(&input_key) {
                     log::info!(
                         "COPY PRESSED: {} -> {}",
                         config.current_profile,
                         self.profile
                     );
-                    k.on_press(device_uid, key, config);
+                    k.on_press(device_uid, input_key, config)?;
                 } else {
                     log::error!(
-                        "failed to find action (profile {}, device {}, key {:?})",
+                        "failed to find action (profile {}, device {}, input_key {:?})",
                         self.profile,
                         device_uid,
-                        key
+                        input_key
                     )
                 }
             } else {
                 log::error!(
-                    "failed to find device (profile {}, device {}, key {:?})",
+                    "failed to find device (profile {}, device {}, input_key {:?})",
                     self.profile,
                     device_uid,
-                    key
+                    input_key
                 )
             }
         } else {
             log::error!(
-                "failed to find profile (profile {}, device {}, key {:?})",
+                "failed to find profile (profile {}, device {}, input_key {:?})",
                 self.profile,
                 device_uid,
-                key
+                input_key
             )
         }
+
+        Ok(())
     }
 
-    fn on_release(&self, device_uid: String, key: InputKey, config: &mut JukeBoxConfig) -> () {
+    fn on_release(
+        &self,
+        device_uid: &String,
+        input_key: InputKey,
+        config: &mut JukeBoxConfig,
+    ) -> Result<()> {
+        // TODO: improve this pyramid of doom
         if let Some(p) = config.clone().profiles.get(&self.profile) {
-            if let Some(d) = p.get(&device_uid) {
-                if let Some(k) = d.get(&key) {
+            if let Some(d) = p.get(device_uid) {
+                if let Some(k) = d.get(&input_key) {
                     log::info!(
                         "COPY RELEASED: {} -> {}",
                         config.current_profile,
                         self.profile
                     );
-                    k.on_release(device_uid, key, &mut config.clone());
+                    k.on_release(device_uid, input_key, &mut config.clone())?;
                 } else {
                     log::error!(
-                        "failed to find action (profile {}, device {}, key {:?})",
+                        "failed to find action (profile {}, device {}, input_key {:?})",
                         self.profile,
                         device_uid,
-                        key
+                        input_key
                     )
                 }
             } else {
                 log::error!(
-                    "failed to find device (profile {}, device {}, key {:?})",
+                    "failed to find device (profile {}, device {}, input_key {:?})",
                     self.profile,
                     device_uid,
-                    key
+                    input_key
                 )
             }
         } else {
             log::error!(
-                "failed to find profile (profile {}, device {}, key {:?})",
+                "failed to find profile (profile {}, device {}, input_key {:?})",
                 self.profile,
                 device_uid,
-                key
+                input_key
             )
         }
+        Ok(())
     }
 
     fn get_type(&self) -> ReactionType {
@@ -170,8 +219,8 @@ impl Reaction for MetaCopyFromProfile {
     fn edit_ui(
         &mut self,
         ui: &mut Ui,
-        device_uid: String,
-        key: InputKey,
+        device_uid: &String,
+        input_key: InputKey,
         config: &mut JukeBoxConfig,
     ) {
         ui.label("Profile:");
@@ -183,7 +232,11 @@ impl Reaction for MetaCopyFromProfile {
                     if *k == config.current_profile {
                         continue;
                     }
-                    if v.get(&device_uid).unwrap().get(&key).unwrap().get_type()
+                    if v.get(device_uid)
+                        .unwrap()
+                        .get(&input_key)
+                        .unwrap()
+                        .get_type()
                         == ReactionType::MetaCopyFromProfile
                     {
                         continue;

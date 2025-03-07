@@ -1,3 +1,4 @@
+use anyhow::Result;
 use eframe::egui::{vec2, Button, Ui};
 use serde::{Deserialize, Serialize};
 
@@ -25,11 +26,24 @@ fn account_warning(ui: &mut Ui) {
 pub struct DiscordToggleMute {}
 #[typetag::serde]
 impl Reaction for DiscordToggleMute {
-    fn on_press(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {
+    fn on_press(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
         // TODO
+        Ok(())
     }
 
-    fn on_release(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {}
+    fn on_release(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
+        Ok(())
+    }
 
     fn get_type(&self) -> ReactionType {
         ReactionType::DiscordToggleMute
@@ -38,8 +52,8 @@ impl Reaction for DiscordToggleMute {
     fn edit_ui(
         &mut self,
         ui: &mut Ui,
-        _device_uid: String,
-        _key: InputKey,
+        _device_uid: &String,
+        _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) {
         account_warning(ui);
@@ -54,11 +68,24 @@ impl Reaction for DiscordToggleMute {
 pub struct DiscordToggleDeafen {}
 #[typetag::serde]
 impl Reaction for DiscordToggleDeafen {
-    fn on_press(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {
+    fn on_press(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
         // TODO
+        Ok(())
     }
 
-    fn on_release(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {}
+    fn on_release(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
+        Ok(())
+    }
 
     fn get_type(&self) -> ReactionType {
         ReactionType::DiscordToggleDeafen
@@ -67,8 +94,8 @@ impl Reaction for DiscordToggleDeafen {
     fn edit_ui(
         &mut self,
         ui: &mut Ui,
-        _device_uid: String,
-        _key: InputKey,
+        _device_uid: &String,
+        _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) {
         account_warning(ui);
@@ -83,12 +110,24 @@ impl Reaction for DiscordToggleDeafen {
 pub struct DiscordPushToTalk {}
 #[typetag::serde]
 impl Reaction for DiscordPushToTalk {
-    fn on_press(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {
+    fn on_press(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
         // TODO
+        Ok(())
     }
 
-    fn on_release(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {
+    fn on_release(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
         // TODO
+        Ok(())
     }
 
     fn get_type(&self) -> ReactionType {
@@ -98,8 +137,8 @@ impl Reaction for DiscordPushToTalk {
     fn edit_ui(
         &mut self,
         ui: &mut Ui,
-        _device_uid: String,
-        _key: InputKey,
+        _device_uid: &String,
+        _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) {
         account_warning(ui);
@@ -114,12 +153,24 @@ impl Reaction for DiscordPushToTalk {
 pub struct DiscordPushToMute {}
 #[typetag::serde]
 impl Reaction for DiscordPushToMute {
-    fn on_press(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {
+    fn on_press(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
         // TODO
+        Ok(())
     }
 
-    fn on_release(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {
+    fn on_release(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
         // TODO
+        Ok(())
     }
 
     fn get_type(&self) -> ReactionType {
@@ -129,8 +180,8 @@ impl Reaction for DiscordPushToMute {
     fn edit_ui(
         &mut self,
         ui: &mut Ui,
-        _device_uid: String,
-        _key: InputKey,
+        _device_uid: &String,
+        _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) {
         account_warning(ui);
@@ -145,12 +196,24 @@ impl Reaction for DiscordPushToMute {
 pub struct DiscordToggleCamera {}
 #[typetag::serde]
 impl Reaction for DiscordToggleCamera {
-    fn on_press(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {
+    fn on_press(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
         // TODO
+        Ok(())
     }
 
-    fn on_release(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {
+    fn on_release(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
         // TODO
+        Ok(())
     }
 
     fn get_type(&self) -> ReactionType {
@@ -160,8 +223,8 @@ impl Reaction for DiscordToggleCamera {
     fn edit_ui(
         &mut self,
         ui: &mut Ui,
-        _device_uid: String,
-        _key: InputKey,
+        _device_uid: &String,
+        _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) {
         account_warning(ui);

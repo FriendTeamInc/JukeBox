@@ -1,5 +1,6 @@
 use std::process::Command;
 
+use anyhow::Result;
 use eframe::egui::{ComboBox, Slider, Ui};
 use egui_phosphor::regular as phos;
 use rfd::FileDialog;
@@ -16,14 +17,27 @@ pub struct SystemLaunchApplication {
 }
 #[typetag::serde]
 impl Reaction for SystemLaunchApplication {
-    fn on_press(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {
+    fn on_press(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
         let _ = Command::new(self.filepath.clone())
             .args(self.arguments.clone())
             .spawn();
         // TODO: error handling
+        Ok(())
     }
 
-    fn on_release(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {}
+    fn on_release(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
+        Ok(())
+    }
 
     fn get_type(&self) -> ReactionType {
         ReactionType::SystemLaunchApplication
@@ -32,8 +46,8 @@ impl Reaction for SystemLaunchApplication {
     fn edit_ui(
         &mut self,
         ui: &mut Ui,
-        _device_uid: String,
-        _key: InputKey,
+        _device_uid: &String,
+        _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) {
         if ui.button("Choose File").clicked() {
@@ -74,12 +88,25 @@ pub struct SystemOpenWebsite {
 }
 #[typetag::serde]
 impl Reaction for SystemOpenWebsite {
-    fn on_press(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {
+    fn on_press(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
         let _ = open::that(self.url.clone());
         // TODO: error handling
+        Ok(())
     }
 
-    fn on_release(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {}
+    fn on_release(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
+        Ok(())
+    }
 
     fn get_type(&self) -> ReactionType {
         ReactionType::SystemOpenWebsite
@@ -88,8 +115,8 @@ impl Reaction for SystemOpenWebsite {
     fn edit_ui(
         &mut self,
         ui: &mut Ui,
-        _device_uid: String,
-        _key: InputKey,
+        _device_uid: &String,
+        _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) {
         ui.label("URL:");
@@ -108,11 +135,24 @@ pub struct SystemAudioInputControl {
 }
 #[typetag::serde]
 impl Reaction for SystemAudioInputControl {
-    fn on_press(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {
+    fn on_press(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
         // TODO
+        Ok(())
     }
 
-    fn on_release(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {}
+    fn on_release(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
+        Ok(())
+    }
 
     fn get_type(&self) -> ReactionType {
         ReactionType::SystemAudioInputControl
@@ -121,8 +161,8 @@ impl Reaction for SystemAudioInputControl {
     fn edit_ui(
         &mut self,
         ui: &mut Ui,
-        _device_uid: String,
-        _key: InputKey,
+        _device_uid: &String,
+        _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) {
         ui.label("Output device:");
@@ -149,11 +189,24 @@ pub struct SystemAudioOutputControl {
 }
 #[typetag::serde]
 impl Reaction for SystemAudioOutputControl {
-    fn on_press(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {
+    fn on_press(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
         // TODO
+        Ok(())
     }
 
-    fn on_release(&self, _device_uid: String, _key: InputKey, _config: &mut JukeBoxConfig) -> () {}
+    fn on_release(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
+        Ok(())
+    }
 
     fn get_type(&self) -> ReactionType {
         ReactionType::SystemAudioOutputControl
@@ -162,8 +215,8 @@ impl Reaction for SystemAudioOutputControl {
     fn edit_ui(
         &mut self,
         ui: &mut Ui,
-        _device_uid: String,
-        _key: InputKey,
+        _device_uid: &String,
+        _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) {
         ui.label("Output device:");

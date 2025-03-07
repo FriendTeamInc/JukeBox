@@ -15,6 +15,8 @@ pub fn reaction_task(
 ) -> Result<()> {
     let mut prevkeys: HashMap<String, HashSet<InputKey>> = HashMap::new();
 
+    // TODO: have discord and obs clients set up here for specific reactions to trigger with
+
     while let Ok(evnt) = s_evnt_rx.recv() {
         match evnt {
             SerialEvent::Connected(device_info) => {
@@ -42,15 +44,17 @@ pub fn reaction_task(
                 let pressed = keys.difference(&prevkeys);
                 let released = prevkeys.difference(&keys);
 
+                // TODO: error signaling
+
                 for p in pressed {
                     if let Some(r) = current_profile.get(p) {
-                        r.on_press(device_uid.clone(), *p, &mut c);
+                        let _ = r.on_press(&device_uid, *p, &mut c);
                     }
                 }
 
                 for p in released {
                     if let Some(r) = current_profile.get(p) {
-                        r.on_release(device_uid.clone(), *p, &mut c);
+                        let _ = r.on_release(&device_uid, *p, &mut c);
                     }
                 }
 

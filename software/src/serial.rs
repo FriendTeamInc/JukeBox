@@ -29,17 +29,14 @@ pub struct SerialConnectionDetails {
 }
 
 pub enum SerialCommand {
-    // GetPeripherals,
     UpdateDevice,
     DisconnectDevice,
-    // TestFunction,
 }
 
 #[derive(PartialEq, Clone)]
 pub enum SerialEvent {
     Connected(SerialConnectionDetails),
     GetInputKeys((String, HashSet<InputKey>)),
-    // GetPeripherals(HashSet<Peripheral>),
     LostConnection(String),
     Disconnected(String),
 }
