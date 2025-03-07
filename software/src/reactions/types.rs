@@ -11,7 +11,7 @@ use crate::{
     config::JukeBoxConfig,
     gui::DeviceType,
     input::InputKey,
-    reactions::{input::*, meta::*, soundboard::*, system::*},
+    reactions::{discord::*, input::*, meta::*, soundboard::*, system::*},
 };
 
 #[typetag::serde(tag = "type")]
@@ -89,11 +89,11 @@ pub fn reaction_enum_to_new(t: ReactionType) -> Box<dyn Reaction> {
         r::SystemAudioInputControl => Box::new(SystemAudioInputControl::default()),
         r::SystemAudioOutputControl => Box::new(SystemAudioOutputControl::default()),
         r::SoundboardPlaySound => Box::new(SoundboardPlaySound::default()),
-        // r::DiscordToggleMute => Box::new(DiscordToggleMute::default()),
-        // r::DiscordToggleDeafen => Box::new(DiscordToggleDeafen::default()),
-        // r::DiscordPushToTalk => Box::new(DiscordPushToTalk::default()),
-        // r::DiscordPushToMute => Box::new(DiscordPushToMute::default()),
-        // r::DiscordToggleCamera => Box::new(DiscordToggleCamera::default()),
+        r::DiscordToggleMute => Box::new(DiscordToggleMute::default()),
+        r::DiscordToggleDeafen => Box::new(DiscordToggleDeafen::default()),
+        r::DiscordPushToTalk => Box::new(DiscordPushToTalk::default()),
+        r::DiscordPushToMute => Box::new(DiscordPushToMute::default()),
+        r::DiscordToggleCamera => Box::new(DiscordToggleCamera::default()),
         // r::ObsStream => Box::new(ObsStream::default()),
         // r::ObsRecord => Box::new(ObsRecord::default()),
         // r::ObsPauseRecord => Box::new(ObsPauseRecord::default()),

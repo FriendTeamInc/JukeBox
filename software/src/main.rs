@@ -9,6 +9,7 @@ mod reaction;
 mod serial;
 mod splash;
 mod reactions {
+    pub mod discord;
     pub mod input;
     pub mod meta;
     pub mod soundboard;
