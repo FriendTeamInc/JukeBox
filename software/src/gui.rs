@@ -3,7 +3,6 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
-use std::thread::Builder;
 use std::time::{Duration, Instant};
 
 use eframe::egui::scroll_area::ScrollBarVisibility;
@@ -72,6 +71,8 @@ impl Into<u8> for DeviceType {
 }
 
 struct JukeBoxGui {
+    rt: Runtime,
+
     splash_timer: Instant,
     splash_index: usize,
 
@@ -96,6 +97,8 @@ struct JukeBoxGui {
 }
 impl JukeBoxGui {
     fn new() -> Self {
+        let rt = Runtime::new().expect("unable to create tokio runtime");
+
         let config = JukeBoxConfig::load();
         config.save(); // Immediately save, in case the config was the loaded default
         let devices: HashMap<String, (DeviceType, String, String, bool, HashSet<InputKey>)> =
@@ -115,6 +118,8 @@ impl JukeBoxGui {
         let config = Arc::new(Mutex::new(JukeBoxConfig::load()));
 
         JukeBoxGui {
+            rt: rt,
+
             splash_timer: Instant::now(),
             splash_index: 0usize,
 
@@ -157,24 +162,14 @@ impl JukeBoxGui {
         // gui thread sends events to serial threads (specific Device ID -> Device specific Serial Thread)
         // serial thread spawns the channels and gives the sender to the gui thread through this
 
-        let (su_tx, su_rx) = unbounded_channel::<(String, String)>(); // gui thread sends update signal to update thread
         let (us_tx, mut us_rx) = unbounded_channel::<UpdateStatus>(); // update thread sends update statuses to gui thread
 
         let reaction_config = self.config.clone();
 
-        let rt = Runtime::new().expect("unable to create tokio runtime");
-        let thread_async = Builder::new()
-            .name("async_thread".to_string())
-            .spawn(move || {
-                rt.block_on(async {
-                    rt.spawn(
-                        async move { serial_task(brkr_serial, gs_cmd_tx, sg_tx, sr_tx).await },
-                    );
-                    rt.spawn(async move { reaction_task(sr_rx, reaction_config).await });
-                    update_task(su_rx, us_tx).await; // TODO: only spawn an update task with tokio::spawn
-                })
-            })
-            .expect("failed to start async thread");
+        self.rt
+            .spawn(async move { serial_task(brkr_serial, gs_cmd_tx, sg_tx, sr_tx).await });
+        self.rt
+            .spawn(async move { reaction_task(sr_rx, reaction_config).await });
 
         let options = eframe::NativeOptions {
             viewport: ViewportBuilder::default()
@@ -219,7 +214,7 @@ impl JukeBoxGui {
                     GuiTab::Device => self.draw_device_page(ui),
                     GuiTab::Settings => self.draw_settings_page(ui),
                     GuiTab::Editing => self.draw_edit_reaction(ui, &reaction_ui_list),
-                    GuiTab::Updating => self.draw_update_page(ui, &gs_cmd_txs, &su_tx, &mut us_rx),
+                    GuiTab::Updating => self.draw_update_page(ui, &gs_cmd_txs, &us_tx, &mut us_rx),
                 });
 
                 ui.separator();
@@ -240,6 +235,8 @@ impl JukeBoxGui {
         })
         .expect("eframe error");
 
+        log::info!("here?");
+
         {
             for (k, tx) in gs_cmd_txs_end.lock().unwrap().iter() {
                 let _ = tx
@@ -249,8 +246,7 @@ impl JukeBoxGui {
         }
 
         brkr.store(true, std::sync::atomic::Ordering::Relaxed);
-
-        let _ = thread_async.join().expect("could not rejoin async thread");
+        log::info!("here?");
     }
 
     fn handle_serial_events(
@@ -1038,25 +1034,31 @@ impl JukeBoxGui {
     }
 
     fn send_update_signal(
+        rt: &Runtime,
         gs_cmd_txs: &HashMap<String, UnboundedSender<SerialCommand>>,
-        su_tx: &UnboundedSender<(String, String)>,
         device_uid: String,
         fw_path: String,
+        us_tx: &UnboundedSender<UpdateStatus>,
     ) {
         if let Some(tx) = gs_cmd_txs.get(&device_uid) {
             tx.send(SerialCommand::UpdateDevice)
                 .expect("failed to send update command");
         }
-        su_tx
-            .send((device_uid, fw_path))
-            .expect("failed to send update signal to update thread");
+        // su_tx
+        //     .send((device_uid, fw_path))
+        //     .expect("failed to send update signal to update thread");
+
+        let us_tx2 = us_tx.clone();
+        rt.spawn(async move {
+            update_task(device_uid, fw_path, us_tx2).await;
+        });
     }
 
     fn draw_update_page(
         &mut self,
         ui: &mut Ui,
         gs_cmd_txs: &HashMap<String, UnboundedSender<SerialCommand>>,
-        su_tx: &UnboundedSender<(String, String)>,
+        us_tx: &UnboundedSender<UpdateStatus>,
         us_rx: &mut UnboundedReceiver<UpdateStatus>,
     ) {
         ui.vertical_centered(|ui| {
@@ -1072,18 +1074,17 @@ impl JukeBoxGui {
 
                 ui.allocate_space(vec2(149.0, 0.0));
 
-                if self.update_status != UpdateStatus::Start
-                // && self.update_status != UpdateStatus::End
-                {
+                if self.update_status != UpdateStatus::Start {
                     ui.disable();
                 }
 
                 if ui.add(dl_update).clicked() {
                     // Self::send_update_signal(
+                    //     &self.rt,
                     //     gs_cmd_txs,
-                    //     su_tx,
                     //     self.current_device.clone(),
-                    //     "".to_string(),
+                    //     f.to_string_lossy().to_string(),
+                    //     us_tx,
                     // );
                 }
                 if ui.add(cfw_update).clicked() {
@@ -1094,10 +1095,11 @@ impl JukeBoxGui {
                         .pick_file()
                     {
                         Self::send_update_signal(
+                            &self.rt,
                             gs_cmd_txs,
-                            su_tx,
                             self.current_device.clone(),
                             f.to_string_lossy().to_string(),
+                            us_tx,
                         );
                     }
                 }
