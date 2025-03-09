@@ -1,8 +1,4 @@
-use std::{
-    sync::mpsc::{Receiver, Sender},
-    thread::sleep,
-    time::Duration,
-};
+use std::{thread::sleep, time::Duration};
 
 use anyhow::{bail, Result};
 use picoboot_rs::{

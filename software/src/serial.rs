@@ -5,7 +5,6 @@ use crate::input::InputKey;
 use std::collections::HashSet;
 use std::io::Read;
 use std::sync::atomic::AtomicBool;
-// use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread::{sleep, yield_now, Builder};
 use std::time::{Duration, Instant};
@@ -367,7 +366,7 @@ pub async fn serial_task(
 
         let (s_cmd_tx, s_cmd_rx) = unbounded_channel::<SerialCommand>();
 
-        gs_cmd_tx.send((device_uid.clone(), s_cmd_tx));
+        let _ = gs_cmd_tx.send((device_uid.clone(), s_cmd_tx));
 
         connected_uids.lock().unwrap().insert(device_uid.clone());
 
