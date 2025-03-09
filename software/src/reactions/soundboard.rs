@@ -13,9 +13,10 @@ pub struct SoundboardPlaySound {
     output_device: String,
     volume: u8,
 }
+#[async_trait::async_trait]
 #[typetag::serde]
 impl Reaction for SoundboardPlaySound {
-    fn on_press(
+    async fn on_press(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -25,7 +26,7 @@ impl Reaction for SoundboardPlaySound {
         Ok(())
     }
 
-    fn on_release(
+    async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,

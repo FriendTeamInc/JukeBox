@@ -8,9 +8,10 @@ use super::types::{Reaction, ReactionType};
 
 #[derive(Default, Serialize, Deserialize, Clone)]
 pub struct MetaNoAction {}
+#[async_trait::async_trait]
 #[typetag::serde]
 impl Reaction for MetaNoAction {
-    fn on_press(
+    async fn on_press(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -24,7 +25,7 @@ impl Reaction for MetaNoAction {
         Ok(())
     }
 
-    fn on_release(
+    async fn on_release(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -60,9 +61,10 @@ impl Reaction for MetaNoAction {
 pub struct MetaSwitchProfile {
     profile: String,
 }
+#[async_trait::async_trait]
 #[typetag::serde]
 impl Reaction for MetaSwitchProfile {
-    fn on_press(
+    async fn on_press(
         &self,
         _device_uid: &String,
         _input_input_key: InputKey,
@@ -71,7 +73,7 @@ impl Reaction for MetaSwitchProfile {
         Ok(())
     }
 
-    fn on_release(
+    async fn on_release(
         &self,
         _device_uid: &String,
         _input_input_key: InputKey,
@@ -123,9 +125,10 @@ impl Reaction for MetaSwitchProfile {
 pub struct MetaCopyFromProfile {
     profile: String,
 }
+#[async_trait::async_trait]
 #[typetag::serde]
 impl Reaction for MetaCopyFromProfile {
-    fn on_press(
+    async fn on_press(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -140,7 +143,7 @@ impl Reaction for MetaCopyFromProfile {
                         config.current_profile,
                         self.profile
                     );
-                    k.on_press(device_uid, input_key, config)?;
+                    k.on_press(device_uid, input_key, config).await?;
                 } else {
                     log::error!(
                         "failed to find action (profile {}, device {}, input_key {:?})",
@@ -169,7 +172,7 @@ impl Reaction for MetaCopyFromProfile {
         Ok(())
     }
 
-    fn on_release(
+    async fn on_release(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -184,7 +187,8 @@ impl Reaction for MetaCopyFromProfile {
                         config.current_profile,
                         self.profile
                     );
-                    k.on_release(device_uid, input_key, &mut config.clone())?;
+                    k.on_release(device_uid, input_key, &mut config.clone())
+                        .await?;
                 } else {
                     log::error!(
                         "failed to find action (profile {}, device {}, input_key {:?})",

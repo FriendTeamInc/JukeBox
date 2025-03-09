@@ -15,16 +15,17 @@ use crate::{
     reactions::{discord::*, input::*, meta::*, soundboard::*, system::*},
 };
 
+#[async_trait::async_trait]
 #[typetag::serde(tag = "type")]
 pub trait Reaction: Send + DynClone {
-    fn on_press(
+    async fn on_press(
         &self,
         device_uid: &String,
         input_key: InputKey,
         config: &mut JukeBoxConfig,
     ) -> Result<()>;
 
-    fn on_release(
+    async fn on_release(
         &self,
         device_uid: &String,
         input_key: InputKey,

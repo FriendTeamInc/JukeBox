@@ -2,10 +2,10 @@
 
 use crate::input::InputKey;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::io::Read;
 use std::sync::atomic::AtomicBool;
-use std::sync::mpsc::{channel, Receiver, Sender};
+// use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread::{sleep, yield_now, Builder};
 use std::time::{Duration, Instant};
@@ -20,6 +20,7 @@ use jukebox_util::protocol::{
     RSP_DISCONNECTED, RSP_END, RSP_INPUT_HEADER, RSP_LINK_DELIMITER, RSP_LINK_HEADER, RSP_UNKNOWN,
 };
 use serialport::SerialPort;
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 #[derive(PartialEq, Clone)]
 pub struct SerialConnectionDetails {
@@ -52,6 +53,7 @@ fn get_serial_string(f: &mut Box<dyn SerialPort>) -> Result<Vec<u8>> {
 
         let mut b = [0u8; 1];
         let res = f.read(&mut b);
+
         match res {
             Err(e) => match e.kind() {
                 std::io::ErrorKind::BrokenPipe => bail!("broken serial pipe"),
@@ -274,29 +276,32 @@ pub fn serial_get_device(connected_uids: &HashSet<String>) -> Result<Box<dyn Ser
 
 pub fn serial_loop(
     f: &mut Box<dyn SerialPort>,
-    sg_tx: Sender<SerialEvent>,
-    sr_tx: Sender<SerialEvent>,
+    sg_tx: UnboundedSender<SerialEvent>,
+    sr_tx: UnboundedSender<SerialEvent>,
     device_uid: String,
-    s_cmd_rx: Receiver<SerialCommand>,
+    mut s_cmd_rx: UnboundedReceiver<SerialCommand>,
 ) -> Result<()> {
     let mut timer = Instant::now();
     'forv: loop {
-        if Instant::now() < timer {
-            yield_now();
-            continue;
-        }
-        timer = Instant::now() + Duration::from_millis(25);
+        // TODO: move this block to a tokio thread
+        {
+            if Instant::now() < timer {
+                yield_now();
+                continue;
+            }
+            timer = Instant::now() + Duration::from_millis(25);
 
-        let keys = transmit_get_input_keys(f)?;
-        sr_tx
-            .send(SerialEvent::GetInputKeys((
-                device_uid.clone(),
-                keys.clone(),
-            )))
-            .context("failed to send input info to react")?;
-        sg_tx
-            .send(SerialEvent::GetInputKeys((device_uid.clone(), keys)))
-            .context("failed to send input info to gui")?;
+            let keys = transmit_get_input_keys(f)?;
+            sr_tx
+                .send(SerialEvent::GetInputKeys((
+                    device_uid.clone(),
+                    keys.clone(),
+                )))
+                .context("failed to send input info to react")?;
+            sg_tx
+                .send(SerialEvent::GetInputKeys((device_uid.clone(), keys)))
+                .context("failed to send input info to gui")?;
+        }
 
         while let Ok(cmd) = s_cmd_rx.try_recv() {
             match cmd {
@@ -329,11 +334,12 @@ pub fn serial_loop(
     Ok(())
 }
 
-pub fn serial_task(
+// TODO: we don't really do any async stuff in here. we should fix that
+pub async fn serial_task(
     brkr: Arc<AtomicBool>,
-    gs_cmd_txs: Arc<Mutex<HashMap<String, Sender<SerialCommand>>>>,
-    sg_tx: Sender<SerialEvent>,
-    sr_tx: Sender<SerialEvent>,
+    gs_cmd_tx: UnboundedSender<(String, UnboundedSender<SerialCommand>)>,
+    sg_tx: UnboundedSender<SerialEvent>,
+    sr_tx: UnboundedSender<SerialEvent>,
 ) -> Result<()> {
     let mut handles = Vec::new();
     let connected_uids = Arc::new(Mutex::new(HashSet::new()));
@@ -352,8 +358,6 @@ pub fn serial_task(
             }
         };
 
-        let (s_cmd_tx, s_cmd_rx) = channel::<SerialCommand>();
-
         // Greet and link up
         let device_info = greet_host(&mut f)?;
         let device_uid = device_info.device_uid.clone();
@@ -361,19 +365,17 @@ pub fn serial_task(
         let sg_tx2 = sg_tx.clone();
         let sr_tx2 = sr_tx.clone();
 
-        gs_cmd_txs
-            .lock()
-            .unwrap()
-            .insert(device_uid.clone(), s_cmd_tx);
+        let (s_cmd_tx, s_cmd_rx) = unbounded_channel::<SerialCommand>();
+
+        gs_cmd_tx.send((device_uid.clone(), s_cmd_tx));
+
         connected_uids.lock().unwrap().insert(device_uid.clone());
 
-        let gs_cmd_txs2 = gs_cmd_txs.clone();
         let connected_uids2 = connected_uids.clone();
 
         let handle = Builder::new()
             .name(format!("thread_serial_device_{}", device_uid.clone()))
             .spawn(move || {
-                let gs_cmd_txs = gs_cmd_txs2;
                 let connected_uids = connected_uids2;
 
                 sg_tx2
@@ -418,7 +420,6 @@ pub fn serial_task(
                 };
 
                 connected_uids.lock().unwrap().remove(&device_uid);
-                gs_cmd_txs.lock().unwrap().remove(&device_uid);
 
                 Ok(())
             })

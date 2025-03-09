@@ -2,22 +2,23 @@
 
 use std::{
     collections::{HashMap, HashSet},
-    sync::{mpsc::Receiver, Arc, Mutex},
+    sync::{Arc, Mutex},
 };
 
 use anyhow::Result;
+use tokio::sync::mpsc::UnboundedReceiver;
 
 use crate::{config::JukeBoxConfig, input::InputKey, serial::SerialEvent};
 
-pub fn reaction_task(
-    s_evnt_rx: Receiver<SerialEvent>,
+pub async fn reaction_task(
+    mut s_evnt_rx: UnboundedReceiver<SerialEvent>,
     config: Arc<Mutex<JukeBoxConfig>>,
 ) -> Result<()> {
     let mut prevkeys: HashMap<String, HashSet<InputKey>> = HashMap::new();
 
     // TODO: have discord and obs clients set up here for specific reactions to trigger with
 
-    while let Ok(evnt) = s_evnt_rx.recv() {
+    while let Some(evnt) = s_evnt_rx.recv().await {
         match evnt {
             SerialEvent::Connected(device_info) => {
                 if !prevkeys.contains_key(&device_info.device_uid) {

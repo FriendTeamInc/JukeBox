@@ -10,6 +10,7 @@ use picoboot_rs::{
     STACK_POINTER_RP2040,
 };
 use rusb::Context;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use uf2_decode::convert_from_uf2;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -41,7 +42,12 @@ fn uf2_pages(bytes: Vec<u8>) -> Vec<Vec<u8>> {
     fw_pages
 }
 
-fn update_device(ctx: Context, fw_path: String, status: Sender<UpdateStatus>) -> Result<()> {
+// TODO: change to async
+fn update_device(
+    ctx: Context,
+    fw_path: String,
+    status: UnboundedSender<UpdateStatus>,
+) -> Result<()> {
     // TODO: add context()'s
 
     status.send(UpdateStatus::Connecting)?;
@@ -117,13 +123,13 @@ fn update_device(ctx: Context, fw_path: String, status: Sender<UpdateStatus>) ->
     Ok(())
 }
 
-pub fn update_task(
-    update_trigger: Receiver<(String, String)>,
-    update_status: Sender<UpdateStatus>,
+pub async fn update_task(
+    mut update_trigger: UnboundedReceiver<(String, String)>,
+    update_status: UnboundedSender<UpdateStatus>,
 ) {
     let ctx = Context::new().expect("failed to get USB context");
 
-    while let Ok((device_uid, fw_path)) = update_trigger.recv() {
+    while let Some((device_uid, fw_path)) = update_trigger.recv().await {
         match update_device(ctx.clone(), fw_path, update_status.clone()) {
             Ok(_) => {}
             Err(e) => {

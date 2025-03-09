@@ -24,9 +24,10 @@ fn account_warning(ui: &mut Ui) {
 
 #[derive(Default, Serialize, Deserialize, Clone)]
 pub struct DiscordToggleMute {}
+#[async_trait::async_trait]
 #[typetag::serde]
 impl Reaction for DiscordToggleMute {
-    fn on_press(
+    async fn on_press(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -36,7 +37,7 @@ impl Reaction for DiscordToggleMute {
         Ok(())
     }
 
-    fn on_release(
+    async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -66,9 +67,10 @@ impl Reaction for DiscordToggleMute {
 
 #[derive(Default, Serialize, Deserialize, Clone)]
 pub struct DiscordToggleDeafen {}
+#[async_trait::async_trait]
 #[typetag::serde]
 impl Reaction for DiscordToggleDeafen {
-    fn on_press(
+    async fn on_press(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -78,7 +80,7 @@ impl Reaction for DiscordToggleDeafen {
         Ok(())
     }
 
-    fn on_release(
+    async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -108,9 +110,10 @@ impl Reaction for DiscordToggleDeafen {
 
 #[derive(Default, Serialize, Deserialize, Clone)]
 pub struct DiscordPushToTalk {}
+#[async_trait::async_trait]
 #[typetag::serde]
 impl Reaction for DiscordPushToTalk {
-    fn on_press(
+    async fn on_press(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -120,7 +123,7 @@ impl Reaction for DiscordPushToTalk {
         Ok(())
     }
 
-    fn on_release(
+    async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -151,9 +154,10 @@ impl Reaction for DiscordPushToTalk {
 
 #[derive(Default, Serialize, Deserialize, Clone)]
 pub struct DiscordPushToMute {}
+#[async_trait::async_trait]
 #[typetag::serde]
 impl Reaction for DiscordPushToMute {
-    fn on_press(
+    async fn on_press(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -163,7 +167,7 @@ impl Reaction for DiscordPushToMute {
         Ok(())
     }
 
-    fn on_release(
+    async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -194,9 +198,10 @@ impl Reaction for DiscordPushToMute {
 
 #[derive(Default, Serialize, Deserialize, Clone)]
 pub struct DiscordToggleCamera {}
+#[async_trait::async_trait]
 #[typetag::serde]
 impl Reaction for DiscordToggleCamera {
-    fn on_press(
+    async fn on_press(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -206,7 +211,7 @@ impl Reaction for DiscordToggleCamera {
         Ok(())
     }
 
-    fn on_release(
+    async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,

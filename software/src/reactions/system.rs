@@ -15,9 +15,10 @@ pub struct SystemLaunchApplication {
     filepath: String,
     arguments: Vec<String>,
 }
+#[async_trait::async_trait]
 #[typetag::serde]
 impl Reaction for SystemLaunchApplication {
-    fn on_press(
+    async fn on_press(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -26,11 +27,12 @@ impl Reaction for SystemLaunchApplication {
         let _ = Command::new(self.filepath.clone())
             .args(self.arguments.clone())
             .spawn();
+        // TODO: async spawn
         // TODO: error handling
         Ok(())
     }
 
-    fn on_release(
+    async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -86,9 +88,10 @@ impl Reaction for SystemLaunchApplication {
 pub struct SystemOpenWebsite {
     url: String,
 }
+#[async_trait::async_trait]
 #[typetag::serde]
 impl Reaction for SystemOpenWebsite {
-    fn on_press(
+    async fn on_press(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -99,7 +102,7 @@ impl Reaction for SystemOpenWebsite {
         Ok(())
     }
 
-    fn on_release(
+    async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -133,9 +136,10 @@ pub struct SystemAudioInputControl {
     input_device: String,
     vol_adjust: i8,
 }
+#[async_trait::async_trait]
 #[typetag::serde]
 impl Reaction for SystemAudioInputControl {
-    fn on_press(
+    async fn on_press(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -145,7 +149,7 @@ impl Reaction for SystemAudioInputControl {
         Ok(())
     }
 
-    fn on_release(
+    async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -187,9 +191,10 @@ pub struct SystemAudioOutputControl {
     input_device: String,
     vol_adjust: i8,
 }
+#[async_trait::async_trait]
 #[typetag::serde]
 impl Reaction for SystemAudioOutputControl {
-    fn on_press(
+    async fn on_press(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -199,7 +204,7 @@ impl Reaction for SystemAudioOutputControl {
         Ok(())
     }
 
-    fn on_release(
+    async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,

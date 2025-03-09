@@ -185,9 +185,10 @@ const KEYBOARD_SCAN_CODES: [(&str, u8); 169] = [
 pub struct InputKeyboard {
     keys: Vec<u8>,
 }
+#[async_trait::async_trait]
 #[typetag::serde]
 impl Reaction for InputKeyboard {
-    fn on_press(
+    async fn on_press(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -197,7 +198,7 @@ impl Reaction for InputKeyboard {
         Ok(())
     }
 
-    fn on_release(
+    async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -259,9 +260,10 @@ pub struct InputMouse {
     scroll_y: i8,
     scroll_x: i8,
 }
+#[async_trait::async_trait]
 #[typetag::serde]
 impl Reaction for InputMouse {
-    fn on_press(
+    async fn on_press(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -271,7 +273,7 @@ impl Reaction for InputMouse {
         Ok(())
     }
 
-    fn on_release(
+    async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,

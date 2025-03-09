@@ -2,7 +2,6 @@
 
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::AtomicBool;
-use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread::Builder;
 use std::time::{Duration, Instant};
@@ -20,6 +19,8 @@ use jukebox_util::peripheral::{
 use rand::prelude::*;
 use rfd::FileDialog;
 use serde::{Deserialize, Serialize};
+use tokio::runtime::Runtime;
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 use crate::config::JukeBoxConfig;
 use crate::input::InputKey;
@@ -140,39 +141,65 @@ impl JukeBoxGui {
     fn run(mut self) {
         // channels cannot be a part of Self due to partial move errors
 
-        let (sr_tx, sr_rx) = channel::<SerialEvent>(); // serial threads send events to reaction thread
-        let (sg_tx, sg_rx) = channel::<SerialEvent>(); // serial threads send events to gui thread
-        let gs_cmd_txs: Arc<Mutex<HashMap<String, Sender<SerialCommand>>>> =
-            Arc::new(Mutex::new(HashMap::new()));
-        // gui thread sends events to serial threads (specific Device ID -> Device specific Serial Thread)
-        // serial thread spawns the channels and gives the sender to the gui thread through this
+        // let (sr_tx, sr_rx) = channel::<SerialEvent>(); // serial threads send events to reaction thread
+        // let (sg_tx, sg_rx) = channel::<SerialEvent>(); // serial threads send events to gui thread
+        // let gs_cmd_txs: Arc<Mutex<HashMap<String, Sender<SerialCommand>>>> =
+        //     Arc::new(Mutex::new(HashMap::new()));
+        // // gui thread sends events to serial threads (specific Device ID -> Device specific Serial Thread)
+        // // serial thread spawns the channels and gives the sender to the gui thread through this
 
-        let (su_tx, su_rx) = channel::<(String, String)>(); // gui thread sends update signal to update thread
-        let (us_tx, us_rx) = channel::<UpdateStatus>(); // update thread sends update statuses to gui thread
+        // let (su_tx, su_rx) = channel::<(String, String)>(); // gui thread sends update signal to update thread
+        // let (us_tx, us_rx) = channel::<UpdateStatus>(); // update thread sends update statuses to gui thread
+
+        // // serial comms thread
+        // let thread_serial = Builder::new()
+        //     .name("thread_serial_main".to_string())
+        //     .spawn(move || serial_task(brkr_serial, gs_cmd_txs_serial, sg_tx, sr_tx))
+        //     .unwrap();
+
+        // // reaction comms thread
+        // let thread_reaction = Builder::new()
+        //     .name("thread_reaction_main".to_string())
+        //     .spawn(move || reaction_task(sr_rx, reaction_config))
+        //     .unwrap();
+
+        // let thread_update = Builder::new()
+        //     .name("update_thread".to_string())
+        //     .spawn(move || update_task(su_rx, us_tx))
+        //     .unwrap();
 
         // when gui exits, we use these to signal the other threads to stop
         let brkr = Arc::new(AtomicBool::new(false)); // ends other threads from gui
         let brkr_serial = brkr.clone();
-        let gs_cmd_txs_serial = gs_cmd_txs.clone();
-        let gs_cmd_txs_end = gs_cmd_txs.clone();
 
-        // serial comms thread
-        let thread_serial = Builder::new()
-            .name("thread_serial_main".to_string())
-            .spawn(move || serial_task(brkr_serial, gs_cmd_txs_serial, sg_tx, sr_tx))
-            .unwrap();
+        let (sr_tx, sr_rx) = unbounded_channel::<SerialEvent>(); // serial threads send events to reaction thread
+        let (sg_tx, mut sg_rx) = unbounded_channel::<SerialEvent>(); // serial threads send events to gui thread
 
-        // reaction comms thread
+        let (gs_cmd_tx, mut gs_cmd_rx) =
+            unbounded_channel::<(String, UnboundedSender<SerialCommand>)>(); // serial threads send "serial command senders" to gui
+        let mut gs_cmd_txs: HashMap<String, UnboundedSender<SerialCommand>> = HashMap::new();
+
+        // gui thread sends events to serial threads (specific Device ID -> Device specific Serial Thread)
+        // serial thread spawns the channels and gives the sender to the gui thread through this
+
+        let (su_tx, su_rx) = unbounded_channel::<(String, String)>(); // gui thread sends update signal to update thread
+        let (us_tx, mut us_rx) = unbounded_channel::<UpdateStatus>(); // update thread sends update statuses to gui thread
+
         let reaction_config = self.config.clone();
-        let thread_reaction = Builder::new()
-            .name("thread_reaction_main".to_string())
-            .spawn(move || reaction_task(sr_rx, reaction_config))
-            .unwrap();
 
-        let thread_update = Builder::new()
-            .name("update_thread".to_string())
-            .spawn(move || update_task(su_rx, us_tx))
-            .unwrap();
+        let rt = Runtime::new().expect("unable to create tokio runtime");
+        let thread_async = Builder::new()
+            .name("async_thread".to_string())
+            .spawn(move || {
+                rt.block_on(async {
+                    rt.spawn(
+                        async move { serial_task(brkr_serial, gs_cmd_tx, sg_tx, sr_tx).await },
+                    );
+                    rt.spawn(async move { reaction_task(sr_rx, reaction_config).await });
+                    update_task(su_rx, us_tx).await; // TODO: only spawn an update task with tokio::spawn
+                })
+            })
+            .expect("failed to start async thread");
 
         let options = eframe::NativeOptions {
             viewport: ViewportBuilder::default()
@@ -193,12 +220,15 @@ impl JukeBoxGui {
         let reaction_ui_list = reaction_ui_list();
 
         eframe::run_simple_native("JukeBox Desktop", options, move |ctx, _frame| {
+            // TODO: give ctx to other threads?, so ui can be updated as necessary.
+            // but only once
+
             ctx.set_zoom_factor(2.0);
             let mut fonts = eframe::egui::FontDefinitions::default();
             egui_phosphor::add_to_fonts(&mut fonts, egui_phosphor::Variant::Regular);
             ctx.set_fonts(fonts);
 
-            self.handle_serial_events(&sg_rx); // TODO: give ctx to other threads?, so ui can be updated as necessary
+            self.handle_serial_events(&mut gs_cmd_rx, &mut gs_cmd_txs, &mut sg_rx);
 
             CentralPanel::default().show(ctx, |ui| {
                 ui.horizontal(|ui| {
@@ -212,7 +242,7 @@ impl JukeBoxGui {
                     GuiTab::Device => self.draw_device_page(ui),
                     GuiTab::Settings => self.draw_settings_page(ui),
                     GuiTab::Editing => self.draw_edit_reaction(ui, &reaction_ui_list),
-                    GuiTab::Updating => self.draw_update_page(ui, &gs_cmd_txs, &su_tx, &us_rx),
+                    GuiTab::Updating => self.draw_update_page(ui, &gs_cmd_txs, &su_tx, &mut us_rx),
                 });
 
                 ui.separator();
@@ -233,30 +263,39 @@ impl JukeBoxGui {
         })
         .expect("eframe error");
 
-        {
-            for (k, tx) in gs_cmd_txs_end.lock().unwrap().iter() {
-                let _ = tx
-                    .send(SerialCommand::DisconnectDevice)
-                    .expect(&format!("could not send disconnect signal to device {}", k));
-            }
-        }
+        // {
+        //     for (k, tx) in gs_cmd_txs {
+        //         let _ = tx
+        //             .send(SerialCommand::DisconnectDevice)
+        //             .expect(&format!("could not send disconnect signal to device {}", k));
+        //     }
+        // }
 
         brkr.store(true, std::sync::atomic::Ordering::Relaxed);
 
-        let _ = thread_serial
-            .join()
-            .expect("could not rejoin serial thread");
+        // let _ = thread_serial
+        //     .join()
+        //     .expect("could not rejoin serial thread");
 
-        let _ = thread_reaction
-            .join()
-            .expect("could not rejoin reaction thread");
+        // let _ = thread_reaction
+        //     .join()
+        //     .expect("could not rejoin reaction thread");
 
-        let _ = thread_update
-            .join()
-            .expect("could not rejoin update thread");
+        // let _ = thread_update
+        //     .join()
+        //     .expect("could not rejoin update thread");
     }
 
-    fn handle_serial_events(&mut self, s_evnt_rx: &Receiver<SerialEvent>) {
+    fn handle_serial_events(
+        &mut self,
+        gs_cmd_rx: &mut UnboundedReceiver<(String, UnboundedSender<SerialCommand>)>,
+        gs_cmd_txs: &mut HashMap<String, UnboundedSender<SerialCommand>>,
+        s_evnt_rx: &mut UnboundedReceiver<SerialEvent>,
+    ) {
+        while let Ok((device_uid, gs_cmd_tx)) = gs_cmd_rx.try_recv() {
+            gs_cmd_txs.insert(device_uid, gs_cmd_tx);
+        }
+
         while let Ok(event) = s_evnt_rx.try_recv() {
             match event {
                 SerialEvent::Connected(d) => {
@@ -320,6 +359,7 @@ impl JukeBoxGui {
                         v.3 = false;
                         v.4.clear();
                     }
+                    gs_cmd_txs.remove(&device_uid);
                 }
                 SerialEvent::Disconnected(device_uid) => {
                     if self.devices.contains_key(&device_uid) {
@@ -327,6 +367,7 @@ impl JukeBoxGui {
                         v.3 = false;
                         v.4.clear();
                     }
+                    gs_cmd_txs.remove(&device_uid);
                 }
                 SerialEvent::GetInputKeys((device_uid, input_keys)) => {
                     if self.devices.contains_key(&device_uid) {
@@ -952,17 +993,18 @@ impl JukeBoxGui {
                     )
                     .on_hover_text_at_pointer("Test reaction");
                 if test_btn.clicked() {
-                    let mut c = self.config.lock().unwrap().clone();
-                    let _ = self.config_editing_reaction.on_press(
-                        &self.current_device,
-                        self.config_editing_key,
-                        &mut c,
-                    );
-                    let _ = self.config_editing_reaction.on_release(
-                        &self.current_device,
-                        self.config_editing_key,
-                        &mut c,
-                    );
+                    // TODO: fix this
+                    // let mut c = self.config.lock().unwrap().clone();
+                    // let _ = self.config_editing_reaction.on_press(
+                    //     &self.current_device,
+                    //     self.config_editing_key,
+                    //     &mut c,
+                    // );
+                    // let _ = self.config_editing_reaction.on_release(
+                    //     &self.current_device,
+                    //     self.config_editing_key,
+                    //     &mut c,
+                    // );
                 }
                 ui.vertical(|ui| {
                     ui.allocate_space(vec2(0.0, 2.0));
@@ -1029,17 +1071,14 @@ impl JukeBoxGui {
     }
 
     fn send_update_signal(
-        gs_cmd_txs: &Arc<Mutex<HashMap<String, Sender<SerialCommand>>>>,
-        su_tx: &Sender<(String, String)>,
+        gs_cmd_txs: &HashMap<String, UnboundedSender<SerialCommand>>,
+        su_tx: &UnboundedSender<(String, String)>,
         device_uid: String,
         fw_path: String,
     ) {
-        {
-            let gs_cmd_txs = gs_cmd_txs.lock().unwrap();
-            if let Some(tx) = gs_cmd_txs.get(&device_uid) {
-                tx.send(SerialCommand::UpdateDevice)
-                    .expect("failed to send update command");
-            }
+        if let Some(tx) = gs_cmd_txs.get(&device_uid) {
+            tx.send(SerialCommand::UpdateDevice)
+                .expect("failed to send update command");
         }
         su_tx
             .send((device_uid, fw_path))
@@ -1049,9 +1088,9 @@ impl JukeBoxGui {
     fn draw_update_page(
         &mut self,
         ui: &mut Ui,
-        gs_cmd_txs: &Arc<Mutex<HashMap<String, Sender<SerialCommand>>>>,
-        su_tx: &Sender<(String, String)>,
-        us_rx: &Receiver<UpdateStatus>,
+        gs_cmd_txs: &HashMap<String, UnboundedSender<SerialCommand>>,
+        su_tx: &UnboundedSender<(String, String)>,
+        us_rx: &mut UnboundedReceiver<UpdateStatus>,
     ) {
         ui.vertical_centered(|ui| {
             ui.allocate_space(vec2(0.0, 10.0));
