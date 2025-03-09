@@ -71,8 +71,6 @@ impl Into<u8> for DeviceType {
 }
 
 struct JukeBoxGui {
-    rt: Runtime,
-
     splash_timer: Instant,
     splash_index: usize,
 
@@ -97,8 +95,6 @@ struct JukeBoxGui {
 }
 impl JukeBoxGui {
     fn new() -> Self {
-        let rt = Runtime::new().expect("unable to create tokio runtime");
-
         let config = JukeBoxConfig::load();
         config.save(); // Immediately save, in case the config was the loaded default
         let devices: HashMap<String, (DeviceType, String, String, bool, HashSet<InputKey>)> =
@@ -118,8 +114,6 @@ impl JukeBoxGui {
         let config = Arc::new(Mutex::new(JukeBoxConfig::load()));
 
         JukeBoxGui {
-            rt: rt,
-
             splash_timer: Instant::now(),
             splash_index: 0usize,
 
@@ -166,10 +160,10 @@ impl JukeBoxGui {
 
         let reaction_config = self.config.clone();
 
-        self.rt
-            .spawn(async move { serial_task(brkr_serial, gs_cmd_tx, sg_tx, sr_tx).await });
-        self.rt
-            .spawn(async move { reaction_task(sr_rx, reaction_config).await });
+        let rt = Runtime::new().expect("unable to create tokio runtime");
+        let _ = rt.enter();
+        rt.spawn(async move { serial_task(brkr_serial, gs_cmd_tx, sg_tx, sr_tx).await });
+        rt.spawn(async move { reaction_task(sr_rx, reaction_config).await });
 
         let options = eframe::NativeOptions {
             viewport: ViewportBuilder::default()
@@ -235,8 +229,6 @@ impl JukeBoxGui {
         })
         .expect("eframe error");
 
-        log::info!("here?");
-
         {
             for (k, tx) in gs_cmd_txs_end.lock().unwrap().iter() {
                 let _ = tx
@@ -246,7 +238,8 @@ impl JukeBoxGui {
         }
 
         brkr.store(true, std::sync::atomic::Ordering::Relaxed);
-        log::info!("here?");
+
+        rt.shutdown_timeout(Duration::from_secs(1));
     }
 
     fn handle_serial_events(
@@ -1034,8 +1027,8 @@ impl JukeBoxGui {
     }
 
     fn send_update_signal(
-        rt: &Runtime,
         gs_cmd_txs: &HashMap<String, UnboundedSender<SerialCommand>>,
+        // su_tx: &UnboundedSender<(String, String)>,
         device_uid: String,
         fw_path: String,
         us_tx: &UnboundedSender<UpdateStatus>,
@@ -1049,7 +1042,7 @@ impl JukeBoxGui {
         //     .expect("failed to send update signal to update thread");
 
         let us_tx2 = us_tx.clone();
-        rt.spawn(async move {
+        tokio::spawn(async move {
             update_task(device_uid, fw_path, us_tx2).await;
         });
     }
@@ -1080,7 +1073,6 @@ impl JukeBoxGui {
 
                 if ui.add(dl_update).clicked() {
                     // Self::send_update_signal(
-                    //     &self.rt,
                     //     gs_cmd_txs,
                     //     self.current_device.clone(),
                     //     f.to_string_lossy().to_string(),
@@ -1095,7 +1087,6 @@ impl JukeBoxGui {
                         .pick_file()
                     {
                         Self::send_update_signal(
-                            &self.rt,
                             gs_cmd_txs,
                             self.current_device.clone(),
                             f.to_string_lossy().to_string(),
