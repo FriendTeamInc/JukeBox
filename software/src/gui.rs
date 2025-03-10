@@ -266,6 +266,8 @@ impl JukeBoxGui {
                     let firmware_version = d.firmware_version;
 
                     let short_uid = device_uid[..4].to_string();
+
+                    // TODO: double check that the device is fine to use
                     let device_name = match Into::<DeviceType>::into(device_type) {
                         DeviceType::Unknown => format!("Unknown Device {}", device_uid.clone()),
                         DeviceType::KeyPad => format!("JukeBox KeyPad {}", short_uid),
@@ -416,15 +418,22 @@ impl JukeBoxGui {
                     TextEdit::singleline(&mut self.config_device_name_entry).desired_width(192.0),
                 );
                 if edit.lost_focus() && self.config_device_name_entry.len() > 0 {
-                    // TODO: check that a device with this name doesnt already exist!
                     self.config_renaming_device = false;
-                    let d = self.devices.get_mut(&self.current_device).expect("");
-                    d.1 = self.config_device_name_entry.clone();
 
-                    let mut conf = self.config.blocking_lock();
-                    let c = conf.devices.get_mut(&self.current_device).expect("");
-                    c.1 = self.config_device_name_entry.clone();
-                    conf.save();
+                    let contains = self
+                        .devices
+                        .iter()
+                        .any(|(_, d)| d.1 == self.config_device_name_entry);
+
+                    if !contains {
+                        let d = self.devices.get_mut(&self.current_device).expect("");
+                        d.1 = self.config_device_name_entry.clone();
+
+                        let mut conf = self.config.blocking_lock();
+                        let c = conf.devices.get_mut(&self.current_device).expect("");
+                        c.1 = self.config_device_name_entry.clone();
+                        conf.save();
+                    }
                 }
                 if !edit.has_focus() {
                     edit.request_focus();
@@ -436,16 +445,18 @@ impl JukeBoxGui {
                     &String::new()
                 };
                 ui.add_enabled_ui(self.devices.iter().count() != 0, |ui| {
+                    let mut devices = self.devices.iter().map(|v| v.clone()).collect::<Vec<_>>();
+                    devices.sort_by(|a, b| a.1 .1.cmp(&b.1 .1));
+
                     ComboBox::from_id_salt("DeviceSelect")
                         .selected_text(current_name.clone())
                         .width(200.0)
                         .truncate()
                         .show_ui(ui, |ui| {
-                            // TODO: sort this alphabetically
-                            for (k, v) in &self.devices {
+                            for (k, v) in &devices {
                                 let u = ui.selectable_label(v.1 == *current_name, v.1.clone());
                                 if u.clicked() {
-                                    self.current_device = k.clone();
+                                    self.current_device = k.to_string();
                                 }
                             }
                         })
@@ -491,7 +502,7 @@ impl JukeBoxGui {
                     }
                     conf.save();
 
-                    // TODO: disconnect device over serial?
+                    // maybe disconnect device over serial?
                 }
             })
         });
@@ -563,14 +574,14 @@ impl JukeBoxGui {
                 }
             } else {
                 let mut conf = self.config.blocking_lock();
-                let profiles = conf.profiles.clone();
+                let mut profiles = conf.profiles.keys().cloned().collect::<Vec<_>>();
+                profiles.sort_by(|a, b| a.cmp(b));
                 let current = conf.current_profile.clone();
                 ComboBox::from_id_salt("ProfileSelect")
-                    .selected_text(conf.current_profile.clone())
+                    .selected_text(current.clone())
                     .width(150.0)
                     .show_ui(ui, |ui| {
-                        // TODO: sort this alphabetically
-                        for (k, _) in &profiles {
+                        for k in &profiles {
                             let u = ui.selectable_label(*k == current, &*k.clone());
                             if u.clicked() {
                                 conf.current_profile = k.to_string();
@@ -868,7 +879,6 @@ impl JukeBoxGui {
     }
 
     fn enter_reaction_editor(&mut self, key: InputKey) {
-        // log::info!("{:?} ui clicked", key);
         self.config_renaming_device = false;
         self.config_renaming_profile = false;
         self.gui_tab = GuiTab::Editing;

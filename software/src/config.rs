@@ -33,20 +33,25 @@ impl Default for JukeBoxConfig {
     }
 }
 impl JukeBoxConfig {
-    fn get_path() -> PathBuf {
+    fn get_dir() -> PathBuf {
         let mut p = dirs::config_dir().expect("failed to find config directory");
         p.push("JukeBoxDesktop");
         create_dir_all(&p).expect("failed to create config directory");
+        p
+    }
+
+    fn get_path() -> PathBuf {
+        let mut p = Self::get_dir();
         p.push("config.json");
         p
     }
 
     pub fn load() -> Self {
         let path = Self::get_path();
+
         let file = match File::open(path) {
             Err(e) => {
                 log::error!("failed to open config file: {}", e);
-                // TODO: panic?
                 return JukeBoxConfig::default();
             }
             Ok(f) => f,
@@ -55,7 +60,25 @@ impl JukeBoxConfig {
         let conf = match serde_json::from_reader(file) {
             Err(e) => {
                 log::error!("failed to parse config file: {}", e);
-                // TODO: rename old config so that it isnt overwritten by new default config
+
+                let paths: Vec<_> = std::fs::read_dir(Self::get_dir())
+                    .unwrap()
+                    .filter(|f| {
+                        f.as_ref()
+                            .and_then(|f| {
+                                Ok(f.file_name().to_string_lossy().contains("config.json"))
+                            })
+                            .unwrap_or(false)
+                    })
+                    .collect();
+
+                let mut p = Self::get_dir();
+                p.push(format!("config.json.old.{}", paths.len()));
+
+                log::error!("saving old config as {:?}...", p);
+
+                std::fs::rename(Self::get_path(), p).expect("failed to save old config");
+
                 return JukeBoxConfig::default();
             }
             Ok(c) => c,
