@@ -5,7 +5,7 @@ use crate::input::InputKey;
 use std::collections::HashSet;
 use std::io::Read;
 use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, bail, Context, Result};
@@ -19,6 +19,8 @@ use jukebox_util::protocol::{
 };
 use serialport::SerialPort;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+use tokio::sync::Mutex;
+use tokio::task::spawn_blocking;
 use tokio::time::sleep;
 
 #[derive(PartialEq, Clone)]
@@ -332,11 +334,15 @@ pub async fn serial_task(
     sg_tx: UnboundedSender<SerialEvent>,
     sr_tx: UnboundedSender<SerialEvent>,
 ) -> Result<()> {
+    // TODO: switch mutex to tokio mutex
     let connected_uids = Arc::new(Mutex::new(HashSet::new()));
 
     while !brkr.load(std::sync::atomic::Ordering::Relaxed) {
         let mut f = {
-            let r = serial_get_device(&connected_uids.lock().unwrap());
+            let uids = connected_uids.lock().await.clone();
+            let r = spawn_blocking(move || serial_get_device(&uids))
+                .await
+                .unwrap();
             match r {
                 Err(e) => {
                     log::debug!("get_serial_device() failure: {:#}", e);
@@ -358,7 +364,7 @@ pub async fn serial_task(
 
         let _ = gs_cmd_tx.send((device_uid.clone(), s_cmd_tx));
 
-        connected_uids.lock().unwrap().insert(device_uid.clone());
+        connected_uids.lock().await.insert(device_uid.clone());
 
         let connected_uids2 = connected_uids.clone();
 
@@ -406,7 +412,7 @@ pub async fn serial_task(
                 ),
             };
 
-            connected_uids.lock().unwrap().remove(&device_uid);
+            connected_uids.lock().await.remove(&device_uid);
         });
     }
 

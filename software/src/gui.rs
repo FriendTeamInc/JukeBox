@@ -269,9 +269,7 @@ impl JukeBoxGui {
                     };
 
                     {
-                        log::info!("testing");
                         let mut conf = self.config.blocking_lock();
-                        log::info!("testing2");
                         if !conf.devices.contains_key(&device_uid) {
                             conf.devices.insert(
                                 device_uid.clone(),
