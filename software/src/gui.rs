@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::AtomicBool;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use eframe::egui::scroll_area::ScrollBarVisibility;
@@ -20,6 +20,7 @@ use rfd::FileDialog;
 use serde::{Deserialize, Serialize};
 use tokio::runtime::Runtime;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
+use tokio::{spawn, sync::Mutex};
 
 use crate::config::JukeBoxConfig;
 use crate::input::InputKey;
@@ -149,7 +150,7 @@ impl JukeBoxGui {
 
         let (gs_cmd_tx, mut gs_cmd_rx) =
             unbounded_channel::<(String, UnboundedSender<SerialCommand>)>(); // serial threads send "serial command senders" to gui
-        let gs_cmd_txs: Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>> =
+        let mut gs_cmd_txs: Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>> =
             Arc::new(Mutex::new(HashMap::new()));
         let gs_cmd_txs_end = gs_cmd_txs.clone();
 
@@ -162,8 +163,8 @@ impl JukeBoxGui {
 
         let rt = Runtime::new().expect("unable to create tokio runtime");
         let _guard = rt.enter();
-        tokio::spawn(async move { serial_task(brkr_serial, gs_cmd_tx, sg_tx, sr_tx).await });
-        tokio::spawn(async move { reaction_task(sr_rx, reaction_config).await });
+        spawn(async move { serial_task(brkr_serial, gs_cmd_tx, sg_tx, sr_tx).await });
+        spawn(async move { reaction_task(sr_rx, reaction_config).await });
 
         let options = eframe::NativeOptions {
             viewport: ViewportBuilder::default()
@@ -191,8 +192,6 @@ impl JukeBoxGui {
             let mut fonts = eframe::egui::FontDefinitions::default();
             egui_phosphor::add_to_fonts(&mut fonts, egui_phosphor::Variant::Regular);
             ctx.set_fonts(fonts);
-
-            let mut gs_cmd_txs = gs_cmd_txs.lock().unwrap();
 
             self.handle_serial_events(&mut gs_cmd_rx, &mut gs_cmd_txs, &mut sg_rx);
 
@@ -230,7 +229,7 @@ impl JukeBoxGui {
         .expect("eframe error");
 
         {
-            for (_k, tx) in gs_cmd_txs_end.lock().unwrap().iter() {
+            for (_k, tx) in gs_cmd_txs_end.blocking_lock().iter() {
                 let _ = tx.send(SerialCommand::DisconnectDevice);
                 // .expect(&format!("could not send disconnect signal to device {}", k));
             }
@@ -244,11 +243,14 @@ impl JukeBoxGui {
     fn handle_serial_events(
         &mut self,
         gs_cmd_rx: &mut UnboundedReceiver<(String, UnboundedSender<SerialCommand>)>,
-        gs_cmd_txs: &mut HashMap<String, UnboundedSender<SerialCommand>>,
+        gs_cmd_txs: &mut Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
         s_evnt_rx: &mut UnboundedReceiver<SerialEvent>,
     ) {
-        while let Ok((device_uid, gs_cmd_tx)) = gs_cmd_rx.try_recv() {
-            gs_cmd_txs.insert(device_uid, gs_cmd_tx);
+        {
+            let mut gs_cmd_txs = gs_cmd_txs.blocking_lock();
+            while let Ok((device_uid, gs_cmd_tx)) = gs_cmd_rx.try_recv() {
+                gs_cmd_txs.insert(device_uid, gs_cmd_tx);
+            }
         }
 
         while let Ok(event) = s_evnt_rx.try_recv() {
@@ -266,23 +268,26 @@ impl JukeBoxGui {
                         DeviceType::PedalPad => format!("JukeBox PedalPad {}", short_uid),
                     };
 
-                    let mut conf = self.config.lock().unwrap();
-                    if !conf.devices.contains_key(&device_uid) {
-                        conf.devices.insert(
-                            device_uid.clone(),
-                            (device_type.into(), device_name.clone()),
-                        );
-                        for (_, v) in conf.profiles.iter_mut() {
-                            if !v.contains_key(&device_uid) {
-                                v.insert(
-                                    device_uid.clone(),
-                                    default_reaction_config(device_type.into()),
-                                );
+                    {
+                        log::info!("testing");
+                        let mut conf = self.config.blocking_lock();
+                        log::info!("testing2");
+                        if !conf.devices.contains_key(&device_uid) {
+                            conf.devices.insert(
+                                device_uid.clone(),
+                                (device_type.into(), device_name.clone()),
+                            );
+                            for (_, v) in conf.profiles.iter_mut() {
+                                if !v.contains_key(&device_uid) {
+                                    v.insert(
+                                        device_uid.clone(),
+                                        default_reaction_config(device_type.into()),
+                                    );
+                                }
                             }
                         }
+                        conf.save();
                     }
-                    conf.save();
-                    drop(conf);
 
                     if self.current_device.is_empty() {
                         self.current_device = device_uid.clone();
@@ -314,6 +319,7 @@ impl JukeBoxGui {
                         v.3 = false;
                         v.4.clear();
                     }
+                    let mut gs_cmd_txs = gs_cmd_txs.blocking_lock();
                     gs_cmd_txs.remove(&device_uid);
                 }
                 SerialEvent::Disconnected(device_uid) => {
@@ -322,6 +328,7 @@ impl JukeBoxGui {
                         v.3 = false;
                         v.4.clear();
                     }
+                    let mut gs_cmd_txs = gs_cmd_txs.blocking_lock();
                     gs_cmd_txs.remove(&device_uid);
                 }
                 SerialEvent::GetInputKeys((device_uid, input_keys)) => {
@@ -380,7 +387,7 @@ impl JukeBoxGui {
             )
             .changed()
         {
-            let mut conf = self.config.lock().unwrap();
+            let mut conf = self.config.blocking_lock();
             conf.enable_splash = self.config_enable_splash;
             conf.save();
         }
@@ -411,7 +418,7 @@ impl JukeBoxGui {
                     let d = self.devices.get_mut(&self.current_device).expect("");
                     d.1 = self.config_device_name_entry.clone();
 
-                    let mut conf = self.config.lock().unwrap();
+                    let mut conf = self.config.blocking_lock();
                     let c = conf.devices.get_mut(&self.current_device).expect("");
                     c.1 = self.config_device_name_entry.clone();
                     conf.save();
@@ -474,13 +481,11 @@ impl JukeBoxGui {
                         .unwrap_or(&String::new())
                         .to_string();
 
-                    let mut conf = self.config.lock().unwrap();
+                    let mut conf = self.config.blocking_lock();
                     conf.devices.remove(&old_device);
-
                     for (_, p) in conf.profiles.iter_mut() {
                         p.remove_entry(&old_device);
                     }
-
                     conf.save();
 
                     // TODO: disconnect device over serial?
@@ -518,7 +523,8 @@ impl JukeBoxGui {
                 );
                 if edit.lost_focus() && self.config_profile_name_entry.len() > 0 {
                     self.config_renaming_profile = false;
-                    let mut conf = self.config.lock().unwrap();
+
+                    let mut conf = self.config.blocking_lock();
 
                     if !conf.profiles.contains_key(&self.config_profile_name_entry) {
                         let p = conf.current_profile.clone();
@@ -553,7 +559,7 @@ impl JukeBoxGui {
                     edit.request_focus();
                 }
             } else {
-                let mut conf = self.config.lock().unwrap();
+                let mut conf = self.config.blocking_lock();
                 let profiles = conf.profiles.clone();
                 let current = conf.current_profile.clone();
                 ComboBox::from_id_salt("ProfileSelect")
@@ -579,7 +585,7 @@ impl JukeBoxGui {
                     .button(RichText::new(phos::PLUS_CIRCLE))
                     .on_hover_text_at_pointer("New Profile");
                 if new_btn.clicked() {
-                    let mut conf = self.config.lock().unwrap();
+                    let mut conf = self.config.blocking_lock();
                     let mut idx = conf.profiles.keys().len() + 1;
                     let name = loop {
                         let name = format!("Profile {}", idx);
@@ -600,13 +606,13 @@ impl JukeBoxGui {
                     .button(RichText::new(phos::NOTE_PENCIL))
                     .on_hover_text_at_pointer("Edit Profile Name");
                 if edit_btn.clicked() {
-                    let conf = self.config.lock().unwrap();
+                    let conf = self.config.blocking_lock();
                     self.config_renaming_profile = true;
                     self.config_profile_name_entry
                         .replace_with(&conf.current_profile);
                 }
 
-                let mut conf = self.config.lock().unwrap();
+                let mut conf = self.config.blocking_lock();
                 if conf.profiles.keys().len() <= 1 {
                     ui.disable();
                 }
@@ -865,7 +871,7 @@ impl JukeBoxGui {
         self.gui_tab = GuiTab::Editing;
         self.config_editing_key = key;
         {
-            let c = self.config.lock().unwrap();
+            let c = self.config.blocking_lock();
             if let Some(r) = c
                 .profiles
                 .get(&c.current_profile)
@@ -889,7 +895,7 @@ impl JukeBoxGui {
     fn save_reaction_and_exit(&mut self) {
         // TODO: have config validate input?
         self.gui_tab = GuiTab::Device;
-        let mut c = self.config.lock().unwrap();
+        let mut c = self.config.blocking_lock();
         let current_profile = c.current_profile.clone();
         let profile = c.profiles.get_mut(&current_profile).unwrap();
         if let Some(d) = profile.get_mut(&self.current_device) {
@@ -995,7 +1001,7 @@ impl JukeBoxGui {
                     .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
                     .show(ui, |ui| {
                         ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
-                            let mut c = self.config.lock().unwrap().clone();
+                            let mut c = self.config.blocking_lock().clone();
                             self.config_editing_reaction.edit_ui(
                                 ui,
                                 &self.current_device,
@@ -1026,22 +1032,21 @@ impl JukeBoxGui {
     }
 
     fn send_update_signal(
-        gs_cmd_txs: &HashMap<String, UnboundedSender<SerialCommand>>,
-        // su_tx: &UnboundedSender<(String, String)>,
+        gs_cmd_txs: &Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
         device_uid: String,
         fw_path: String,
         us_tx: &UnboundedSender<UpdateStatus>,
     ) {
-        if let Some(tx) = gs_cmd_txs.get(&device_uid) {
-            tx.send(SerialCommand::UpdateDevice)
-                .expect("failed to send update command");
+        {
+            let gs_cmd_txs = gs_cmd_txs.blocking_lock();
+            if let Some(tx) = gs_cmd_txs.get(&device_uid) {
+                tx.send(SerialCommand::UpdateDevice)
+                    .expect("failed to send update command");
+            }
         }
-        // su_tx
-        //     .send((device_uid, fw_path))
-        //     .expect("failed to send update signal to update thread");
 
         let us_tx2 = us_tx.clone();
-        tokio::spawn(async move {
+        spawn(async move {
             update_task(device_uid, fw_path, us_tx2).await;
         });
     }
@@ -1049,7 +1054,7 @@ impl JukeBoxGui {
     fn draw_update_page(
         &mut self,
         ui: &mut Ui,
-        gs_cmd_txs: &HashMap<String, UnboundedSender<SerialCommand>>,
+        gs_cmd_txs: &Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
         us_tx: &UnboundedSender<UpdateStatus>,
         us_rx: &mut UnboundedReceiver<UpdateStatus>,
     ) {

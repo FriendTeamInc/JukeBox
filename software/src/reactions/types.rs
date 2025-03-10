@@ -17,7 +17,7 @@ use crate::{
 
 #[async_trait::async_trait]
 #[typetag::serde(tag = "type")]
-pub trait Reaction: Send + DynClone {
+pub trait Reaction: Sync + Send + DynClone {
     async fn on_press(
         &self,
         device_uid: &String,
