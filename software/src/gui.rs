@@ -260,10 +260,10 @@ impl JukeBoxGui {
 
         while let Ok(event) = s_evnt_rx.try_recv() {
             match event {
-                SerialEvent::Connected(d) => {
-                    let device_uid = d.device_uid;
-                    let device_type = d.input_identifier;
-                    let firmware_version = d.firmware_version;
+                SerialEvent::Connected { device_info } => {
+                    let device_uid = device_info.device_uid;
+                    let device_type = device_info.input_identifier;
+                    let firmware_version = device_info.firmware_version;
 
                     let short_uid = device_uid[..4].to_string();
 
@@ -318,7 +318,7 @@ impl JukeBoxGui {
                         );
                     }
                 }
-                SerialEvent::LostConnection(device_uid) => {
+                SerialEvent::LostConnection { device_uid } => {
                     if self.devices.contains_key(&device_uid) {
                         let v = self.devices.get_mut(&device_uid).unwrap();
                         v.3 = false;
@@ -327,7 +327,7 @@ impl JukeBoxGui {
                     let mut gs_cmd_txs = gs_cmd_txs.blocking_lock();
                     gs_cmd_txs.remove(&device_uid);
                 }
-                SerialEvent::Disconnected(device_uid) => {
+                SerialEvent::Disconnected { device_uid } => {
                     if self.devices.contains_key(&device_uid) {
                         let v = self.devices.get_mut(&device_uid).unwrap();
                         v.3 = false;
@@ -336,10 +336,10 @@ impl JukeBoxGui {
                     let mut gs_cmd_txs = gs_cmd_txs.blocking_lock();
                     gs_cmd_txs.remove(&device_uid);
                 }
-                SerialEvent::GetInputKeys((device_uid, input_keys)) => {
+                SerialEvent::GetInputKeys { device_uid, keys } => {
                     if self.devices.contains_key(&device_uid) {
                         let v = self.devices.get_mut(&device_uid).unwrap();
-                        v.4 = input_keys;
+                        v.4 = keys;
                     }
                 }
             }

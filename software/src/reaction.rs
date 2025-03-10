@@ -28,10 +28,10 @@ pub async fn reaction_task(
 
     while let Some(evnt) = s_evnt_rx.recv().await {
         match evnt {
-            SerialEvent::Connected(device_info) => {
+            SerialEvent::Connected { device_info } => {
                 clear_set(&mut prevkeys, &device_info.device_uid).await;
             }
-            SerialEvent::GetInputKeys((device_uid, keys)) => {
+            SerialEvent::GetInputKeys { device_uid, keys } => {
                 if !prevkeys.contains_key(&device_uid) {
                     prevkeys.insert(device_uid.clone(), Arc::new(Mutex::new(HashSet::new())));
                 }
@@ -77,10 +77,10 @@ pub async fn reaction_task(
                     // TODO: allow for editing of global configs for things like Discord and OBS
                 });
             }
-            SerialEvent::LostConnection(device_uid) => {
+            SerialEvent::LostConnection { device_uid } => {
                 clear_set(&mut prevkeys, &device_uid).await;
             }
-            SerialEvent::Disconnected(device_uid) => {
+            SerialEvent::Disconnected { device_uid } => {
                 clear_set(&mut prevkeys, &device_uid).await;
             } // _ => {}
         }

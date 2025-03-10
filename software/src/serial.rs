@@ -42,10 +42,19 @@ pub enum SerialCommand {
 
 #[derive(PartialEq, Clone)]
 pub enum SerialEvent {
-    Connected(SerialConnectionDetails),
-    GetInputKeys((String, HashSet<InputKey>)),
-    LostConnection(String),
-    Disconnected(String),
+    Connected {
+        device_info: SerialConnectionDetails,
+    },
+    GetInputKeys {
+        device_uid: String,
+        keys: HashSet<InputKey>,
+    },
+    LostConnection {
+        device_uid: String,
+    },
+    Disconnected {
+        device_uid: String,
+    },
 }
 
 async fn get_serial_string(f: &mut Box<dyn SerialPort>) -> Result<Vec<u8>> {
@@ -306,13 +315,16 @@ pub async fn serial_loop(
     'forv: loop {
         let keys = transmit_get_input_keys(f).await?;
         sr_tx
-            .send(SerialEvent::GetInputKeys((
-                device_uid.clone(),
-                keys.clone(),
-            )))
+            .send(SerialEvent::GetInputKeys {
+                device_uid: device_uid.clone(),
+                keys: keys.clone(),
+            })
             .context("failed to send input info to react")?;
         sg_tx
-            .send(SerialEvent::GetInputKeys((device_uid.clone(), keys)))
+            .send(SerialEvent::GetInputKeys {
+                device_uid: device_uid.clone(),
+                keys: keys.clone(),
+            })
             .context("failed to send input info to gui")?;
 
         while let Ok(cmd) = s_cmd_rx.try_recv() {
@@ -320,20 +332,28 @@ pub async fn serial_loop(
                 SerialCommand::UpdateDevice => {
                     transmit_update_signal(f).await?;
                     sr_tx
-                        .send(SerialEvent::Disconnected(device_uid.clone()))
+                        .send(SerialEvent::Disconnected {
+                            device_uid: device_uid.clone(),
+                        })
                         .context("failed to send disconnect (for update) info to react")?;
                     sg_tx
-                        .send(SerialEvent::Disconnected(device_uid.clone()))
+                        .send(SerialEvent::Disconnected {
+                            device_uid: device_uid.clone(),
+                        })
                         .context("failed to send disconnect (for update) info to gui")?;
                     break 'forv; // The device has disconnected, we should too.
                 }
                 SerialCommand::DisconnectDevice => {
                     transmit_disconnect_signal(f).await?;
                     sr_tx
-                        .send(SerialEvent::Disconnected(device_uid.clone()))
+                        .send(SerialEvent::Disconnected {
+                            device_uid: device_uid.clone(),
+                        })
                         .context("failed to send disconnect info to react")?;
                     sg_tx
-                        .send(SerialEvent::Disconnected(device_uid.clone()))
+                        .send(SerialEvent::Disconnected {
+                            device_uid: device_uid.clone(),
+                        })
                         .context("failed to send disconnect info to gui")?;
                     break 'forv; // The device has disconnected, we should too.
                 }
@@ -392,11 +412,15 @@ pub async fn serial_task(
 
             let _ = sg_tx2
                 .clone()
-                .send(SerialEvent::Connected(device_info.clone()))
+                .send(SerialEvent::Connected {
+                    device_info: device_info.clone(),
+                })
                 .context("failed to send device info to gui");
             let _ = sr_tx2
                 .clone()
-                .send(SerialEvent::Connected(device_info))
+                .send(SerialEvent::Connected {
+                    device_info: device_info.clone(),
+                })
                 .context("failed to send device info to react");
 
             match serial_loop(
@@ -410,14 +434,18 @@ pub async fn serial_task(
             {
                 Err(e) => {
                     log::warn!("Serial device {} error: {:#}", device_uid, e);
-                    if let Err(e) = sg_tx2.send(SerialEvent::LostConnection(device_uid.clone())) {
+                    if let Err(e) = sg_tx2.send(SerialEvent::LostConnection {
+                        device_uid: device_uid.clone(),
+                    }) {
                         log::warn!(
                             "failed to send lost connection for {} to gui ({})",
                             device_uid,
                             e
                         );
                     }
-                    if let Err(e) = sr_tx2.send(SerialEvent::LostConnection(device_uid.clone())) {
+                    if let Err(e) = sr_tx2.send(SerialEvent::LostConnection {
+                        device_uid: device_uid.clone(),
+                    }) {
                         log::warn!(
                             "failed to send lost connection for {} to react ({})",
                             device_uid,
