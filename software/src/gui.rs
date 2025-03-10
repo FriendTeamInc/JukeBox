@@ -1,8 +1,7 @@
 // Graphical User Interface (pronounced like GIF)
 
 use std::collections::{HashMap, HashSet};
-use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
+use std::sync::{atomic::AtomicBool, Arc};
 use std::time::{Duration, Instant};
 
 use eframe::egui::scroll_area::ScrollBarVisibility;
@@ -18,9 +17,14 @@ use jukebox_util::peripheral::{
 use rand::prelude::*;
 use rfd::FileDialog;
 use serde::{Deserialize, Serialize};
-use tokio::runtime::Runtime;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
-use tokio::{spawn, sync::Mutex};
+use tokio::{
+    runtime::Runtime,
+    spawn,
+    sync::{
+        mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+        Mutex,
+    },
+};
 
 use crate::config::JukeBoxConfig;
 use crate::input::InputKey;

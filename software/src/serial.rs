@@ -18,10 +18,15 @@ use jukebox_util::protocol::{
     RSP_DISCONNECTED, RSP_END, RSP_INPUT_HEADER, RSP_LINK_DELIMITER, RSP_LINK_HEADER, RSP_UNKNOWN,
 };
 use serialport::SerialPort;
-use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
-use tokio::sync::Mutex;
-use tokio::task::spawn_blocking;
-use tokio::time::sleep;
+use tokio::task::block_in_place;
+use tokio::{
+    sync::{
+        mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+        Mutex,
+    },
+    task::spawn_blocking,
+    time::sleep,
+};
 
 #[derive(PartialEq, Clone)]
 pub struct SerialConnectionDetails {
@@ -43,53 +48,59 @@ pub enum SerialEvent {
     Disconnected(String),
 }
 
-fn get_serial_string(f: &mut Box<dyn SerialPort>) -> Result<Vec<u8>> {
-    let timeout = Instant::now() + Duration::from_secs(3);
-    let mut buf = Vec::new();
+async fn get_serial_string(f: &mut Box<dyn SerialPort>) -> Result<Vec<u8>> {
+    block_in_place(|| {
+        let timeout = Instant::now() + Duration::from_secs(3);
+        let mut buf = Vec::new();
 
-    loop {
-        if Instant::now() >= timeout {
-            bail!("serial read timed out");
-        }
+        loop {
+            if Instant::now() >= timeout {
+                bail!("serial read timed out");
+            }
 
-        let mut b = [0u8; 1];
-        let res = f.read(&mut b);
+            let mut b = [0u8; 1];
+            let res = f.read(&mut b);
 
-        match res {
-            Err(e) => match e.kind() {
-                std::io::ErrorKind::BrokenPipe => bail!("broken serial pipe"),
-                _ => continue,
-            },
-            _ => (),
-        }
-        buf.push(b[0]);
+            match res {
+                Err(e) => match e.kind() {
+                    std::io::ErrorKind::BrokenPipe => bail!("broken serial pipe"),
+                    _ => continue,
+                },
+                _ => (),
+            }
+            buf.push(b[0]);
 
-        if buf.len() > RSP_END.len() {
-            let s = &buf[(buf.len() - RSP_END.len())..buf.len()];
-            let c = s.iter().zip(RSP_END).all(|(a, b)| a == b);
-            if c {
-                return Ok(buf);
+            if buf.len() > RSP_END.len() {
+                let s = &buf[(buf.len() - RSP_END.len())..buf.len()];
+                let c = s.iter().zip(RSP_END).all(|(a, b)| a == b);
+                if c {
+                    return Ok(buf);
+                }
             }
         }
-    }
+    })
 }
 
-fn send_cmd(f: &mut Box<dyn SerialPort>, c: u8) -> Result<()> {
+async fn send_cmd(f: &mut Box<dyn SerialPort>, c: u8) -> Result<()> {
     let mut cmd = vec![c];
     cmd.extend_from_slice(CMD_END);
-    send_bytes(f, cmd.as_slice()).with_context(|| format!("failed to send cmd {}", c))
+    send_bytes(f, cmd.as_slice())
+        .await
+        .with_context(|| format!("failed to send cmd {}", c))
 }
 
-fn send_bytes(f: &mut Box<dyn SerialPort>, bytes: &[u8]) -> Result<()> {
-    f.write_all(bytes)
-        .with_context(|| format!("failed to write message {:?}", bytes))?;
-    f.flush().context("failed to flush message")?;
+async fn send_bytes(f: &mut Box<dyn SerialPort>, bytes: &[u8]) -> Result<()> {
+    block_in_place(|| {
+        f.write_all(bytes)
+            .with_context(|| format!("failed to write message {:?}", bytes))?;
+        f.flush().context("failed to flush message")?;
 
-    Ok(())
+        Ok(())
+    })
 }
 
-fn expect_string(f: &mut Box<dyn SerialPort>, expect: &[u8]) -> Result<()> {
-    let s = get_serial_string(f)?;
+async fn expect_string(f: &mut Box<dyn SerialPort>, expect: &[u8]) -> Result<()> {
+    let s = get_serial_string(f).await?;
 
     let matching = s.iter().zip(expect).filter(|&(a, b)| a == b).count() == s.len();
 
@@ -101,7 +112,7 @@ fn expect_string(f: &mut Box<dyn SerialPort>, expect: &[u8]) -> Result<()> {
             .count()
             == s.len();
         if matches_unknown {
-            send_negative_ack(f)?;
+            send_negative_ack(f).await?;
             bail!("device did not understand command");
         }
 
@@ -111,26 +122,34 @@ fn expect_string(f: &mut Box<dyn SerialPort>, expect: &[u8]) -> Result<()> {
     Ok(())
 }
 
-fn send_expect(f: &mut Box<dyn SerialPort>, send: &[u8], expect: &[u8]) -> Result<()> {
-    send_bytes(f, send).with_context(|| format!("failed to send bytes {:?}", send))?;
-    expect_string(f, expect).with_context(|| format!("failed to get bytes {:?}", expect))?;
+async fn send_expect(f: &mut Box<dyn SerialPort>, send: &[u8], expect: &[u8]) -> Result<()> {
+    send_bytes(f, send)
+        .await
+        .with_context(|| format!("failed to send bytes {:?}", send))?;
+    expect_string(f, expect)
+        .await
+        .with_context(|| format!("failed to get bytes {:?}", expect))?;
     Ok(())
 }
 
 // Tasks
 
-fn send_negative_ack(f: &mut Box<dyn SerialPort>) -> Result<()> {
-    send_cmd(f, CMD_NEGATIVE_ACK).context("failed to send nack")?;
+async fn send_negative_ack(f: &mut Box<dyn SerialPort>) -> Result<()> {
+    send_cmd(f, CMD_NEGATIVE_ACK)
+        .await
+        .context("failed to send nack")?;
     Ok(())
 }
 
-fn greet_host(f: &mut Box<dyn SerialPort>) -> Result<SerialConnectionDetails> {
+async fn greet_host(f: &mut Box<dyn SerialPort>) -> Result<SerialConnectionDetails> {
     // Host confirms protocol is good, recieves "link established" with some info about the device
-    send_cmd(f, CMD_GREET).context("failed to send greet")?;
-    let resp = get_serial_string(f)?;
+    send_cmd(f, CMD_GREET)
+        .await
+        .context("failed to send greet")?;
+    let resp = get_serial_string(f).await?;
 
     if *resp.iter().nth(0).unwrap_or(&0) != RSP_LINK_HEADER {
-        send_negative_ack(f)?;
+        send_negative_ack(f).await?;
         bail!("failed to parse device info (command character mismatch)");
     }
 
@@ -148,21 +167,21 @@ fn greet_host(f: &mut Box<dyn SerialPort>) -> Result<SerialConnectionDetails> {
     }
 
     if input_identifier.is_none() || firmware_version.is_none() || device_uid.is_none() {
-        send_negative_ack(f)?;
+        send_negative_ack(f).await?;
         bail!("failed to parse device info (missing input identifier, firmware version, or device uid)");
     }
 
     let firmware_version = match String::from_utf8(firmware_version.unwrap().to_vec()) {
         Ok(s) => s,
         Err(_) => {
-            send_negative_ack(f)?;
+            send_negative_ack(f).await?;
             bail!("failed to parse device info (failed to convert firmware version to utf-8)");
         }
     };
     let device_uid = match String::from_utf8(device_uid.unwrap().to_vec()) {
         Ok(s) => s,
         Err(_) => {
-            send_negative_ack(f)?;
+            send_negative_ack(f).await?;
             bail!("failed to parse device info (failed to convert device uid to utf-8)");
         }
     };
@@ -174,13 +193,15 @@ fn greet_host(f: &mut Box<dyn SerialPort>) -> Result<SerialConnectionDetails> {
     })
 }
 
-fn transmit_get_input_keys(f: &mut Box<dyn SerialPort>) -> Result<HashSet<InputKey>> {
-    send_cmd(f, CMD_GET_INPUT_KEYS).context("failed to send get input keys")?;
-    let resp = get_serial_string(f)?;
+async fn transmit_get_input_keys(f: &mut Box<dyn SerialPort>) -> Result<HashSet<InputKey>> {
+    send_cmd(f, CMD_GET_INPUT_KEYS)
+        .await
+        .context("failed to send get input keys")?;
+    let resp = get_serial_string(f).await?;
 
     if *resp.iter().nth(0).unwrap_or(&0) != RSP_INPUT_HEADER {
         log::info!("rsp input: {:?}", resp);
-        send_negative_ack(f)?;
+        send_negative_ack(f).await?;
         bail!("failed to parse input keys (command character mismatch)");
     }
 
@@ -226,24 +247,24 @@ fn transmit_get_input_keys(f: &mut Box<dyn SerialPort>) -> Result<HashSet<InputK
     Ok(result)
 }
 
-fn transmit_update_signal(f: &mut Box<dyn SerialPort>) -> Result<()> {
+async fn transmit_update_signal(f: &mut Box<dyn SerialPort>) -> Result<()> {
     // tell the device to reboot for updating
     let mut cmd = vec![CMD_UPDATE];
     cmd.extend_from_slice(CMD_END);
     let mut rsp = vec![RSP_DISCONNECTED];
     rsp.extend_from_slice(RSP_END);
 
-    send_expect(f, &cmd, &rsp)
+    send_expect(f, &cmd, &rsp).await
 }
 
-fn transmit_disconnect_signal(f: &mut Box<dyn SerialPort>) -> Result<()> {
+async fn transmit_disconnect_signal(f: &mut Box<dyn SerialPort>) -> Result<()> {
     // tell the device to disconnect cleanly
     let mut cmd = vec![CMD_DISCONNECT];
     cmd.extend_from_slice(CMD_END);
     let mut rsp = vec![RSP_DISCONNECTED];
     rsp.extend_from_slice(RSP_END);
 
-    send_expect(f, &cmd, &rsp)
+    send_expect(f, &cmd, &rsp).await
 }
 
 pub fn serial_get_device(connected_uids: &HashSet<String>) -> Result<Box<dyn SerialPort>> {
@@ -283,7 +304,7 @@ pub async fn serial_loop(
     mut s_cmd_rx: UnboundedReceiver<SerialCommand>,
 ) -> Result<()> {
     'forv: loop {
-        let keys = transmit_get_input_keys(f)?;
+        let keys = transmit_get_input_keys(f).await?;
         sr_tx
             .send(SerialEvent::GetInputKeys((
                 device_uid.clone(),
@@ -297,7 +318,7 @@ pub async fn serial_loop(
         while let Ok(cmd) = s_cmd_rx.try_recv() {
             match cmd {
                 SerialCommand::UpdateDevice => {
-                    transmit_update_signal(f)?;
+                    transmit_update_signal(f).await?;
                     sr_tx
                         .send(SerialEvent::Disconnected(device_uid.clone()))
                         .context("failed to send disconnect (for update) info to react")?;
@@ -307,7 +328,7 @@ pub async fn serial_loop(
                     break 'forv; // The device has disconnected, we should too.
                 }
                 SerialCommand::DisconnectDevice => {
-                    transmit_disconnect_signal(f)?;
+                    transmit_disconnect_signal(f).await?;
                     sr_tx
                         .send(SerialEvent::Disconnected(device_uid.clone()))
                         .context("failed to send disconnect info to react")?;
@@ -327,14 +348,12 @@ pub async fn serial_loop(
     Ok(())
 }
 
-// TODO: we don't really do any async stuff in here. we should fix that
 pub async fn serial_task(
     brkr: Arc<AtomicBool>,
     gs_cmd_tx: UnboundedSender<(String, UnboundedSender<SerialCommand>)>,
     sg_tx: UnboundedSender<SerialEvent>,
     sr_tx: UnboundedSender<SerialEvent>,
 ) -> Result<()> {
-    // TODO: switch mutex to tokio mutex
     let connected_uids = Arc::new(Mutex::new(HashSet::new()));
 
     while !brkr.load(std::sync::atomic::Ordering::Relaxed) {
@@ -354,7 +373,7 @@ pub async fn serial_task(
         };
 
         // Greet and link up
-        let device_info = greet_host(&mut f)?;
+        let device_info = greet_host(&mut f).await?;
         let device_uid = device_info.device_uid.clone();
         // TODO: check that firmware version is ok
         let sg_tx2 = sg_tx.clone();
