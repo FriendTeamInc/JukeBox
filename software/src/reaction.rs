@@ -54,6 +54,7 @@ pub async fn reaction_task(
                     let released = prevkeys.difference(&keys);
 
                     // TODO: error signaling
+                    // TODO: batching futures?
 
                     for p in pressed {
                         if let Some(r) = current_profile.get(p) {

@@ -17,6 +17,7 @@ use jukebox_util::peripheral::{
 use rand::prelude::*;
 use rfd::FileDialog;
 use serde::{Deserialize, Serialize};
+use tokio::runtime::Handle;
 use tokio::{
     runtime::Runtime,
     spawn,
@@ -291,7 +292,7 @@ impl JukeBoxGui {
                         conf.save();
                     }
 
-                    if self.current_device.is_empty() {
+                    if self.current_device.is_empty() || self.devices.iter().all(|(_, d)| !d.3) {
                         self.current_device = device_uid.clone();
                     }
 
@@ -956,18 +957,18 @@ impl JukeBoxGui {
                     )
                     .on_hover_text_at_pointer("Test reaction");
                 if test_btn.clicked() {
-                    // TODO: fix this
-                    // let mut c = self.config.lock().unwrap().clone();
-                    // let _ = self.config_editing_reaction.on_press(
-                    //     &self.current_device,
-                    //     self.config_editing_key,
-                    //     &mut c,
-                    // );
-                    // let _ = self.config_editing_reaction.on_release(
-                    //     &self.current_device,
-                    //     self.config_editing_key,
-                    //     &mut c,
-                    // );
+                    let mut c = self.config.blocking_lock().clone();
+                    let h = Handle::current();
+                    let _ = h.block_on(async {
+                        self.config_editing_reaction
+                            .on_press(&self.current_device, self.config_editing_key, &mut c)
+                            .await
+                    });
+                    let _ = h.block_on(async {
+                        self.config_editing_reaction
+                            .on_press(&self.current_device, self.config_editing_key, &mut c)
+                            .await
+                    });
                 }
                 ui.vertical(|ui| {
                     ui.allocate_space(vec2(0.0, 2.0));
@@ -1078,6 +1079,7 @@ impl JukeBoxGui {
                 }
 
                 if ui.add(dl_update).clicked() {
+                    // TODO: download update from GitHub
                     // Self::send_update_signal(
                     //     gs_cmd_txs,
                     //     self.current_device.clone(),
