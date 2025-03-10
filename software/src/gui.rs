@@ -161,9 +161,9 @@ impl JukeBoxGui {
         let reaction_config = self.config.clone();
 
         let rt = Runtime::new().expect("unable to create tokio runtime");
-        let _ = rt.enter();
-        rt.spawn(async move { serial_task(brkr_serial, gs_cmd_tx, sg_tx, sr_tx).await });
-        rt.spawn(async move { reaction_task(sr_rx, reaction_config).await });
+        let _guard = rt.enter();
+        tokio::spawn(async move { serial_task(brkr_serial, gs_cmd_tx, sg_tx, sr_tx).await });
+        tokio::spawn(async move { reaction_task(sr_rx, reaction_config).await });
 
         let options = eframe::NativeOptions {
             viewport: ViewportBuilder::default()
@@ -230,10 +230,9 @@ impl JukeBoxGui {
         .expect("eframe error");
 
         {
-            for (k, tx) in gs_cmd_txs_end.lock().unwrap().iter() {
-                let _ = tx
-                    .send(SerialCommand::DisconnectDevice)
-                    .expect(&format!("could not send disconnect signal to device {}", k));
+            for (_k, tx) in gs_cmd_txs_end.lock().unwrap().iter() {
+                let _ = tx.send(SerialCommand::DisconnectDevice);
+                // .expect(&format!("could not send disconnect signal to device {}", k));
             }
         }
 
