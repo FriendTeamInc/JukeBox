@@ -146,4 +146,49 @@ action:
     push_to_mute:
       title: "Push to Mute"
       help: "Mutes your microphone on Discord while held."
+  
+  obs:
+    title: "%{icon} OBS"
+    toggle_stream:
+      title: "Toggle Stream"
+      help: "Starts or stops OBS streaming."
+    toggle_record:
+      title: "Toggle Record"
+      help: "Starts or stops OBS recording."
+    pause_record:
+      title: "Pause Record"
+      help: "Pauses OBS recording if currently recording."
+    toggle_replay_buffer:
+      title: "Toggle Replay Buffer"
+      help: "Starts or stops the OBS replay buffer."
+    save_replay_buffer:
+      title: "Save Replay Buffer"
+      help: "Saves the OBS replay buffer if active."
+    save_screenshot:
+      title: "Save Screenshot"
+      help: "Saves a screenshot of the output scene."
+    toggle_source:
+      title: "Toggle Source"
+      help: "Shows or hides a specified source."
+    toggle_mute_audio_source:
+      title: "Toggle Mute Audio Source"
+      help: "Mutes or unmutes a specified audio source's sound."
+    switch_scene:
+      title: "Switch to Scene"
+      help: "Switches to a specified scene."
+    switch_scene_collection:
+      title: "Switch to Scene Collection"
+      help: "Switches to a specified scene collection."
+    switch_preview_scene:
+      title: "Switch to Preview Scene"
+      help: "Pushes your preview scene live (when in Studio Mode)."
+    toggle_filter:
+      title: "Toggle Filter"
+      help: "Shows or hides a specified filter on a source."
+    switch_transition:
+      title: "Switch Transition"
+      help: "Switches to a specified scene transition."
+    add_chapter_marker:
+      title: "Add Chapter Marker"
+      help: "Addes a chapter marker to an active recording."
 
