@@ -93,4 +93,8 @@ action:
         middle: "Middle"
         right: "Right"
         unknown: "?"
+      move_x: "Move X:"
+      move_y: "Move Y:"
+      scroll_y: "Scroll Y:"
+      scroll_x: "Scroll X:"
 
