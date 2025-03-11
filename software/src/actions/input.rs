@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use anyhow::Result;
 use eframe::egui::{ComboBox, Slider, Ui};
 use egui_phosphor::regular as phos;
@@ -10,24 +8,14 @@ use crate::{config::JukeBoxConfig, input::InputKey};
 use super::types::{Action, ActionType as AT};
 
 #[rustfmt::skip]
-pub fn input_action_list() -> (String, Vec<(AT, String)>) {
+pub fn input_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
     (
         format!("{} Input", phos::CURSOR_CLICK),
         vec![
-            (AT::InputKeyboard, "Keyboard Event".to_string()),
-            (AT::InputMouse,    "Mouse Event".to_string()),
+            (AT::InputKeyboard, Box::new(InputKeyboard::default()), "Keyboard Event".to_string()),
+            (AT::InputMouse,    Box::new(InputMouse::default()),    "Mouse Event".to_string()),
         ],
     )
-}
-
-#[rustfmt::skip]
-pub fn input_enum_map() -> HashMap<AT, Box<dyn Action>> {
-    let mut h: HashMap<AT, Box<dyn Action>> = HashMap::new();
-
-    h.insert(AT::InputKeyboard, Box::new(InputKeyboard::default()));
-    h.insert(AT::InputMouse,    Box::new(InputMouse::default()));
-
-    h
 }
 
 const KEYBOARD_SCAN_CODES: [(&str, u8); 169] = [

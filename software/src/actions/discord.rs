@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use anyhow::Result;
 use eframe::egui::{vec2, Button, Ui};
 use egui_phosphor::regular as phos;
@@ -10,30 +8,17 @@ use crate::{config::JukeBoxConfig, input::InputKey};
 use super::types::{Action, ActionType as AT};
 
 #[rustfmt::skip]
-pub fn discord_action_list() -> (String, Vec<(AT, String)>) {
+pub fn discord_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
     (
         format!("{} Discord", phos::DISCORD_LOGO),
         vec![
-            (AT::DiscordToggleMute,   "Toggle Mute".to_string()),
-            (AT::DiscordToggleDeafen, "Toggle Deafen".to_string()),
-            (AT::DiscordPushToTalk,   "Push to Talk".to_string()),
-            (AT::DiscordPushToMute,   "Push to Mute".to_string()),
-            (AT::DiscordToggleCamera, "Toggle Camera".to_string()),
+            (AT::DiscordToggleMute,   Box::new(DiscordToggleMute::default()),   "Toggle Mute".to_string()),
+            (AT::DiscordToggleDeafen, Box::new(DiscordToggleDeafen::default()), "Toggle Deafen".to_string()),
+            (AT::DiscordPushToTalk,   Box::new(DiscordPushToTalk::default()),   "Push to Talk".to_string()),
+            (AT::DiscordPushToMute,   Box::new(DiscordPushToMute::default()),   "Push to Mute".to_string()),
+            (AT::DiscordToggleCamera, Box::new(DiscordToggleCamera::default()), "Toggle Camera".to_string()),
         ],
     )
-}
-
-#[rustfmt::skip]
-pub fn discord_enum_map() -> HashMap<AT, Box<dyn Action>> {
-    let mut h: HashMap<AT, Box<dyn Action>> = HashMap::new();
-
-    h.insert(AT::DiscordToggleMute,   Box::new(DiscordToggleMute::default()));
-    h.insert(AT::DiscordToggleDeafen, Box::new(DiscordToggleDeafen::default()));
-    h.insert(AT::DiscordPushToTalk,   Box::new(DiscordPushToTalk::default()));
-    h.insert(AT::DiscordPushToMute,   Box::new(DiscordPushToMute::default()));
-    h.insert(AT::DiscordToggleCamera, Box::new(DiscordToggleCamera::default()));
-
-    h
 }
 
 fn account_warning(ui: &mut Ui) {

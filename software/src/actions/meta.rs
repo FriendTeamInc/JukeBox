@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use anyhow::Result;
 use eframe::egui::{ComboBox, Ui};
 use egui_phosphor::regular as phos;
@@ -10,26 +8,15 @@ use crate::{config::JukeBoxConfig, input::InputKey};
 use super::types::{Action, ActionType as AT};
 
 #[rustfmt::skip]
-pub fn meta_action_list() -> (String, Vec<(AT, String)>) {
+pub fn meta_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
     (
         format!("{} Meta", phos::GEAR),
         vec![
-            (AT::MetaNoAction,        "No Action".to_string()),
-            (AT::MetaSwitchProfile,   "Switch Profile".to_string()),
-            (AT::MetaCopyFromProfile, "Copy From Profile".to_string()),
+            (AT::MetaNoAction,        Box::new(MetaNoAction::default()),        "No Action".to_string()),
+            (AT::MetaSwitchProfile,   Box::new(MetaSwitchProfile::default()),   "Switch Profile".to_string()),
+            (AT::MetaCopyFromProfile, Box::new(MetaCopyFromProfile::default()), "Copy From Profile".to_string()),
         ],
     )
-}
-
-#[rustfmt::skip]
-pub fn meta_enum_map() -> HashMap<AT, Box<dyn Action>> {
-    let mut h: HashMap<AT, Box<dyn Action>> = HashMap::new();
-
-    h.insert(AT::MetaNoAction,        Box::new(MetaNoAction::default()));
-    h.insert(AT::MetaSwitchProfile,   Box::new(MetaSwitchProfile::default()));
-    h.insert(AT::MetaCopyFromProfile, Box::new(MetaCopyFromProfile::default()));
-
-    h
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]

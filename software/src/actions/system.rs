@@ -1,4 +1,4 @@
-use std::{collections::HashMap, process::Command};
+use std::process::Command;
 
 use anyhow::Result;
 use eframe::egui::{ComboBox, Slider, Ui};
@@ -12,28 +12,16 @@ use crate::{config::JukeBoxConfig, input::InputKey};
 use super::types::{Action, ActionType as AT};
 
 #[rustfmt::skip]
-pub fn system_action_list() -> (String, Vec<(AT, String)>) {
+pub fn system_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
     (
         format!("{} System", phos::DESKTOP_TOWER),
         vec![
-            (AT::SystemLaunchApplication,  "Launch Application".to_string()),
-            (AT::SystemOpenWebsite,        "Open Website".to_string()),
-            (AT::SystemAudioInputControl,  "Audio Input Control".to_string()),
-            (AT::SystemAudioOutputControl, "Audio Output Control".to_string()),
+            (AT::SystemLaunchApplication,  Box::new(SystemLaunchApplication::default()),  "Launch Application".to_string()),
+            (AT::SystemOpenWebsite,        Box::new(SystemOpenWebsite::default()),        "Open Website".to_string()),
+            (AT::SystemAudioInputControl,  Box::new(SystemAudioInputControl::default()),  "Audio Input Control".to_string()),
+            (AT::SystemAudioOutputControl, Box::new(SystemAudioOutputControl::default()), "Audio Output Control".to_string()),
         ],
     )
-}
-
-#[rustfmt::skip]
-pub fn system_enum_map() -> HashMap<AT, Box<dyn Action>> {
-    let mut h: HashMap<AT, Box<dyn Action>> = HashMap::new();
-
-    h.insert(AT::SystemLaunchApplication,  Box::new(SystemLaunchApplication::default()));
-    h.insert(AT::SystemOpenWebsite,        Box::new(SystemOpenWebsite::default()));
-    h.insert(AT::SystemAudioInputControl,  Box::new(SystemAudioInputControl::default()));
-    h.insert(AT::SystemAudioOutputControl, Box::new(SystemAudioOutputControl::default()));
-
-    h
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]

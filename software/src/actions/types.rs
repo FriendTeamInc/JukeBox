@@ -97,7 +97,7 @@ pub struct ActionMap {
 }
 impl ActionMap {
     pub fn new() -> Self {
-        let ui_list = vec![
+        let l = vec![
             meta_action_list(),
             input_action_list(),
             system_action_list(),
@@ -105,14 +105,22 @@ impl ActionMap {
             discord_action_list(),
             obs_action_list(),
         ];
-        let enum_map = HashMap::new()
-            .into_iter()
-            .chain(meta_enum_map())
-            .chain(input_enum_map())
-            .chain(system_enum_map())
-            .chain(soundboard_enum_map())
-            .chain(discord_enum_map())
-            .chain(obs_enum_map())
+
+        let ui_list = l
+            .iter()
+            .map(|(title, l)| {
+                (
+                    title.clone(),
+                    l.iter().map(|(at, _, s)| (at.clone(), s.clone())).collect(),
+                )
+            })
+            .collect();
+
+        let enum_map = l
+            .iter()
+            .map(|(_, l)| l)
+            .flatten()
+            .map(|(at, a, _)| (at.clone(), a.clone()))
             .collect();
 
         Self { ui_list, enum_map }

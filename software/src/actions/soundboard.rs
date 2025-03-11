@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use anyhow::Result;
 use eframe::egui::{ComboBox, Slider, Ui};
 use egui_phosphor::regular as phos;
@@ -11,20 +9,11 @@ use crate::{config::JukeBoxConfig, input::InputKey};
 use super::types::{Action, ActionType as AT};
 
 #[rustfmt::skip]
-pub fn soundboard_action_list() -> (String, Vec<(AT, String)>) {
+pub fn soundboard_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
     (
         format!("{} Soundboard", phos::MUSIC_NOTES),
-        vec![(AT::SoundboardPlaySound, "Play Sound".to_string())],
+        vec![(AT::SoundboardPlaySound, Box::new(SoundboardPlaySound::default()), "Play Sound".to_string())],
     )
-}
-
-#[rustfmt::skip]
-pub fn soundboard_enum_map() -> HashMap<AT, Box<dyn Action>> {
-    let mut h: HashMap<AT, Box<dyn Action>> = HashMap::new();
-
-    h.insert(AT::SoundboardPlaySound, Box::new(SoundboardPlaySound::default()));
-
-    h
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
