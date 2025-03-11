@@ -10,10 +10,10 @@ use super::types::{Action, ActionType as AT};
 #[rustfmt::skip]
 pub fn input_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
     (
-        format!("{} Input", phos::CURSOR_CLICK),
+        t!("action.input.title", icon = phos::GEAR).to_string(),
         vec![
-            (AT::InputKeyboard, Box::new(InputKeyboard::default()), "Keyboard Event".to_string()),
-            (AT::InputMouse,    Box::new(InputMouse::default()),    "Mouse Event".to_string()),
+            (AT::InputKeyboard, Box::new(InputKeyboard::default()), t!("action.input.keyboard.title").to_string()),
+            (AT::InputMouse,    Box::new(InputMouse::default()),    t!("action.input.mouse.title").to_string()),
         ],
     )
 }
@@ -231,7 +231,7 @@ impl Action for InputKeyboard {
         _config: &mut JukeBoxConfig,
     ) {
         ui.horizontal(|ui| {
-            ui.label("Keys:");
+            ui.label(t!("action.input.keyboard.add_keys"));
             if ui.button("+").clicked() {
                 self.keys.push(0u8);
             }
@@ -259,7 +259,7 @@ impl Action for InputKeyboard {
     }
 
     fn help(&self) -> String {
-        "Trigger a keyboard key event.".to_string()
+        t!("action.input.keyboard.help").to_string()
     }
 }
 
@@ -305,20 +305,44 @@ impl Action for InputMouse {
         _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) {
-        ui.label("Buttons:");
+        ui.label(t!("action.input.mouse.buttons"));
         let mut bits = [
-            ((self.buttons & (1 << 0)) > 0, "Left"),
-            ((self.buttons & (1 << 1)) > 0, "Middle"),
-            ((self.buttons & (1 << 2)) > 0, "Right"),
-            ((self.buttons & (1 << 3)) > 0, "?"),
-            ((self.buttons & (1 << 4)) > 0, "?"),
-            ((self.buttons & (1 << 5)) > 0, "?"),
-            ((self.buttons & (1 << 6)) > 0, "?"),
-            ((self.buttons & (1 << 7)) > 0, "?"),
+            (
+                (self.buttons & (1 << 0)) > 0,
+                t!("action.input.mouse.button.left"),
+            ),
+            (
+                (self.buttons & (1 << 1)) > 0,
+                t!("action.input.mouse.button.middle"),
+            ),
+            (
+                (self.buttons & (1 << 2)) > 0,
+                t!("action.input.mouse.button.right"),
+            ),
+            (
+                (self.buttons & (1 << 3)) > 0,
+                t!("action.input.mouse.button.unknown"),
+            ),
+            (
+                (self.buttons & (1 << 4)) > 0,
+                t!("action.input.mouse.button.unknown"),
+            ),
+            (
+                (self.buttons & (1 << 5)) > 0,
+                t!("action.input.mouse.button.unknown"),
+            ),
+            (
+                (self.buttons & (1 << 6)) > 0,
+                t!("action.input.mouse.button.unknown"),
+            ),
+            (
+                (self.buttons & (1 << 7)) > 0,
+                t!("action.input.mouse.button.unknown"),
+            ),
         ];
         let mut n = 0;
         for (i, (bit, text)) in bits.iter_mut().enumerate().rev() {
-            ui.checkbox(bit, *text);
+            ui.checkbox(bit, text.clone());
             n |= (*bit as u8) << i;
         }
         self.buttons = n;
@@ -326,27 +350,27 @@ impl Action for InputMouse {
         ui.label("");
 
         ui.horizontal(|ui| {
-            ui.label("Move X:");
+            ui.label(t!("action.input.mouse.move_x"));
             ui.add(Slider::new(&mut self.x, i8::MIN..=i8::MAX));
         });
         ui.horizontal(|ui| {
-            ui.label("Move Y:");
+            ui.label(t!("action.input.mouse.move_y"));
             ui.add(Slider::new(&mut self.y, i8::MIN..=i8::MAX));
         });
 
         ui.label("");
 
         ui.horizontal(|ui| {
-            ui.label("Scroll Y:");
+            ui.label(t!("action.input.mouse.scroll_y"));
             ui.add(Slider::new(&mut self.scroll_y, i8::MIN..=i8::MAX));
         });
         ui.horizontal(|ui| {
-            ui.label("Scroll X:");
+            ui.label(t!("action.input.mouse.scroll_x"));
             ui.add(Slider::new(&mut self.scroll_x, i8::MIN..=i8::MAX));
         });
     }
 
     fn help(&self) -> String {
-        "Trigger a mouse click event.".to_string()
+        t!("action.input.mouse.help").to_string()
     }
 }

@@ -65,7 +65,7 @@ update:
 
 action:
   meta:
-    title: "Meta"
+    title: "%{icon} Meta"
     no_action:
       title: "No Action"
       help: "Does nothing!"
@@ -77,3 +77,20 @@ action:
       title: "Copy from Profile"
       help: "Copies action on the same key from specified profile."
       profile_select: "Profile:"
+  
+  input:
+    title: "%{icon} Input"
+    keyboard:
+      title: "Keyboard Event"
+      help: "Trigger a keyboard key event."
+      add_keys: "Keys:"
+    mouse:
+      title: "Mouse Event"
+      help: "Trigger a mouse event."
+      buttons: "Buttons:"
+      button:
+        left: "Left"
+        middle: "Middle"
+        right: "Right"
+        unknown: "?"
+

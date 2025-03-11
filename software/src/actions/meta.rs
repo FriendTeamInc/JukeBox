@@ -10,7 +10,7 @@ use super::types::{Action, ActionType as AT};
 #[rustfmt::skip]
 pub fn meta_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
     (
-        format!("{} Meta", phos::GEAR),
+        t!("action.meta.title", icon = phos::GEAR).to_string(),
         vec![
             (AT::MetaNoAction,        Box::new(MetaNoAction::default()),        t!("action.meta.no_action.title").to_string()),
             (AT::MetaSwitchProfile,   Box::new(MetaSwitchProfile::default()),   t!("action.meta.switch_profile.title").to_string()),
