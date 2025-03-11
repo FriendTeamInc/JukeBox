@@ -14,10 +14,10 @@ pub fn discord_action_list() -> (String, Vec<(AT, String)>) {
     (
         format!("{} Discord", phos::DISCORD_LOGO),
         vec![
-            (AT::DiscordToggleMute, "Toggle Mute".to_string()),
+            (AT::DiscordToggleMute,   "Toggle Mute".to_string()),
             (AT::DiscordToggleDeafen, "Toggle Deafen".to_string()),
-            (AT::DiscordPushToTalk, "Push to Talk".to_string()),
-            (AT::DiscordPushToMute, "Push to Mute".to_string()),
+            (AT::DiscordPushToTalk,   "Push to Talk".to_string()),
+            (AT::DiscordPushToMute,   "Push to Mute".to_string()),
             (AT::DiscordToggleCamera, "Toggle Camera".to_string()),
         ],
     )
@@ -27,10 +27,10 @@ pub fn discord_action_list() -> (String, Vec<(AT, String)>) {
 pub fn discord_enum_map() -> HashMap<AT, Box<dyn Action>> {
     let mut h: HashMap<AT, Box<dyn Action>> = HashMap::new();
 
-    h.insert(AT::DiscordToggleMute, Box::new(DiscordToggleMute::default()));
+    h.insert(AT::DiscordToggleMute,   Box::new(DiscordToggleMute::default()));
     h.insert(AT::DiscordToggleDeafen, Box::new(DiscordToggleDeafen::default()));
-    h.insert(AT::DiscordPushToTalk, Box::new(DiscordPushToTalk::default()));
-    h.insert(AT::DiscordPushToMute, Box::new(DiscordPushToMute::default()));
+    h.insert(AT::DiscordPushToTalk,   Box::new(DiscordPushToTalk::default()));
+    h.insert(AT::DiscordPushToMute,   Box::new(DiscordPushToMute::default()));
     h.insert(AT::DiscordToggleCamera, Box::new(DiscordToggleCamera::default()));
 
     h

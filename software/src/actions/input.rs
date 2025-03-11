@@ -15,7 +15,7 @@ pub fn input_action_list() -> (String, Vec<(AT, String)>) {
         format!("{} Input", phos::CURSOR_CLICK),
         vec![
             (AT::InputKeyboard, "Keyboard Event".to_string()),
-            (AT::InputMouse, "Mouse Event".to_string()),
+            (AT::InputMouse,    "Mouse Event".to_string()),
         ],
     )
 }
@@ -25,7 +25,7 @@ pub fn input_enum_map() -> HashMap<AT, Box<dyn Action>> {
     let mut h: HashMap<AT, Box<dyn Action>> = HashMap::new();
 
     h.insert(AT::InputKeyboard, Box::new(InputKeyboard::default()));
-    h.insert(AT::InputMouse, Box::new(InputMouse::default()));
+    h.insert(AT::InputMouse,    Box::new(InputMouse::default()));
 
     h
 }

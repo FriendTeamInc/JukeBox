@@ -14,8 +14,8 @@ pub fn meta_action_list() -> (String, Vec<(AT, String)>) {
     (
         format!("{} Meta", phos::GEAR),
         vec![
-            (AT::MetaNoAction, "No Action".to_string()),
-            (AT::MetaSwitchProfile, "Switch Profile".to_string()),
+            (AT::MetaNoAction,        "No Action".to_string()),
+            (AT::MetaSwitchProfile,   "Switch Profile".to_string()),
             (AT::MetaCopyFromProfile, "Copy From Profile".to_string()),
         ],
     )
@@ -25,8 +25,8 @@ pub fn meta_action_list() -> (String, Vec<(AT, String)>) {
 pub fn meta_enum_map() -> HashMap<AT, Box<dyn Action>> {
     let mut h: HashMap<AT, Box<dyn Action>> = HashMap::new();
 
-    h.insert(AT::MetaNoAction, Box::new(MetaNoAction::default()));
-    h.insert(AT::MetaSwitchProfile, Box::new(MetaSwitchProfile::default()));
+    h.insert(AT::MetaNoAction,        Box::new(MetaNoAction::default()));
+    h.insert(AT::MetaSwitchProfile,   Box::new(MetaSwitchProfile::default()));
     h.insert(AT::MetaCopyFromProfile, Box::new(MetaCopyFromProfile::default()));
 
     h
