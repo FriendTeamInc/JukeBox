@@ -2,56 +2,66 @@ _version: 1
 
 window_title: "JukeBox Desktop"
 
-settings_title: "JukeBox Desktop"
-settings_help_splash: " - Enable splash text in bottom right."
-settings_donate: "Donate"
-settings_repository: "Repository"
-settings_homepage: "Homepage"
-settings_copyright: "Made w/ <3 by Friend Team Inc. (c) 2024"
+settings:
+  title: "JukeBox Desktop"
+  donate: "Donate"
+  repository: "Repository"
+  homepage: "Homepage"
+  copyright: "Made w/ <3 by Friend Team Inc. (c) 2024"
 
-help_back_button: "Back"
-help_back_save_button: "Save and Back"
+help:
+  back:
+    button: "Back"
+    save_button: "Save and Back"
 
-help_profile_select: "Profile Select"
-help_profile_new: "New Profile"
-help_profile_edit_name: "Edit Profile Name"
-help_profile_delete: "Delete Profile\n(double click)"
+  profile:
+    select: "Profile Select"
+    new: "New Profile"
+    edit_name: "Edit Profile Name"
+    delete: "Delete Profile\n(double click)"
 
-help_settings_button: "Settings"
+  settings:
+    button: "Settings"
+    splash: " - Enable splash text in bottom right."
 
-help_device_select: "Device Select"
-help_device_edit_name: "Edit Device Name"
-help_device_forget: "Forget Device\n(double click)"
+  device:
+    select: "Device Select"
+    edit_name: "Edit Device Name"
+    forget: "Forget Device\n(double click)"
+    identify: "Identify Device"
+    update: "Update Device"
+    rgb: "RGB Control"
+    screen: "Screen Control"
+    none: "Please connect a device."
+    unknown: "Unknown device registered."
 
-profile_new_name: "Profile %{idx}"
+  action:
+    test_input: "Test Action"
+    image_icon: "Choose Image Icon"
+    glyph_icon: "Choose Glyph Icon"
 
-device_name_unknown: "Unknown Device %{uid}"
-device_name_keypad: "JukeBox KeyPad %{uid}"
-device_name_knobpad: "JukeBox KnobPad %{uid}"
-device_name_pedalpad: "JukeBox PedalPad %{uid}"
+profile_name_new: "Profile %{idx}"
 
-help_no_device: "Please connect a device."
-help_unknown_device: "Unknown device registered."
+device_name:
+  unknown: "Unknown Device %{uid}"
+  keypad: "JukeBox KeyPad %{uid}"
+  knobpad: "JukeBox KnobPad %{uid}"
+  pedalpad: "JukeBox PedalPad %{uid}"
 
-help_device_identify: "Identify Device"
-help_device_update: "Update Device"
-help_device_rgb: "RGB Control"
-help_device_screen: "Screen Control"
+update:
+  title: "Update Device"
+  button: "Update"
+  cfw_button: "CFW"
+  filter_name: "UF2 Firmware"
+  status:
+    start: ""
+    connecting: "Connecting to device..."
+    preparing: "Preparing firmware..."
+    erasing: "Erasing old firmware..."
+    writing: "Writing new firmware..."
+    end: "Done!"
 
-help_action_test_input: "Test Action"
-help_action_image_icon: "Choose Image Icon"
-help_action_glyph_icon: "Choose Glyph Icon"
 
-update_title: "Update Device"
-update_button: "Update"
-update_cfw_button: "CFW"
-update_filter_name: "UF2 Firmware"
-update_status_start: ""
-update_status_connecting: "Connecting to device..."
-update_status_preparing: "Preparing firmware..."
-update_status_erasing: "Erasing old firmware..."
-update_status_writing: "Writing new firmware..."
-update_status_end: "Done!"
 
 action:
   meta:
@@ -59,12 +69,10 @@ action:
     no_action:
       title: "No Action"
       help: "Does nothing!"
-    
     switch_profile:
       title: "Switch Profile"
       help: "Switches to specified profile on release."
       profile_select: "Profile:"
-    
     copy_from_profile:
       title: "Copy from Profile"
       help: "Copies action on the same key from specified profile."
