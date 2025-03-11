@@ -10,7 +10,7 @@ use super::types::{Action, ActionType as AT};
 #[rustfmt::skip]
 pub fn input_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
     (
-        t!("action.input.title", icon = phos::GEAR).to_string(),
+        t!("action.input.title", icon = phos::CURSOR_CLICK).to_string(),
         vec![
             (AT::InputKeyboard, Box::new(InputKeyboard::default()), t!("action.input.keyboard.title").to_string()),
             (AT::InputMouse,    Box::new(InputMouse::default()),    t!("action.input.mouse.title").to_string()),

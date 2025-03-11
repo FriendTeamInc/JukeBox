@@ -14,12 +14,12 @@ use super::types::{Action, ActionType as AT};
 #[rustfmt::skip]
 pub fn system_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
     (
-        format!("{} System", phos::DESKTOP_TOWER),
+        t!("action.system.title", icon = phos::DESKTOP_TOWER).to_string(),
         vec![
-            (AT::SystemLaunchApplication,  Box::new(SystemLaunchApplication::default()),  "Launch Application".to_string()),
-            (AT::SystemOpenWebsite,        Box::new(SystemOpenWebsite::default()),        "Open Website".to_string()),
-            (AT::SystemAudioInputControl,  Box::new(SystemAudioInputControl::default()),  "Audio Input Control".to_string()),
-            (AT::SystemAudioOutputControl, Box::new(SystemAudioOutputControl::default()), "Audio Output Control".to_string()),
+            (AT::SystemLaunchApplication,  Box::new(SystemLaunchApplication::default()),  t!("action.system.launch_app.title").to_string()),
+            (AT::SystemOpenWebsite,        Box::new(SystemOpenWebsite::default()),        t!("action.system.open_website.title").to_string()),
+            (AT::SystemAudioInputControl,  Box::new(SystemAudioInputControl::default()),  t!("action.system.audio_input_control.title").to_string()),
+            (AT::SystemAudioOutputControl, Box::new(SystemAudioOutputControl::default()), t!("action.system.audio_output_control.title").to_string()),
         ],
     )
 }
@@ -70,14 +70,17 @@ impl Action for SystemLaunchApplication {
         _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) {
-        if ui.button("Choose File").clicked() {
+        if ui
+            .button(t!("action.system.launch_app.choose_file"))
+            .clicked()
+        {
             if let Some(f) = FileDialog::new().pick_file() {
                 self.filepath = f.to_str().unwrap().to_owned();
             }
         }
         ui.text_edit_singleline(&mut self.filepath);
         ui.horizontal(|ui| {
-            ui.label("Arguments:");
+            ui.label(t!("action.system.launch_app.add_arguments"));
             if ui.button("+").clicked() {
                 self.arguments.push(String::new());
             }
@@ -98,7 +101,7 @@ impl Action for SystemLaunchApplication {
     }
 
     fn help(&self) -> String {
-        "Launches a system application on press.".to_string()
+        t!("action.system.launch_app.help").to_string()
     }
 }
 
@@ -140,12 +143,12 @@ impl Action for SystemOpenWebsite {
         _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) {
-        ui.label("URL:");
+        ui.label(t!("action.system.open_website.url"));
         ui.text_edit_singleline(&mut self.url);
     }
 
     fn help(&self) -> String {
-        "Opens a website on press.".to_string()
+        t!("action.system.open_website.help").to_string()
     }
 }
 
@@ -187,7 +190,7 @@ impl Action for SystemAudioInputControl {
         _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) {
-        ui.label("Output device:");
+        ui.label(t!("action.system.audio_input_control.input_device"));
         ComboBox::from_id_salt("SystemAudioInputControlDeviceSelect")
             .selected_text(self.input_device.clone())
             .width(228.0)
@@ -195,12 +198,12 @@ impl Action for SystemAudioInputControl {
                 // TODO
             });
 
-        ui.label("Volume Adjust:");
+        ui.label(t!("action.system.audio_input_control.volume_adjust"));
         ui.add(Slider::new(&mut self.vol_adjust, -100..=100));
     }
 
     fn help(&self) -> String {
-        "Adjust an Audio Input Device volume by specified amount on press.".to_string()
+        t!("action.system.audio_input_control.help").to_string()
     }
 }
 
@@ -242,7 +245,7 @@ impl Action for SystemAudioOutputControl {
         _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) {
-        ui.label("Output device:");
+        ui.label(t!("action.system.audio_output_control.output_device"));
         ComboBox::from_id_salt("SystemAudioOutputControlDeviceSelect")
             .selected_text(self.input_device.clone())
             .width(228.0)
@@ -250,11 +253,11 @@ impl Action for SystemAudioOutputControl {
                 // TODO
             });
 
-        ui.label("Volume Adjust:");
+        ui.label(t!("action.system.audio_output_control.volume_adjust"));
         ui.add(Slider::new(&mut self.vol_adjust, -100..=100));
     }
 
     fn help(&self) -> String {
-        "Adjust an Audio Output Device volume by specified amount on press.".to_string()
+        t!("action.system.audio_output_control.help").to_string()
     }
 }

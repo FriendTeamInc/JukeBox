@@ -82,7 +82,7 @@ action:
     title: "%{icon} Input"
     keyboard:
       title: "Keyboard Event"
-      help: "Trigger a keyboard key event."
+      help: "Trigger a keyboard event."
       add_keys: "Keys:"
     mouse:
       title: "Mouse Event"
@@ -97,4 +97,35 @@ action:
       move_y: "Move Y:"
       scroll_y: "Scroll Y:"
       scroll_x: "Scroll X:"
+  
+  system:
+    title: "%{icon} System"
+    launch_app:
+      title: "Launch Application"
+      help: "Launches a system application on press."
+      choose_file: "Choose File"
+      add_arguments: "Arguments:"
+    open_website:
+      title: "Open Website"
+      help: "Opens a website on press."
+      url: "URL:"
+    audio_input_control:
+      title: "Audio Input Control"
+      help: "Adjust an Audio Input Device volume by specified amount on press."
+      input_device: "Input Device:"
+      volume_adjust: "Volume Adjust:"
+    audio_output_control:
+      title: "Audio Output Control"
+      help: "Adjust an Audio Output Device volume by specified amount on press."
+      output_device: "Output Device:"
+      volume_adjust: "Volume Adjust:"
+  
+  soundboard:
+    title: "%{icon} Soundboard"
+    play_sound:
+      title: "Play Sound"
+      help: "Plays a sound file to an output audio device on press."
+      choose_file: "Choose File"
+      output_device: "Output Device:"
+      volume: "Volume:"
 

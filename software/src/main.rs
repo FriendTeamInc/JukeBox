@@ -4,7 +4,7 @@
 
 #[macro_use]
 extern crate rust_i18n;
-i18n!("locales");
+i18n!("locales", fallback = "en", minify_key = true);
 
 mod action;
 mod config;

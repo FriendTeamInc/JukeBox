@@ -11,8 +11,8 @@ use super::types::{Action, ActionType as AT};
 #[rustfmt::skip]
 pub fn soundboard_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
     (
-        format!("{} Soundboard", phos::MUSIC_NOTES),
-        vec![(AT::SoundboardPlaySound, Box::new(SoundboardPlaySound::default()), "Play Sound".to_string())],
+        t!("action.soundboard.title", icon = phos::MUSIC_NOTES).to_string(),
+        vec![(AT::SoundboardPlaySound, Box::new(SoundboardPlaySound::default()), t!("action.soundboard.play_sound.title").to_string())],
     )
 }
 
@@ -55,7 +55,10 @@ impl Action for SoundboardPlaySound {
         _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) {
-        if ui.button("Choose File").clicked() {
+        if ui
+            .button(t!("action.soundboard.play_sound.choose_file"))
+            .clicked()
+        {
             if let Some(f) = FileDialog::new().pick_file() {
                 self.filepath = f.to_str().unwrap().to_owned();
             }
@@ -64,7 +67,7 @@ impl Action for SoundboardPlaySound {
 
         ui.label("");
 
-        ui.label("Output device:");
+        ui.label(t!("action.soundboard.play_sound.output_device"));
         ComboBox::from_id_salt("SoundboardPlaySoundDeviceSelect")
             .selected_text(self.output_device.clone())
             .width(228.0)
@@ -72,11 +75,11 @@ impl Action for SoundboardPlaySound {
 
         ui.label("");
 
-        ui.label("Volume:");
+        ui.label(t!("action.soundboard.play_sound.volume"));
         ui.add(Slider::new(&mut self.volume, 0..=100));
     }
 
     fn help(&self) -> String {
-        "Plays a sound file to an output audio device on press.".to_string()
+        t!("action.soundboard.play_sound.help").to_string()
     }
 }
