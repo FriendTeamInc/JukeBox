@@ -1,11 +1,31 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
 use eframe::egui::{ComboBox, Slider, Ui};
+use egui_phosphor::regular as phos;
 use rfd::FileDialog;
 use serde::{Deserialize, Serialize};
 
 use crate::{config::JukeBoxConfig, input::InputKey};
 
-use super::types::{Reaction, ReactionType};
+use super::types::{Reaction, ReactionType as RT};
+
+#[rustfmt::skip]
+pub fn soundboard_reaction_list() -> (String, Vec<(RT, String)>) {
+    (
+        format!("{} Soundboard", phos::MUSIC_NOTES),
+        vec![(RT::SoundboardPlaySound, "Play Sound".to_string())],
+    )
+}
+
+#[rustfmt::skip]
+pub fn soundboard_enum_map() -> HashMap<RT, Box<dyn Reaction>> {
+    let mut h: HashMap<RT, Box<dyn Reaction>> = HashMap::new();
+
+    h.insert(RT::SoundboardPlaySound, Box::new(SoundboardPlaySound::default()));
+
+    h
+}
 
 #[derive(Default, Serialize, Deserialize, Clone)]
 pub struct SoundboardPlaySound {
@@ -35,8 +55,8 @@ impl Reaction for SoundboardPlaySound {
         Ok(())
     }
 
-    fn get_type(&self) -> ReactionType {
-        ReactionType::SoundboardPlaySound
+    fn get_type(&self) -> RT {
+        RT::SoundboardPlaySound
     }
 
     fn edit_ui(

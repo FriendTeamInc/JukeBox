@@ -1,10 +1,36 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
 use eframe::egui::{ComboBox, Ui};
+use egui_phosphor::regular as phos;
 use serde::{Deserialize, Serialize};
 
 use crate::{config::JukeBoxConfig, input::InputKey};
 
-use super::types::{Reaction, ReactionType};
+use super::types::{Reaction, ReactionType as RT};
+
+#[rustfmt::skip]
+pub fn meta_reaction_list() -> (String, Vec<(RT, String)>) {
+    (
+        format!("{} Meta", phos::GEAR),
+        vec![
+            (RT::MetaNoAction, "No Action".to_string()),
+            (RT::MetaSwitchProfile, "Switch Profile".to_string()),
+            (RT::MetaCopyFromProfile, "Copy From Profile".to_string()),
+        ],
+    )
+}
+
+#[rustfmt::skip]
+pub fn meta_enum_map() -> HashMap<RT, Box<dyn Reaction>> {
+    let mut h: HashMap<RT, Box<dyn Reaction>> = HashMap::new();
+
+    h.insert(RT::MetaNoAction, Box::new(MetaNoAction::default()));
+    h.insert(RT::MetaSwitchProfile, Box::new(MetaSwitchProfile::default()));
+    h.insert(RT::MetaCopyFromProfile, Box::new(MetaCopyFromProfile::default()));
+
+    h
+}
 
 #[derive(Default, Serialize, Deserialize, Clone)]
 pub struct MetaNoAction {}
@@ -39,8 +65,8 @@ impl Reaction for MetaNoAction {
         Ok(())
     }
 
-    fn get_type(&self) -> ReactionType {
-        ReactionType::MetaNoAction
+    fn get_type(&self) -> RT {
+        RT::MetaNoAction
     }
 
     fn edit_ui(
@@ -88,8 +114,8 @@ impl Reaction for MetaSwitchProfile {
         Ok(())
     }
 
-    fn get_type(&self) -> ReactionType {
-        ReactionType::MetaSwitchProfile
+    fn get_type(&self) -> RT {
+        RT::MetaSwitchProfile
     }
 
     fn edit_ui(
@@ -216,8 +242,8 @@ impl Reaction for MetaCopyFromProfile {
         Ok(())
     }
 
-    fn get_type(&self) -> ReactionType {
-        ReactionType::MetaCopyFromProfile
+    fn get_type(&self) -> RT {
+        RT::MetaCopyFromProfile
     }
 
     fn edit_ui(
@@ -241,7 +267,7 @@ impl Reaction for MetaCopyFromProfile {
                         .get(&input_key)
                         .unwrap()
                         .get_type()
-                        == ReactionType::MetaCopyFromProfile
+                        == RT::MetaCopyFromProfile
                     {
                         continue;
                     }

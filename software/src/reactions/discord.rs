@@ -1,10 +1,40 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
 use eframe::egui::{vec2, Button, Ui};
+use egui_phosphor::regular as phos;
 use serde::{Deserialize, Serialize};
 
 use crate::{config::JukeBoxConfig, input::InputKey};
 
-use super::types::{Reaction, ReactionType};
+use super::types::{Reaction, ReactionType as RT};
+
+#[rustfmt::skip]
+pub fn discord_reaction_list() -> (String, Vec<(RT, String)>) {
+    (
+        format!("{} Discord", phos::DISCORD_LOGO),
+        vec![
+            (RT::DiscordToggleMute, "Toggle Mute".to_string()),
+            (RT::DiscordToggleDeafen, "Toggle Deafen".to_string()),
+            (RT::DiscordPushToTalk, "Push to Talk".to_string()),
+            (RT::DiscordPushToMute, "Push to Mute".to_string()),
+            (RT::DiscordToggleCamera, "Toggle Camera".to_string()),
+        ],
+    )
+}
+
+#[rustfmt::skip]
+pub fn discord_enum_map() -> HashMap<RT, Box<dyn Reaction>> {
+    let mut h: HashMap<RT, Box<dyn Reaction>> = HashMap::new();
+    
+    h.insert(RT::DiscordToggleMute, Box::new(DiscordToggleMute::default()));
+    h.insert(RT::DiscordToggleDeafen, Box::new(DiscordToggleDeafen::default()));
+    h.insert(RT::DiscordPushToTalk, Box::new(DiscordPushToTalk::default()));
+    h.insert(RT::DiscordPushToMute, Box::new(DiscordPushToMute::default()));
+    h.insert(RT::DiscordToggleCamera, Box::new(DiscordToggleCamera::default()));
+
+    h
+}
 
 fn account_warning(ui: &mut Ui) {
     ui.vertical_centered(|ui| {
@@ -46,8 +76,8 @@ impl Reaction for DiscordToggleMute {
         Ok(())
     }
 
-    fn get_type(&self) -> ReactionType {
-        ReactionType::DiscordToggleMute
+    fn get_type(&self) -> RT {
+        RT::DiscordToggleMute
     }
 
     fn edit_ui(
@@ -89,8 +119,8 @@ impl Reaction for DiscordToggleDeafen {
         Ok(())
     }
 
-    fn get_type(&self) -> ReactionType {
-        ReactionType::DiscordToggleDeafen
+    fn get_type(&self) -> RT {
+        RT::DiscordToggleDeafen
     }
 
     fn edit_ui(
@@ -133,8 +163,8 @@ impl Reaction for DiscordPushToTalk {
         Ok(())
     }
 
-    fn get_type(&self) -> ReactionType {
-        ReactionType::DiscordPushToTalk
+    fn get_type(&self) -> RT {
+        RT::DiscordPushToTalk
     }
 
     fn edit_ui(
@@ -177,8 +207,8 @@ impl Reaction for DiscordPushToMute {
         Ok(())
     }
 
-    fn get_type(&self) -> ReactionType {
-        ReactionType::DiscordPushToMute
+    fn get_type(&self) -> RT {
+        RT::DiscordPushToMute
     }
 
     fn edit_ui(
@@ -221,8 +251,8 @@ impl Reaction for DiscordToggleCamera {
         Ok(())
     }
 
-    fn get_type(&self) -> ReactionType {
-        ReactionType::DiscordToggleCamera
+    fn get_type(&self) -> RT {
+        RT::DiscordToggleCamera
     }
 
     fn edit_ui(

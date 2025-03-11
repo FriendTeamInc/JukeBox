@@ -31,9 +31,7 @@ use crate::config::JukeBoxConfig;
 use crate::input::InputKey;
 use crate::reaction::reaction_task;
 use crate::reactions::meta::MetaNoAction;
-use crate::reactions::types::{
-    default_reaction_config, reaction_enum_to_new, reaction_ui_list, Reaction, ReactionType,
-};
+use crate::reactions::types::{Reaction, ReactionMap, ReactionType};
 use crate::serial::{serial_task, SerialCommand, SerialEvent};
 use crate::splash::SPLASH_MESSAGES;
 use crate::update::{update_task, UpdateStatus};
@@ -98,6 +96,8 @@ struct JukeBoxGui {
 
     update_progress: f32,
     update_status: UpdateStatus,
+
+    reaction_map: ReactionMap,
 }
 impl JukeBoxGui {
     fn new() -> Self {
@@ -140,6 +140,8 @@ impl JukeBoxGui {
 
             update_progress: 0.0,
             update_status: UpdateStatus::Start,
+
+            reaction_map: ReactionMap::new(),
         }
     }
 
@@ -187,8 +189,6 @@ impl JukeBoxGui {
             ..Default::default()
         };
 
-        let reaction_ui_list = reaction_ui_list();
-
         eframe::run_simple_native("JukeBox Desktop", options, move |ctx, _frame| {
             // TODO: give ctx to other threads?, so ui can be updated as necessary.
             // but only once
@@ -211,7 +211,7 @@ impl JukeBoxGui {
                 ui.allocate_ui(vec2(464.0, 245.0), |ui| match self.gui_tab {
                     GuiTab::Device => self.draw_device_page(ui),
                     GuiTab::Settings => self.draw_settings_page(ui),
-                    GuiTab::Editing => self.draw_edit_reaction(ui, &reaction_ui_list),
+                    GuiTab::Editing => self.draw_edit_reaction(ui),
                     GuiTab::Updating => self.draw_update_page(ui, &gs_cmd_txs, &us_tx, &mut us_rx),
                 });
 
@@ -286,7 +286,8 @@ impl JukeBoxGui {
                                 if !v.contains_key(&device_uid) {
                                     v.insert(
                                         device_uid.clone(),
-                                        default_reaction_config(device_type.into()),
+                                        self.reaction_map
+                                            .default_reaction_config(device_type.into()),
                                     );
                                 }
                             }
@@ -555,10 +556,10 @@ impl JukeBoxGui {
                                     use ReactionType as r;
                                     match k.get_type() {
                                         r::MetaSwitchProfile => {
-                                            *k = reaction_enum_to_new(r::MetaSwitchProfile);
+                                            *k = self.reaction_map.enum_new(r::MetaSwitchProfile);
                                         }
                                         r::MetaCopyFromProfile => {
-                                            *k = reaction_enum_to_new(r::MetaCopyFromProfile);
+                                            *k = self.reaction_map.enum_new(r::MetaCopyFromProfile);
                                         }
                                         _ => {}
                                     }
@@ -610,7 +611,10 @@ impl JukeBoxGui {
                     };
                     let mut m = HashMap::new();
                     for (d, t) in &self.devices {
-                        m.insert(d.clone(), default_reaction_config(t.0.into()));
+                        m.insert(
+                            d.clone(),
+                            self.reaction_map.default_reaction_config(t.0.into()),
+                        );
                     }
                     conf.profiles.insert(name, m);
                     conf.save();
@@ -647,10 +651,10 @@ impl JukeBoxGui {
                                 use ReactionType as r;
                                 match k.get_type() {
                                     r::MetaSwitchProfile => {
-                                        *k = reaction_enum_to_new(r::MetaSwitchProfile);
+                                        *k = self.reaction_map.enum_new(r::MetaSwitchProfile);
                                     }
                                     r::MetaCopyFromProfile => {
-                                        *k = reaction_enum_to_new(r::MetaCopyFromProfile);
+                                        *k = self.reaction_map.enum_new(r::MetaCopyFromProfile);
                                     }
                                     _ => {}
                                 }
@@ -895,14 +899,17 @@ impl JukeBoxGui {
                 self.config_editing_reaction = r.clone();
             } else {
                 self.config_editing_reaction_type = ReactionType::MetaNoAction;
-                self.config_editing_reaction =
-                    reaction_enum_to_new(self.config_editing_reaction_type);
+                self.config_editing_reaction = self
+                    .reaction_map
+                    .enum_new(self.config_editing_reaction_type);
             }
         };
     }
 
     fn reset_editing_reaction(&mut self) {
-        self.config_editing_reaction = reaction_enum_to_new(self.config_editing_reaction_type);
+        self.config_editing_reaction = self
+            .reaction_map
+            .enum_new(self.config_editing_reaction_type);
     }
 
     fn save_reaction_and_exit(&mut self) {
@@ -927,12 +934,8 @@ impl JukeBoxGui {
         c.save();
     }
 
-    fn draw_reaction_list(
-        &mut self,
-        ui: &mut Ui,
-        reaction_ui_list: &Vec<(String, Vec<(ReactionType, String)>)>,
-    ) {
-        for (header, options) in reaction_ui_list {
+    fn draw_reaction_list(&mut self, ui: &mut Ui) {
+        for (header, options) in self.reaction_map.ui_list() {
             CollapsingHeader::new(RichText::new(header).strong())
                 .default_open(true)
                 .show(ui, |ui| {
@@ -940,7 +943,7 @@ impl JukeBoxGui {
                         if ui
                             .selectable_value(
                                 &mut self.config_editing_reaction_type,
-                                *reaction_type,
+                                reaction_type,
                                 label,
                             )
                             .changed()
@@ -953,11 +956,7 @@ impl JukeBoxGui {
         }
     }
 
-    fn draw_edit_reaction(
-        &mut self,
-        ui: &mut Ui,
-        reaction_ui_list: &Vec<(String, Vec<(ReactionType, String)>)>,
-    ) {
+    fn draw_edit_reaction(&mut self, ui: &mut Ui) {
         ui.columns_const(|[c1, c2]| {
             c1.horizontal(|ui| {
                 let test_btn = ui
@@ -1036,7 +1035,7 @@ impl JukeBoxGui {
                             .min_col_width(228.0)
                             .striped(true)
                             .show(ui, |ui| {
-                                self.draw_reaction_list(ui, reaction_ui_list);
+                                self.draw_reaction_list(ui);
                             });
                         ui.allocate_space(ui.available_size_before_wrap());
                     });

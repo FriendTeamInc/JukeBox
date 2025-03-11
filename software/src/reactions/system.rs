@@ -1,4 +1,4 @@
-use std::process::Command;
+use std::{collections::HashMap, process::Command};
 
 use anyhow::Result;
 use eframe::egui::{ComboBox, Slider, Ui};
@@ -9,7 +9,32 @@ use tokio::task::spawn_blocking;
 
 use crate::{config::JukeBoxConfig, input::InputKey};
 
-use super::types::{Reaction, ReactionType};
+use super::types::{Reaction, ReactionType as RT};
+
+#[rustfmt::skip]
+pub fn system_reaction_list() -> (String, Vec<(RT, String)>) {
+    (
+        format!("{} System", phos::DESKTOP_TOWER),
+        vec![
+            (RT::SystemLaunchApplication, "Launch Application".to_string()),
+            (RT::SystemOpenWebsite, "Open Website".to_string()),
+            (RT::SystemAudioInputControl, "Audio Input Control".to_string()),
+            (RT::SystemAudioOutputControl, "Audio Output Control".to_string()),
+        ],
+    )
+}
+
+#[rustfmt::skip]
+pub fn system_enum_map() -> HashMap<RT, Box<dyn Reaction>> {
+    let mut h: HashMap<RT, Box<dyn Reaction>> = HashMap::new();
+    
+    h.insert(RT::SystemLaunchApplication, Box::new(SystemLaunchApplication::default()));
+    h.insert(RT::SystemOpenWebsite, Box::new(SystemOpenWebsite::default()));
+    h.insert(RT::SystemAudioInputControl, Box::new(SystemAudioInputControl::default()));
+    h.insert(RT::SystemAudioOutputControl, Box::new(SystemAudioOutputControl::default()));
+
+    h
+}
 
 #[derive(Default, Serialize, Deserialize, Clone)]
 pub struct SystemLaunchApplication {
@@ -46,8 +71,8 @@ impl Reaction for SystemLaunchApplication {
         Ok(())
     }
 
-    fn get_type(&self) -> ReactionType {
-        ReactionType::SystemLaunchApplication
+    fn get_type(&self) -> RT {
+        RT::SystemLaunchApplication
     }
 
     fn edit_ui(
@@ -116,8 +141,8 @@ impl Reaction for SystemOpenWebsite {
         Ok(())
     }
 
-    fn get_type(&self) -> ReactionType {
-        ReactionType::SystemOpenWebsite
+    fn get_type(&self) -> RT {
+        RT::SystemOpenWebsite
     }
 
     fn edit_ui(
@@ -163,8 +188,8 @@ impl Reaction for SystemAudioInputControl {
         Ok(())
     }
 
-    fn get_type(&self) -> ReactionType {
-        ReactionType::SystemAudioInputControl
+    fn get_type(&self) -> RT {
+        RT::SystemAudioInputControl
     }
 
     fn edit_ui(
@@ -218,8 +243,8 @@ impl Reaction for SystemAudioOutputControl {
         Ok(())
     }
 
-    fn get_type(&self) -> ReactionType {
-        ReactionType::SystemAudioOutputControl
+    fn get_type(&self) -> RT {
+        RT::SystemAudioOutputControl
     }
 
     fn edit_ui(

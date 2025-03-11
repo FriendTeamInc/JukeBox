@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use anyhow::Result;
 use eframe::egui::{ComboBox, Slider, Ui};
 use egui_phosphor::regular as phos;
@@ -5,7 +7,28 @@ use serde::{Deserialize, Serialize};
 
 use crate::{config::JukeBoxConfig, input::InputKey};
 
-use super::types::{Reaction, ReactionType};
+use super::types::{Reaction, ReactionType as RT};
+
+#[rustfmt::skip]
+pub fn input_reaction_list() -> (String, Vec<(RT, String)>) {
+    (
+        format!("{} Input", phos::CURSOR_CLICK),
+        vec![
+            (RT::InputKeyboard, "Keyboard Event".to_string()),
+            (RT::InputMouse, "Mouse Event".to_string()),
+        ],
+    )
+}
+
+#[rustfmt::skip]
+pub fn input_enum_map() -> HashMap<RT, Box<dyn Reaction>> {
+    let mut h: HashMap<RT, Box<dyn Reaction>> = HashMap::new();
+    
+    h.insert(RT::InputKeyboard, Box::new(InputKeyboard::default()));
+    h.insert(RT::InputMouse, Box::new(InputMouse::default()));
+
+    h
+}
 
 const KEYBOARD_SCAN_CODES: [(&str, u8); 169] = [
     ("A", 0x04),
@@ -208,8 +231,8 @@ impl Reaction for InputKeyboard {
         Ok(())
     }
 
-    fn get_type(&self) -> ReactionType {
-        ReactionType::InputKeyboard
+    fn get_type(&self) -> RT {
+        RT::InputKeyboard
     }
 
     fn edit_ui(
@@ -283,8 +306,8 @@ impl Reaction for InputMouse {
         Ok(())
     }
 
-    fn get_type(&self) -> ReactionType {
-        ReactionType::InputMouse
+    fn get_type(&self) -> RT {
+        RT::InputMouse
     }
 
     fn edit_ui(
