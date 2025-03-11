@@ -128,4 +128,22 @@ action:
       choose_file: "Choose File"
       output_device: "Output Device:"
       volume: "Volume:"
+  
+  discord:
+    title: "%{icon} Discord"
+    warning:
+      help: "You need to connect your Discord Account before using this action!"
+      button: "Connect to Discord Account"
+    toggle_mute:
+      title: "Toggle Mute"
+      help: "Toggle mutes your microphone on Discord when pressed."
+    toggle_deafen:
+      title: "Toggle Deafen"
+      help: "Toggle deafens your audio on Discord when pressed."
+    push_to_talk:
+      title: "Push to Talk"
+      help: "Unmutes your microphone on Discord while held."
+    push_to_mute:
+      title: "Push to Mute"
+      help: "Mutes your microphone on Discord while held."
 

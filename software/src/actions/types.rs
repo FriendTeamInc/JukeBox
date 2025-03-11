@@ -72,7 +72,6 @@ pub enum ActionType {
     DiscordToggleDeafen,
     DiscordPushToTalk,
     DiscordPushToMute,
-    DiscordToggleCamera,
 
     // OBS
     ObsStream,
