@@ -26,7 +26,7 @@ pub fn discord_action_list() -> (String, Vec<(AT, String)>) {
 #[rustfmt::skip]
 pub fn discord_enum_map() -> HashMap<AT, Box<dyn Action>> {
     let mut h: HashMap<AT, Box<dyn Action>> = HashMap::new();
-    
+
     h.insert(AT::DiscordToggleMute, Box::new(DiscordToggleMute::default()));
     h.insert(AT::DiscordToggleDeafen, Box::new(DiscordToggleDeafen::default()));
     h.insert(AT::DiscordPushToTalk, Box::new(DiscordPushToTalk::default()));

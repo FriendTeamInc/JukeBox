@@ -27,7 +27,7 @@ pub fn system_action_list() -> (String, Vec<(AT, String)>) {
 #[rustfmt::skip]
 pub fn system_enum_map() -> HashMap<AT, Box<dyn Action>> {
     let mut h: HashMap<AT, Box<dyn Action>> = HashMap::new();
-    
+
     h.insert(AT::SystemLaunchApplication, Box::new(SystemLaunchApplication::default()));
     h.insert(AT::SystemOpenWebsite, Box::new(SystemOpenWebsite::default()));
     h.insert(AT::SystemAudioInputControl, Box::new(SystemAudioInputControl::default()));
