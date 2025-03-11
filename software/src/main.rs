@@ -2,6 +2,10 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // disables console spawning for release build
 
+#[macro_use]
+extern crate rust_i18n;
+i18n!("locales");
+
 mod action;
 mod config;
 mod gui;

@@ -12,9 +12,9 @@ pub fn meta_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
     (
         format!("{} Meta", phos::GEAR),
         vec![
-            (AT::MetaNoAction,        Box::new(MetaNoAction::default()),        "No Action".to_string()),
-            (AT::MetaSwitchProfile,   Box::new(MetaSwitchProfile::default()),   "Switch Profile".to_string()),
-            (AT::MetaCopyFromProfile, Box::new(MetaCopyFromProfile::default()), "Copy From Profile".to_string()),
+            (AT::MetaNoAction,        Box::new(MetaNoAction::default()),        t!("action.meta.no_action.title").to_string()),
+            (AT::MetaSwitchProfile,   Box::new(MetaSwitchProfile::default()),   t!("action.meta.switch_profile.title").to_string()),
+            (AT::MetaCopyFromProfile, Box::new(MetaCopyFromProfile::default()), t!("action.meta.copy_from_profile.title").to_string()),
         ],
     )
 }
@@ -66,7 +66,7 @@ impl Action for MetaNoAction {
     }
 
     fn help(&self) -> String {
-        "Does nothing!".to_string()
+        t!("action.meta.no_action.help").to_string()
     }
 }
 
@@ -112,7 +112,7 @@ impl Action for MetaSwitchProfile {
         _input_input_key: InputKey,
         config: &mut JukeBoxConfig,
     ) {
-        ui.label("Profile:");
+        ui.label(t!("action.meta.switch_profile.profile_select"));
         ComboBox::from_id_salt("MetaSwitchProfileSelect")
             .selected_text(self.profile.clone())
             .width(228.0)
@@ -130,7 +130,7 @@ impl Action for MetaSwitchProfile {
     }
 
     fn help(&self) -> String {
-        "Switches to specified profile on release.".to_string()
+        t!("action.meta.switch_profile.help").to_string()
     }
 }
 
@@ -240,7 +240,7 @@ impl Action for MetaCopyFromProfile {
         input_key: InputKey,
         config: &mut JukeBoxConfig,
     ) {
-        ui.label("Profile:");
+        ui.label(t!("action.meta.copy_from_profile.profile_select"));
         ComboBox::from_id_salt("MetaCopyFromProfile")
             .selected_text(self.profile.clone())
             .width(228.0)
@@ -268,6 +268,6 @@ impl Action for MetaCopyFromProfile {
     }
 
     fn help(&self) -> String {
-        "Copies action on the same key from specified profile.".to_string()
+        t!("action.meta.copy_from_profile.help").to_string()
     }
 }
