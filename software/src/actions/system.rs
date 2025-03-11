@@ -9,29 +9,29 @@ use tokio::task::spawn_blocking;
 
 use crate::{config::JukeBoxConfig, input::InputKey};
 
-use super::types::{Reaction, ReactionType as RT};
+use super::types::{Action, ActionType as AT};
 
 #[rustfmt::skip]
-pub fn system_reaction_list() -> (String, Vec<(RT, String)>) {
+pub fn system_action_list() -> (String, Vec<(AT, String)>) {
     (
         format!("{} System", phos::DESKTOP_TOWER),
         vec![
-            (RT::SystemLaunchApplication, "Launch Application".to_string()),
-            (RT::SystemOpenWebsite, "Open Website".to_string()),
-            (RT::SystemAudioInputControl, "Audio Input Control".to_string()),
-            (RT::SystemAudioOutputControl, "Audio Output Control".to_string()),
+            (AT::SystemLaunchApplication, "Launch Application".to_string()),
+            (AT::SystemOpenWebsite, "Open Website".to_string()),
+            (AT::SystemAudioInputControl, "Audio Input Control".to_string()),
+            (AT::SystemAudioOutputControl, "Audio Output Control".to_string()),
         ],
     )
 }
 
 #[rustfmt::skip]
-pub fn system_enum_map() -> HashMap<RT, Box<dyn Reaction>> {
-    let mut h: HashMap<RT, Box<dyn Reaction>> = HashMap::new();
+pub fn system_enum_map() -> HashMap<AT, Box<dyn Action>> {
+    let mut h: HashMap<AT, Box<dyn Action>> = HashMap::new();
     
-    h.insert(RT::SystemLaunchApplication, Box::new(SystemLaunchApplication::default()));
-    h.insert(RT::SystemOpenWebsite, Box::new(SystemOpenWebsite::default()));
-    h.insert(RT::SystemAudioInputControl, Box::new(SystemAudioInputControl::default()));
-    h.insert(RT::SystemAudioOutputControl, Box::new(SystemAudioOutputControl::default()));
+    h.insert(AT::SystemLaunchApplication, Box::new(SystemLaunchApplication::default()));
+    h.insert(AT::SystemOpenWebsite, Box::new(SystemOpenWebsite::default()));
+    h.insert(AT::SystemAudioInputControl, Box::new(SystemAudioInputControl::default()));
+    h.insert(AT::SystemAudioOutputControl, Box::new(SystemAudioOutputControl::default()));
 
     h
 }
@@ -43,7 +43,7 @@ pub struct SystemLaunchApplication {
 }
 #[async_trait::async_trait]
 #[typetag::serde]
-impl Reaction for SystemLaunchApplication {
+impl Action for SystemLaunchApplication {
     async fn on_press(
         &self,
         _device_uid: &String,
@@ -71,8 +71,8 @@ impl Reaction for SystemLaunchApplication {
         Ok(())
     }
 
-    fn get_type(&self) -> RT {
-        RT::SystemLaunchApplication
+    fn get_type(&self) -> AT {
+        AT::SystemLaunchApplication
     }
 
     fn edit_ui(
@@ -120,7 +120,7 @@ pub struct SystemOpenWebsite {
 }
 #[async_trait::async_trait]
 #[typetag::serde]
-impl Reaction for SystemOpenWebsite {
+impl Action for SystemOpenWebsite {
     async fn on_press(
         &self,
         _device_uid: &String,
@@ -141,8 +141,8 @@ impl Reaction for SystemOpenWebsite {
         Ok(())
     }
 
-    fn get_type(&self) -> RT {
-        RT::SystemOpenWebsite
+    fn get_type(&self) -> AT {
+        AT::SystemOpenWebsite
     }
 
     fn edit_ui(
@@ -168,7 +168,7 @@ pub struct SystemAudioInputControl {
 }
 #[async_trait::async_trait]
 #[typetag::serde]
-impl Reaction for SystemAudioInputControl {
+impl Action for SystemAudioInputControl {
     async fn on_press(
         &self,
         _device_uid: &String,
@@ -188,8 +188,8 @@ impl Reaction for SystemAudioInputControl {
         Ok(())
     }
 
-    fn get_type(&self) -> RT {
-        RT::SystemAudioInputControl
+    fn get_type(&self) -> AT {
+        AT::SystemAudioInputControl
     }
 
     fn edit_ui(
@@ -223,7 +223,7 @@ pub struct SystemAudioOutputControl {
 }
 #[async_trait::async_trait]
 #[typetag::serde]
-impl Reaction for SystemAudioOutputControl {
+impl Action for SystemAudioOutputControl {
     async fn on_press(
         &self,
         _device_uid: &String,
@@ -243,8 +243,8 @@ impl Reaction for SystemAudioOutputControl {
         Ok(())
     }
 
-    fn get_type(&self) -> RT {
-        RT::SystemAudioOutputControl
+    fn get_type(&self) -> AT {
+        AT::SystemAudioOutputControl
     }
 
     fn edit_ui(

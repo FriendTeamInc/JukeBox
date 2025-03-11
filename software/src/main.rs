@@ -2,14 +2,14 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // disables console spawning for release build
 
+mod action;
 mod config;
 mod gui;
 mod input;
-mod reaction;
 mod serial;
 mod splash;
 mod update;
-mod reactions {
+mod actions {
     pub mod discord;
     pub mod input;
     pub mod meta;

@@ -7,31 +7,31 @@ use serde::{Deserialize, Serialize};
 
 use crate::{config::JukeBoxConfig, input::InputKey};
 
-use super::types::{Reaction, ReactionType as RT};
+use super::types::{Action, ActionType as AT};
 
 #[rustfmt::skip]
-pub fn discord_reaction_list() -> (String, Vec<(RT, String)>) {
+pub fn discord_action_list() -> (String, Vec<(AT, String)>) {
     (
         format!("{} Discord", phos::DISCORD_LOGO),
         vec![
-            (RT::DiscordToggleMute, "Toggle Mute".to_string()),
-            (RT::DiscordToggleDeafen, "Toggle Deafen".to_string()),
-            (RT::DiscordPushToTalk, "Push to Talk".to_string()),
-            (RT::DiscordPushToMute, "Push to Mute".to_string()),
-            (RT::DiscordToggleCamera, "Toggle Camera".to_string()),
+            (AT::DiscordToggleMute, "Toggle Mute".to_string()),
+            (AT::DiscordToggleDeafen, "Toggle Deafen".to_string()),
+            (AT::DiscordPushToTalk, "Push to Talk".to_string()),
+            (AT::DiscordPushToMute, "Push to Mute".to_string()),
+            (AT::DiscordToggleCamera, "Toggle Camera".to_string()),
         ],
     )
 }
 
 #[rustfmt::skip]
-pub fn discord_enum_map() -> HashMap<RT, Box<dyn Reaction>> {
-    let mut h: HashMap<RT, Box<dyn Reaction>> = HashMap::new();
+pub fn discord_enum_map() -> HashMap<AT, Box<dyn Action>> {
+    let mut h: HashMap<AT, Box<dyn Action>> = HashMap::new();
     
-    h.insert(RT::DiscordToggleMute, Box::new(DiscordToggleMute::default()));
-    h.insert(RT::DiscordToggleDeafen, Box::new(DiscordToggleDeafen::default()));
-    h.insert(RT::DiscordPushToTalk, Box::new(DiscordPushToTalk::default()));
-    h.insert(RT::DiscordPushToMute, Box::new(DiscordPushToMute::default()));
-    h.insert(RT::DiscordToggleCamera, Box::new(DiscordToggleCamera::default()));
+    h.insert(AT::DiscordToggleMute, Box::new(DiscordToggleMute::default()));
+    h.insert(AT::DiscordToggleDeafen, Box::new(DiscordToggleDeafen::default()));
+    h.insert(AT::DiscordPushToTalk, Box::new(DiscordPushToTalk::default()));
+    h.insert(AT::DiscordPushToMute, Box::new(DiscordPushToMute::default()));
+    h.insert(AT::DiscordToggleCamera, Box::new(DiscordToggleCamera::default()));
 
     h
 }
@@ -56,7 +56,7 @@ fn account_warning(ui: &mut Ui) {
 pub struct DiscordToggleMute {}
 #[async_trait::async_trait]
 #[typetag::serde]
-impl Reaction for DiscordToggleMute {
+impl Action for DiscordToggleMute {
     async fn on_press(
         &self,
         _device_uid: &String,
@@ -76,8 +76,8 @@ impl Reaction for DiscordToggleMute {
         Ok(())
     }
 
-    fn get_type(&self) -> RT {
-        RT::DiscordToggleMute
+    fn get_type(&self) -> AT {
+        AT::DiscordToggleMute
     }
 
     fn edit_ui(
@@ -99,7 +99,7 @@ impl Reaction for DiscordToggleMute {
 pub struct DiscordToggleDeafen {}
 #[async_trait::async_trait]
 #[typetag::serde]
-impl Reaction for DiscordToggleDeafen {
+impl Action for DiscordToggleDeafen {
     async fn on_press(
         &self,
         _device_uid: &String,
@@ -119,8 +119,8 @@ impl Reaction for DiscordToggleDeafen {
         Ok(())
     }
 
-    fn get_type(&self) -> RT {
-        RT::DiscordToggleDeafen
+    fn get_type(&self) -> AT {
+        AT::DiscordToggleDeafen
     }
 
     fn edit_ui(
@@ -142,7 +142,7 @@ impl Reaction for DiscordToggleDeafen {
 pub struct DiscordPushToTalk {}
 #[async_trait::async_trait]
 #[typetag::serde]
-impl Reaction for DiscordPushToTalk {
+impl Action for DiscordPushToTalk {
     async fn on_press(
         &self,
         _device_uid: &String,
@@ -163,8 +163,8 @@ impl Reaction for DiscordPushToTalk {
         Ok(())
     }
 
-    fn get_type(&self) -> RT {
-        RT::DiscordPushToTalk
+    fn get_type(&self) -> AT {
+        AT::DiscordPushToTalk
     }
 
     fn edit_ui(
@@ -186,7 +186,7 @@ impl Reaction for DiscordPushToTalk {
 pub struct DiscordPushToMute {}
 #[async_trait::async_trait]
 #[typetag::serde]
-impl Reaction for DiscordPushToMute {
+impl Action for DiscordPushToMute {
     async fn on_press(
         &self,
         _device_uid: &String,
@@ -207,8 +207,8 @@ impl Reaction for DiscordPushToMute {
         Ok(())
     }
 
-    fn get_type(&self) -> RT {
-        RT::DiscordPushToMute
+    fn get_type(&self) -> AT {
+        AT::DiscordPushToMute
     }
 
     fn edit_ui(
@@ -230,7 +230,7 @@ impl Reaction for DiscordPushToMute {
 pub struct DiscordToggleCamera {}
 #[async_trait::async_trait]
 #[typetag::serde]
-impl Reaction for DiscordToggleCamera {
+impl Action for DiscordToggleCamera {
     async fn on_press(
         &self,
         _device_uid: &String,
@@ -251,8 +251,8 @@ impl Reaction for DiscordToggleCamera {
         Ok(())
     }
 
-    fn get_type(&self) -> RT {
-        RT::DiscordToggleCamera
+    fn get_type(&self) -> AT {
+        AT::DiscordToggleCamera
     }
 
     fn edit_ui(

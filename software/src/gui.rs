@@ -27,11 +27,11 @@ use tokio::{
     },
 };
 
+use crate::action::action_task;
+use crate::actions::meta::MetaNoAction;
+use crate::actions::types::{Action, ActionMap, ActionType};
 use crate::config::JukeBoxConfig;
 use crate::input::InputKey;
-use crate::reaction::reaction_task;
-use crate::reactions::meta::MetaNoAction;
-use crate::reactions::types::{Reaction, ReactionMap, ReactionType};
 use crate::serial::{serial_task, SerialCommand, SerialEvent};
 use crate::splash::SPLASH_MESSAGES;
 use crate::update::{update_task, UpdateStatus};
@@ -90,14 +90,14 @@ struct JukeBoxGui {
     config_renaming_device: bool,
     config_device_name_entry: String,
     config_editing_key: InputKey,
-    config_editing_reaction_type: ReactionType,
-    config_editing_reaction: Box<dyn Reaction>,
+    config_editing_action_type: ActionType,
+    config_editing_action: Box<dyn Action>,
     config_enable_splash: bool,
 
     update_progress: f32,
     update_status: UpdateStatus,
 
-    reaction_map: ReactionMap,
+    action_map: ActionMap,
 }
 impl JukeBoxGui {
     fn new() -> Self {
@@ -134,14 +134,14 @@ impl JukeBoxGui {
             config_renaming_device: false,
             config_device_name_entry: String::new(),
             config_editing_key: InputKey::UnknownKey,
-            config_editing_reaction_type: ReactionType::MetaNoAction,
-            config_editing_reaction: Box::new(MetaNoAction::default()),
+            config_editing_action_type: ActionType::MetaNoAction,
+            config_editing_action: Box::new(MetaNoAction::default()),
             config_enable_splash: config_enable_splash,
 
             update_progress: 0.0,
             update_status: UpdateStatus::Start,
 
-            reaction_map: ReactionMap::new(),
+            action_map: ActionMap::new(),
         }
     }
 
@@ -152,7 +152,7 @@ impl JukeBoxGui {
         let brkr = Arc::new(AtomicBool::new(false)); // ends other threads from gui
         let brkr_serial = brkr.clone();
 
-        let (sr_tx, sr_rx) = unbounded_channel::<SerialEvent>(); // serial threads send events to reaction thread
+        let (sr_tx, sr_rx) = unbounded_channel::<SerialEvent>(); // serial threads send events to action thread
         let (sg_tx, mut sg_rx) = unbounded_channel::<SerialEvent>(); // serial threads send events to gui thread
 
         let (gs_cmd_tx, mut gs_cmd_rx) =
@@ -166,12 +166,12 @@ impl JukeBoxGui {
 
         let (us_tx, mut us_rx) = unbounded_channel::<UpdateStatus>(); // update thread sends update statuses to gui thread
 
-        let reaction_config = self.config.clone();
+        let action_config = self.config.clone();
 
         let rt = Runtime::new().expect("unable to create tokio runtime");
         let _guard = rt.enter();
         spawn(async move { serial_task(brkr_serial, gs_cmd_tx, sg_tx, sr_tx).await });
-        spawn(async move { reaction_task(sr_rx, reaction_config).await });
+        spawn(async move { action_task(sr_rx, action_config).await });
 
         let options = eframe::NativeOptions {
             viewport: ViewportBuilder::default()
@@ -211,7 +211,7 @@ impl JukeBoxGui {
                 ui.allocate_ui(vec2(464.0, 245.0), |ui| match self.gui_tab {
                     GuiTab::Device => self.draw_device_page(ui),
                     GuiTab::Settings => self.draw_settings_page(ui),
-                    GuiTab::Editing => self.draw_edit_reaction(ui),
+                    GuiTab::Editing => self.draw_edit_action(ui),
                     GuiTab::Updating => self.draw_update_page(ui, &gs_cmd_txs, &us_tx, &mut us_rx),
                 });
 
@@ -286,8 +286,7 @@ impl JukeBoxGui {
                                 if !v.contains_key(&device_uid) {
                                     v.insert(
                                         device_uid.clone(),
-                                        self.reaction_map
-                                            .default_reaction_config(device_type.into()),
+                                        self.action_map.default_action_config(device_type.into()),
                                     );
                                 }
                             }
@@ -522,7 +521,7 @@ impl JukeBoxGui {
                     .clicked()
                 {
                     match self.gui_tab {
-                        GuiTab::Editing => self.save_reaction_and_exit(),
+                        GuiTab::Editing => self.save_action_and_exit(),
                         _ => self.gui_tab = GuiTab::Device,
                     }
                 }
@@ -553,13 +552,13 @@ impl JukeBoxGui {
                         for (_, p) in conf.profiles.iter_mut() {
                             for (_, d) in p.iter_mut() {
                                 for (_, k) in d.iter_mut() {
-                                    use ReactionType as r;
+                                    use ActionType as r;
                                     match k.get_type() {
                                         r::MetaSwitchProfile => {
-                                            *k = self.reaction_map.enum_new(r::MetaSwitchProfile);
+                                            *k = self.action_map.enum_new(r::MetaSwitchProfile);
                                         }
                                         r::MetaCopyFromProfile => {
-                                            *k = self.reaction_map.enum_new(r::MetaCopyFromProfile);
+                                            *k = self.action_map.enum_new(r::MetaCopyFromProfile);
                                         }
                                         _ => {}
                                     }
@@ -611,10 +610,7 @@ impl JukeBoxGui {
                     };
                     let mut m = HashMap::new();
                     for (d, t) in &self.devices {
-                        m.insert(
-                            d.clone(),
-                            self.reaction_map.default_reaction_config(t.0.into()),
-                        );
+                        m.insert(d.clone(), self.action_map.default_action_config(t.0.into()));
                     }
                     conf.profiles.insert(name, m);
                     conf.save();
@@ -648,13 +644,13 @@ impl JukeBoxGui {
                     for (_, p) in conf.profiles.iter_mut() {
                         for (_, d) in p.iter_mut() {
                             for (_, k) in d.iter_mut() {
-                                use ReactionType as r;
+                                use ActionType as r;
                                 match k.get_type() {
                                     r::MetaSwitchProfile => {
-                                        *k = self.reaction_map.enum_new(r::MetaSwitchProfile);
+                                        *k = self.action_map.enum_new(r::MetaSwitchProfile);
                                     }
                                     r::MetaCopyFromProfile => {
-                                        *k = self.reaction_map.enum_new(r::MetaCopyFromProfile);
+                                        *k = self.action_map.enum_new(r::MetaCopyFromProfile);
                                     }
                                     _ => {}
                                 }
@@ -827,7 +823,7 @@ impl JukeBoxGui {
                         // TODO: add hover text for button info
 
                         if btn.clicked() {
-                            self.enter_reaction_editor(k.to_owned());
+                            self.enter_action_editor(k.to_owned());
                         }
                     }
                     ui.end_row();
@@ -867,7 +863,7 @@ impl JukeBoxGui {
                         // TODO: add hover text for button info
 
                         if btn.clicked() {
-                            self.enter_reaction_editor(b);
+                            self.enter_action_editor(b);
                         }
                     };
 
@@ -882,7 +878,7 @@ impl JukeBoxGui {
         ui.allocate_space(ui.available_size_before_wrap());
     }
 
-    fn enter_reaction_editor(&mut self, key: InputKey) {
+    fn enter_action_editor(&mut self, key: InputKey) {
         self.config_renaming_device = false;
         self.config_renaming_profile = false;
         self.gui_tab = GuiTab::Editing;
@@ -895,24 +891,21 @@ impl JukeBoxGui {
                 .and_then(|p| p.get(&self.current_device))
                 .and_then(|d| d.get(&self.config_editing_key))
             {
-                self.config_editing_reaction_type = r.get_type();
-                self.config_editing_reaction = r.clone();
+                self.config_editing_action_type = r.get_type();
+                self.config_editing_action = r.clone();
             } else {
-                self.config_editing_reaction_type = ReactionType::MetaNoAction;
-                self.config_editing_reaction = self
-                    .reaction_map
-                    .enum_new(self.config_editing_reaction_type);
+                self.config_editing_action_type = ActionType::MetaNoAction;
+                self.config_editing_action =
+                    self.action_map.enum_new(self.config_editing_action_type);
             }
         };
     }
 
-    fn reset_editing_reaction(&mut self) {
-        self.config_editing_reaction = self
-            .reaction_map
-            .enum_new(self.config_editing_reaction_type);
+    fn reset_editing_action(&mut self) {
+        self.config_editing_action = self.action_map.enum_new(self.config_editing_action_type);
     }
 
-    fn save_reaction_and_exit(&mut self) {
+    fn save_action_and_exit(&mut self) {
         // TODO: have config validate input?
         self.gui_tab = GuiTab::Device;
         let mut c = self.config.blocking_lock();
@@ -921,34 +914,34 @@ impl JukeBoxGui {
         if let Some(d) = profile.get_mut(&self.current_device) {
             d.insert(
                 self.config_editing_key.clone(),
-                self.config_editing_reaction.clone(),
+                self.config_editing_action.clone(),
             );
         } else {
             let mut d = HashMap::new();
             d.insert(
                 self.config_editing_key.clone(),
-                self.config_editing_reaction.clone(),
+                self.config_editing_action.clone(),
             );
             profile.insert(self.current_device.clone(), d);
         }
         c.save();
     }
 
-    fn draw_reaction_list(&mut self, ui: &mut Ui) {
-        for (header, options) in self.reaction_map.ui_list() {
+    fn draw_action_list(&mut self, ui: &mut Ui) {
+        for (header, options) in self.action_map.ui_list() {
             CollapsingHeader::new(RichText::new(header).strong())
                 .default_open(true)
                 .show(ui, |ui| {
-                    for (reaction_type, label) in options {
+                    for (action_type, label) in options {
                         if ui
                             .selectable_value(
-                                &mut self.config_editing_reaction_type,
-                                reaction_type,
+                                &mut self.config_editing_action_type,
+                                action_type,
                                 label,
                             )
                             .changed()
                         {
-                            self.reset_editing_reaction();
+                            self.reset_editing_action();
                         };
                     }
                 });
@@ -956,7 +949,7 @@ impl JukeBoxGui {
         }
     }
 
-    fn draw_edit_reaction(&mut self, ui: &mut Ui) {
+    fn draw_edit_action(&mut self, ui: &mut Ui) {
         ui.columns_const(|[c1, c2]| {
             c1.horizontal(|ui| {
                 let test_btn = ui
@@ -964,17 +957,17 @@ impl JukeBoxGui {
                         [50.0, 50.0],
                         Button::new(RichText::new(phos::APERTURE).heading().strong()),
                     )
-                    .on_hover_text_at_pointer("Test reaction");
+                    .on_hover_text_at_pointer("Test action");
                 if test_btn.clicked() {
                     let mut c = self.config.blocking_lock().clone();
                     let h = Handle::current();
                     let _ = h.block_on(async {
-                        self.config_editing_reaction
+                        self.config_editing_action
                             .on_press(&self.current_device, self.config_editing_key, &mut c)
                             .await
                     });
                     let _ = h.block_on(async {
-                        self.config_editing_reaction
+                        self.config_editing_action
                             .on_press(&self.current_device, self.config_editing_key, &mut c)
                             .await
                     });
@@ -1000,7 +993,7 @@ impl JukeBoxGui {
                     Layout::centered_and_justified(eframe::egui::Direction::TopDown)
                         .with_cross_justify(false),
                     |ui| {
-                        ui.label(RichText::new(self.config_editing_reaction.help()).size(10.0));
+                        ui.label(RichText::new(self.config_editing_action.help()).size(10.0));
                     },
                 );
             });
@@ -1009,12 +1002,12 @@ impl JukeBoxGui {
             c1.allocate_space(vec2(0.0, 2.0));
             c1.allocate_ui(vec2(228.0, 170.0), |ui| {
                 ScrollArea::vertical()
-                    .id_salt("ReactionEdit")
+                    .id_salt("ActionEdit")
                     .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
                     .show(ui, |ui| {
                         ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
                             let mut c = self.config.blocking_lock().clone();
-                            self.config_editing_reaction.edit_ui(
+                            self.config_editing_action.edit_ui(
                                 ui,
                                 &self.current_device,
                                 self.config_editing_key,
@@ -1027,15 +1020,15 @@ impl JukeBoxGui {
 
             c2.allocate_ui(vec2(228.0, 245.0), |ui| {
                 ScrollArea::vertical()
-                    .id_salt("ReactionChooser")
+                    .id_salt("ActionChooser")
                     .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
                     .show(ui, |ui| {
-                        Grid::new("ReactionsGrid")
+                        Grid::new("ActionsGrid")
                             .num_columns(1)
                             .min_col_width(228.0)
                             .striped(true)
                             .show(ui, |ui| {
-                                self.draw_reaction_list(ui);
+                                self.draw_action_list(ui);
                             });
                         ui.allocate_space(ui.available_size_before_wrap());
                     });

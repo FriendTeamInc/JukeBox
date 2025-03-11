@@ -1,4 +1,4 @@
-// Defining reactions to perform when actions happen (key pressed, knob turned, etc.)
+// Defining actions to perform when actions happen (key pressed, knob turned, etc.)
 
 use std::{
     collections::{HashMap, HashSet},
@@ -10,7 +10,7 @@ use tokio::sync::{mpsc::UnboundedReceiver, Mutex};
 
 use crate::{config::JukeBoxConfig, input::InputKey, serial::SerialEvent};
 
-pub async fn reaction_task(
+pub async fn action_task(
     mut s_evnt_rx: UnboundedReceiver<SerialEvent>,
     config: Arc<Mutex<JukeBoxConfig>>,
 ) -> Result<()> {
@@ -24,7 +24,7 @@ pub async fn reaction_task(
         p.lock().await.clear();
     };
 
-    // TODO: have discord and obs clients set up here for specific reactions to trigger with
+    // TODO: have discord and obs clients set up here for specific actions to trigger with
 
     while let Some(evnt) = s_evnt_rx.recv().await {
         match evnt {

@@ -1,4 +1,4 @@
-// Types of reactions and their associations
+// Types of actions and their associations
 
 use std::collections::HashMap;
 
@@ -8,15 +8,15 @@ use eframe::egui::Ui;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    actions::{discord::*, input::*, meta::*, obs::*, soundboard::*, system::*},
     config::JukeBoxConfig,
     gui::DeviceType,
     input::InputKey,
-    reactions::{discord::*, input::*, meta::*, obs::*, soundboard::*, system::*},
 };
 
 #[async_trait::async_trait]
 #[typetag::serde(tag = "type")]
-pub trait Reaction: Sync + Send + DynClone {
+pub trait Action: Sync + Send + DynClone {
     async fn on_press(
         &self,
         device_uid: &String,
@@ -31,7 +31,7 @@ pub trait Reaction: Sync + Send + DynClone {
         config: &mut JukeBoxConfig,
     ) -> Result<()>;
 
-    fn get_type(&self) -> ReactionType;
+    fn get_type(&self) -> ActionType;
 
     fn edit_ui(
         &mut self,
@@ -43,11 +43,11 @@ pub trait Reaction: Sync + Send + DynClone {
 
     fn help(&self) -> String;
 }
-clone_trait_object!(Reaction);
+clone_trait_object!(Action);
 
 // TODO: eventually move away from this and just use strings
 #[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy, Debug)]
-pub enum ReactionType {
+pub enum ActionType {
     // Meta
     MetaNoAction,
     MetaSwitchProfile,
@@ -91,19 +91,19 @@ pub enum ReactionType {
     ObsChapterMarker,
 }
 
-pub struct ReactionMap {
-    ui_list: Vec<(String, Vec<(ReactionType, String)>)>,
-    enum_map: HashMap<ReactionType, Box<dyn Reaction>>,
+pub struct ActionMap {
+    ui_list: Vec<(String, Vec<(ActionType, String)>)>,
+    enum_map: HashMap<ActionType, Box<dyn Action>>,
 }
-impl ReactionMap {
+impl ActionMap {
     pub fn new() -> Self {
         let ui_list = vec![
-            meta_reaction_list(),
-            input_reaction_list(),
-            system_reaction_list(),
-            soundboard_reaction_list(),
-            discord_reaction_list(),
-            obs_reaction_list(),
+            meta_action_list(),
+            input_action_list(),
+            system_action_list(),
+            soundboard_action_list(),
+            discord_action_list(),
+            obs_action_list(),
         ];
         let enum_map = HashMap::new()
             .into_iter()
@@ -118,15 +118,15 @@ impl ReactionMap {
         Self { ui_list, enum_map }
     }
 
-    pub fn ui_list(&self) -> Vec<(String, Vec<(ReactionType, String)>)> {
+    pub fn ui_list(&self) -> Vec<(String, Vec<(ActionType, String)>)> {
         self.ui_list.clone()
     }
 
-    pub fn enum_new(&self, t: ReactionType) -> Box<dyn Reaction> {
+    pub fn enum_new(&self, t: ActionType) -> Box<dyn Action> {
         self.enum_map.get(&t).unwrap().clone()
     }
 
-    pub fn default_reaction_config(&self, d: DeviceType) -> HashMap<InputKey, Box<dyn Reaction>> {
+    pub fn default_action_config(&self, d: DeviceType) -> HashMap<InputKey, Box<dyn Action>> {
         let keys = match d {
             DeviceType::Unknown => &[][..],
             DeviceType::KeyPad => &[
@@ -164,7 +164,7 @@ impl ReactionMap {
             c.insert(
                 *k,
                 self.enum_map
-                    .get(&ReactionType::MetaNoAction)
+                    .get(&ActionType::MetaNoAction)
                     .unwrap()
                     .clone(),
             );
@@ -174,8 +174,8 @@ impl ReactionMap {
     }
 }
 
-// pub fn reaction_enum_to_new(t: ReactionType) -> Box<dyn Reaction> {
-//     use ReactionType as r;
+// pub fn action_enum_to_new(t: ActionType) -> Box<dyn Action> {
+//     use ActionType as r;
 //     match t {
 //         // r::MetaNoAction => Box::new(MetaNoAction::default()),
 //         // r::MetaSwitchProfile => Box::new(MetaSwitchProfile::default()),
@@ -210,13 +210,13 @@ impl ReactionMap {
 //     }
 // }
 
-// pub fn reaction_ui_list() -> Vec<(String, Vec<(ReactionType, String)>)> {
+// pub fn action_ui_list() -> Vec<(String, Vec<(ActionType, String)>)> {
 //     vec![
-//         meta_reaction_list(),
-//         input_reaction_list(),
-//         system_reaction_list(),
-//         soundboard_reaction_list(),
-//         discord_reaction_list(),
-//         obs_reaction_list(),
+//         meta_action_list(),
+//         input_action_list(),
+//         system_action_list(),
+//         soundboard_action_list(),
+//         discord_action_list(),
+//         obs_action_list(),
 //     ]
 // }

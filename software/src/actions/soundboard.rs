@@ -8,21 +8,21 @@ use serde::{Deserialize, Serialize};
 
 use crate::{config::JukeBoxConfig, input::InputKey};
 
-use super::types::{Reaction, ReactionType as RT};
+use super::types::{Action, ActionType as AT};
 
 #[rustfmt::skip]
-pub fn soundboard_reaction_list() -> (String, Vec<(RT, String)>) {
+pub fn soundboard_action_list() -> (String, Vec<(AT, String)>) {
     (
         format!("{} Soundboard", phos::MUSIC_NOTES),
-        vec![(RT::SoundboardPlaySound, "Play Sound".to_string())],
+        vec![(AT::SoundboardPlaySound, "Play Sound".to_string())],
     )
 }
 
 #[rustfmt::skip]
-pub fn soundboard_enum_map() -> HashMap<RT, Box<dyn Reaction>> {
-    let mut h: HashMap<RT, Box<dyn Reaction>> = HashMap::new();
+pub fn soundboard_enum_map() -> HashMap<AT, Box<dyn Action>> {
+    let mut h: HashMap<AT, Box<dyn Action>> = HashMap::new();
 
-    h.insert(RT::SoundboardPlaySound, Box::new(SoundboardPlaySound::default()));
+    h.insert(AT::SoundboardPlaySound, Box::new(SoundboardPlaySound::default()));
 
     h
 }
@@ -35,7 +35,7 @@ pub struct SoundboardPlaySound {
 }
 #[async_trait::async_trait]
 #[typetag::serde]
-impl Reaction for SoundboardPlaySound {
+impl Action for SoundboardPlaySound {
     async fn on_press(
         &self,
         _device_uid: &String,
@@ -55,8 +55,8 @@ impl Reaction for SoundboardPlaySound {
         Ok(())
     }
 
-    fn get_type(&self) -> RT {
-        RT::SoundboardPlaySound
+    fn get_type(&self) -> AT {
+        AT::SoundboardPlaySound
     }
 
     fn edit_ui(

@@ -8,14 +8,14 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::{gui::DeviceType, input::InputKey, reactions::types::Reaction};
+use crate::{actions::types::Action, gui::DeviceType, input::InputKey};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct JukeBoxConfig {
     // Profile Name
     pub current_profile: String,
-    pub profiles: HashMap<String, HashMap<String, HashMap<InputKey, Box<dyn Reaction>>>>,
-    // Profile Name -> ( Device UID -> ( Input Key -> Reaction Config ) )
+    pub profiles: HashMap<String, HashMap<String, HashMap<InputKey, Box<dyn Action>>>>,
+    // Profile Name -> ( Device UID -> ( Input Key -> Action Config ) )
 
     // Device UID -> (Device Type, Device Nickname)
     pub devices: HashMap<String, (DeviceType, String)>,

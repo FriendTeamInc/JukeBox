@@ -7,25 +7,25 @@ use serde::{Deserialize, Serialize};
 
 use crate::{config::JukeBoxConfig, input::InputKey};
 
-use super::types::{Reaction, ReactionType as RT};
+use super::types::{Action, ActionType as AT};
 
 #[rustfmt::skip]
-pub fn input_reaction_list() -> (String, Vec<(RT, String)>) {
+pub fn input_action_list() -> (String, Vec<(AT, String)>) {
     (
         format!("{} Input", phos::CURSOR_CLICK),
         vec![
-            (RT::InputKeyboard, "Keyboard Event".to_string()),
-            (RT::InputMouse, "Mouse Event".to_string()),
+            (AT::InputKeyboard, "Keyboard Event".to_string()),
+            (AT::InputMouse, "Mouse Event".to_string()),
         ],
     )
 }
 
 #[rustfmt::skip]
-pub fn input_enum_map() -> HashMap<RT, Box<dyn Reaction>> {
-    let mut h: HashMap<RT, Box<dyn Reaction>> = HashMap::new();
+pub fn input_enum_map() -> HashMap<AT, Box<dyn Action>> {
+    let mut h: HashMap<AT, Box<dyn Action>> = HashMap::new();
     
-    h.insert(RT::InputKeyboard, Box::new(InputKeyboard::default()));
-    h.insert(RT::InputMouse, Box::new(InputMouse::default()));
+    h.insert(AT::InputKeyboard, Box::new(InputKeyboard::default()));
+    h.insert(AT::InputMouse, Box::new(InputMouse::default()));
 
     h
 }
@@ -210,7 +210,7 @@ pub struct InputKeyboard {
 }
 #[async_trait::async_trait]
 #[typetag::serde]
-impl Reaction for InputKeyboard {
+impl Action for InputKeyboard {
     async fn on_press(
         &self,
         _device_uid: &String,
@@ -231,8 +231,8 @@ impl Reaction for InputKeyboard {
         Ok(())
     }
 
-    fn get_type(&self) -> RT {
-        RT::InputKeyboard
+    fn get_type(&self) -> AT {
+        AT::InputKeyboard
     }
 
     fn edit_ui(
@@ -285,7 +285,7 @@ pub struct InputMouse {
 }
 #[async_trait::async_trait]
 #[typetag::serde]
-impl Reaction for InputMouse {
+impl Action for InputMouse {
     async fn on_press(
         &self,
         _device_uid: &String,
@@ -306,8 +306,8 @@ impl Reaction for InputMouse {
         Ok(())
     }
 
-    fn get_type(&self) -> RT {
-        RT::InputMouse
+    fn get_type(&self) -> AT {
+        AT::InputMouse
     }
 
     fn edit_ui(

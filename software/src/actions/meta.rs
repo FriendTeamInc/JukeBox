@@ -7,27 +7,27 @@ use serde::{Deserialize, Serialize};
 
 use crate::{config::JukeBoxConfig, input::InputKey};
 
-use super::types::{Reaction, ReactionType as RT};
+use super::types::{Action, ActionType as AT};
 
 #[rustfmt::skip]
-pub fn meta_reaction_list() -> (String, Vec<(RT, String)>) {
+pub fn meta_action_list() -> (String, Vec<(AT, String)>) {
     (
         format!("{} Meta", phos::GEAR),
         vec![
-            (RT::MetaNoAction, "No Action".to_string()),
-            (RT::MetaSwitchProfile, "Switch Profile".to_string()),
-            (RT::MetaCopyFromProfile, "Copy From Profile".to_string()),
+            (AT::MetaNoAction, "No Action".to_string()),
+            (AT::MetaSwitchProfile, "Switch Profile".to_string()),
+            (AT::MetaCopyFromProfile, "Copy From Profile".to_string()),
         ],
     )
 }
 
 #[rustfmt::skip]
-pub fn meta_enum_map() -> HashMap<RT, Box<dyn Reaction>> {
-    let mut h: HashMap<RT, Box<dyn Reaction>> = HashMap::new();
+pub fn meta_enum_map() -> HashMap<AT, Box<dyn Action>> {
+    let mut h: HashMap<AT, Box<dyn Action>> = HashMap::new();
 
-    h.insert(RT::MetaNoAction, Box::new(MetaNoAction::default()));
-    h.insert(RT::MetaSwitchProfile, Box::new(MetaSwitchProfile::default()));
-    h.insert(RT::MetaCopyFromProfile, Box::new(MetaCopyFromProfile::default()));
+    h.insert(AT::MetaNoAction, Box::new(MetaNoAction::default()));
+    h.insert(AT::MetaSwitchProfile, Box::new(MetaSwitchProfile::default()));
+    h.insert(AT::MetaCopyFromProfile, Box::new(MetaCopyFromProfile::default()));
 
     h
 }
@@ -36,7 +36,7 @@ pub fn meta_enum_map() -> HashMap<RT, Box<dyn Reaction>> {
 pub struct MetaNoAction {}
 #[async_trait::async_trait]
 #[typetag::serde]
-impl Reaction for MetaNoAction {
+impl Action for MetaNoAction {
     async fn on_press(
         &self,
         device_uid: &String,
@@ -65,8 +65,8 @@ impl Reaction for MetaNoAction {
         Ok(())
     }
 
-    fn get_type(&self) -> RT {
-        RT::MetaNoAction
+    fn get_type(&self) -> AT {
+        AT::MetaNoAction
     }
 
     fn edit_ui(
@@ -89,7 +89,7 @@ pub struct MetaSwitchProfile {
 }
 #[async_trait::async_trait]
 #[typetag::serde]
-impl Reaction for MetaSwitchProfile {
+impl Action for MetaSwitchProfile {
     async fn on_press(
         &self,
         _device_uid: &String,
@@ -114,8 +114,8 @@ impl Reaction for MetaSwitchProfile {
         Ok(())
     }
 
-    fn get_type(&self) -> RT {
-        RT::MetaSwitchProfile
+    fn get_type(&self) -> AT {
+        AT::MetaSwitchProfile
     }
 
     fn edit_ui(
@@ -153,7 +153,7 @@ pub struct MetaCopyFromProfile {
 }
 #[async_trait::async_trait]
 #[typetag::serde]
-impl Reaction for MetaCopyFromProfile {
+impl Action for MetaCopyFromProfile {
     async fn on_press(
         &self,
         device_uid: &String,
@@ -242,8 +242,8 @@ impl Reaction for MetaCopyFromProfile {
         Ok(())
     }
 
-    fn get_type(&self) -> RT {
-        RT::MetaCopyFromProfile
+    fn get_type(&self) -> AT {
+        AT::MetaCopyFromProfile
     }
 
     fn edit_ui(
@@ -267,7 +267,7 @@ impl Reaction for MetaCopyFromProfile {
                         .get(&input_key)
                         .unwrap()
                         .get_type()
-                        == RT::MetaCopyFromProfile
+                        == AT::MetaCopyFromProfile
                     {
                         continue;
                     }
