@@ -2315,7 +2315,6 @@ dependencies = [
  "egui-theme-switch",
  "env_logger",
  "jukebox_util",
- "lazy_static",
  "log",
  "obws",
  "open",

@@ -1,7 +1,10 @@
 use std::{collections::HashMap, error::Error, fmt, sync::OnceLock};
 
 use anyhow::Result;
-use discord_rich_presence_client::{voice_settings::VoiceSettings, DiscordIpc, DiscordIpcClient};
+use discord_rich_presence_client::{
+    voice_settings::{VoiceMode, VoiceModeSettings, VoiceSettings},
+    DiscordIpc, DiscordIpcClient,
+};
 use eframe::egui::{vec2, Button, Ui};
 use egui_phosphor::regular as phos;
 use serde::{Deserialize, Serialize};
@@ -14,6 +17,8 @@ use super::types::{Action, ActionType as AT};
 const DISCORD_CLIENT_ID: Option<&str> = option_env!("JUKEBOXDESKTOP_DISCORD_CLIENT_ID");
 const DISCORD_CLIENT_SECRET: Option<&str> = option_env!("JUKEBOXDESKTOP_DISCORD_CLIENT_SECRET");
 static DISCORD_CLIENT: OnceLock<Mutex<DiscordIpcClient>> = OnceLock::new();
+static DISCORD_MUTED: OnceLock<Mutex<bool>> = OnceLock::new();
+static DISCORD_DEAFENED: OnceLock<Mutex<bool>> = OnceLock::new();
 
 #[rustfmt::skip]
 pub fn discord_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
@@ -108,9 +113,7 @@ fn account_warning(ui: &mut Ui) {
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
-pub struct DiscordToggleMute {
-    // muted: bool,
-}
+pub struct DiscordToggleMute {}
 #[async_trait::async_trait]
 #[typetag::serde]
 impl Action for DiscordToggleMute {
@@ -120,16 +123,23 @@ impl Action for DiscordToggleMute {
         _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) -> Result<()> {
-        // TODO
-        let _ = spawn_blocking(|| {
-            if DISCORD_CLIENT.get().is_none() {
-                return;
-            }
+        let _ = spawn_blocking(move || {
+            if let Some(client) = DISCORD_CLIENT.get() {
+                let mut client = client.blocking_lock();
+                let mut muted = DISCORD_MUTED
+                    .get_or_init(|| Mutex::new(false))
+                    .blocking_lock();
 
-            let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
-            client
-                .set_voice_settings(VoiceSettings::new().mute(true))
-                .expect("fuck");
+                client
+                    .set_voice_settings(
+                        VoiceSettings::new()
+                            .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
+                            .mute(!*muted),
+                    )
+                    .expect("fuck");
+
+                *muted = !*muted;
+            }
         })
         .await;
 
@@ -175,7 +185,32 @@ impl Action for DiscordToggleDeafen {
         _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) -> Result<()> {
-        // TODO
+        let _ = spawn_blocking(move || {
+            if let Some(client) = DISCORD_CLIENT.get() {
+                let mut client = client.blocking_lock();
+                let mut muted = DISCORD_MUTED
+                    .get_or_init(|| Mutex::new(false))
+                    .blocking_lock();
+
+                let mut deafened = DISCORD_DEAFENED
+                    .get_or_init(|| Mutex::new(false))
+                    .blocking_lock();
+
+                client
+                    .set_voice_settings(
+                        VoiceSettings::new()
+                            .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
+                            .mute(!*muted)
+                            .deaf(!*deafened),
+                    )
+                    .expect("fuck");
+
+                *muted = !*muted;
+                *deafened = !*deafened;
+            }
+        })
+        .await;
+
         Ok(())
     }
 
