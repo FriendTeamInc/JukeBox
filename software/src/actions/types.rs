@@ -8,11 +8,14 @@ use eframe::egui::Ui;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    actions::{discord::*, input::*, meta::*, obs::*, soundboard::*, system::*},
+    actions::{input::*, meta::*, obs::*, soundboard::*, system::*},
     config::JukeBoxConfig,
     gui::DeviceType,
     input::InputKey,
 };
+
+#[cfg(feature = "discord")]
+use crate::actions::discord::*;
 
 #[async_trait::async_trait]
 #[typetag::serde(tag = "type")]
@@ -72,6 +75,7 @@ pub enum ActionType {
     DiscordToggleDeafen,
     DiscordPushToTalk,
     DiscordPushToMute,
+    DiscordPushToDeafen,
 
     // OBS
     ObsStream,
@@ -101,6 +105,7 @@ impl ActionMap {
             input_action_list(),
             system_action_list(),
             soundboard_action_list(),
+            #[cfg(feature = "discord")]
             discord_action_list(),
             obs_action_list(),
         ];

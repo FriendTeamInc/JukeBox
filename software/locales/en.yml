@@ -147,6 +147,9 @@ action:
     push_to_mute:
       title: "Push to Mute"
       help: "Mutes your microphone on Discord while held."
+    push_to_deafen:
+      title: "Push to Deafen"
+      help: "Deafens your audio on Discord while held."
   
   obs:
     title: "%{icon} OBS"

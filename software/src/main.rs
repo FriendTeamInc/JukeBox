@@ -14,6 +14,7 @@ mod serial;
 mod splash;
 mod update;
 mod actions {
+    #[cfg(feature = "discord")]
     pub mod discord;
     pub mod input;
     pub mod meta;

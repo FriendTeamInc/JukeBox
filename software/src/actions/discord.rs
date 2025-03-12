@@ -14,8 +14,8 @@ use crate::{config::JukeBoxConfig, input::InputKey};
 
 use super::types::{Action, ActionType as AT};
 
-const DISCORD_CLIENT_ID: Option<&str> = option_env!("JUKEBOXDESKTOP_DISCORD_CLIENT_ID");
-const DISCORD_CLIENT_SECRET: Option<&str> = option_env!("JUKEBOXDESKTOP_DISCORD_CLIENT_SECRET");
+const DISCORD_CLIENT_ID: &str = env!("JUKEBOXDESKTOP_DISCORD_CLIENT_ID");
+const DISCORD_CLIENT_SECRET: &str = env!("JUKEBOXDESKTOP_DISCORD_CLIENT_SECRET");
 static DISCORD_CLIENT: OnceLock<Mutex<DiscordIpcClient>> = OnceLock::new();
 static DISCORD_MUTED: OnceLock<Mutex<bool>> = OnceLock::new();
 static DISCORD_DEAFENED: OnceLock<Mutex<bool>> = OnceLock::new();
@@ -29,6 +29,7 @@ pub fn discord_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
             (AT::DiscordToggleDeafen, Box::new(DiscordToggleDeafen::default()), t!("action.discord.toggle_deafen.title").to_string()),
             (AT::DiscordPushToTalk,   Box::new(DiscordPushToTalk::default()),   t!("action.discord.push_to_talk.title").to_string()),
             (AT::DiscordPushToMute,   Box::new(DiscordPushToMute::default()),   t!("action.discord.push_to_mute.title").to_string()),
+            (AT::DiscordPushToDeafen, Box::new(DiscordPushToDeafen::default()), t!("action.discord.push_to_deafen.title").to_string()),
         ],
     )
 }
@@ -88,17 +89,14 @@ fn account_warning(ui: &mut Ui) {
             )
             .clicked()
         {
-            let mut client = DiscordIpcClient::new(DISCORD_CLIENT_ID.unwrap());
+            let mut client = DiscordIpcClient::new(DISCORD_CLIENT_ID);
             client.connect().expect("cannot connect to discord");
             let code = client
                 .authorize(&["rpc", "rpc.voice.read", "rpc.voice.write"])
                 .expect("failed to authorize wtih discord");
-            let oauth = discord_access_token_request(
-                &code,
-                DISCORD_CLIENT_ID.unwrap(),
-                DISCORD_CLIENT_SECRET.unwrap(),
-            )
-            .expect("failed to get oauth access token");
+            let oauth =
+                discord_access_token_request(&code, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET)
+                    .expect("failed to get oauth access token");
             client
                 .authenticate(&oauth.access_token)
                 .expect("failed to authenticate with discord");
@@ -133,7 +131,7 @@ impl Action for DiscordToggleMute {
                 client
                     .set_voice_settings(
                         VoiceSettings::new()
-                            .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
+                            .mode(VoiceModeSettings::new().voice_mode(VoiceMode::VoiceActivity))
                             .mute(!*muted),
                     )
                     .expect("fuck");
@@ -199,7 +197,7 @@ impl Action for DiscordToggleDeafen {
                 client
                     .set_voice_settings(
                         VoiceSettings::new()
-                            .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
+                            .mode(VoiceModeSettings::new().voice_mode(VoiceMode::VoiceActivity))
                             .mute(!*muted)
                             .deaf(!*deafened),
                     )
@@ -327,5 +325,49 @@ impl Action for DiscordPushToMute {
 
     fn help(&self) -> String {
         t!("action.discord.push_to_mute.help").to_string()
+    }
+}
+
+#[derive(Default, Serialize, Deserialize, Clone)]
+pub struct DiscordPushToDeafen {}
+#[async_trait::async_trait]
+#[typetag::serde]
+impl Action for DiscordPushToDeafen {
+    async fn on_press(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
+        // TODO
+        Ok(())
+    }
+
+    async fn on_release(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) -> Result<()> {
+        // TODO
+        Ok(())
+    }
+
+    fn get_type(&self) -> AT {
+        AT::DiscordPushToDeafen
+    }
+
+    fn edit_ui(
+        &mut self,
+        ui: &mut Ui,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: &mut JukeBoxConfig,
+    ) {
+        account_warning(ui);
+    }
+
+    fn help(&self) -> String {
+        t!("action.discord.push_to_deafen.help").to_string()
     }
 }
