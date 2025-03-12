@@ -36,15 +36,15 @@ typetag = "0.2"
 dyn-clone = "1.0"
 
 obws = "0.14"
-discord-rich-presence = { path = "../../discord-rich-presence" }
-reqwest = { version = "0.12", features = ["json", "blocking"] }
+discord-rich-presence = { path = "../../discord-rich-presence", optional = true }
+reqwest = { version = "0.12", features = ["json", "blocking"], optional = true }
 
 [build-dependencies]
 winresource = "0.1.17"
 
 [features]
-default = ["discord"]
-discord = []
+default = []
+discord = ["dep:discord-rich-presence", "dep:reqwest"]
 
 [profile.release]
 strip = true
