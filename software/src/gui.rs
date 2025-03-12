@@ -17,7 +17,6 @@ use jukebox_util::peripheral::{
 use rand::prelude::*;
 use rfd::FileDialog;
 use serde::{Deserialize, Serialize};
-use tokio::runtime::Handle;
 use tokio::{
     runtime::Runtime,
     spawn,
@@ -966,18 +965,19 @@ impl JukeBoxGui {
                     )
                     .on_hover_text_at_pointer(t!("help.action.test_input"));
                 if test_btn.clicked() {
-                    let mut c = self.config.blocking_lock().clone();
-                    let h = Handle::current();
-                    let _ = h.block_on(async {
-                        self.config_editing_action
-                            .on_press(&self.current_device, self.config_editing_key, &mut c)
-                            .await
-                    });
-                    let _ = h.block_on(async {
-                        self.config_editing_action
-                            .on_press(&self.current_device, self.config_editing_key, &mut c)
-                            .await
-                    });
+                    // TODO: fix for discord
+                    // let mut c = self.config.blocking_lock().clone();
+                    // let h = Handle::current();
+                    // let _ = h.block_on(async {
+                    //     self.config_editing_action
+                    //         .on_press(&self.current_device, self.config_editing_key, &mut c)
+                    //         .await
+                    // });
+                    // let _ = h.block_on(async {
+                    //     self.config_editing_action
+                    //         .on_press(&self.current_device, self.config_editing_key, &mut c)
+                    //         .await
+                    // });
                 }
                 ui.vertical(|ui| {
                     ui.allocate_space(vec2(0.0, 2.0));
@@ -1020,6 +1020,8 @@ impl JukeBoxGui {
                                 self.config_editing_key,
                                 &mut c,
                             );
+                            self.config.blocking_lock().discord_oauth_access =
+                                c.discord_oauth_access;
                             ui.allocate_space(ui.available_size_before_wrap());
                         });
                     });

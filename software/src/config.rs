@@ -10,6 +10,12 @@ use serde::{Deserialize, Serialize};
 
 use crate::{actions::types::Action, gui::DeviceType, input::InputKey};
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct DiscordOauthAccess {
+    pub access_token: String,
+    pub refresh_token: String,
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct JukeBoxConfig {
     // Profile Name
@@ -21,6 +27,8 @@ pub struct JukeBoxConfig {
     pub devices: HashMap<String, (DeviceType, String)>,
 
     pub enable_splash: bool,
+
+    pub discord_oauth_access: Option<DiscordOauthAccess>,
 }
 impl Default for JukeBoxConfig {
     fn default() -> Self {
@@ -29,6 +37,7 @@ impl Default for JukeBoxConfig {
             profiles: HashMap::from([("Default Profile".to_string(), HashMap::new())]),
             devices: HashMap::new(),
             enable_splash: true,
+            discord_oauth_access: None,
         }
     }
 }

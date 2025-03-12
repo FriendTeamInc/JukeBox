@@ -73,6 +73,9 @@ pub async fn action_task(
                     // the current profile is the only field that actions can modify currently.
                     let mut config = config.lock().await;
                     config.current_profile = c.current_profile.clone();
+                    if c.discord_oauth_access.is_some() && config.discord_oauth_access.is_none() {
+                        config.discord_oauth_access = c.discord_oauth_access;
+                    }
                     config.save();
                     // TODO: allow for editing of global configs for things like Discord and OBS
                 });

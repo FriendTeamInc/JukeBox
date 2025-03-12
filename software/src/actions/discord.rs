@@ -1,13 +1,16 @@
-use std::{collections::HashMap, error::Error, fmt, sync::OnceLock};
+use std::{collections::HashMap, sync::OnceLock};
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use discord_rich_presence::{voice_settings::VoiceSettings, DiscordIpc, DiscordIpcClient};
 use eframe::egui::{vec2, Button, Ui};
 use egui_phosphor::regular as phos;
 use serde::{Deserialize, Serialize};
 use tokio::{sync::Mutex, task::spawn_blocking};
 
-use crate::{config::JukeBoxConfig, input::InputKey};
+use crate::{
+    config::{DiscordOauthAccess, JukeBoxConfig},
+    input::InputKey,
+};
 
 use super::types::{Action, ActionType as AT};
 
@@ -32,28 +35,12 @@ pub fn discord_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
 }
 
 // TODO: save this to config
-#[derive(Serialize, Deserialize, Debug)]
-struct OauthAccess {
-    token_type: String,
-    access_token: String,
-    expires_in: usize,
-    refresh_token: String,
-    scope: String,
-}
-#[derive(Debug)]
-struct OauthAccessError {}
-impl fmt::Display for OauthAccessError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "failed to gain oauth access")
-    }
-}
-impl Error for OauthAccessError {}
 
 fn discord_access_token_request(
     code: &str,
     client_id: &str,
     client_secret: &str,
-) -> Result<OauthAccess, Box<dyn std::error::Error>> {
+) -> Result<DiscordOauthAccess> {
     let client = reqwest::blocking::Client::new();
     let params = HashMap::from([
         ("grant_type", "authorization_code"),
@@ -72,36 +59,51 @@ fn discord_access_token_request(
         log::debug!("{:?}", j);
         Ok(j)
     } else {
-        Err(Box::new(OauthAccessError {}))
+        bail!("failed to gain oauth access");
     }
 }
 
-fn account_warning(ui: &mut Ui) {
-    if DISCORD_CLIENT.get().is_none() {
-        ui.vertical_centered(|ui| ui.label(t!("action.discord.warning.help")));
-        ui.label("");
-        if ui
-            .add_sized(
-                vec2(228.0, 110.0),
-                Button::new(t!("action.discord.warning.button")),
-            )
-            .clicked()
-        {
-            let mut client = DiscordIpcClient::new(DISCORD_CLIENT_ID);
-            client.connect().expect("cannot connect to discord");
-            let code = client
-                .authorize(&["rpc", "rpc.voice.read", "rpc.voice.write"])
-                .expect("failed to authorize wtih discord");
-            let oauth =
-                discord_access_token_request(&code, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET)
-                    .expect("failed to get oauth access token");
-            client
-                .authenticate(&oauth.access_token)
-                .expect("failed to authenticate with discord");
+fn create_client(config: &mut JukeBoxConfig) -> Result<()> {
+    let mut client = DiscordIpcClient::new(DISCORD_CLIENT_ID);
+    client.connect().expect("cannot connect to discord");
 
-            DISCORD_CLIENT
-                .set(Mutex::new(client))
-                .expect("failed to set DISCORD_CLIENT");
+    if config.discord_oauth_access.is_none() {
+        let code = client
+            .authorize(&["rpc", "rpc.voice.read", "rpc.voice.write"])
+            .expect("failed to authorize wtih discord");
+        let oauth = discord_access_token_request(&code, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET)
+            .expect("failed to get oauth access token");
+
+        config.discord_oauth_access = Some(oauth);
+    }
+
+    client
+        .authenticate(&config.discord_oauth_access.clone().unwrap().access_token)
+        .expect("failed to authenticate with discord");
+
+    DISCORD_CLIENT
+        .set(Mutex::new(client))
+        .expect("failed to set DISCORD_CLIENT");
+
+    Ok(())
+}
+
+fn account_warning(ui: &mut Ui, config: &mut JukeBoxConfig) {
+    if DISCORD_CLIENT.get().is_none() {
+        if config.discord_oauth_access.is_some() {
+            let _ = create_client(config);
+        } else {
+            ui.vertical_centered(|ui| ui.label(t!("action.discord.warning.help")));
+            ui.label("");
+            if ui
+                .add_sized(
+                    vec2(228.0, 110.0),
+                    Button::new(t!("action.discord.warning.button")),
+                )
+                .clicked()
+            {
+                let _ = create_client(config);
+            }
         }
     } else {
         ui.vertical_centered(|ui| ui.label(t!("action.discord.warning.success")));
@@ -117,30 +119,34 @@ impl Action for DiscordToggleMute {
         &self,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        config: &mut JukeBoxConfig,
     ) -> Result<()> {
-        spawn_blocking(move || {
-            if let Some(client) = DISCORD_CLIENT.get() {
-                let mut client = client.blocking_lock();
-                let mut muted = DISCORD_MUTED
-                    .get_or_init(|| Mutex::new(false))
-                    .blocking_lock();
-
-                *muted = !*muted;
-
-                client
-                    .set_voice_settings(
-                        VoiceSettings::new()
-                            // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::VoiceActivity))
-                            .mute(*muted),
-                    )
-                    .map(|_| ())
-            } else {
-                Ok(()) // TODO: error message about how discord isnt connected
+        let mut c = config.clone();
+        let c = spawn_blocking(move || {
+            if DISCORD_CLIENT.get().is_none() {
+                create_client(&mut c)?;
             }
+
+            let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
+            let mut muted = DISCORD_MUTED
+                .get_or_init(|| Mutex::new(false))
+                .blocking_lock();
+
+            *muted = !*muted;
+
+            client
+                .set_voice_settings(
+                    VoiceSettings::new()
+                        // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::VoiceActivity))
+                        .mute(*muted),
+                )
+                .map(|_| c)
+                .map_err(anyhow::Error::from)
         })
         .await
         .unwrap()?;
+
+        config.discord_oauth_access = c.discord_oauth_access;
 
         Ok(())
     }
@@ -163,9 +169,9 @@ impl Action for DiscordToggleMute {
         ui: &mut Ui,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        config: &mut JukeBoxConfig,
     ) {
-        account_warning(ui);
+        account_warning(ui, config);
     }
 
     fn help(&self) -> String {
@@ -182,31 +188,35 @@ impl Action for DiscordToggleDeafen {
         &self,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        config: &mut JukeBoxConfig,
     ) -> Result<()> {
-        spawn_blocking(move || {
-            if let Some(client) = DISCORD_CLIENT.get() {
-                let mut client = client.blocking_lock();
-                let mut deafened = DISCORD_DEAFENED
-                    .get_or_init(|| Mutex::new(false))
-                    .blocking_lock();
-
-                *deafened = !*deafened;
-
-                client
-                    .set_voice_settings(
-                        VoiceSettings::new()
-                            // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::VoiceActivity))
-                            .mute(*deafened)
-                            .deaf(*deafened),
-                    )
-                    .map(|_| ())
-            } else {
-                Ok(()) // TODO: error message about how discord isnt connected
+        let mut c = config.clone();
+        let c = spawn_blocking(move || {
+            if DISCORD_CLIENT.get().is_none() {
+                create_client(&mut c)?;
             }
+
+            let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
+            let mut deafened = DISCORD_DEAFENED
+                .get_or_init(|| Mutex::new(false))
+                .blocking_lock();
+
+            *deafened = !*deafened;
+
+            client
+                .set_voice_settings(
+                    VoiceSettings::new()
+                        // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::VoiceActivity))
+                        .mute(*deafened)
+                        .deaf(*deafened),
+                )
+                .map(|_| c)
+                .map_err(anyhow::Error::from)
         })
         .await
         .unwrap()?;
+
+        config.discord_oauth_access = c.discord_oauth_access;
 
         Ok(())
     }
@@ -229,9 +239,9 @@ impl Action for DiscordToggleDeafen {
         ui: &mut Ui,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        config: &mut JukeBoxConfig,
     ) {
-        account_warning(ui);
+        account_warning(ui, config);
     }
 
     fn help(&self) -> String {
@@ -248,24 +258,29 @@ impl Action for DiscordPushToTalk {
         &self,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        config: &mut JukeBoxConfig,
     ) -> Result<()> {
-        spawn_blocking(move || {
-            if let Some(client) = DISCORD_CLIENT.get() {
-                let mut client = client.blocking_lock();
-                client
-                    .set_voice_settings(
-                        VoiceSettings::new()
-                            // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
-                            .mute(false),
-                    )
-                    .map(|_| ())
-            } else {
-                Ok(()) // TODO: error message about how discord isnt connected
+        let mut c = config.clone();
+        let c = spawn_blocking(move || {
+            if DISCORD_CLIENT.get().is_none() {
+                create_client(&mut c)?;
             }
+
+            let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
+
+            client
+                .set_voice_settings(
+                    VoiceSettings::new()
+                        // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
+                        .mute(false),
+                )
+                .map(|_| c)
+                .map_err(anyhow::Error::from)
         })
         .await
         .unwrap()?;
+
+        config.discord_oauth_access = c.discord_oauth_access;
 
         Ok(())
     }
@@ -274,24 +289,29 @@ impl Action for DiscordPushToTalk {
         &self,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        config: &mut JukeBoxConfig,
     ) -> Result<()> {
-        spawn_blocking(move || {
-            if let Some(client) = DISCORD_CLIENT.get() {
-                let mut client = client.blocking_lock();
-                client
-                    .set_voice_settings(
-                        VoiceSettings::new()
-                            // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
-                            .mute(true),
-                    )
-                    .map(|_| ())
-            } else {
-                Ok(()) // TODO: error message about how discord isnt connected
+        let mut c = config.clone();
+        let c = spawn_blocking(move || {
+            if DISCORD_CLIENT.get().is_none() {
+                create_client(&mut c)?;
             }
+
+            let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
+
+            client
+                .set_voice_settings(
+                    VoiceSettings::new()
+                        // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
+                        .mute(true),
+                )
+                .map(|_| c)
+                .map_err(anyhow::Error::from)
         })
         .await
         .unwrap()?;
+
+        config.discord_oauth_access = c.discord_oauth_access;
 
         Ok(())
     }
@@ -305,9 +325,9 @@ impl Action for DiscordPushToTalk {
         ui: &mut Ui,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        config: &mut JukeBoxConfig,
     ) {
-        account_warning(ui);
+        account_warning(ui, config);
     }
 
     fn help(&self) -> String {
@@ -324,24 +344,29 @@ impl Action for DiscordPushToMute {
         &self,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        config: &mut JukeBoxConfig,
     ) -> Result<()> {
-        spawn_blocking(move || {
-            if let Some(client) = DISCORD_CLIENT.get() {
-                let mut client = client.blocking_lock();
-                client
-                    .set_voice_settings(
-                        VoiceSettings::new()
-                            // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
-                            .mute(true),
-                    )
-                    .map(|_| ())
-            } else {
-                Ok(()) // TODO: error message about how discord isnt connected
+        let mut c = config.clone();
+        let c = spawn_blocking(move || {
+            if DISCORD_CLIENT.get().is_none() {
+                create_client(&mut c)?;
             }
+
+            let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
+
+            client
+                .set_voice_settings(
+                    VoiceSettings::new()
+                        // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
+                        .mute(true),
+                )
+                .map(|_| c)
+                .map_err(anyhow::Error::from)
         })
         .await
         .unwrap()?;
+
+        config.discord_oauth_access = c.discord_oauth_access;
 
         Ok(())
     }
@@ -350,24 +375,29 @@ impl Action for DiscordPushToMute {
         &self,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        config: &mut JukeBoxConfig,
     ) -> Result<()> {
-        spawn_blocking(move || {
-            if let Some(client) = DISCORD_CLIENT.get() {
-                let mut client = client.blocking_lock();
-                client
-                    .set_voice_settings(
-                        VoiceSettings::new()
-                            // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
-                            .mute(false),
-                    )
-                    .map(|_| ())
-            } else {
-                Ok(()) // TODO: error message about how discord isnt connected
+        let mut c = config.clone();
+        let c = spawn_blocking(move || {
+            if DISCORD_CLIENT.get().is_none() {
+                create_client(&mut c)?;
             }
+
+            let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
+
+            client
+                .set_voice_settings(
+                    VoiceSettings::new()
+                        // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
+                        .mute(false),
+                )
+                .map(|_| c)
+                .map_err(anyhow::Error::from)
         })
         .await
         .unwrap()?;
+
+        config.discord_oauth_access = c.discord_oauth_access;
 
         Ok(())
     }
@@ -381,9 +411,9 @@ impl Action for DiscordPushToMute {
         ui: &mut Ui,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        config: &mut JukeBoxConfig,
     ) {
-        account_warning(ui);
+        account_warning(ui, config);
     }
 
     fn help(&self) -> String {
@@ -400,25 +430,30 @@ impl Action for DiscordPushToDeafen {
         &self,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        config: &mut JukeBoxConfig,
     ) -> Result<()> {
-        spawn_blocking(move || {
-            if let Some(client) = DISCORD_CLIENT.get() {
-                let mut client = client.blocking_lock();
-                client
-                    .set_voice_settings(
-                        VoiceSettings::new()
-                            // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
-                            .mute(true)
-                            .deaf(true),
-                    )
-                    .map(|_| ())
-            } else {
-                Ok(()) // TODO: error message about how discord isnt connected
+        let mut c = config.clone();
+        let c = spawn_blocking(move || {
+            if DISCORD_CLIENT.get().is_none() {
+                create_client(&mut c)?;
             }
+
+            let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
+
+            client
+                .set_voice_settings(
+                    VoiceSettings::new()
+                        // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
+                        .mute(true)
+                        .deaf(true),
+                )
+                .map(|_| c)
+                .map_err(anyhow::Error::from)
         })
         .await
         .unwrap()?;
+
+        config.discord_oauth_access = c.discord_oauth_access;
 
         Ok(())
     }
@@ -427,25 +462,30 @@ impl Action for DiscordPushToDeafen {
         &self,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        config: &mut JukeBoxConfig,
     ) -> Result<()> {
-        spawn_blocking(move || {
-            if let Some(client) = DISCORD_CLIENT.get() {
-                let mut client = client.blocking_lock();
-                client
-                    .set_voice_settings(
-                        VoiceSettings::new()
-                            // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
-                            .mute(false)
-                            .deaf(false),
-                    )
-                    .map(|_| ())
-            } else {
-                Ok(()) // TODO: error message about how discord isnt connected
+        let mut c = config.clone();
+        let c = spawn_blocking(move || {
+            if DISCORD_CLIENT.get().is_none() {
+                create_client(&mut c)?;
             }
+
+            let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
+
+            client
+                .set_voice_settings(
+                    VoiceSettings::new()
+                        // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
+                        .mute(false)
+                        .deaf(false),
+                )
+                .map(|_| c)
+                .map_err(anyhow::Error::from)
         })
         .await
         .unwrap()?;
+
+        config.discord_oauth_access = c.discord_oauth_access;
 
         Ok(())
     }
@@ -459,9 +499,9 @@ impl Action for DiscordPushToDeafen {
         ui: &mut Ui,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        config: &mut JukeBoxConfig,
     ) {
-        account_warning(ui);
+        account_warning(ui, config);
     }
 
     fn help(&self) -> String {
