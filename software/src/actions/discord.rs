@@ -107,6 +107,7 @@ fn create_client(config: Arc<Mutex<JukeBoxConfig>>) -> Result<()> {
             .expect("failed to get oauth access token");
 
         config.discord_oauth_access = Some(oauth);
+        config.save();
     } else {
         // TODO: refresh with refresh token
         let oauth = discord_refresh_access_token(
@@ -117,6 +118,7 @@ fn create_client(config: Arc<Mutex<JukeBoxConfig>>) -> Result<()> {
         .expect("failed to refresh oauth access token");
 
         config.discord_oauth_access = Some(oauth);
+        config.save();
     }
 
     client
