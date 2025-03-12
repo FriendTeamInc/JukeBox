@@ -134,6 +134,7 @@ action:
     warning:
       help: "You need to connect your Discord Account before using this action!"
       button: "Connect to Discord Account"
+      success: "Discord account connected!"
     toggle_mute:
       title: "Toggle Mute"
       help: "Toggle mutes your microphone on Discord when pressed."
