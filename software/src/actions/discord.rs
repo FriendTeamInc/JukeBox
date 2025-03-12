@@ -1,10 +1,7 @@
 use std::{collections::HashMap, error::Error, fmt, sync::OnceLock};
 
 use anyhow::Result;
-use discord_rich_presence_client::{
-    voice_settings::{VoiceMode, VoiceModeSettings, VoiceSettings},
-    DiscordIpc, DiscordIpcClient,
-};
+use discord_rich_presence::{voice_settings::VoiceSettings, DiscordIpc, DiscordIpcClient};
 use eframe::egui::{vec2, Button, Ui};
 use egui_phosphor::regular as phos;
 use serde::{Deserialize, Serialize};
@@ -34,6 +31,7 @@ pub fn discord_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
     )
 }
 
+// TODO: save this to config
 #[derive(Serialize, Deserialize, Debug)]
 struct OauthAccess {
     token_type: String,
@@ -121,25 +119,28 @@ impl Action for DiscordToggleMute {
         _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) -> Result<()> {
-        let _ = spawn_blocking(move || {
+        spawn_blocking(move || {
             if let Some(client) = DISCORD_CLIENT.get() {
                 let mut client = client.blocking_lock();
                 let mut muted = DISCORD_MUTED
                     .get_or_init(|| Mutex::new(false))
                     .blocking_lock();
 
+                *muted = !*muted;
+
                 client
                     .set_voice_settings(
                         VoiceSettings::new()
-                            .mode(VoiceModeSettings::new().voice_mode(VoiceMode::VoiceActivity))
-                            .mute(!*muted),
+                            // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::VoiceActivity))
+                            .mute(*muted),
                     )
-                    .expect("fuck");
-
-                *muted = !*muted;
+                    .map(|_| ())
+            } else {
+                Ok(()) // TODO: error message about how discord isnt connected
             }
         })
-        .await;
+        .await
+        .unwrap()?;
 
         Ok(())
     }
@@ -183,31 +184,29 @@ impl Action for DiscordToggleDeafen {
         _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) -> Result<()> {
-        let _ = spawn_blocking(move || {
+        spawn_blocking(move || {
             if let Some(client) = DISCORD_CLIENT.get() {
                 let mut client = client.blocking_lock();
-                let mut muted = DISCORD_MUTED
-                    .get_or_init(|| Mutex::new(false))
-                    .blocking_lock();
-
                 let mut deafened = DISCORD_DEAFENED
                     .get_or_init(|| Mutex::new(false))
                     .blocking_lock();
 
+                *deafened = !*deafened;
+
                 client
                     .set_voice_settings(
                         VoiceSettings::new()
-                            .mode(VoiceModeSettings::new().voice_mode(VoiceMode::VoiceActivity))
-                            .mute(!*muted)
-                            .deaf(!*deafened),
+                            // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::VoiceActivity))
+                            .mute(*deafened)
+                            .deaf(*deafened),
                     )
-                    .expect("fuck");
-
-                *muted = !*muted;
-                *deafened = !*deafened;
+                    .map(|_| ())
+            } else {
+                Ok(()) // TODO: error message about how discord isnt connected
             }
         })
-        .await;
+        .await
+        .unwrap()?;
 
         Ok(())
     }
@@ -251,7 +250,23 @@ impl Action for DiscordPushToTalk {
         _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) -> Result<()> {
-        // TODO
+        spawn_blocking(move || {
+            if let Some(client) = DISCORD_CLIENT.get() {
+                let mut client = client.blocking_lock();
+                client
+                    .set_voice_settings(
+                        VoiceSettings::new()
+                            // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
+                            .mute(false),
+                    )
+                    .map(|_| ())
+            } else {
+                Ok(()) // TODO: error message about how discord isnt connected
+            }
+        })
+        .await
+        .unwrap()?;
+
         Ok(())
     }
 
@@ -261,7 +276,23 @@ impl Action for DiscordPushToTalk {
         _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) -> Result<()> {
-        // TODO
+        spawn_blocking(move || {
+            if let Some(client) = DISCORD_CLIENT.get() {
+                let mut client = client.blocking_lock();
+                client
+                    .set_voice_settings(
+                        VoiceSettings::new()
+                            // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
+                            .mute(true),
+                    )
+                    .map(|_| ())
+            } else {
+                Ok(()) // TODO: error message about how discord isnt connected
+            }
+        })
+        .await
+        .unwrap()?;
+
         Ok(())
     }
 
@@ -295,7 +326,23 @@ impl Action for DiscordPushToMute {
         _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) -> Result<()> {
-        // TODO
+        spawn_blocking(move || {
+            if let Some(client) = DISCORD_CLIENT.get() {
+                let mut client = client.blocking_lock();
+                client
+                    .set_voice_settings(
+                        VoiceSettings::new()
+                            // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
+                            .mute(true),
+                    )
+                    .map(|_| ())
+            } else {
+                Ok(()) // TODO: error message about how discord isnt connected
+            }
+        })
+        .await
+        .unwrap()?;
+
         Ok(())
     }
 
@@ -305,7 +352,23 @@ impl Action for DiscordPushToMute {
         _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) -> Result<()> {
-        // TODO
+        spawn_blocking(move || {
+            if let Some(client) = DISCORD_CLIENT.get() {
+                let mut client = client.blocking_lock();
+                client
+                    .set_voice_settings(
+                        VoiceSettings::new()
+                            // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
+                            .mute(false),
+                    )
+                    .map(|_| ())
+            } else {
+                Ok(()) // TODO: error message about how discord isnt connected
+            }
+        })
+        .await
+        .unwrap()?;
+
         Ok(())
     }
 
@@ -339,7 +402,24 @@ impl Action for DiscordPushToDeafen {
         _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) -> Result<()> {
-        // TODO
+        spawn_blocking(move || {
+            if let Some(client) = DISCORD_CLIENT.get() {
+                let mut client = client.blocking_lock();
+                client
+                    .set_voice_settings(
+                        VoiceSettings::new()
+                            // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
+                            .mute(true)
+                            .deaf(true),
+                    )
+                    .map(|_| ())
+            } else {
+                Ok(()) // TODO: error message about how discord isnt connected
+            }
+        })
+        .await
+        .unwrap()?;
+
         Ok(())
     }
 
@@ -349,7 +429,24 @@ impl Action for DiscordPushToDeafen {
         _input_key: InputKey,
         _config: &mut JukeBoxConfig,
     ) -> Result<()> {
-        // TODO
+        spawn_blocking(move || {
+            if let Some(client) = DISCORD_CLIENT.get() {
+                let mut client = client.blocking_lock();
+                client
+                    .set_voice_settings(
+                        VoiceSettings::new()
+                            // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
+                            .mute(false)
+                            .deaf(false),
+                    )
+                    .map(|_| ())
+            } else {
+                Ok(()) // TODO: error message about how discord isnt connected
+            }
+        })
+        .await
+        .unwrap()?;
+
         Ok(())
     }
 

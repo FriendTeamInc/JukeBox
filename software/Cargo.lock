@@ -1024,8 +1024,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "discord-rich-presence-client"
-version = "0.3.0"
+name = "discord-rich-presence"
+version = "0.2.5"
 dependencies = [
  "log",
  "serde",
@@ -2308,7 +2308,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "dirs",
- "discord-rich-presence-client",
+ "discord-rich-presence",
  "dyn-clone",
  "eframe",
  "egui-phosphor",

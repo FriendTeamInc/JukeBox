@@ -35,7 +35,7 @@ typetag = "0.2"
 dyn-clone = "1.0"
 
 obws = "0.14"
-discord-rich-presence-client = { path = "../../discord-rich-presence-client" }
+discord-rich-presence = { path = "../../discord-rich-presence" }
 reqwest = { version = "0.12.13", features = ["json", "blocking"] }
 
 [build-dependencies]
