@@ -1,7 +1,10 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 use eframe::egui::{ComboBox, Slider, Ui};
 use egui_phosphor::regular as phos;
 use serde::{Deserialize, Serialize};
+use tokio::sync::Mutex;
 
 use crate::{config::JukeBoxConfig, input::InputKey};
 
@@ -14,6 +17,7 @@ pub fn input_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
         vec![
             (AT::InputKeyboard, Box::new(InputKeyboard::default()), t!("action.input.keyboard.title").to_string()),
             (AT::InputMouse,    Box::new(InputMouse::default()),    t!("action.input.mouse.title").to_string()),
+            // (AT::InputGamepad,  Box::new(InputGamepad::default()),  t!("action.input.gamepad.title").to_string()),
         ],
     )
 }
@@ -203,7 +207,7 @@ impl Action for InputKeyboard {
         &self,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        _config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()> {
         // TODO
         Ok(())
@@ -213,7 +217,7 @@ impl Action for InputKeyboard {
         &self,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        _config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()> {
         // TODO
         Ok(())
@@ -228,7 +232,7 @@ impl Action for InputKeyboard {
         ui: &mut Ui,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        _config: Arc<Mutex<JukeBoxConfig>>,
     ) {
         ui.horizontal(|ui| {
             ui.label(t!("action.input.keyboard.add_keys"));
@@ -278,7 +282,7 @@ impl Action for InputMouse {
         &self,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        _config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()> {
         // TODO
         Ok(())
@@ -288,7 +292,7 @@ impl Action for InputMouse {
         &self,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        _config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()> {
         // TODO
         Ok(())
@@ -303,7 +307,7 @@ impl Action for InputMouse {
         ui: &mut Ui,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        _config: Arc<Mutex<JukeBoxConfig>>,
     ) {
         ui.label(t!("action.input.mouse.buttons"));
         let mut bits = [

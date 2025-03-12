@@ -73,10 +73,12 @@ action:
       title: "Switch Profile"
       help: "Switches to specified profile on release."
       profile_select: "Profile:"
+      error_msg: "Can't switch to profile \"%{profile}\", no longer exists!"
     copy_from_profile:
       title: "Copy from Profile"
       help: "Copies action on the same key from specified profile."
       profile_select: "Profile:"
+      error_profile_msg: "Can't copy from profile \"%{profile}\"!\n(profile \"%{profile}\", device \"%{uid}\", key %{key})"
   
   input:
     title: "%{icon} Input"

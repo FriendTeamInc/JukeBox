@@ -6,6 +6,7 @@ use std::{
 };
 
 use anyhow::Result;
+use futures::future::join_all;
 use tokio::sync::{mpsc::UnboundedReceiver, Mutex};
 
 use crate::{config::JukeBoxConfig, input::InputKey, serial::SerialEvent};
@@ -24,8 +25,6 @@ pub async fn action_task(
         p.lock().await.clear();
     };
 
-    // TODO: have discord and obs clients set up here for specific actions to trigger with
-
     while let Some(evnt) = s_evnt_rx.recv().await {
         match evnt {
             SerialEvent::Connected { device_info } => {
@@ -40,44 +39,40 @@ pub async fn action_task(
                 let config = config.clone();
 
                 tokio::spawn(async move {
-                    let mut c = config.lock().await.clone(); // Lock drops immediately
-                    let current_profile = c
-                        .profiles
-                        .get(&c.current_profile)
-                        .and_then(|p| p.get(&device_uid))
-                        .and_then(|p| Some(p.clone()))
-                        .unwrap_or(HashMap::new());
+                    let current_profile = {
+                        let c = config.lock().await; // Lock drops immediately
+
+                        c.profiles
+                            .get(&c.current_profile)
+                            .and_then(|p| p.get(&device_uid))
+                            .and_then(|p| Some(p.clone()))
+                            .unwrap_or(HashMap::new())
+                    };
 
                     let mut prevkeys = prevkeys.lock().await;
 
                     let pressed = keys.difference(&prevkeys);
                     let released = prevkeys.difference(&keys);
 
-                    // TODO: error signaling
-                    // TODO: batching futures?
+                    let mut futures = Vec::new();
 
                     for p in pressed {
                         if let Some(r) = current_profile.get(p) {
-                            let _ = r.on_press(&device_uid, *p, &mut c).await;
+                            futures.push(r.on_press(&device_uid, *p, config.clone()));
                         }
                     }
 
                     for p in released {
                         if let Some(r) = current_profile.get(p) {
-                            let _ = r.on_release(&device_uid, *p, &mut c).await;
+                            futures.push(r.on_release(&device_uid, *p, config.clone()));
                         }
                     }
 
-                    *prevkeys = keys;
-
-                    // the current profile is the only field that actions can modify currently.
-                    let mut config = config.lock().await;
-                    config.current_profile = c.current_profile.clone();
-                    if c.discord_oauth_access.is_some() && config.discord_oauth_access.is_none() {
-                        config.discord_oauth_access = c.discord_oauth_access;
+                    for _res in join_all(futures).await {
+                        // TODO: error signaling
                     }
-                    config.save();
-                    // TODO: allow for editing of global configs for things like Discord and OBS
+
+                    *prevkeys = keys;
                 });
             }
             SerialEvent::LostConnection { device_uid } => {

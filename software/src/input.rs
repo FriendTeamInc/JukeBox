@@ -1,6 +1,6 @@
 // Defining inputs that the device recieves
 
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt};
 
 use jukebox_util::peripheral::{KeyInputs, KnobInputs, PedalInputs};
 use serde::{Deserialize, Serialize};
@@ -107,5 +107,10 @@ impl InputKey {
         doif(i.right.is_down(), Self::PedalRight);
 
         res
+    }
+}
+impl fmt::Display for InputKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
     }
 }

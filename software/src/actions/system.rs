@@ -1,11 +1,11 @@
-use std::process::Command;
+use std::{process::Command, sync::Arc};
 
 use anyhow::Result;
 use eframe::egui::{ComboBox, Slider, Ui};
 use egui_phosphor::regular as phos;
 use rfd::FileDialog;
 use serde::{Deserialize, Serialize};
-use tokio::task::spawn_blocking;
+use tokio::{sync::Mutex, task::spawn_blocking};
 
 use crate::{config::JukeBoxConfig, input::InputKey};
 
@@ -36,7 +36,7 @@ impl Action for SystemLaunchApplication {
         &self,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        _config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()> {
         let filepath = self.filepath.clone();
         let arguments = self.arguments.clone();
@@ -54,7 +54,7 @@ impl Action for SystemLaunchApplication {
         &self,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        _config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()> {
         Ok(())
     }
@@ -68,7 +68,7 @@ impl Action for SystemLaunchApplication {
         ui: &mut Ui,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        _config: Arc<Mutex<JukeBoxConfig>>,
     ) {
         if ui
             .button(t!("action.system.launch_app.choose_file"))
@@ -116,7 +116,7 @@ impl Action for SystemOpenWebsite {
         &self,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        _config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()> {
         let _ = open::that(self.url.clone());
         // TODO: error handling
@@ -127,7 +127,7 @@ impl Action for SystemOpenWebsite {
         &self,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        _config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()> {
         Ok(())
     }
@@ -141,7 +141,7 @@ impl Action for SystemOpenWebsite {
         ui: &mut Ui,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        _config: Arc<Mutex<JukeBoxConfig>>,
     ) {
         ui.label(t!("action.system.open_website.url"));
         ui.text_edit_singleline(&mut self.url);
@@ -164,7 +164,7 @@ impl Action for SystemAudioInputControl {
         &self,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        _config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()> {
         // TODO
         Ok(())
@@ -174,7 +174,7 @@ impl Action for SystemAudioInputControl {
         &self,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        _config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()> {
         Ok(())
     }
@@ -188,7 +188,7 @@ impl Action for SystemAudioInputControl {
         ui: &mut Ui,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        _config: Arc<Mutex<JukeBoxConfig>>,
     ) {
         ui.label(t!("action.system.audio_input_control.input_device"));
         ComboBox::from_id_salt("SystemAudioInputControlDeviceSelect")
@@ -219,7 +219,7 @@ impl Action for SystemAudioOutputControl {
         &self,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        _config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()> {
         // TODO
         Ok(())
@@ -229,7 +229,7 @@ impl Action for SystemAudioOutputControl {
         &self,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        _config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()> {
         Ok(())
     }
@@ -243,7 +243,7 @@ impl Action for SystemAudioOutputControl {
         ui: &mut Ui,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        _config: Arc<Mutex<JukeBoxConfig>>,
     ) {
         ui.label(t!("action.system.audio_output_control.output_device"));
         ComboBox::from_id_salt("SystemAudioOutputControlDeviceSelect")

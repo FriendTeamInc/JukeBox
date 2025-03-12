@@ -1013,15 +1013,12 @@ impl JukeBoxGui {
                     .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
                     .show(ui, |ui| {
                         ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
-                            let mut c = self.config.blocking_lock().clone();
                             self.config_editing_action.edit_ui(
                                 ui,
                                 &self.current_device,
                                 self.config_editing_key,
-                                &mut c,
+                                self.config.clone(),
                             );
-                            self.config.blocking_lock().discord_oauth_access =
-                                c.discord_oauth_access;
                             ui.allocate_space(ui.available_size_before_wrap());
                         });
                     });

@@ -1,11 +1,12 @@
 // Types of actions and their associations
 
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use anyhow::Result;
 use dyn_clone::{clone_trait_object, DynClone};
 use eframe::egui::Ui;
 use serde::{Deserialize, Serialize};
+use tokio::sync::Mutex;
 
 use crate::{
     actions::{input::*, meta::*, obs::*, soundboard::*, system::*},
@@ -24,14 +25,14 @@ pub trait Action: Sync + Send + DynClone {
         &self,
         device_uid: &String,
         input_key: InputKey,
-        config: &mut JukeBoxConfig,
+        config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()>;
 
     async fn on_release(
         &self,
         device_uid: &String,
         input_key: InputKey,
-        config: &mut JukeBoxConfig,
+        config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()>;
 
     fn get_type(&self) -> ActionType;
@@ -41,7 +42,7 @@ pub trait Action: Sync + Send + DynClone {
         ui: &mut Ui,
         device_uid: &String,
         input_key: InputKey,
-        config: &mut JukeBoxConfig,
+        config: Arc<Mutex<JukeBoxConfig>>,
     );
 
     fn help(&self) -> String;

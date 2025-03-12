@@ -1,8 +1,11 @@
+use std::sync::Arc;
+
 use anyhow::Result;
 use eframe::egui::{ComboBox, Slider, Ui};
 use egui_phosphor::regular as phos;
 use rfd::FileDialog;
 use serde::{Deserialize, Serialize};
+use tokio::sync::Mutex;
 
 use crate::{config::JukeBoxConfig, input::InputKey};
 
@@ -29,7 +32,7 @@ impl Action for SoundboardPlaySound {
         &self,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        _config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()> {
         // TODO
         Ok(())
@@ -39,7 +42,7 @@ impl Action for SoundboardPlaySound {
         &self,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        _config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()> {
         Ok(())
     }
@@ -53,7 +56,7 @@ impl Action for SoundboardPlaySound {
         ui: &mut Ui,
         _device_uid: &String,
         _input_key: InputKey,
-        _config: &mut JukeBoxConfig,
+        _config: Arc<Mutex<JukeBoxConfig>>,
     ) {
         if ui
             .button(t!("action.soundboard.play_sound.choose_file"))
