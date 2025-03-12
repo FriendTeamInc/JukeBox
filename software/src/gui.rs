@@ -965,7 +965,7 @@ impl JukeBoxGui {
                     )
                     .on_hover_text_at_pointer(t!("help.action.test_input"));
                 if test_btn.clicked() {
-                    // TODO: fix for discord
+                    // TODO: fix for discord and hardware inputs
                     // let mut c = self.config.blocking_lock().clone();
                     // let h = Handle::current();
                     // let _ = h.block_on(async {
