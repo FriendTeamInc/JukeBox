@@ -14,8 +14,9 @@ use jukebox_util::peripheral::{
     IDENT_UNKNOWN_INPUT,
 };
 use jukebox_util::protocol::{
-    CMD_DISCONNECT, CMD_END, CMD_GET_INPUT_KEYS, CMD_GREET, CMD_NEGATIVE_ACK, CMD_UPDATE,
-    RSP_DISCONNECTED, RSP_END, RSP_INPUT_HEADER, RSP_LINK_DELIMITER, RSP_LINK_HEADER, RSP_UNKNOWN,
+    CMD_DISCONNECT, CMD_END, CMD_GET_INPUT_KEYS, CMD_GREET, CMD_IDENTIFY, CMD_NEGATIVE_ACK,
+    CMD_UPDATE, RSP_ACK, RSP_DISCONNECTED, RSP_END, RSP_INPUT_HEADER, RSP_LINK_DELIMITER,
+    RSP_LINK_HEADER, RSP_UNKNOWN,
 };
 use serialport::SerialPort;
 use tokio::task::block_in_place;
@@ -259,6 +260,16 @@ async fn transmit_get_input_keys(f: &mut Box<dyn SerialPort>) -> Result<HashSet<
     Ok(result)
 }
 
+async fn transmit_identify_signal(f: &mut Box<dyn SerialPort>) -> Result<()> {
+    // tell the device to reboot for updating
+    let mut cmd = vec![CMD_IDENTIFY];
+    cmd.extend_from_slice(CMD_END);
+    let mut rsp = vec![RSP_ACK];
+    rsp.extend_from_slice(RSP_END);
+
+    send_expect(f, &cmd, &rsp).await
+}
+
 async fn transmit_update_signal(f: &mut Box<dyn SerialPort>) -> Result<()> {
     // tell the device to reboot for updating
     let mut cmd = vec![CMD_UPDATE];
@@ -333,7 +344,7 @@ pub async fn serial_loop(
         while let Ok(cmd) = s_cmd_rx.try_recv() {
             match cmd {
                 SerialCommand::Identify => {
-                    todo!()
+                    transmit_identify_signal(f).await?;
                 }
                 SerialCommand::SetRGB => {
                     todo!()

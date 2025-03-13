@@ -208,7 +208,7 @@ impl JukeBoxGui {
                 ui.separator();
 
                 ui.allocate_ui(vec2(464.0, 245.0), |ui| match self.gui_tab {
-                    GuiTab::Device => self.draw_device_page(ui),
+                    GuiTab::Device => self.draw_device_page(ui, &gs_cmd_txs),
                     GuiTab::Settings => self.draw_settings_page(ui),
                     GuiTab::Editing => self.draw_edit_action(ui),
                     GuiTab::Updating => self.draw_update_page(ui, &gs_cmd_txs, &us_tx, &mut us_rx),
@@ -346,7 +346,11 @@ impl JukeBoxGui {
         }
     }
 
-    fn draw_device_page(&mut self, ui: &mut Ui) {
+    fn draw_device_page(
+        &mut self,
+        ui: &mut Ui,
+        gs_cmd_txs: &Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
+    ) {
         let devices = &self.devices;
         let current_device = &self.current_device;
 
@@ -362,10 +366,10 @@ impl JukeBoxGui {
         };
 
         match device_type {
-            DeviceType::Unknown => self.draw_unknown_device(ui),
-            DeviceType::KeyPad => self.draw_keypad_device(ui),
-            DeviceType::KnobPad => self.draw_unknown_device(ui),
-            DeviceType::PedalPad => self.draw_pedalpad_device(ui),
+            DeviceType::Unknown => self.draw_unknown_device(ui, gs_cmd_txs),
+            DeviceType::KeyPad => self.draw_keypad_device(ui, gs_cmd_txs),
+            DeviceType::KnobPad => self.draw_unknown_device(ui, gs_cmd_txs),
+            DeviceType::PedalPad => self.draw_pedalpad_device(ui, gs_cmd_txs),
         }
     }
 
@@ -701,16 +705,24 @@ impl JukeBoxGui {
         );
     }
 
-    fn draw_unknown_device(&mut self, ui: &mut Ui) {
+    fn draw_unknown_device(
+        &mut self,
+        ui: &mut Ui,
+        _gs_cmd_txs: &Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
+    ) {
         ui.with_layout(
             Layout::centered_and_justified(eframe::egui::Direction::TopDown),
             |ui| ui.label(t!("help.unknown_device")),
-            // TODO: add update button
+            // TODO: add update and identify button
         );
         // ui.allocate_space(ui.available_size_before_wrap());
     }
 
-    fn draw_device_firmware_management(&mut self, ui: &mut Ui) {
+    fn draw_device_firmware_management(
+        &mut self,
+        ui: &mut Ui,
+        gs_cmd_txs: &Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
+    ) {
         ui.allocate_ui(vec2(60.0, 231.5), |ui| {
             ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
                 let i = self.devices.get(&self.current_device).unwrap();
@@ -726,7 +738,9 @@ impl JukeBoxGui {
                             .on_hover_text_at_pointer(t!("help.device.identify"))
                             .clicked()
                         {
-                            log::info!("TODO: Identify Device");
+                            let gs_cmd_txs = gs_cmd_txs.blocking_lock();
+                            let tx = gs_cmd_txs.get(&self.current_device).unwrap();
+                            let _ = tx.send(SerialCommand::Identify);
                         }
 
                         if ui
@@ -759,7 +773,11 @@ impl JukeBoxGui {
         });
     }
 
-    fn draw_keypad_device(&mut self, ui: &mut Ui) {
+    fn draw_keypad_device(
+        &mut self,
+        ui: &mut Ui,
+        gs_cmd_txs: &Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
+    ) {
         ui.allocate_space(vec2(0.0, 4.0));
         ui.horizontal_top(|ui| {
             ui.allocate_ui(vec2(62.0, 231.5), |ui| {
@@ -836,12 +854,16 @@ impl JukeBoxGui {
                 }
             });
 
-            self.draw_device_firmware_management(ui);
+            self.draw_device_firmware_management(ui, gs_cmd_txs);
         });
         ui.allocate_space(ui.available_size_before_wrap());
     }
 
-    fn draw_pedalpad_device(&mut self, ui: &mut Ui) {
+    fn draw_pedalpad_device(
+        &mut self,
+        ui: &mut Ui,
+        gs_cmd_txs: &Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
+    ) {
         ui.allocate_space(vec2(0.0, 4.0));
         ui.horizontal_top(|ui| {
             ui.allocate_ui(vec2(62.0, 231.5), |ui| {
@@ -879,7 +901,7 @@ impl JukeBoxGui {
                 });
             });
 
-            self.draw_device_firmware_management(ui);
+            self.draw_device_firmware_management(ui, gs_cmd_txs);
         });
         ui.allocate_space(ui.available_size_before_wrap());
     }
