@@ -234,7 +234,7 @@ impl JukeBoxGui {
 
         {
             for (_k, tx) in gs_cmd_txs_end.blocking_lock().iter() {
-                let _ = tx.send(SerialCommand::DisconnectDevice);
+                let _ = tx.send(SerialCommand::Disconnect);
                 // .expect(&format!("could not send disconnect signal to device {}", k));
             }
         }
@@ -1051,7 +1051,7 @@ impl JukeBoxGui {
         {
             let gs_cmd_txs = gs_cmd_txs.blocking_lock();
             if let Some(tx) = gs_cmd_txs.get(&device_uid) {
-                tx.send(SerialCommand::UpdateDevice)
+                tx.send(SerialCommand::Update)
                     .expect("failed to send update command");
             }
         }

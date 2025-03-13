@@ -2,6 +2,9 @@
 
 pub const CMD_GREET: u8 = b'\x05';
 pub const CMD_GET_INPUT_KEYS: u8 = b'\x30';
+pub const CMD_SET_RGB: u8 = b'\x35';
+pub const CMD_SET_SCR: u8 = b'\x36';
+pub const CMD_IDENTIFY: u8 = b'\x37';
 pub const CMD_UPDATE: u8 = b'\x38';
 pub const CMD_DISCONNECT: u8 = b'\x39';
 pub const CMD_NEGATIVE_ACK: u8 = b'\x15';
@@ -13,8 +16,8 @@ pub const CMD_END: &[u8] = b"\r\n";
 pub const RSP_LINK_HEADER: u8 = b'L';
 pub const RSP_LINK_DELIMITER: u8 = b',';
 
+pub const RSP_ACK: u8 = b'A';
 pub const RSP_INPUT_HEADER: u8 = b'I';
-
 pub const RSP_UNKNOWN: u8 = b'?';
 pub const RSP_DISCONNECTED: u8 = b'\x04';
 
@@ -25,6 +28,9 @@ pub const RSP_END: &[u8] = b"\r\n\r\n";
 pub enum Command {
     Greeting,
     GetInputKeys,
+    SetRGB,
+    SetScr,
+    Identify,
     Update,
     Disconnect,
     NegativeAck,
@@ -36,6 +42,12 @@ impl Command {
             Self::Greeting
         } else if w == CMD_GET_INPUT_KEYS {
             Self::GetInputKeys
+        } else if w == CMD_SET_RGB {
+            Self::SetRGB
+        } else if w == CMD_SET_SCR {
+            Self::SetScr
+        } else if w == CMD_IDENTIFY {
+            Self::Identify
         } else if w == CMD_UPDATE {
             Self::Update
         } else if w == CMD_DISCONNECT {

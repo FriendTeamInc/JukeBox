@@ -54,6 +54,7 @@ use rp2040_hal::{
     gpio::Pins,
     multicore::{Multicore, Stack},
     pac::Peripherals,
+    pwm::Slices,
     rom_data::reset_to_usb_boot,
     sio::Sio,
     usb,
@@ -77,6 +78,7 @@ static CORE1_STACK: Stack<8192> = Stack::new();
 // inter-core mutexes
 static PERIPHERAL_INPUTS: Mutex<1, JBInputs> = Mutex::new(inputs_default());
 static UPDATE_TRIGGER: Mutex<2, bool> = Mutex::new(false);
+static IDENTIFY_TRIGGER: Mutex<3, bool> = Mutex::new(false);
 
 #[entry]
 fn main() -> ! {
@@ -231,10 +233,13 @@ fn main() -> ! {
                 pedals::PedalMod::new(pedal_pins, timer.count_down())
             };
 
-            let mut led_mod = {
-                let led_pin = pins.gpio25.into_function().into_dyn_pin().into_pull_type();
-                led::LedMod::new(led_pin, timer.count_down())
-            };
+            let pwm_slices = Slices::new(pac.PWM, &mut pac.RESETS);
+            let mut pwm = pwm_slices.pwm4;
+            pwm.set_ph_correct();
+            pwm.enable();
+            let mut channel = pwm.channel_b;
+            channel.output_to(pins.gpio25);
+            let mut led_mod = led::LedMod::new(channel);
 
             loop {
                 // update input devices
@@ -277,7 +282,7 @@ fn main() -> ! {
                 });
 
                 // update accessories
-                led_mod.update();
+                led_mod.update(timer.get_counter(), &IDENTIFY_TRIGGER);
 
                 #[cfg(feature = "keypad")]
                 rgb_mod.update(timer.get_counter());
@@ -344,6 +349,7 @@ fn main() -> ! {
                 uid,
                 &PERIPHERAL_INPUTS,
                 &UPDATE_TRIGGER,
+                &IDENTIFY_TRIGGER,
             );
             match usb_serial.flush() {
                 Ok(_) => {}

@@ -11,7 +11,7 @@ use jukebox_util::{
         IDENT_UNKNOWN_INPUT,
     },
     protocol::{
-        Command, CMD_END, RSP_DISCONNECTED, RSP_END, RSP_INPUT_HEADER, RSP_LINK_DELIMITER,
+        Command, CMD_END, RSP_ACK, RSP_DISCONNECTED, RSP_END, RSP_INPUT_HEADER, RSP_LINK_DELIMITER,
         RSP_LINK_HEADER, RSP_UNKNOWN,
     },
 };
@@ -119,6 +119,16 @@ impl SerialMod {
         update_trigger.with_mut_lock(|u| *u = true);
     }
 
+    fn start_identify(
+        &mut self,
+        serial: &mut SerialPort<UsbBus>,
+        identify_trigger: &Mutex<3, bool>,
+    ) {
+        info!("Command Identify");
+        Self::send_full_response(serial, &[RSP_ACK]);
+        identify_trigger.with_mut_lock(|u| *u = true);
+    }
+
     pub fn update(
         &mut self,
         serial: &mut SerialPort<UsbBus>,
@@ -126,6 +136,7 @@ impl SerialMod {
         device_uid: &str,
         peripheral_inputs: &Mutex<1, JBInputs>,
         update_trigger: &Mutex<2, bool>,
+        identify_trigger: &Mutex<3, bool>,
     ) {
         if self.state == Connection::Connected && self.keepalive_timer.wait().is_ok() {
             warn!("Keepalive triggered, disconnecting.");
@@ -187,10 +198,6 @@ impl SerialMod {
                 _ => unknown(),
             },
             Connection::Connected => match decode {
-                Command::Update => {
-                    self.start_update(serial, update_trigger);
-                    true
-                }
                 Command::GetInputKeys => {
                     // copy peripherals and inputs out
                     let inputs = {
@@ -208,17 +215,34 @@ impl SerialMod {
 
                     true
                 }
-                Command::NegativeAck => {
-                    // we sent something in error, better bail
-                    self.state = Connection::NotConnected(false);
-                    info!("Serial NegativeAck'd");
-                    false
+                Command::SetRGB => {
+                    // TODO:
+                    true
+                }
+                Command::SetScr => {
+                    // TODO:
+                    true
+                }
+                Command::Identify => {
+                    // TODO: flash led for identifying
+                    self.start_identify(serial, identify_trigger);
+                    true
+                }
+                Command::Update => {
+                    self.start_update(serial, update_trigger);
+                    true
                 }
                 Command::Disconnect => {
                     Self::send_full_response(serial, &[RSP_DISCONNECTED]);
                     self.state = Connection::NotConnected(true);
                     info!("Serial Disconnected");
                     true
+                }
+                Command::NegativeAck => {
+                    // we sent something in error, better bail
+                    self.state = Connection::NotConnected(false);
+                    info!("Serial NegativeAck'd");
+                    false
                 }
                 _ => unknown(),
             },

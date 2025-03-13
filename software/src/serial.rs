@@ -36,8 +36,11 @@ pub struct SerialConnectionDetails {
 }
 
 pub enum SerialCommand {
-    UpdateDevice,
-    DisconnectDevice,
+    Identify,
+    SetRGB,
+    SetScr,
+    Update,
+    Disconnect,
 }
 
 #[derive(PartialEq, Clone)]
@@ -329,7 +332,16 @@ pub async fn serial_loop(
 
         while let Ok(cmd) = s_cmd_rx.try_recv() {
             match cmd {
-                SerialCommand::UpdateDevice => {
+                SerialCommand::Identify => {
+                    todo!()
+                }
+                SerialCommand::SetRGB => {
+                    todo!()
+                }
+                SerialCommand::SetScr => {
+                    todo!()
+                }
+                SerialCommand::Update => {
                     transmit_update_signal(f).await?;
                     sr_tx
                         .send(SerialEvent::Disconnected {
@@ -343,7 +355,7 @@ pub async fn serial_loop(
                         .context("failed to send disconnect (for update) info to gui")?;
                     break 'forv; // The device has disconnected, we should too.
                 }
-                SerialCommand::DisconnectDevice => {
+                SerialCommand::Disconnect => {
                     transmit_disconnect_signal(f).await?;
                     sr_tx
                         .send(SerialEvent::Disconnected {

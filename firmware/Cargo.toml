@@ -33,7 +33,7 @@ smart-leds-trait = "0.3"
 mutually_exclusive_features = "0.1.0"
 
 [features]
-default = ["pedalpad"]
+default = ["keypad"]
 keypad = []
 knobpad = []
 pedalpad = []
