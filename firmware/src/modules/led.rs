@@ -2,7 +2,6 @@
 
 use core::u16;
 
-use defmt::info;
 use embedded_hal::PwmPin;
 use rp2040_hal::{
     fugit::Duration,
@@ -41,20 +40,13 @@ impl LedMod {
     }
 
     pub fn update(&mut self, t: Instant, identify_trigger: &Mutex<3, bool>) {
-        let n = t.clone().duration_since_epoch().ticks() as i64;
-        let m = pingpong(n);
-
-        // info!("{}", n);
-        // info!("{}", m);
-
-        self.led_pin.set_duty(m);
+        let t = t.duration_since_epoch();
 
         identify_trigger.with_mut_lock(|i| {
             if *i {
                 *i = false;
                 self.blink_goal = Some(
                     t.clone()
-                        .duration_since_epoch()
                         .checked_add(Duration::<u64, TIMER_NOM, TIMER_DENOM>::from_ticks(
                             BLINK_TIME,
                         ))
@@ -70,6 +62,7 @@ impl LedMod {
                 self.blink_goal = None;
                 return;
             }
+            self.led_pin.set_duty(pingpong(t as i64));
         } else {
             self.clear();
         }

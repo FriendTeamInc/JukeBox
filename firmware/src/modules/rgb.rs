@@ -53,14 +53,14 @@ impl RgbMod {
             return;
         }
 
-        let t = ((t.duration_since_epoch().ticks() >> 14) % 360) as f32;
+        // let t = ((t.duration_since_epoch().ticks() >> 14) % 360) as f32;
 
-        for (i, led) in self.buffer.iter_mut().enumerate() {
-            *led = hsv2rgb((t + (10 * (RGB_LEN - i)) as f32) % 360.0, 1.0, 1.0).into();
-        }
+        // for (i, led) in self.buffer.iter_mut().enumerate() {
+        //     *led = hsv2rgb((t + (10 * (RGB_LEN - i)) as f32) % 360.0, 1.0, 1.0).into();
+        // }
 
-        self.ws
-            .write(brightness(self.buffer.iter().copied(), self.brightness))
-            .unwrap();
+        // self.ws
+        //     .write(brightness(self.buffer.iter().copied(), self.brightness))
+        //     .unwrap();
     }
 }

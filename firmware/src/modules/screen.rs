@@ -49,18 +49,20 @@ impl ScreenMod {
             return;
         }
 
-        let t = ((t.duration_since_epoch().ticks() >> 14) % 360) as f32;
-        let rgb = hsv2rgb(t, 1.0, 1.0);
-        let rgb = rgb565(rgb.0, rgb.1, rgb.2);
+        // let t = ((t.duration_since_epoch().ticks() >> 14) % 360) as f32;
+        // let rgb = hsv2rgb(t, 1.0, 1.0);
+        // let rgb = rgb565(rgb.0, rgb.1, rgb.2);
 
         // let time_start = _timer.get_counter();
-        self.st.fill_framebuffer(rgb);
+        // self.st.fill_framebuffer(rgb);
         // let elapse1 = (_timer.get_counter() - time_start).to_micros();
 
         // let time_start = _timer.get_counter();
-        self.st.push_framebuffer();
+        // self.st.push_framebuffer();
         // let elapse2 = (_timer.get_counter() - time_start).to_micros();
 
         // info!("times: fill-fb={}us, push-fb={}us", elapse1, elapse2);
+
+        self.clear();
     }
 }

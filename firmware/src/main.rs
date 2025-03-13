@@ -233,13 +233,15 @@ fn main() -> ! {
                 pedals::PedalMod::new(pedal_pins, timer.count_down())
             };
 
-            let pwm_slices = Slices::new(pac.PWM, &mut pac.RESETS);
-            let mut pwm = pwm_slices.pwm4;
-            pwm.set_ph_correct();
-            pwm.enable();
-            let mut channel = pwm.channel_b;
-            channel.output_to(pins.gpio25);
-            let mut led_mod = led::LedMod::new(channel);
+            let mut led_mod = {
+                let pwm_slices = Slices::new(pac.PWM, &mut pac.RESETS);
+                let mut pwm = pwm_slices.pwm4;
+                pwm.set_ph_correct();
+                pwm.enable();
+                let mut channel = pwm.channel_b;
+                channel.output_to(pins.gpio25);
+                led::LedMod::new(channel)
+            };
 
             loop {
                 // update input devices
