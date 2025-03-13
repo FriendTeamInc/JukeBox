@@ -6,9 +6,10 @@ use std::time::{Duration, Instant};
 
 use eframe::egui::scroll_area::ScrollBarVisibility;
 use eframe::egui::{
-    vec2, Align, Button, CentralPanel, CollapsingHeader, Color32, ComboBox, Grid, Layout,
+    vec2, Align, Button, CentralPanel, CollapsingHeader, Color32, ComboBox, Context, Grid, Layout,
     ProgressBar, RichText, ScrollArea, TextBuffer, TextEdit, Ui, ViewportBuilder,
 };
+use eframe::Frame;
 use egui_phosphor::regular as phos;
 use egui_theme_switch::global_theme_switch;
 use jukebox_util::peripheral::{
@@ -96,7 +97,69 @@ struct JukeBoxGui {
     update_progress: f32,
     update_status: UpdateStatus,
 
+    thread_breaker: Arc<AtomicBool>,
+    sg_rx: UnboundedReceiver<SerialEvent>,
+    gs_cmd_rx: UnboundedReceiver<(String, UnboundedSender<SerialCommand>)>,
+    gs_cmd_txs: Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
+    us_tx: UnboundedSender<UpdateStatus>,
+    us_rx: UnboundedReceiver<UpdateStatus>,
+
     action_map: ActionMap,
+}
+impl eframe::App for JukeBoxGui {
+    fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+        // TODO: give ctx to other threads?, so ui can be updated as necessary.
+        // but only once
+
+        self.handle_serial_events();
+
+        if ctx.input(|i| i.viewport().close_requested()) {
+            // TODO: handle this as going to system tray
+
+            {
+                for (_k, tx) in self.gs_cmd_txs.blocking_lock().iter() {
+                    let _ = tx.send(SerialCommand::Disconnect);
+                    // .expect(&format!("could not send disconnect signal to device {}", k));
+                }
+            }
+
+            self.thread_breaker
+                .store(true, std::sync::atomic::Ordering::Relaxed);
+
+            return;
+        }
+
+        CentralPanel::default().show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                self.draw_profile_management(ui);
+                self.draw_settings_toggle(ui);
+            });
+
+            ui.separator();
+
+            ui.allocate_ui(vec2(464.0, 245.0), |ui| match self.gui_tab {
+                GuiTab::Device => self.draw_device_page(ui),
+                GuiTab::Settings => self.draw_settings_page(ui),
+                GuiTab::Editing => self.draw_edit_action(ui),
+                GuiTab::Updating => self.draw_update_page(ui),
+            });
+
+            ui.separator();
+
+            ui.columns_const(|[c1, c2]| {
+                c1.with_layout(Layout::left_to_right(Align::BOTTOM), |ui| {
+                    self.draw_device_management(ui);
+                });
+
+                self.draw_splash_text(c2);
+            });
+        });
+
+        // Call a new frame every frame, bypassing the limited updates.
+        // NOTE: This is a bad idea, we should probably change this later
+        // and only update the window as necessary.
+        ctx.request_repaint();
+    }
 }
 impl JukeBoxGui {
     fn new() -> Self {
@@ -117,6 +180,28 @@ impl JukeBoxGui {
         let current_device = devices.keys().next().unwrap_or(&String::new()).to_string();
         let config_enable_splash = config.enable_splash;
         let config = Arc::new(Mutex::new(JukeBoxConfig::load()));
+
+        // when gui exits, we use these to signal the other threads to stop
+        let thread_breaker = Arc::new(AtomicBool::new(false)); // ends other threads from gui
+        let brkr_serial = thread_breaker.clone();
+
+        let (sr_tx, sr_rx) = unbounded_channel::<SerialEvent>(); // serial threads send events to action thread
+        let (sg_tx, sg_rx) = unbounded_channel::<SerialEvent>(); // serial threads send events to gui thread
+
+        let (gs_cmd_tx, gs_cmd_rx) =
+            unbounded_channel::<(String, UnboundedSender<SerialCommand>)>(); // serial threads send "serial command senders" to gui
+        let gs_cmd_txs: Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>> =
+            Arc::new(Mutex::new(HashMap::new()));
+
+        // gui thread sends events to serial threads (specific Device ID -> Device specific Serial Thread)
+        // serial thread spawns the channels and gives the sender to the gui thread through this
+
+        let (us_tx, us_rx) = unbounded_channel::<UpdateStatus>(); // update thread sends update statuses to gui thread
+
+        let action_config = config.clone();
+
+        spawn(async move { serial_task(brkr_serial, gs_cmd_tx, sg_tx, sr_tx).await });
+        spawn(async move { action_task(sr_rx, action_config).await });
 
         JukeBoxGui {
             splash_timer: Instant::now(),
@@ -140,124 +225,26 @@ impl JukeBoxGui {
             update_progress: 0.0,
             update_status: UpdateStatus::Start,
 
+            thread_breaker: thread_breaker,
+            sg_rx: sg_rx,
+            gs_cmd_rx: gs_cmd_rx,
+            gs_cmd_txs: gs_cmd_txs,
+            us_tx: us_tx,
+            us_rx: us_rx,
+
             action_map: ActionMap::new(),
         }
     }
 
-    fn run(mut self) {
-        // channels cannot be a part of Self due to partial move errors
-
-        // when gui exits, we use these to signal the other threads to stop
-        let brkr = Arc::new(AtomicBool::new(false)); // ends other threads from gui
-        let brkr_serial = brkr.clone();
-
-        let (sr_tx, sr_rx) = unbounded_channel::<SerialEvent>(); // serial threads send events to action thread
-        let (sg_tx, mut sg_rx) = unbounded_channel::<SerialEvent>(); // serial threads send events to gui thread
-
-        let (gs_cmd_tx, mut gs_cmd_rx) =
-            unbounded_channel::<(String, UnboundedSender<SerialCommand>)>(); // serial threads send "serial command senders" to gui
-        let mut gs_cmd_txs: Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>> =
-            Arc::new(Mutex::new(HashMap::new()));
-        let gs_cmd_txs_end = gs_cmd_txs.clone();
-
-        // gui thread sends events to serial threads (specific Device ID -> Device specific Serial Thread)
-        // serial thread spawns the channels and gives the sender to the gui thread through this
-
-        let (us_tx, mut us_rx) = unbounded_channel::<UpdateStatus>(); // update thread sends update statuses to gui thread
-
-        let action_config = self.config.clone();
-
-        let rt = Runtime::new().expect("unable to create tokio runtime");
-        let _guard = rt.enter();
-        spawn(async move { serial_task(brkr_serial, gs_cmd_tx, sg_tx, sr_tx).await });
-        spawn(async move { action_task(sr_rx, action_config).await });
-
-        let options = eframe::NativeOptions {
-            viewport: ViewportBuilder::default()
-                .with_title(t!("window_title"))
-                .with_inner_size([960.0, 640.0])
-                .with_maximize_button(false)
-                .with_resizable(false)
-                .with_icon(
-                    eframe::icon_data::from_png_bytes(
-                        &include_bytes!("../../assets/applogo.png")[..],
-                    )
-                    .unwrap(),
-                ),
-            centered: true,
-            ..Default::default()
-        };
-
-        eframe::run_simple_native(t!("window_title").as_ref(), options, move |ctx, _frame| {
-            // TODO: give ctx to other threads?, so ui can be updated as necessary.
-            // but only once
-
-            ctx.set_zoom_factor(2.0);
-            let mut fonts = eframe::egui::FontDefinitions::default();
-            egui_phosphor::add_to_fonts(&mut fonts, egui_phosphor::Variant::Regular);
-            ctx.set_fonts(fonts);
-
-            self.handle_serial_events(&mut gs_cmd_rx, &mut gs_cmd_txs, &mut sg_rx);
-
-            CentralPanel::default().show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    self.draw_profile_management(ui);
-                    self.draw_settings_toggle(ui);
-                });
-
-                ui.separator();
-
-                ui.allocate_ui(vec2(464.0, 245.0), |ui| match self.gui_tab {
-                    GuiTab::Device => self.draw_device_page(ui, &gs_cmd_txs),
-                    GuiTab::Settings => self.draw_settings_page(ui),
-                    GuiTab::Editing => self.draw_edit_action(ui),
-                    GuiTab::Updating => self.draw_update_page(ui, &gs_cmd_txs, &us_tx, &mut us_rx),
-                });
-
-                ui.separator();
-
-                ui.columns_const(|[c1, c2]| {
-                    c1.with_layout(Layout::left_to_right(Align::BOTTOM), |ui| {
-                        self.draw_device_management(ui);
-                    });
-
-                    self.draw_splash_text(c2);
-                });
-            });
-
-            // Call a new frame every frame, bypassing the limited updates.
-            // NOTE: This is a bad idea, we should probably change this later
-            // and only update the window as necessary.
-            ctx.request_repaint();
-        })
-        .expect("eframe error");
-
+    fn handle_serial_events(&mut self) {
         {
-            for (_k, tx) in gs_cmd_txs_end.blocking_lock().iter() {
-                let _ = tx.send(SerialCommand::Disconnect);
-                // .expect(&format!("could not send disconnect signal to device {}", k));
-            }
-        }
-
-        brkr.store(true, std::sync::atomic::Ordering::Relaxed);
-
-        rt.shutdown_timeout(Duration::from_secs(1));
-    }
-
-    fn handle_serial_events(
-        &mut self,
-        gs_cmd_rx: &mut UnboundedReceiver<(String, UnboundedSender<SerialCommand>)>,
-        gs_cmd_txs: &mut Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
-        s_evnt_rx: &mut UnboundedReceiver<SerialEvent>,
-    ) {
-        {
-            let mut gs_cmd_txs = gs_cmd_txs.blocking_lock();
-            while let Ok((device_uid, gs_cmd_tx)) = gs_cmd_rx.try_recv() {
+            let mut gs_cmd_txs = self.gs_cmd_txs.blocking_lock();
+            while let Ok((device_uid, gs_cmd_tx)) = self.gs_cmd_rx.try_recv() {
                 gs_cmd_txs.insert(device_uid, gs_cmd_tx);
             }
         }
 
-        while let Ok(event) = s_evnt_rx.try_recv() {
+        while let Ok(event) = self.sg_rx.try_recv() {
             match event {
                 SerialEvent::Connected { device_info } => {
                     let device_uid = device_info.device_uid;
@@ -324,7 +311,7 @@ impl JukeBoxGui {
                         v.3 = false;
                         v.4.clear();
                     }
-                    let mut gs_cmd_txs = gs_cmd_txs.blocking_lock();
+                    let mut gs_cmd_txs = self.gs_cmd_txs.blocking_lock();
                     gs_cmd_txs.remove(&device_uid);
                 }
                 SerialEvent::Disconnected { device_uid } => {
@@ -333,7 +320,7 @@ impl JukeBoxGui {
                         v.3 = false;
                         v.4.clear();
                     }
-                    let mut gs_cmd_txs = gs_cmd_txs.blocking_lock();
+                    let mut gs_cmd_txs = self.gs_cmd_txs.blocking_lock();
                     gs_cmd_txs.remove(&device_uid);
                 }
                 SerialEvent::GetInputKeys { device_uid, keys } => {
@@ -346,11 +333,7 @@ impl JukeBoxGui {
         }
     }
 
-    fn draw_device_page(
-        &mut self,
-        ui: &mut Ui,
-        gs_cmd_txs: &Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
-    ) {
+    fn draw_device_page(&mut self, ui: &mut Ui) {
         let devices = &self.devices;
         let current_device = &self.current_device;
 
@@ -366,10 +349,10 @@ impl JukeBoxGui {
         };
 
         match device_type {
-            DeviceType::Unknown => self.draw_unknown_device(ui, gs_cmd_txs),
-            DeviceType::KeyPad => self.draw_keypad_device(ui, gs_cmd_txs),
-            DeviceType::KnobPad => self.draw_unknown_device(ui, gs_cmd_txs),
-            DeviceType::PedalPad => self.draw_pedalpad_device(ui, gs_cmd_txs),
+            DeviceType::Unknown => self.draw_unknown_device(ui),
+            DeviceType::KeyPad => self.draw_keypad_device(ui),
+            DeviceType::KnobPad => self.draw_unknown_device(ui),
+            DeviceType::PedalPad => self.draw_pedalpad_device(ui),
         }
     }
 
@@ -705,11 +688,7 @@ impl JukeBoxGui {
         );
     }
 
-    fn draw_unknown_device(
-        &mut self,
-        ui: &mut Ui,
-        _gs_cmd_txs: &Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
-    ) {
+    fn draw_unknown_device(&mut self, ui: &mut Ui) {
         ui.with_layout(
             Layout::centered_and_justified(eframe::egui::Direction::TopDown),
             |ui| ui.label(t!("help.unknown_device")),
@@ -718,11 +697,7 @@ impl JukeBoxGui {
         // ui.allocate_space(ui.available_size_before_wrap());
     }
 
-    fn draw_device_firmware_management(
-        &mut self,
-        ui: &mut Ui,
-        gs_cmd_txs: &Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
-    ) {
+    fn draw_device_firmware_management(&mut self, ui: &mut Ui) {
         ui.allocate_ui(vec2(60.0, 231.5), |ui| {
             ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
                 let i = self.devices.get(&self.current_device).unwrap();
@@ -738,7 +713,7 @@ impl JukeBoxGui {
                             .on_hover_text_at_pointer(t!("help.device.identify"))
                             .clicked()
                         {
-                            let gs_cmd_txs = gs_cmd_txs.blocking_lock();
+                            let gs_cmd_txs = self.gs_cmd_txs.blocking_lock();
                             let tx = gs_cmd_txs.get(&self.current_device).unwrap();
                             let _ = tx.send(SerialCommand::Identify);
                         }
@@ -773,11 +748,7 @@ impl JukeBoxGui {
         });
     }
 
-    fn draw_keypad_device(
-        &mut self,
-        ui: &mut Ui,
-        gs_cmd_txs: &Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
-    ) {
+    fn draw_keypad_device(&mut self, ui: &mut Ui) {
         ui.allocate_space(vec2(0.0, 4.0));
         ui.horizontal_top(|ui| {
             ui.allocate_ui(vec2(62.0, 231.5), |ui| {
@@ -854,16 +825,12 @@ impl JukeBoxGui {
                 }
             });
 
-            self.draw_device_firmware_management(ui, gs_cmd_txs);
+            self.draw_device_firmware_management(ui);
         });
         ui.allocate_space(ui.available_size_before_wrap());
     }
 
-    fn draw_pedalpad_device(
-        &mut self,
-        ui: &mut Ui,
-        gs_cmd_txs: &Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
-    ) {
+    fn draw_pedalpad_device(&mut self, ui: &mut Ui) {
         ui.allocate_space(vec2(0.0, 4.0));
         ui.horizontal_top(|ui| {
             ui.allocate_ui(vec2(62.0, 231.5), |ui| {
@@ -901,7 +868,7 @@ impl JukeBoxGui {
                 });
             });
 
-            self.draw_device_firmware_management(ui, gs_cmd_txs);
+            self.draw_device_firmware_management(ui);
         });
         ui.allocate_space(ui.available_size_before_wrap());
     }
@@ -1064,33 +1031,23 @@ impl JukeBoxGui {
         });
     }
 
-    fn send_update_signal(
-        gs_cmd_txs: &Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
-        device_uid: String,
-        fw_path: String,
-        us_tx: &UnboundedSender<UpdateStatus>,
-    ) {
+    fn send_update_signal(&mut self, fw_path: String) {
         {
-            let gs_cmd_txs = gs_cmd_txs.blocking_lock();
-            if let Some(tx) = gs_cmd_txs.get(&device_uid) {
+            let gs_cmd_txs = self.gs_cmd_txs.blocking_lock();
+            if let Some(tx) = gs_cmd_txs.get(&self.current_device) {
                 tx.send(SerialCommand::Update)
                     .expect("failed to send update command");
             }
         }
 
-        let us_tx2 = us_tx.clone();
+        let us_tx2 = self.us_tx.clone();
+        let device_uid = self.current_device.clone();
         spawn(async move {
             update_task(device_uid, fw_path, us_tx2).await;
         });
     }
 
-    fn draw_update_page(
-        &mut self,
-        ui: &mut Ui,
-        gs_cmd_txs: &Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
-        us_tx: &UnboundedSender<UpdateStatus>,
-        us_rx: &mut UnboundedReceiver<UpdateStatus>,
-    ) {
+    fn draw_update_page(&mut self, ui: &mut Ui) {
         ui.vertical_centered(|ui| {
             ui.allocate_space(vec2(0.0, 10.0));
             ui.heading(t!("update.title"));
@@ -1111,12 +1068,7 @@ impl JukeBoxGui {
 
                 if ui.add(dl_update).clicked() {
                     // TODO: download update from GitHub
-                    // Self::send_update_signal(
-                    //     gs_cmd_txs,
-                    //     self.current_device.clone(),
-                    //     f.to_string_lossy().to_string(),
-                    //     us_tx,
-                    // );
+                    // self.send_update_signal(???);
                 }
                 if ui.add(cfw_update).clicked() {
                     // TODO: ask for file, verify its good, then use it to update the device
@@ -1125,12 +1077,7 @@ impl JukeBoxGui {
                         .set_directory("~")
                         .pick_file()
                     {
-                        Self::send_update_signal(
-                            gs_cmd_txs,
-                            self.current_device.clone(),
-                            f.to_string_lossy().to_string(),
-                            us_tx,
-                        );
+                        self.send_update_signal(f.to_string_lossy().to_string());
                     }
                 }
             });
@@ -1138,7 +1085,7 @@ impl JukeBoxGui {
             ui.horizontal(|ui| {
                 ui.allocate_space(vec2(149.0, 0.0));
 
-                while let Ok(p) = us_rx.try_recv() {
+                while let Ok(p) = self.us_rx.try_recv() {
                     self.update_status = p;
                     match p {
                         UpdateStatus::Start => self.update_progress = 0.0,
@@ -1196,5 +1143,37 @@ impl JukeBoxGui {
 }
 
 pub fn basic_gui() {
-    JukeBoxGui::new().run();
+    let rt = Runtime::new().expect("unable to create tokio runtime");
+    let _guard = rt.enter();
+
+    let native_options = eframe::NativeOptions {
+        viewport: ViewportBuilder::default()
+            .with_title(t!("window_title"))
+            .with_inner_size([960.0, 640.0])
+            .with_maximize_button(false)
+            .with_resizable(false)
+            .with_icon(
+                eframe::icon_data::from_png_bytes(&include_bytes!("../../assets/applogo.png")[..])
+                    .unwrap(),
+            ),
+        centered: true,
+        ..Default::default()
+    };
+
+    // TODO: error handle this
+    let _ = eframe::run_native(
+        "JukeBoxDesktop",
+        native_options,
+        Box::new(|cc| {
+            let ctx = &cc.egui_ctx;
+            ctx.set_zoom_factor(2.0);
+            let mut fonts = eframe::egui::FontDefinitions::default();
+            egui_phosphor::add_to_fonts(&mut fonts, egui_phosphor::Variant::Regular);
+            ctx.set_fonts(fonts);
+
+            Ok(Box::new(JukeBoxGui::new()))
+        }),
+    );
+
+    rt.shutdown_timeout(Duration::from_secs(1));
 }
