@@ -27,6 +27,12 @@ mod actions {
 use anyhow::Result;
 
 fn main() -> Result<()> {
+    // TODO: add CPU and Memory monitoring support through sysinfo crate
+    // TODO: add GPU monitoring support to Rust version through:
+    // - nvml-wrapper crate (NVIDIA)
+    // - rocm_smi_lib crate (AMD)
+    // - Intel Graphics Control Library through Rust wrappers
+
     env_logger::init();
 
     gui::basic_gui();

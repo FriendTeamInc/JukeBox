@@ -129,31 +129,7 @@ impl eframe::App for JukeBoxGui {
             return;
         }
 
-        CentralPanel::default().show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                self.draw_profile_management(ui);
-                self.draw_settings_toggle(ui);
-            });
-
-            ui.separator();
-
-            ui.allocate_ui(vec2(464.0, 245.0), |ui| match self.gui_tab {
-                GuiTab::Device => self.draw_device_page(ui),
-                GuiTab::Settings => self.draw_settings_page(ui),
-                GuiTab::Editing => self.draw_edit_action(ui),
-                GuiTab::Updating => self.draw_update_page(ui),
-            });
-
-            ui.separator();
-
-            ui.columns_const(|[c1, c2]| {
-                c1.with_layout(Layout::left_to_right(Align::BOTTOM), |ui| {
-                    self.draw_device_management(ui);
-                });
-
-                self.draw_splash_text(c2);
-            });
-        });
+        CentralPanel::default().show(ctx, |ui| self.ui(ui));
 
         // Call a new frame every frame, bypassing the limited updates.
         // NOTE: This is a bad idea, we should probably change this later
@@ -234,6 +210,32 @@ impl JukeBoxGui {
 
             action_map: ActionMap::new(),
         }
+    }
+
+    fn ui(&mut self, ui: &mut Ui) {
+        ui.horizontal(|ui| {
+            self.draw_profile_management(ui);
+            self.draw_settings_toggle(ui);
+        });
+
+        ui.separator();
+
+        ui.allocate_ui(vec2(464.0, 245.0), |ui| match self.gui_tab {
+            GuiTab::Device => self.draw_device_page(ui),
+            GuiTab::Settings => self.draw_settings_page(ui),
+            GuiTab::Editing => self.draw_edit_action(ui),
+            GuiTab::Updating => self.draw_update_page(ui),
+        });
+
+        ui.separator();
+
+        ui.columns_const(|[c1, c2]| {
+            c1.with_layout(Layout::left_to_right(Align::BOTTOM), |ui| {
+                self.draw_device_management(ui);
+            });
+
+            self.draw_splash_text(c2);
+        });
     }
 
     fn handle_serial_events(&mut self) {

@@ -18,8 +18,8 @@ use crate::{
 
 use super::types::{Action, ActionType as AT};
 
-const DISCORD_CLIENT_ID: &str = env!("JUKEBOXDESKTOP_DISCORD_CLIENT_ID");
-const DISCORD_CLIENT_SECRET: &str = env!("JUKEBOXDESKTOP_DISCORD_CLIENT_SECRET");
+const DISCORD_CLIENT_ID: &str = env!("DISCORD_CLIENT_ID");
+const DISCORD_CLIENT_SECRET: &str = env!("DISCORD_CLIENT_SECRET");
 static DISCORD_CLIENT: OnceLock<Mutex<DiscordIpcClient>> = OnceLock::new();
 static DISCORD_MUTED: OnceLock<Mutex<bool>> = OnceLock::new();
 static DISCORD_DEAFENED: OnceLock<Mutex<bool>> = OnceLock::new();
