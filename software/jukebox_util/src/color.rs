@@ -34,7 +34,7 @@ pub fn rgb565(r: u8, g: u8, b: u8) -> u16 {
     r | g | b
 }
 
-fn put_color(data: &mut [u8], color: (u8, u8, u8)) {
+fn set_color(data: &mut [u8], color: (u8, u8, u8)) {
     data[0] = color.0;
     data[1] = color.1;
     data[2] = color.2;
@@ -53,29 +53,34 @@ const COLOR_RAINBOW_WAVE: u8 = 5;
 
 // colors are only 24 bits, the first 8 bits are unused
 #[derive(Debug, Clone, PartialEq)]
-pub enum RGBControl {
+pub enum RgbProfile {
     Off,
     Static {
+        brightness: u8,
         color: (u8, u8, u8),
     },
     Wave {
+        brightness: u8,
         speed_x: i8,
         speed_y: i8,
         color_count: u8,
         colors: [(u8, u8, u8); 4],
     },
     Breathe {
+        brightness: u8,
         hold_time: u8,
         trans_time: u8,
         color_count: u8,
         colors: [(u8, u8, u8); 4],
     },
     RainbowSolid {
+        brightness: u8,
         speed: i8,
         saturation: u8,
         value: u8,
     },
     RainbowWave {
+        brightness: u8,
         speed: i8,
         speed_x: i8,
         speed_y: i8,
@@ -83,18 +88,20 @@ pub enum RGBControl {
         value: u8,
     },
 }
-impl RGBControl {
+impl RgbProfile {
     pub fn encode(self) -> [u8; 32] {
         match self {
             Self::Off => [0u8; 32],
-            Self::Static { color } => {
+            Self::Static { brightness, color } => {
                 let mut data = [0u8; 32];
                 data[0] = COLOR_STATIC; // static type
-                put_color(&mut data[1..=3], color);
+                data[1] = brightness;
+                set_color(&mut data[2..=4], color);
 
                 data
             }
             Self::Wave {
+                brightness,
                 speed_x,
                 speed_y,
                 color_count,
@@ -102,17 +109,19 @@ impl RGBControl {
             } => {
                 let mut data = [0u8; 32];
                 data[0] = COLOR_WAVE; // wave type
-                data[1] = unsafe { transmute(speed_x) };
-                data[2] = unsafe { transmute(speed_y) };
-                data[3] = color_count;
-                put_color(&mut data[4..=6], colors[0]);
-                put_color(&mut data[7..=9], colors[1]);
-                put_color(&mut data[10..=12], colors[2]);
-                put_color(&mut data[13..=15], colors[3]);
+                data[1] = brightness;
+                data[2] = unsafe { transmute(speed_x) };
+                data[3] = unsafe { transmute(speed_y) };
+                data[4] = color_count;
+                set_color(&mut data[5..=7], colors[0]);
+                set_color(&mut data[8..=10], colors[1]);
+                set_color(&mut data[11..=13], colors[2]);
+                set_color(&mut data[14..=16], colors[3]);
 
                 data
             }
             Self::Breathe {
+                brightness,
                 hold_time,
                 trans_time,
                 color_count,
@@ -120,30 +129,34 @@ impl RGBControl {
             } => {
                 let mut data = [0u8; 32];
                 data[0] = COLOR_BREATHE; // breathe type
-                data[1] = hold_time;
-                data[2] = trans_time;
-                data[3] = color_count;
-                put_color(&mut data[4..=6], colors[0]);
-                put_color(&mut data[7..=9], colors[1]);
-                put_color(&mut data[10..=12], colors[2]);
-                put_color(&mut data[13..=15], colors[3]);
+                data[1] = brightness;
+                data[2] = hold_time;
+                data[3] = trans_time;
+                data[4] = color_count;
+                set_color(&mut data[5..=7], colors[0]);
+                set_color(&mut data[8..=10], colors[1]);
+                set_color(&mut data[11..=13], colors[2]);
+                set_color(&mut data[14..=16], colors[3]);
 
                 data
             }
             Self::RainbowSolid {
+                brightness,
                 speed,
                 saturation,
                 value,
             } => {
                 let mut data = [0u8; 32];
                 data[0] = COLOR_RAINBOW_SOLID; // rainbow solid
-                data[1] = unsafe { transmute(speed) };
-                data[2] = unsafe { transmute(saturation) };
-                data[3] = unsafe { transmute(value) };
+                data[1] = brightness;
+                data[2] = unsafe { transmute(speed) };
+                data[3] = unsafe { transmute(saturation) };
+                data[4] = unsafe { transmute(value) };
 
                 data
             }
             Self::RainbowWave {
+                brightness,
                 speed,
                 speed_x,
                 speed_y,
@@ -152,11 +165,12 @@ impl RGBControl {
             } => {
                 let mut data = [0u8; 32];
                 data[0] = COLOR_RAINBOW_WAVE; // rainbow wave
-                data[1] = unsafe { transmute(speed) };
-                data[2] = unsafe { transmute(speed_x) };
-                data[3] = unsafe { transmute(speed_y) };
-                data[4] = unsafe { transmute(saturation) };
-                data[5] = unsafe { transmute(value) };
+                data[1] = brightness;
+                data[2] = unsafe { transmute(speed) };
+                data[3] = unsafe { transmute(speed_x) };
+                data[4] = unsafe { transmute(speed_y) };
+                data[5] = unsafe { transmute(saturation) };
+                data[6] = unsafe { transmute(value) };
 
                 data
             }
@@ -167,41 +181,46 @@ impl RGBControl {
         let t = data[0];
         match t {
             COLOR_STATIC => Self::Static {
-                color: get_color(&data[1..=3]),
+                brightness: data[1],
+                color: get_color(&data[2..=4]),
             },
             COLOR_WAVE => Self::Wave {
-                speed_x: unsafe { transmute(data[1]) },
-                speed_y: unsafe { transmute(data[2]) },
-                color_count: data[3],
+                brightness: data[1],
+                speed_x: unsafe { transmute(data[2]) },
+                speed_y: unsafe { transmute(data[3]) },
+                color_count: data[4],
                 colors: [
-                    get_color(&data[4..=6]),
-                    get_color(&data[7..=9]),
-                    get_color(&data[10..=12]),
-                    get_color(&data[13..=15]),
+                    get_color(&data[5..=7]),
+                    get_color(&data[8..=10]),
+                    get_color(&data[11..=13]),
+                    get_color(&data[14..=16]),
                 ],
             },
             COLOR_BREATHE => Self::Breathe {
-                hold_time: data[1],
-                trans_time: data[2],
-                color_count: data[3],
+                brightness: data[1],
+                hold_time: data[2],
+                trans_time: data[3],
+                color_count: data[4],
                 colors: [
-                    get_color(&data[4..=6]),
-                    get_color(&data[7..=9]),
-                    get_color(&data[10..=12]),
-                    get_color(&data[13..=15]),
+                    get_color(&data[5..=7]),
+                    get_color(&data[8..=10]),
+                    get_color(&data[11..=13]),
+                    get_color(&data[14..=16]),
                 ],
             },
             COLOR_RAINBOW_SOLID => Self::RainbowSolid {
-                speed: unsafe { transmute(data[1]) },
-                saturation: data[2],
-                value: data[3],
+                brightness: data[1],
+                speed: unsafe { transmute(data[2]) },
+                saturation: data[3],
+                value: data[4],
             },
             COLOR_RAINBOW_WAVE => Self::RainbowWave {
-                speed: unsafe { transmute(data[1]) },
-                speed_x: unsafe { transmute(data[2]) },
-                speed_y: unsafe { transmute(data[3]) },
-                saturation: data[4],
-                value: data[5],
+                brightness: data[1],
+                speed: unsafe { transmute(data[2]) },
+                speed_x: unsafe { transmute(data[3]) },
+                speed_y: unsafe { transmute(data[4]) },
+                saturation: data[5],
+                value: data[6],
             },
             _ => Self::Off,
         }

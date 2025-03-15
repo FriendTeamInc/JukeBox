@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 
 use embedded_hal::timer::CountDown as _;
-use jukebox_util::color::{hsv2rgb, RGBControl};
+use jukebox_util::color::{hsv2rgb, RgbProfile};
 use rp2040_hal::{
     fugit::ExtU32,
     gpio::{DynPinId, FunctionPio0, Pin, PullDown},
@@ -22,10 +22,9 @@ const FRAME_TIME: u32 = 33;
 
 pub struct RgbMod {
     ws: Ws2812<PIO0, SM0, CountDown, Pin<DynPinId, FunctionPio0, PullDown>>,
-    brightness: u8,
     buffer: [RGB8; RGB_LEN],
     timer: CountDown,
-    rgb_mode: RGBControl,
+    rgb_mode: RgbProfile,
 }
 
 impl RgbMod {
@@ -37,9 +36,11 @@ impl RgbMod {
 
         // let t1 = RGBControl::Off;
         // let t2 = RGBControl::Static {
+        //     brightness: 0,
         //     color: (0x33, 0xBB, 0xFF),
         // };
         // let t3 = RGBControl::Wave {
+        //     brightness: 0,
         //     speed_x: 0,
         //     speed_y: 0,
         //     color_count: 3,
@@ -51,6 +52,7 @@ impl RgbMod {
         //     ],
         // };
         // let t4 = RGBControl::Breathe {
+        //     brightness: 0,
         //     hold_time: 50,
         //     trans_time: 10,
         //     color_count: 3,
@@ -62,11 +64,13 @@ impl RgbMod {
         //     ],
         // };
         // let t5 = RGBControl::RainbowSolid {
+        //     brightness: 0,
         //     speed: 30,
         //     saturation: 100,
         //     value: 100,
         // };
         // let t6 = RGBControl::RainbowWave {
+        //     brightness: 0,
         //     speed: 100,
         //     speed_x: 0,
         //     speed_y: 30,
@@ -76,10 +80,9 @@ impl RgbMod {
 
         RgbMod {
             ws: ws,
-            brightness: 30,
             buffer: [(0, 0, 0).into(); RGB_LEN],
             timer: count_down,
-            rgb_mode: RGBControl::Off,
+            rgb_mode: RgbProfile::Off,
         }
     }
 
@@ -105,22 +108,26 @@ impl RgbMod {
 
         let mut buffer = [(0, 0, 0).into(); RGB_LEN];
 
-        match self.rgb_mode {
-            RGBControl::Off => {
+        let brtns = match self.rgb_mode {
+            RgbProfile::Off => {
                 self.clear();
+                0
             }
-            RGBControl::Static { color } => {
+            RgbProfile::Static { brightness, color } => {
                 for led in buffer.iter_mut() {
                     *led = color.into();
                 }
+                brightness
             }
-            RGBControl::Wave {
+            RgbProfile::Wave {
+                brightness,
                 speed_x,
                 speed_y,
                 color_count,
                 colors,
             } => todo!(),
-            RGBControl::Breathe {
+            RgbProfile::Breathe {
+                brightness,
                 hold_time,
                 trans_time,
                 color_count,
@@ -153,8 +160,11 @@ impl RgbMod {
                         *led = colors[n].into();
                     }
                 }
+
+                brightness
             }
-            RGBControl::RainbowSolid {
+            RgbProfile::RainbowSolid {
+                brightness,
                 speed,
                 saturation,
                 value,
@@ -164,11 +174,15 @@ impl RgbMod {
                 let sat = (saturation as f32) / 100.0;
                 let val = (value as f32) / 100.0;
                 let s = hsv2rgb((t / 1_000_000.0 * s) % 360.0, sat, val).into();
+
                 for led in buffer.iter_mut() {
                     *led = s;
                 }
+
+                brightness
             }
-            RGBControl::RainbowWave {
+            RgbProfile::RainbowWave {
+                brightness,
                 speed,
                 speed_x,
                 speed_y,
@@ -183,6 +197,7 @@ impl RgbMod {
 
                 let sat = (saturation as f32) / 100.0;
                 let val = (value as f32) / 100.0;
+
                 for (i, led) in buffer.iter_mut().enumerate() {
                     let x = (i % 4) as f32;
                     let y = (i / 4) as f32;
@@ -193,8 +208,10 @@ impl RgbMod {
                     )
                     .into();
                 }
+
+                brightness
             }
-        }
+        };
 
         // transform zigzag into appropriate grid
         self.buffer = [
@@ -203,7 +220,7 @@ impl RgbMod {
         ];
 
         self.ws
-            .write(brightness(self.buffer.iter().copied(), self.brightness))
+            .write(brightness(self.buffer.iter().copied(), brtns))
             .unwrap();
     }
 }

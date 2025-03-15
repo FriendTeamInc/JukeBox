@@ -9,7 +9,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, bail, Context, Result};
-use jukebox_util::color::RGBControl;
+use jukebox_util::color::RgbProfile;
 use jukebox_util::peripheral::{
     KeyInputs, KnobInputs, PedalInputs, IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT,
     IDENT_UNKNOWN_INPUT,
@@ -58,7 +58,7 @@ pub enum SerialEvent {
     },
     GetRGB {
         device_uid: String,
-        rgb_control: RGBControl,
+        rgb_control: RgbProfile,
     },
     LostConnection {
         device_uid: String,
@@ -267,7 +267,7 @@ async fn transmit_get_input_keys(f: &mut Box<dyn SerialPort>) -> Result<HashSet<
     Ok(result)
 }
 
-async fn transmit_get_rgb(f: &mut Box<dyn SerialPort>) -> Result<RGBControl> {
+async fn transmit_get_rgb(f: &mut Box<dyn SerialPort>) -> Result<RgbProfile> {
     send_cmd(f, CMD_GET_RGB)
         .await
         .context("failed to set get rgb")?;
@@ -286,7 +286,7 @@ async fn transmit_get_rgb(f: &mut Box<dyn SerialPort>) -> Result<RGBControl> {
     let mut data = [0u8; 32];
     data.clone_from_slice(&resp[1..=32]);
 
-    Ok(RGBControl::decode(data))
+    Ok(RgbProfile::decode(data))
 }
 
 async fn transmit_identify_signal(f: &mut Box<dyn SerialPort>) -> Result<()> {

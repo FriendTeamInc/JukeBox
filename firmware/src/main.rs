@@ -19,7 +19,7 @@ pub static PICOTOOL_ENTRIES: [binary_info::EntryAddr; 7] = [
     binary_info::rp_program_url!(c"https://jukebox.friendteam.biz"),
 ];
 
-use jukebox_util::{color::RGBControl, peripheral::JBInputs};
+use jukebox_util::{color::RgbProfile, peripheral::JBInputs};
 use mutually_exclusive_features::exactly_one_of;
 exactly_one_of!("keypad", "knobpad", "pedalpad");
 
@@ -33,6 +33,7 @@ mod modules {
     pub mod led;
     #[cfg(feature = "pedalpad")]
     pub mod pedals;
+    #[cfg(feature = "keypad")]
     pub mod rgb;
     #[cfg(feature = "keypad")]
     pub mod screen;
@@ -79,12 +80,12 @@ static CORE1_STACK: Stack<8192> = Stack::new();
 type PeripheralInputs = Mutex<1, JBInputs>;
 type UpdateTrigger = Mutex<2, bool>;
 type IdentifyTrigger = Mutex<3, bool>;
-type RgbControls = Mutex<4, (bool, RGBControl)>; // (changed, settings)
+type RgbControls = Mutex<4, (bool, RgbProfile)>; // (changed, settings)
 
 static PERIPHERAL_INPUTS: PeripheralInputs = Mutex::new(inputs_default());
 static UPDATE_TRIGGER: UpdateTrigger = Mutex::new(false);
 static IDENTIFY_TRIGGER: IdentifyTrigger = Mutex::new(false);
-static RGB_CONTROLS: RgbControls = Mutex::new((false, RGBControl::Off));
+static RGB_CONTROLS: RgbControls = Mutex::new((false, RgbProfile::Off));
 
 #[entry]
 fn main() -> ! {
@@ -307,7 +308,6 @@ fn main() -> ! {
         // tick for hid devices
         if hid_tick.wait().is_ok() {
             // handle keyboard
-            // #[cfg(feature = "keypad")]
             // let pressed = keyboard::KeyboardMod::get_keyboard_keys(
             //     serial_mod.get_connection_status().connected(),
             //     &PERIPHERAL_INPUTS,

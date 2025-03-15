@@ -6,7 +6,7 @@ use defmt::*;
 use embedded_hal::timer::{Cancel as _, CountDown as _};
 use itertools::Itertools;
 use jukebox_util::{
-    color::RGBControl,
+    color::RgbProfile,
     peripheral::{
         Connection, IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT, IDENT_UNKNOWN_INPUT,
     },
@@ -221,7 +221,7 @@ impl SerialMod {
                 }
                 Command::GetRGB => {
                     let rgb = {
-                        let mut rgb = RGBControl::Off;
+                        let mut rgb = RgbProfile::Off;
                         rgb_controls.with_lock(|c| {
                             rgb = c.1.clone();
                         });
@@ -235,7 +235,7 @@ impl SerialMod {
                     true
                 }
                 Command::SetRGB => {
-                    let rgb = RGBControl::decode(data);
+                    let rgb = RgbProfile::decode(data);
                     rgb_controls.with_mut_lock(|c| {
                         c.0 = true;
                         c.1 = rgb;

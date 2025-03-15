@@ -12,7 +12,7 @@ use eframe::egui::{
 use eframe::Frame;
 use egui_phosphor::regular as phos;
 use egui_theme_switch::global_theme_switch;
-use jukebox_util::color::RGBControl;
+use jukebox_util::color::RgbProfile;
 use jukebox_util::peripheral::{
     IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT, IDENT_UNKNOWN_INPUT,
 };
@@ -95,7 +95,7 @@ struct JukeBoxGui {
     config_editing_key: InputKey,
     config_editing_action_type: ActionType,
     config_editing_action: Box<dyn Action>,
-    config_editing_rgb: Option<RGBControl>,
+    config_editing_rgb: Option<RgbProfile>,
     config_enable_splash: bool,
 
     update_progress: f32,

@@ -98,6 +98,7 @@ impl Action for MetaSwitchProfile {
         let mut config = config.lock().await;
         if config.profiles.contains_key(&self.profile) {
             config.current_profile = self.profile.clone();
+            // TODO: send command to device to change hardware inputs and rgb profile
             Ok(())
         } else {
             bail!(t!(
