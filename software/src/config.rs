@@ -6,6 +6,7 @@ use std::{
     path::PathBuf,
 };
 
+use jukebox_util::color::RgbProfile;
 use serde::{Deserialize, Serialize};
 
 use crate::{actions::types::Action, gui::DeviceType, input::InputKey};
@@ -20,8 +21,10 @@ pub struct DiscordOauthAccess {
 pub struct JukeBoxConfig {
     // Profile Name
     pub current_profile: String,
-    pub profiles: HashMap<String, HashMap<String, HashMap<InputKey, Box<dyn Action>>>>,
+    pub profiles:
+        HashMap<String, HashMap<String, (HashMap<InputKey, Box<dyn Action>>, Option<RgbProfile>)>>,
     // Profile Name -> ( Device UID -> ( Input Key -> Action Config ) )
+    // TODO: include Option<RgbProfile> per Device UID
 
     // Device UID -> (Device Type, Device Nickname)
     pub devices: HashMap<String, (DeviceType, String)>,

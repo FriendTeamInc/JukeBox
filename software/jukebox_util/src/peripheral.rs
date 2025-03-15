@@ -7,13 +7,17 @@ pub const IDENT_KEY_INPUT: u8 = b'K';
 pub const IDENT_KNOB_INPUT: u8 = b'O';
 pub const IDENT_PEDAL_INPUT: u8 = b'P';
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Connection {
     NotConnected(bool), // false - lost connection, true - clean disconnect
     Connected,
 }
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum SwitchPosition {
     Up,
     Down,
@@ -71,7 +75,9 @@ impl Into<bool> for SwitchPosition {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct KeyInputs {
     pub key1: SwitchPosition,
     pub key2: SwitchPosition,
@@ -195,7 +201,9 @@ impl Into<KeyInputs> for [bool; 16] {
     }
 }
 
-#[derive(PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum KnobDirection {
     None,
     Clockwise,
@@ -239,7 +247,9 @@ impl Into<u8> for KnobDirection {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct KnobInputs {
     pub left_switch: SwitchPosition,
     pub left_direction: KnobDirection,
@@ -297,7 +307,9 @@ impl KnobInputs {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct PedalInputs {
     pub left: SwitchPosition,
     pub middle: SwitchPosition,
@@ -354,7 +366,9 @@ impl Into<PedalInputs> for [bool; 3] {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum JBInputs {
     KeyPad(KeyInputs),
     KnobPad(KnobInputs),

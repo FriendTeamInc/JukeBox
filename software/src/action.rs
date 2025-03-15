@@ -39,14 +39,14 @@ pub async fn action_task(
                 let config = config.clone();
 
                 tokio::spawn(async move {
-                    let current_profile = {
+                    let (current_profile, _) = {
                         let c = config.lock().await; // Lock drops immediately
 
                         c.profiles
                             .get(&c.current_profile)
                             .and_then(|p| p.get(&device_uid))
                             .and_then(|p| Some(p.clone()))
-                            .unwrap_or(HashMap::new())
+                            .unwrap_or((HashMap::new(), None))
                     };
 
                     let mut prevkeys = prevkeys.lock().await;

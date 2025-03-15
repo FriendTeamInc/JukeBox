@@ -5,7 +5,7 @@ edition = "2021"
 build = "build.rs"
 
 [dependencies]
-jukebox_util = { path = "./jukebox_util" }
+jukebox_util = { path = "./jukebox_util", features = ["serde"] }
 
 log = "0.4"
 env_logger = "0.11"

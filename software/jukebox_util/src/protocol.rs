@@ -28,6 +28,8 @@ pub const RSP_END: &[u8] = b"\r\n\r\n";
 
 #[derive(PartialEq, Clone, Copy, Debug)]
 #[repr(u8)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Command {
     Greeting,
     GetInputKeys,

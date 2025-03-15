@@ -95,7 +95,7 @@ struct JukeBoxGui {
     config_editing_key: InputKey,
     config_editing_action_type: ActionType,
     config_editing_action: Box<dyn Action>,
-    config_editing_rgb: Option<RgbProfile>,
+    config_editing_rgb: RgbProfile,
     config_enable_splash: bool,
 
     update_progress: f32,
@@ -200,7 +200,7 @@ impl JukeBoxGui {
             config_editing_key: InputKey::UnknownKey,
             config_editing_action_type: ActionType::MetaNoAction,
             config_editing_action: Box::new(MetaNoAction::default()),
-            config_editing_rgb: None,
+            config_editing_rgb: RgbProfile::Off,
             config_enable_splash: config_enable_splash,
 
             update_progress: 0.0,
@@ -282,7 +282,11 @@ impl JukeBoxGui {
                                 if !v.contains_key(&device_uid) {
                                     v.insert(
                                         device_uid.clone(),
-                                        self.action_map.default_action_config(device_type.into()),
+                                        (
+                                            self.action_map
+                                                .default_action_config(device_type.into()),
+                                            None,
+                                        ),
                                     );
                                 }
                             }
@@ -341,7 +345,7 @@ impl JukeBoxGui {
                 SerialEvent::GetRGB {
                     device_uid: _device_uid,
                     rgb_control,
-                } => self.config_editing_rgb = Some(rgb_control),
+                } => self.config_editing_rgb = rgb_control,
             }
         }
     }
@@ -567,7 +571,7 @@ impl JukeBoxGui {
                         // TODO: edit configs to reference new profile instead of wiping it
                         for (_, p) in conf.profiles.iter_mut() {
                             for (_, d) in p.iter_mut() {
-                                for (_, k) in d.iter_mut() {
+                                for (_, k) in d.0.iter_mut() {
                                     use ActionType as r;
                                     match k.get_type() {
                                         r::MetaSwitchProfile => {
@@ -626,7 +630,10 @@ impl JukeBoxGui {
                     };
                     let mut m = HashMap::new();
                     for (d, t) in &self.devices {
-                        m.insert(d.clone(), self.action_map.default_action_config(t.0.into()));
+                        m.insert(
+                            d.clone(),
+                            (self.action_map.default_action_config(t.0.into()), None),
+                        );
                     }
                     conf.profiles.insert(name, m);
                     conf.save();
@@ -659,7 +666,7 @@ impl JukeBoxGui {
 
                     for (_, p) in conf.profiles.iter_mut() {
                         for (_, d) in p.iter_mut() {
-                            for (_, k) in d.iter_mut() {
+                            for (_, k) in d.0.iter_mut() {
                                 use ActionType as r;
                                 match k.get_type() {
                                     r::MetaSwitchProfile => {
@@ -780,14 +787,15 @@ impl JukeBoxGui {
                             .on_hover_text_at_pointer(t!("help.device.rgb"))
                             .clicked()
                         {
-                            self.config_editing_rgb = None;
+                            self.config_editing_rgb = {
+                                let c = self.config.blocking_lock();
+                                c.profiles
+                                    .get(&c.current_profile)
+                                    .and_then(|p| p.get(&self.current_device))
+                                    .and_then(|d| d.1.clone())
+                                    .unwrap_or(RgbProfile::Off)
+                            };
                             self.gui_tab = GuiTab::EditingRGB;
-                            let _ = self
-                                .gs_cmd_txs
-                                .blocking_lock()
-                                .get(&self.current_device)
-                                .unwrap()
-                                .send(SerialCommand::GetRGB);
                         }
                         if ui
                             .button(phos::MONITOR)
@@ -919,7 +927,7 @@ impl JukeBoxGui {
                 .profiles
                 .get(&c.current_profile)
                 .and_then(|p| p.get(&self.current_device))
-                .and_then(|d| d.get(&self.config_editing_key))
+                .and_then(|d| d.0.get(&self.config_editing_key))
             {
                 self.config_editing_action_type = r.get_type();
                 self.config_editing_action = r.clone();
@@ -942,7 +950,7 @@ impl JukeBoxGui {
         let current_profile = c.current_profile.clone();
         let profile = c.profiles.get_mut(&current_profile).unwrap();
         if let Some(d) = profile.get_mut(&self.current_device) {
-            d.insert(
+            d.0.insert(
                 self.config_editing_key.clone(),
                 self.config_editing_action.clone(),
             );
@@ -952,7 +960,7 @@ impl JukeBoxGui {
                 self.config_editing_key.clone(),
                 self.config_editing_action.clone(),
             );
-            profile.insert(self.current_device.clone(), d);
+            profile.insert(self.current_device.clone(), (d, None));
         }
         c.save();
     }
@@ -1068,11 +1076,6 @@ impl JukeBoxGui {
 
     fn draw_edit_rgb(&mut self, ui: &mut Ui) {
         ui.with_layout(Layout::centered_and_justified(Direction::TopDown), |ui| {
-            if self.config_editing_rgb.is_none() {
-                ui.label(t!("rgb.loading"));
-                return;
-            }
-
             ui.label("TODO: RGB control");
         });
     }

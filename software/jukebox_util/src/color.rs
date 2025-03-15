@@ -53,6 +53,8 @@ const COLOR_RAINBOW_WAVE: u8 = 5;
 
 // colors are only 24 bits, the first 8 bits are unused
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum RgbProfile {
     Off,
     Static {
