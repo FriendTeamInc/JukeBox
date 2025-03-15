@@ -6,12 +6,13 @@ use std::time::{Duration, Instant};
 
 use eframe::egui::scroll_area::ScrollBarVisibility;
 use eframe::egui::{
-    vec2, Align, Button, CentralPanel, CollapsingHeader, Color32, ComboBox, Context, Grid, Layout,
-    ProgressBar, RichText, ScrollArea, TextBuffer, TextEdit, Ui, ViewportBuilder,
+    vec2, Align, Button, CentralPanel, CollapsingHeader, Color32, ComboBox, Context, Direction,
+    Grid, Layout, ProgressBar, RichText, ScrollArea, TextBuffer, TextEdit, Ui, ViewportBuilder,
 };
 use eframe::Frame;
 use egui_phosphor::regular as phos;
 use egui_theme_switch::global_theme_switch;
+use jukebox_util::color::RGBControl;
 use jukebox_util::peripheral::{
     IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT, IDENT_UNKNOWN_INPUT,
 };
@@ -41,7 +42,9 @@ const APP_VERSION: &'static str = env!("CARGO_PKG_VERSION");
 #[derive(PartialEq)]
 enum GuiTab {
     Device,
-    Editing,
+    EditingAction,
+    EditingRGB,
+    EditingScreen,
     Settings,
     Updating,
 }
@@ -92,6 +95,7 @@ struct JukeBoxGui {
     config_editing_key: InputKey,
     config_editing_action_type: ActionType,
     config_editing_action: Box<dyn Action>,
+    config_editing_rgb: Option<RGBControl>,
     config_enable_splash: bool,
 
     update_progress: f32,
@@ -196,6 +200,7 @@ impl JukeBoxGui {
             config_editing_key: InputKey::UnknownKey,
             config_editing_action_type: ActionType::MetaNoAction,
             config_editing_action: Box::new(MetaNoAction::default()),
+            config_editing_rgb: None,
             config_enable_splash: config_enable_splash,
 
             update_progress: 0.0,
@@ -223,7 +228,9 @@ impl JukeBoxGui {
         ui.allocate_ui(vec2(464.0, 245.0), |ui| match self.gui_tab {
             GuiTab::Device => self.draw_device_page(ui),
             GuiTab::Settings => self.draw_settings_page(ui),
-            GuiTab::Editing => self.draw_edit_action(ui),
+            GuiTab::EditingAction => self.draw_edit_action(ui),
+            GuiTab::EditingRGB => self.draw_edit_rgb(ui),
+            GuiTab::EditingScreen => todo!(),
             GuiTab::Updating => self.draw_update_page(ui),
         });
 
@@ -331,6 +338,10 @@ impl JukeBoxGui {
                         v.4 = keys;
                     }
                 }
+                SerialEvent::GetRGB {
+                    device_uid: _device_uid,
+                    rgb_control,
+                } => self.config_editing_rgb = Some(rgb_control),
             }
         }
     }
@@ -384,21 +395,23 @@ impl JukeBoxGui {
         }
 
         ui.with_layout(Layout::bottom_up(Align::RIGHT), |ui| {
-            ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
-                ui.hyperlink_to(
-                    t!("settings.donate"),
-                    "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-                );
-                ui.label(" - ");
-                ui.hyperlink_to(
-                    t!("settings.repository"),
-                    "https://github.com/FriendTeamInc/JukeBox",
-                );
-                ui.label(" - ");
-                ui.hyperlink_to(t!("settings.homepage"), "https://jukebox.friendteam.biz");
-            });
-            ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
-                ui.label(t!("settings.copyright"));
+            ui.columns_const(|[c1, c2]| {
+                c1.with_layout(Layout::left_to_right(Align::Max), |ui| {
+                    ui.label(t!("settings.copyright"));
+                });
+                c2.with_layout(Layout::right_to_left(Align::Max), |ui| {
+                    ui.hyperlink_to(
+                        t!("settings.donate"),
+                        "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                    );
+                    ui.label(" - ");
+                    ui.hyperlink_to(
+                        t!("settings.repository"),
+                        "https://github.com/FriendTeamInc/JukeBox",
+                    );
+                    ui.label(" - ");
+                    ui.hyperlink_to(t!("settings.homepage"), "https://jukebox.friendteam.biz");
+                });
             });
         });
     }
@@ -500,7 +513,7 @@ impl JukeBoxGui {
         });
     }
 
-    fn draw_profile_management(&mut self, ui: &mut Ui) {
+    fn draw_back_button(&mut self, ui: &mut Ui) {
         // back button
         ui.add_enabled_ui(
             self.gui_tab != GuiTab::Device
@@ -510,18 +523,26 @@ impl JukeBoxGui {
                 if ui
                     .button(RichText::new(phos::ARROW_BEND_UP_LEFT))
                     .on_hover_text_at_pointer(match self.gui_tab {
-                        GuiTab::Editing => t!("help.back.save_button"),
+                        GuiTab::EditingAction | GuiTab::EditingRGB | GuiTab::EditingScreen => {
+                            t!("help.back.save_button")
+                        }
                         _ => t!("help.back.button"),
                     })
                     .clicked()
                 {
                     match self.gui_tab {
-                        GuiTab::Editing => self.save_action_and_exit(),
+                        GuiTab::EditingAction => self.save_action_and_exit(),
+                        GuiTab::EditingRGB => self.save_rgb_and_exit(),
+                        // GuiTab::EditingScreen => self.save_screen_and_exit(),
                         _ => self.gui_tab = GuiTab::Device,
                     }
                 }
             },
         );
+    }
+
+    fn draw_profile_management(&mut self, ui: &mut Ui) {
+        self.draw_back_button(ui);
 
         ui.add_enabled_ui(self.gui_tab == GuiTab::Device, |ui| {
             // Profile select/edit
@@ -684,18 +705,16 @@ impl JukeBoxGui {
     }
 
     fn draw_no_device(&mut self, ui: &mut Ui) {
-        ui.with_layout(
-            Layout::centered_and_justified(eframe::egui::Direction::TopDown),
-            |ui| ui.label(t!("help.no_device")),
-        );
+        ui.with_layout(Layout::centered_and_justified(Direction::TopDown), |ui| {
+            ui.label(t!("help.no_device"));
+        });
     }
 
     fn draw_unknown_device(&mut self, ui: &mut Ui) {
-        ui.with_layout(
-            Layout::centered_and_justified(eframe::egui::Direction::TopDown),
-            |ui| ui.label(t!("help.unknown_device")),
-            // TODO: add update and identify button
-        );
+        ui.with_layout(Layout::centered_and_justified(Direction::TopDown), |ui| {
+            ui.label(t!("help.unknown_device"));
+        });
+        // TODO: add update and identify button
         // ui.allocate_space(ui.available_size_before_wrap());
     }
 
@@ -750,30 +769,44 @@ impl JukeBoxGui {
         });
     }
 
-    fn draw_keypad_device(&mut self, ui: &mut Ui) {
-        ui.allocate_space(vec2(0.0, 4.0));
-        ui.horizontal_top(|ui| {
-            ui.allocate_ui(vec2(62.0, 231.5), |ui| {
-                ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
-                    ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
+    fn draw_device_extension_management(&mut self, ui: &mut Ui) {
+        ui.allocate_ui(vec2(62.0, 231.5), |ui| {
+            ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
+                ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
+                    let i = self.devices.get(&self.current_device).unwrap();
+                    ui.add_enabled_ui(i.3, |ui| {
                         if ui
                             .button(phos::SIREN)
                             .on_hover_text_at_pointer(t!("help.device.rgb"))
                             .clicked()
                         {
-                            log::info!("TODO: RGB Control");
+                            self.config_editing_rgb = None;
+                            self.gui_tab = GuiTab::EditingRGB;
+                            let _ = self
+                                .gs_cmd_txs
+                                .blocking_lock()
+                                .get(&self.current_device)
+                                .unwrap()
+                                .send(SerialCommand::GetRGB);
                         }
                         if ui
                             .button(phos::MONITOR)
                             .on_hover_text_at_pointer(t!("help.device.screen"))
                             .clicked()
                         {
-                            log::info!("TODO: Screen Control");
+                            self.gui_tab = GuiTab::EditingScreen;
                         }
                     });
-                    ui.allocate_space(ui.available_size_before_wrap());
                 });
+                ui.allocate_space(ui.available_size_before_wrap());
             });
+        });
+    }
+
+    fn draw_keypad_device(&mut self, ui: &mut Ui) {
+        ui.allocate_space(vec2(0.0, 4.0));
+        ui.horizontal_top(|ui| {
+            self.draw_device_extension_management(ui);
 
             Grid::new("KBGrid").show(ui, |ui| {
                 let keys = [
@@ -878,7 +911,7 @@ impl JukeBoxGui {
     fn enter_action_editor(&mut self, key: InputKey) {
         self.config_renaming_device = false;
         self.config_renaming_profile = false;
-        self.gui_tab = GuiTab::Editing;
+        self.gui_tab = GuiTab::EditingAction;
         self.config_editing_key = key;
         {
             let c = self.config.blocking_lock();
@@ -1031,6 +1064,21 @@ impl JukeBoxGui {
                     });
             });
         });
+    }
+
+    fn draw_edit_rgb(&mut self, ui: &mut Ui) {
+        ui.with_layout(Layout::centered_and_justified(Direction::TopDown), |ui| {
+            if self.config_editing_rgb.is_none() {
+                ui.label(t!("rgb.loading"));
+                return;
+            }
+
+            ui.label("TODO: RGB control");
+        });
+    }
+
+    fn save_rgb_and_exit(&mut self) {
+        todo!()
     }
 
     fn send_update_signal(&mut self, fw_path: String) {

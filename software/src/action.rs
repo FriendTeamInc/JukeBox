@@ -80,7 +80,8 @@ pub async fn action_task(
             }
             SerialEvent::Disconnected { device_uid } => {
                 clear_set(&mut prevkeys, &device_uid).await;
-            } // _ => {}
+            }
+            _ => {}
         }
     }
 

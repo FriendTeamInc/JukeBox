@@ -2,7 +2,9 @@
 
 pub const CMD_GREET: u8 = b'\x05';
 pub const CMD_GET_INPUT_KEYS: u8 = b'\x30';
-pub const CMD_SET_RGB: u8 = b'\x35';
+pub const CMD_GET_RGB: u8 = b'\x33';
+pub const CMD_SET_RGB: u8 = b'\x34';
+pub const CMD_GET_SCR: u8 = b'\x35';
 pub const CMD_SET_SCR: u8 = b'\x36';
 pub const CMD_IDENTIFY: u8 = b'\x37';
 pub const CMD_UPDATE: u8 = b'\x38';
@@ -18,6 +20,7 @@ pub const RSP_LINK_DELIMITER: u8 = b',';
 
 pub const RSP_ACK: u8 = b'A';
 pub const RSP_INPUT_HEADER: u8 = b'I';
+pub const RSP_RGB_HEADER: u8 = b'C';
 pub const RSP_UNKNOWN: u8 = b'?';
 pub const RSP_DISCONNECTED: u8 = b'\x04';
 
@@ -28,7 +31,9 @@ pub const RSP_END: &[u8] = b"\r\n\r\n";
 pub enum Command {
     Greeting,
     GetInputKeys,
+    GetRGB,
     SetRGB,
+    GetScr,
     SetScr,
     Identify,
     Update,
@@ -38,24 +43,18 @@ pub enum Command {
 }
 impl Command {
     pub fn decode(w: u8) -> Self {
-        if w == CMD_GREET {
-            Self::Greeting
-        } else if w == CMD_GET_INPUT_KEYS {
-            Self::GetInputKeys
-        } else if w == CMD_SET_RGB {
-            Self::SetRGB
-        } else if w == CMD_SET_SCR {
-            Self::SetScr
-        } else if w == CMD_IDENTIFY {
-            Self::Identify
-        } else if w == CMD_UPDATE {
-            Self::Update
-        } else if w == CMD_DISCONNECT {
-            Self::Update
-        } else if w == CMD_NEGATIVE_ACK {
-            Self::NegativeAck
-        } else {
-            Self::Unknown
+        match w {
+            CMD_GREET => Self::Greeting,
+            CMD_GET_INPUT_KEYS => Self::GetInputKeys,
+            CMD_GET_RGB => Self::GetRGB,
+            CMD_SET_RGB => Self::SetRGB,
+            CMD_GET_SCR => Self::GetScr,
+            CMD_SET_SCR => Self::SetScr,
+            CMD_IDENTIFY => Self::Identify,
+            CMD_UPDATE => Self::Update,
+            CMD_DISCONNECT => Self::Disconnect,
+            CMD_NEGATIVE_ACK => Self::NegativeAck,
+            _ => Self::Unknown,
         }
     }
 }

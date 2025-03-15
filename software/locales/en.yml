@@ -61,7 +61,8 @@ update:
     writing: "Writing new firmware..."
     end: "Done!"
 
-
+rgb:
+  loading: "Loading RGB configuration from device.\nPlease wait..."
 
 action:
   meta:

@@ -6,21 +6,23 @@ use defmt::*;
 use embedded_hal::timer::{Cancel as _, CountDown as _};
 use itertools::Itertools;
 use jukebox_util::{
+    color::RGBControl,
     peripheral::{
-        Connection, JBInputs, IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT,
-        IDENT_UNKNOWN_INPUT,
+        Connection, IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT, IDENT_UNKNOWN_INPUT,
     },
     protocol::{
         Command, CMD_END, RSP_ACK, RSP_DISCONNECTED, RSP_END, RSP_INPUT_HEADER, RSP_LINK_DELIMITER,
-        RSP_LINK_HEADER, RSP_UNKNOWN,
+        RSP_LINK_HEADER, RSP_RGB_HEADER, RSP_UNKNOWN,
     },
 };
 use ringbuffer::{ConstGenericRingBuffer, RingBuffer};
 use rp2040_hal::{fugit::ExtU32, timer::CountDown, usb::UsbBus};
 use usbd_serial::SerialPort;
 
-use crate::mutex::Mutex;
-use crate::peripheral::{inputs_default, inputs_write_report};
+use crate::{
+    peripheral::{inputs_default, inputs_write_report},
+    IdentifyTrigger, PeripheralInputs, RgbControls, UpdateTrigger,
+};
 
 const BUFFER_SIZE: usize = 2048;
 
@@ -63,11 +65,6 @@ impl SerialMod {
             let _ = serial.flush();
             cortex_m::asm::nop();
         }
-
-        // match serial.write(rsp) {
-        //     Err(_) => core::todo!(),
-        //     Ok(_) => {}
-        // };
     }
 
     fn send_full_response(serial: &mut SerialPort<UsbBus>, rsp: &[u8]) {
@@ -79,16 +76,18 @@ impl SerialMod {
         Self::send(serial, RSP_END);
     }
 
-    fn decode_cmd(&mut self, size: usize) -> Command {
-        if size > 4 {
-            return Command::Unknown;
-        }
+    fn decode_cmd(&mut self, size: usize) -> (Command, [u8; 32]) {
+        let mut data = [0u8; 32];
+
+        // if size > 4 {
+        //     return Command::Unknown;
+        // }
 
         let w1 = self.buffer.get(0).unwrap_or(&b'\0');
-        let w2 = self.buffer.get(1).unwrap_or(&b'\0');
-        let w3 = self.buffer.get(2).unwrap_or(&b'\0');
+        let w2 = self.buffer.get(size - 2).unwrap_or(&b'\0');
+        let w3 = self.buffer.get(size - 1).unwrap_or(&b'\0');
 
-        debug!("cmd: {} {} {} (size:{})", w1, w2, w3, size);
+        // debug!("cmd: {} {} {} (size:{})", w1, w2, w3, size);
 
         let cmd = Command::decode(*w1);
 
@@ -97,14 +96,17 @@ impl SerialMod {
                 self.buffer.dequeue();
             }
 
-            return Command::Unknown;
+            return (Command::Unknown, data);
         }
 
-        for _ in 0..size {
-            self.buffer.dequeue();
+        self.buffer.dequeue();
+        for i in 0..size - 3 {
+            data[i] = self.buffer.dequeue().unwrap();
         }
+        self.buffer.dequeue();
+        self.buffer.dequeue();
 
-        cmd
+        (cmd, data)
     }
 
     #[allow(dead_code)]
@@ -112,7 +114,7 @@ impl SerialMod {
         self.state.clone()
     }
 
-    fn start_update(&mut self, serial: &mut SerialPort<UsbBus>, update_trigger: &Mutex<2, bool>) {
+    fn start_update(&mut self, serial: &mut SerialPort<UsbBus>, update_trigger: &UpdateTrigger) {
         info!("Command Update");
         Self::send_full_response(serial, &[RSP_DISCONNECTED]);
         self.state = Connection::NotConnected(true);
@@ -122,7 +124,7 @@ impl SerialMod {
     fn start_identify(
         &mut self,
         serial: &mut SerialPort<UsbBus>,
-        identify_trigger: &Mutex<3, bool>,
+        identify_trigger: &IdentifyTrigger,
     ) {
         info!("Command Identify");
         Self::send_full_response(serial, &[RSP_ACK]);
@@ -134,9 +136,10 @@ impl SerialMod {
         serial: &mut SerialPort<UsbBus>,
         firmware_version: &str,
         device_uid: &str,
-        peripheral_inputs: &Mutex<1, JBInputs>,
-        update_trigger: &Mutex<2, bool>,
-        identify_trigger: &Mutex<3, bool>,
+        peripheral_inputs: &PeripheralInputs,
+        update_trigger: &UpdateTrigger,
+        identify_trigger: &IdentifyTrigger,
+        rgb_controls: &RgbControls,
     ) {
         if self.state == Connection::Connected && self.keepalive_timer.wait().is_ok() {
             warn!("Keepalive triggered, disconnecting.");
@@ -159,7 +162,8 @@ impl SerialMod {
         if size.is_none() {
             return;
         }
-        let decode = self.decode_cmd(size.unwrap());
+        let (decode, data) = self.decode_cmd(size.unwrap());
+        debug!("cmd:{} data:{}", decode as u8, data);
 
         // process command
         let mut unknown = || {
@@ -215,13 +219,40 @@ impl SerialMod {
 
                     true
                 }
-                Command::SetRGB => {
-                    // TODO:
+                Command::GetRGB => {
+                    let rgb = {
+                        let mut rgb = RGBControl::Off;
+                        rgb_controls.with_lock(|c| {
+                            rgb = c.1.clone();
+                        });
+                        rgb
+                    };
+
+                    Self::send(serial, &[RSP_RGB_HEADER]);
+                    let _ = serial.write(&rgb.encode());
+                    Self::send_end_response(serial);
+
                     true
+                }
+                Command::SetRGB => {
+                    let rgb = RGBControl::decode(data);
+                    rgb_controls.with_mut_lock(|c| {
+                        c.0 = true;
+                        c.1 = rgb;
+                    });
+
+                    Self::send(serial, &[RSP_ACK]);
+                    Self::send_end_response(serial);
+
+                    true
+                }
+                Command::GetScr => {
+                    // TODO:
+                    unknown()
                 }
                 Command::SetScr => {
                     // TODO:
-                    true
+                    unknown()
                 }
                 Command::Identify => {
                     // TODO: flash led for identifying

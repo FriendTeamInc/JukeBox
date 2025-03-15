@@ -19,7 +19,7 @@ pub static PICOTOOL_ENTRIES: [binary_info::EntryAddr; 7] = [
     binary_info::rp_program_url!(c"https://jukebox.friendteam.biz"),
 ];
 
-use jukebox_util::peripheral::JBInputs;
+use jukebox_util::{color::RGBControl, peripheral::JBInputs};
 use mutually_exclusive_features::exactly_one_of;
 exactly_one_of!("keypad", "knobpad", "pedalpad");
 
@@ -76,9 +76,15 @@ use defmt_rtt as _;
 static CORE1_STACK: Stack<8192> = Stack::new();
 
 // inter-core mutexes
-static PERIPHERAL_INPUTS: Mutex<1, JBInputs> = Mutex::new(inputs_default());
-static UPDATE_TRIGGER: Mutex<2, bool> = Mutex::new(false);
-static IDENTIFY_TRIGGER: Mutex<3, bool> = Mutex::new(false);
+type PeripheralInputs = Mutex<1, JBInputs>;
+type UpdateTrigger = Mutex<2, bool>;
+type IdentifyTrigger = Mutex<3, bool>;
+type RgbControls = Mutex<4, (bool, RGBControl)>; // (changed, settings)
+
+static PERIPHERAL_INPUTS: PeripheralInputs = Mutex::new(inputs_default());
+static UPDATE_TRIGGER: UpdateTrigger = Mutex::new(false);
+static IDENTIFY_TRIGGER: IdentifyTrigger = Mutex::new(false);
+static RGB_CONTROLS: RgbControls = Mutex::new((false, RGBControl::Off));
 
 #[entry]
 fn main() -> ! {
@@ -221,6 +227,7 @@ fn main() -> ! {
                     timer.count_down(),
                 );
                 rgb::RgbMod::new(ws, timer.count_down())
+                // TODO: load rgb mode from eeprom
             };
 
             #[cfg(feature = "pedalpad")]
@@ -287,7 +294,7 @@ fn main() -> ! {
                 led_mod.update(timer.get_counter(), &IDENTIFY_TRIGGER);
 
                 #[cfg(feature = "keypad")]
-                rgb_mod.update(timer.get_counter());
+                rgb_mod.update(timer.get_counter(), &RGB_CONTROLS);
 
                 #[cfg(feature = "keypad")]
                 screen_mod.update(timer.get_counter(), &timer);
@@ -352,6 +359,7 @@ fn main() -> ! {
                 &PERIPHERAL_INPUTS,
                 &UPDATE_TRIGGER,
                 &IDENTIFY_TRIGGER,
+                &RGB_CONTROLS,
             );
             match usb_serial.flush() {
                 Ok(_) => {}
