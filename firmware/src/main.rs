@@ -70,7 +70,9 @@ use rp2040_hal::{pio::PIOExt, Clock};
 
 use usb_device::{class_prelude::*, prelude::*};
 use usbd_hid::prelude::*;
-use usbd_human_interface_device as usbd_hid;
+use usbd_human_interface_device::{
+    self as usbd_hid, device::keyboard::NKROBootKeyboard, page::Keyboard,
+};
 use usbd_serial::SerialPort;
 
 #[allow(unused_imports)]
@@ -322,22 +324,33 @@ fn main() -> ! {
     loop {
         // tick for hid devices
         if hid_tick.wait().is_ok() {
+            // grab hardware inputs
+            let mut connected = false;
+            CONNECTION_STATUS.with_lock(|c| connected = *c == Connection::Connected);
+
+            let keypad = if cfg!(feature = "keypad") {
+                if !connected {
+                    keyboard::KeyboardMod::get_default_hardware_inputs(&PERIPHERAL_INPUTS)
+                } else {
+                    // TODO: track which events we need to produce from gui profile
+                    [Keyboard::NoEventIndicated; 12]
+                }
+            } else {
+                [Keyboard::NoEventIndicated; 12]
+            };
+
             // handle keyboard
-            // let pressed = keyboard::KeyboardMod::get_keyboard_keys(
-            //     serial_mod.get_connection_status().connected(),
-            //     &PERIPHERAL_INPUTS,
-            // );
-            // match usb_hid
-            //     .device::<NKROBootKeyboard<'_, _>, _>()
-            //     .write_report(pressed)
-            // {
-            //     Ok(_) => {}
-            //     Err(UsbHidError::Duplicate) => {}
-            //     Err(UsbHidError::WouldBlock) => {}
-            //     Err(e) => {
-            //         core::panic!("Failed to write keyboard report: {:?}", e)
-            //     }
-            // }
+            match usb_hid
+                .device::<NKROBootKeyboard<'_, _>, _>()
+                .write_report(keypad)
+            {
+                Ok(_) => {}
+                Err(UsbHidError::Duplicate) => {}
+                Err(UsbHidError::WouldBlock) => {}
+                Err(e) => {
+                    core::panic!("Failed to write keyboard report: {:?}", e)
+                }
+            }
 
             // handle mouse
             // match usb_hid
