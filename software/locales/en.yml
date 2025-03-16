@@ -10,6 +10,8 @@ settings:
   copyright: "Made w/ <3 by Friend Team Inc. (c) 2024"
 
 help:
+  no_device: "Please connect a device."
+
   back:
     button: "Back"
     save_button: "Save and Back"
@@ -62,6 +64,27 @@ update:
     end: "Done!"
 
 rgb:
+  profile:
+    off:
+      title: "Off"
+      description: "Disables all RGB."
+    static:
+      title: "Static"
+      description: "Displays a single color."
+      brightness: "Brightness:"
+      select_color: "Select Color:"
+    wave:
+      title: "Wave"
+      description: "Waves through a list of colors, transitioning from one to the next constantly."
+    breathe:
+      title: "Breathe"
+      description: "Rotates through a list of colors, holding on each before transitioning."
+    rainbow_solid:
+      title: "Rainbow (Solid)"
+      description: "Displays the full rainbow of colors on every key."
+    rainbow_wave:
+      title: "Rainbow (Wave)"
+      description: "Displays the full rainbow of colors on each key, offset by its positional speed."
 
 action:
   meta:

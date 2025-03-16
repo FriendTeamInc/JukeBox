@@ -44,12 +44,12 @@ fn get_color(data: &[u8]) -> (u8, u8, u8) {
     (data[0], data[1], data[2])
 }
 
-const _COLOR_OFF: u8 = 0;
-const COLOR_STATIC: u8 = 1;
-const COLOR_WAVE: u8 = 2;
-const COLOR_BREATHE: u8 = 3;
-const COLOR_RAINBOW_SOLID: u8 = 4;
-const COLOR_RAINBOW_WAVE: u8 = 5;
+pub const RGB_PROFILE_OFF: u8 = 0;
+pub const RGB_PROFILE_STATIC: u8 = 1;
+pub const RGB_PROFILE_WAVE: u8 = 2;
+pub const RGB_PROFILE_BREATHE: u8 = 3;
+pub const RGB_PROFILE_RAINBOW_SOLID: u8 = 4;
+pub const RGB_PROFILE_RAINBOW_WAVE: u8 = 5;
 
 // colors are only 24 bits, the first 8 bits are unused
 #[derive(Debug, Clone, PartialEq)]
@@ -91,12 +91,50 @@ pub enum RgbProfile {
     },
 }
 impl RgbProfile {
+    pub fn get_type(&self) -> u8 {
+        match self {
+            RgbProfile::Off => RGB_PROFILE_OFF,
+            RgbProfile::Static {
+                brightness: _,
+                color: _,
+            } => RGB_PROFILE_STATIC,
+            RgbProfile::Wave {
+                brightness: _,
+                speed_x: _,
+                speed_y: _,
+                color_count: _,
+                colors: _,
+            } => RGB_PROFILE_WAVE,
+            RgbProfile::Breathe {
+                brightness: _,
+                hold_time: _,
+                trans_time: _,
+                color_count: _,
+                colors: _,
+            } => RGB_PROFILE_BREATHE,
+            RgbProfile::RainbowSolid {
+                brightness: _,
+                speed: _,
+                saturation: _,
+                value: _,
+            } => RGB_PROFILE_RAINBOW_SOLID,
+            RgbProfile::RainbowWave {
+                brightness: _,
+                speed: _,
+                speed_x: _,
+                speed_y: _,
+                saturation: _,
+                value: _,
+            } => RGB_PROFILE_RAINBOW_WAVE,
+        }
+    }
+
     pub fn encode(self) -> [u8; 32] {
         match self {
             Self::Off => [0u8; 32],
             Self::Static { brightness, color } => {
                 let mut data = [0u8; 32];
-                data[0] = COLOR_STATIC; // static type
+                data[0] = RGB_PROFILE_STATIC; // static type
                 data[1] = brightness;
                 set_color(&mut data[2..=4], color);
 
@@ -110,7 +148,7 @@ impl RgbProfile {
                 colors,
             } => {
                 let mut data = [0u8; 32];
-                data[0] = COLOR_WAVE; // wave type
+                data[0] = RGB_PROFILE_WAVE; // wave type
                 data[1] = brightness;
                 data[2] = unsafe { transmute(speed_x) };
                 data[3] = unsafe { transmute(speed_y) };
@@ -130,7 +168,7 @@ impl RgbProfile {
                 colors,
             } => {
                 let mut data = [0u8; 32];
-                data[0] = COLOR_BREATHE; // breathe type
+                data[0] = RGB_PROFILE_BREATHE; // breathe type
                 data[1] = brightness;
                 data[2] = hold_time;
                 data[3] = trans_time;
@@ -149,7 +187,7 @@ impl RgbProfile {
                 value,
             } => {
                 let mut data = [0u8; 32];
-                data[0] = COLOR_RAINBOW_SOLID; // rainbow solid
+                data[0] = RGB_PROFILE_RAINBOW_SOLID; // rainbow solid
                 data[1] = brightness;
                 data[2] = unsafe { transmute(speed) };
                 data[3] = unsafe { transmute(saturation) };
@@ -166,7 +204,7 @@ impl RgbProfile {
                 value,
             } => {
                 let mut data = [0u8; 32];
-                data[0] = COLOR_RAINBOW_WAVE; // rainbow wave
+                data[0] = RGB_PROFILE_RAINBOW_WAVE; // rainbow wave
                 data[1] = brightness;
                 data[2] = unsafe { transmute(speed) };
                 data[3] = unsafe { transmute(speed_x) };
@@ -182,11 +220,11 @@ impl RgbProfile {
     pub fn decode(data: [u8; 32]) -> Self {
         let t = data[0];
         match t {
-            COLOR_STATIC => Self::Static {
+            RGB_PROFILE_STATIC => Self::Static {
                 brightness: data[1],
                 color: get_color(&data[2..=4]),
             },
-            COLOR_WAVE => Self::Wave {
+            RGB_PROFILE_WAVE => Self::Wave {
                 brightness: data[1],
                 speed_x: unsafe { transmute(data[2]) },
                 speed_y: unsafe { transmute(data[3]) },
@@ -198,7 +236,7 @@ impl RgbProfile {
                     get_color(&data[14..=16]),
                 ],
             },
-            COLOR_BREATHE => Self::Breathe {
+            RGB_PROFILE_BREATHE => Self::Breathe {
                 brightness: data[1],
                 hold_time: data[2],
                 trans_time: data[3],
@@ -210,13 +248,13 @@ impl RgbProfile {
                     get_color(&data[14..=16]),
                 ],
             },
-            COLOR_RAINBOW_SOLID => Self::RainbowSolid {
+            RGB_PROFILE_RAINBOW_SOLID => Self::RainbowSolid {
                 brightness: data[1],
                 speed: unsafe { transmute(data[2]) },
                 saturation: data[3],
                 value: data[4],
             },
-            COLOR_RAINBOW_WAVE => Self::RainbowWave {
+            RGB_PROFILE_RAINBOW_WAVE => Self::RainbowWave {
                 brightness: data[1],
                 speed: unsafe { transmute(data[2]) },
                 speed_x: unsafe { transmute(data[3]) },

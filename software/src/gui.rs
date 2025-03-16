@@ -4,15 +4,20 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{atomic::AtomicBool, Arc};
 use std::time::{Duration, Instant};
 
+use eframe::egui::color_picker::{color_edit_button_rgba, show_color};
 use eframe::egui::scroll_area::ScrollBarVisibility;
 use eframe::egui::{
     vec2, Align, Button, CentralPanel, CollapsingHeader, Color32, ComboBox, Context, Direction,
-    Grid, Layout, ProgressBar, RichText, ScrollArea, TextBuffer, TextEdit, Ui, ViewportBuilder,
+    Grid, Layout, ProgressBar, Rgba, RichText, ScrollArea, Slider, TextBuffer, TextEdit, Ui,
+    ViewportBuilder,
 };
 use eframe::Frame;
 use egui_phosphor::regular as phos;
 use egui_theme_switch::global_theme_switch;
-use jukebox_util::color::RgbProfile;
+use jukebox_util::color::{
+    RgbProfile, RGB_PROFILE_BREATHE, RGB_PROFILE_OFF, RGB_PROFILE_RAINBOW_SOLID,
+    RGB_PROFILE_RAINBOW_WAVE, RGB_PROFILE_STATIC, RGB_PROFILE_WAVE,
+};
 use jukebox_util::peripheral::{
     IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT, IDENT_UNKNOWN_INPUT,
 };
@@ -780,31 +785,28 @@ impl JukeBoxGui {
         ui.allocate_ui(vec2(62.0, 231.5), |ui| {
             ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
                 ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
-                    let i = self.devices.get(&self.current_device).unwrap();
-                    ui.add_enabled_ui(i.3, |ui| {
-                        if ui
-                            .button(phos::SIREN)
-                            .on_hover_text_at_pointer(t!("help.device.rgb"))
-                            .clicked()
-                        {
-                            self.config_editing_rgb = {
-                                let c = self.config.blocking_lock();
-                                c.profiles
-                                    .get(&c.current_profile)
-                                    .and_then(|p| p.get(&self.current_device))
-                                    .and_then(|d| d.1.clone())
-                                    .unwrap_or(RgbProfile::Off)
-                            };
-                            self.gui_tab = GuiTab::EditingRGB;
-                        }
-                        if ui
-                            .button(phos::MONITOR)
-                            .on_hover_text_at_pointer(t!("help.device.screen"))
-                            .clicked()
-                        {
-                            self.gui_tab = GuiTab::EditingScreen;
-                        }
-                    });
+                    if ui
+                        .button(phos::SIREN)
+                        .on_hover_text_at_pointer(t!("help.device.rgb"))
+                        .clicked()
+                    {
+                        self.config_editing_rgb = {
+                            let c = self.config.blocking_lock();
+                            c.profiles
+                                .get(&c.current_profile)
+                                .and_then(|p| p.get(&self.current_device))
+                                .and_then(|d| d.1.clone())
+                                .unwrap_or(RgbProfile::Off)
+                        };
+                        self.gui_tab = GuiTab::EditingRGB;
+                    }
+                    if ui
+                        .button(phos::MONITOR)
+                        .on_hover_text_at_pointer(t!("help.device.screen"))
+                        .clicked()
+                    {
+                        self.gui_tab = GuiTab::EditingScreen;
+                    }
                 });
                 ui.allocate_space(ui.available_size_before_wrap());
             });
@@ -1074,10 +1076,189 @@ impl JukeBoxGui {
         });
     }
 
-    fn draw_edit_rgb(&mut self, ui: &mut Ui) {
-        ui.with_layout(Layout::centered_and_justified(Direction::TopDown), |ui| {
-            ui.label("TODO: RGB control");
+    fn calculate_color_from_hex_string(s: String) -> Option<(u8, u8, u8)> {
+        let s = s.trim().trim_start_matches('#');
+        if s.len() != 6 {
+            None
+        } else {
+            u32::from_str_radix(&s, 16)
+                .ok()
+                .map(u32::to_be_bytes)
+                .map(|[_, r, g, b]| (r, g, b))
+        }
+    }
+
+    fn draw_rgb_editor(ui: &mut Ui, color: &mut (u8, u8, u8)) {
+        let mut hex = format!("{:02X}{:02X}{:02X}", color.0, color.1, color.2);
+
+        ui.horizontal(|ui| {
+            ui.with_layout(Layout::top_down(Align::Min), |ui| {
+                ui.horizontal(|ui| {
+                    ui.label("R: ");
+                    ui.add(Slider::new(&mut color.0, 0..=255));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("G: ");
+                    ui.add(Slider::new(&mut color.1, 0..=255));
+                });
+                ui.horizontal(|ui| {
+                    ui.label("B: ");
+                    ui.add(Slider::new(&mut color.2, 0..=255));
+                });
+            });
+
+            ui.with_layout(Layout::top_down(Align::Min), |ui| {
+                show_color(
+                    ui,
+                    Color32::from_rgb(color.0, color.1, color.2),
+                    vec2(59.0, 38.0),
+                );
+
+                let r = ui.add(TextEdit::singleline(&mut hex).desired_width(50.0));
+                if r.changed() {
+                    if let Some((r, g, b)) = Self::calculate_color_from_hex_string(hex) {
+                        color.0 = r;
+                        color.1 = g;
+                        color.2 = b;
+                    }
+                }
+            });
         });
+    }
+
+    fn draw_edit_rgb(&mut self, ui: &mut Ui) {
+        ui.label("RGB Mode:");
+        let map = [
+            (
+                RgbProfile::Off,
+                t!("rgb.profile.off.title"),
+                t!("rgb.profile.off.description"),
+            ),
+            (
+                RgbProfile::Static {
+                    brightness: 25,
+                    color: (204, 153, 51),
+                },
+                t!("rgb.profile.static.title"),
+                t!("rgb.profile.static.description"),
+            ),
+            (
+                RgbProfile::Wave {
+                    brightness: 25,
+                    speed_x: 50,
+                    speed_y: 0,
+                    color_count: 3,
+                    colors: [(200, 0, 0), (0, 200, 0), (0, 0, 200), (0, 0, 0)],
+                },
+                t!("rgb.profile.wave.title"),
+                t!("rgb.profile.wave.description"),
+            ),
+            (
+                RgbProfile::Breathe {
+                    brightness: 25,
+                    hold_time: 20,
+                    trans_time: 5,
+                    color_count: 3,
+                    colors: [(200, 0, 0), (0, 200, 0), (0, 0, 200), (0, 0, 0)],
+                },
+                t!("rgb.profile.breathe.title"),
+                t!("rgb.profile.breathe.description"),
+            ),
+            (
+                RgbProfile::RainbowSolid {
+                    brightness: 25,
+                    speed: 30,
+                    saturation: 100,
+                    value: 100,
+                },
+                t!("rgb.profile.rainbow_solid.title"),
+                t!("rgb.profile.rainbow_solid.description"),
+            ),
+            (
+                RgbProfile::RainbowWave {
+                    brightness: 25,
+                    speed: 100,
+                    speed_x: 0,
+                    speed_y: 30,
+                    saturation: 100,
+                    value: 100,
+                },
+                t!("rgb.profile.rainbow_wave.title"),
+                t!("rgb.profile.rainbow_wave.description"),
+            ),
+        ];
+
+        ComboBox::from_id_salt("RGBSelect")
+            .selected_text(map[self.config_editing_rgb.get_type() as usize].1.clone())
+            .width(200.0)
+            .truncate()
+            .show_ui(ui, |ui| {
+                for (i, t, _) in &map {
+                    let u = ui.selectable_label(
+                        self.config_editing_rgb.get_type() == i.get_type(),
+                        t.clone(),
+                    );
+                    if u.clicked() {
+                        self.config_editing_rgb = i.clone();
+                    }
+                }
+            })
+            .response
+            .on_hover_text_at_pointer(t!("help.device.select"));
+
+        ui.label(map[self.config_editing_rgb.get_type() as usize].2.clone());
+        ui.label("");
+
+        match self.config_editing_rgb {
+            RgbProfile::Off => {}
+            RgbProfile::Static {
+                mut brightness,
+                mut color,
+            } => {
+                ui.label(t!("rgb.profile.static.brightness"));
+                ui.add(Slider::new(&mut brightness, 0..=100));
+
+                ui.label(t!("rgb.profile.static.select_color"));
+                Self::draw_rgb_editor(ui, &mut color);
+
+                self.config_editing_rgb = RgbProfile::Static { brightness, color };
+            }
+            RgbProfile::Wave {
+                brightness,
+                speed_x,
+                speed_y,
+                color_count,
+                colors,
+            } => {}
+            RgbProfile::Breathe {
+                brightness,
+                hold_time,
+                trans_time,
+                color_count,
+                colors,
+            } => {}
+            RgbProfile::RainbowSolid {
+                brightness,
+                speed,
+                saturation,
+                value,
+            } => {}
+            RgbProfile::RainbowWave {
+                brightness,
+                speed,
+                speed_x,
+                speed_y,
+                saturation,
+                value,
+            } => {}
+        }
+
+        // ui.with_layout(Layout::centered_and_justified(Direction::TopDown), |ui| {
+        //     ui.label("TODO: RGB control");
+        //     ui.
+        // });
+
+        ui.allocate_space(ui.available_size_before_wrap());
     }
 
     fn save_rgb_and_exit(&mut self) {
