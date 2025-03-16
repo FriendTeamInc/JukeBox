@@ -67,7 +67,7 @@ pub struct JukeBoxGui {
     pub thread_breaker: Arc<AtomicBool>,
     pub sg_rx: UnboundedReceiver<SerialEvent>,
     pub gs_cmd_rx: UnboundedReceiver<(String, UnboundedSender<SerialCommand>)>,
-    pub gs_cmd_txs: Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
+    pub scmd_txs: Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
     pub us_tx: UnboundedSender<UpdateStatus>,
     pub us_rx: UnboundedReceiver<UpdateStatus>,
 
@@ -84,7 +84,7 @@ impl eframe::App for JukeBoxGui {
             // TODO: handle this as going to system tray
 
             {
-                for (_k, tx) in self.gs_cmd_txs.blocking_lock().iter() {
+                for (_k, tx) in self.scmd_txs.blocking_lock().iter() {
                     let _ = tx.send(SerialCommand::Disconnect);
                     // .expect(&format!("could not send disconnect signal to device {}", k));
                 }
@@ -133,7 +133,7 @@ impl JukeBoxGui {
 
         let (gs_cmd_tx, gs_cmd_rx) =
             unbounded_channel::<(String, UnboundedSender<SerialCommand>)>(); // serial threads send "serial command senders" to gui
-        let gs_cmd_txs: Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>> =
+        let scmd_txs: Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>> =
             Arc::new(Mutex::new(HashMap::new()));
 
         // gui thread sends events to serial threads (specific Device ID -> Device specific Serial Thread)
@@ -142,9 +142,10 @@ impl JukeBoxGui {
         let (us_tx, us_rx) = unbounded_channel::<UpdateStatus>(); // update thread sends update statuses to gui thread
 
         let action_config = config.clone();
+        let action_scmd_txs = scmd_txs.clone();
 
         spawn(async move { serial_task(brkr_serial, gs_cmd_tx, sg_tx, sr_tx).await });
-        spawn(async move { action_task(sr_rx, action_config).await });
+        spawn(async move { action_task(sr_rx, action_config, action_scmd_txs).await });
 
         JukeBoxGui {
             splash_timer: Instant::now(),
@@ -172,7 +173,7 @@ impl JukeBoxGui {
             thread_breaker: thread_breaker,
             sg_rx: sg_rx,
             gs_cmd_rx: gs_cmd_rx,
-            gs_cmd_txs: gs_cmd_txs,
+            scmd_txs: scmd_txs,
             us_tx: us_tx,
             us_rx: us_rx,
 
@@ -211,9 +212,9 @@ impl JukeBoxGui {
 
     fn handle_serial_events(&mut self) {
         {
-            let mut gs_cmd_txs = self.gs_cmd_txs.blocking_lock();
+            let mut scmd_txs = self.scmd_txs.blocking_lock();
             while let Ok((device_uid, gs_cmd_tx)) = self.gs_cmd_rx.try_recv() {
-                gs_cmd_txs.insert(device_uid, gs_cmd_tx);
+                scmd_txs.insert(device_uid, gs_cmd_tx);
             }
         }
 
@@ -281,8 +282,6 @@ impl JukeBoxGui {
                             ),
                         );
                     }
-
-                    self.set_device_rgb(&device_uid);
                 }
                 SerialEvent::LostConnection { device_uid } => {
                     if self.devices.contains_key(&device_uid) {
@@ -290,8 +289,8 @@ impl JukeBoxGui {
                         v.3 = false;
                         v.4.clear();
                     }
-                    let mut gs_cmd_txs = self.gs_cmd_txs.blocking_lock();
-                    gs_cmd_txs.remove(&device_uid);
+                    let mut scmd_txs = self.scmd_txs.blocking_lock();
+                    scmd_txs.remove(&device_uid);
                 }
                 SerialEvent::Disconnected { device_uid } => {
                     if self.devices.contains_key(&device_uid) {
@@ -299,8 +298,8 @@ impl JukeBoxGui {
                         v.3 = false;
                         v.4.clear();
                     }
-                    let mut gs_cmd_txs = self.gs_cmd_txs.blocking_lock();
-                    gs_cmd_txs.remove(&device_uid);
+                    let mut scmd_txs = self.scmd_txs.blocking_lock();
+                    scmd_txs.remove(&device_uid);
                 }
                 SerialEvent::GetInputKeys { device_uid, keys } => {
                     if self.devices.contains_key(&device_uid) {

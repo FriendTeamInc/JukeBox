@@ -10,8 +10,8 @@ use super::gui::JukeBoxGui;
 impl JukeBoxGui {
     fn send_update_signal(&mut self, fw_path: String) {
         {
-            let gs_cmd_txs = self.gs_cmd_txs.blocking_lock();
-            if let Some(tx) = gs_cmd_txs.get(&self.current_device) {
+            let scmd_txs = self.scmd_txs.blocking_lock();
+            if let Some(tx) = scmd_txs.get(&self.current_device) {
                 tx.send(SerialCommand::Update)
                     .expect("failed to send update command");
             }

@@ -37,6 +37,7 @@ pub struct SerialConnectionDetails {
     pub device_uid: String,
 }
 
+#[allow(unused)]
 pub enum SerialCommand {
     Identify,
     GetRGB,

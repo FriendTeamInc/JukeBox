@@ -173,8 +173,8 @@ impl JukeBoxGui {
                             .on_hover_text_at_pointer(t!("help.device.identify"))
                             .clicked()
                         {
-                            let gs_cmd_txs = self.gs_cmd_txs.blocking_lock();
-                            let tx = gs_cmd_txs.get(&self.current_device).unwrap();
+                            let scmd_txs = self.scmd_txs.blocking_lock();
+                            let tx = scmd_txs.get(&self.current_device).unwrap();
                             let _ = tx.send(SerialCommand::Identify);
                         }
 
