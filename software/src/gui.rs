@@ -8,7 +8,7 @@ use eframe::egui::color_picker::{color_edit_button_rgba, show_color};
 use eframe::egui::scroll_area::ScrollBarVisibility;
 use eframe::egui::{
     vec2, Align, Button, CentralPanel, CollapsingHeader, Color32, ComboBox, Context, Direction,
-    Grid, Layout, ProgressBar, Rgba, RichText, ScrollArea, Slider, TextBuffer, TextEdit, Ui,
+    Grid, Layout, ProgressBar, Rgba, RichText, ScrollArea, Sense, Slider, TextBuffer, TextEdit, Ui,
     ViewportBuilder,
 };
 use eframe::Frame;
@@ -1209,54 +1209,131 @@ impl JukeBoxGui {
         ui.label(map[self.config_editing_rgb.get_type() as usize].2.clone());
         ui.label("");
 
-        match self.config_editing_rgb {
-            RgbProfile::Off => {}
-            RgbProfile::Static {
-                mut brightness,
-                mut color,
-            } => {
-                ui.label(t!("rgb.profile.static.brightness"));
-                ui.add(Slider::new(&mut brightness, 0..=100));
+        ScrollArea::vertical()
+            // .max_width(200.0)
+            .max_height(164.0)
+            .show(ui, |ui| {
+                ui.allocate_exact_size(vec2(275.0, 0.0), Sense::empty());
+                match self.config_editing_rgb {
+                    RgbProfile::Off => {}
+                    RgbProfile::Static {
+                        mut brightness,
+                        mut color,
+                    } => {
+                        ui.label(t!("rgb.brightness"));
+                        ui.add(Slider::new(&mut brightness, 0..=100));
 
-                ui.label(t!("rgb.profile.static.select_color"));
-                Self::draw_rgb_editor(ui, &mut color);
+                        ui.label(t!("rgb.profile.static.select_color"));
+                        Self::draw_rgb_editor(ui, &mut color);
 
-                self.config_editing_rgb = RgbProfile::Static { brightness, color };
-            }
-            RgbProfile::Wave {
-                brightness,
-                speed_x,
-                speed_y,
-                color_count,
-                colors,
-            } => {}
-            RgbProfile::Breathe {
-                brightness,
-                hold_time,
-                trans_time,
-                color_count,
-                colors,
-            } => {}
-            RgbProfile::RainbowSolid {
-                brightness,
-                speed,
-                saturation,
-                value,
-            } => {}
-            RgbProfile::RainbowWave {
-                brightness,
-                speed,
-                speed_x,
-                speed_y,
-                saturation,
-                value,
-            } => {}
-        }
+                        self.config_editing_rgb = RgbProfile::Static { brightness, color };
+                    }
+                    RgbProfile::Wave {
+                        mut brightness,
+                        speed_x,
+                        speed_y,
+                        color_count,
+                        colors,
+                    } => {
+                        ui.label(t!("rgb.brightness"));
+                        ui.add(Slider::new(&mut brightness, 0..=100));
 
-        // ui.with_layout(Layout::centered_and_justified(Direction::TopDown), |ui| {
-        //     ui.label("TODO: RGB control");
-        //     ui.
-        // });
+                        ui.label("todo!");
+
+                        self.config_editing_rgb = RgbProfile::Wave {
+                            brightness,
+                            speed_x,
+                            speed_y,
+                            color_count,
+                            colors,
+                        };
+                    }
+                    RgbProfile::Breathe {
+                        mut brightness,
+                        hold_time,
+                        trans_time,
+                        color_count,
+                        colors,
+                    } => {
+                        ui.label(t!("rgb.brightness"));
+                        ui.add(Slider::new(&mut brightness, 0..=100));
+
+                        ui.label("todo!");
+
+                        self.config_editing_rgb = RgbProfile::Breathe {
+                            brightness,
+                            hold_time,
+                            trans_time,
+                            color_count,
+                            colors,
+                        };
+                    }
+                    RgbProfile::RainbowSolid {
+                        mut brightness,
+                        mut speed,
+                        mut saturation,
+                        mut value,
+                    } => {
+                        ui.label(t!("rgb.brightness"));
+                        ui.add(Slider::new(&mut brightness, 0..=100));
+
+                        ui.label(t!("rgb.profile.rainbow_solid.speed"));
+                        ui.add(Slider::new(&mut speed, -100..=100));
+
+                        ui.label(t!("rgb.saturation"));
+                        ui.add(Slider::new(&mut saturation, 0..=100));
+
+                        ui.label(t!("rgb.value"));
+                        ui.add(Slider::new(&mut value, 0..=100));
+
+                        // TODO: add preview?
+
+                        self.config_editing_rgb = RgbProfile::RainbowSolid {
+                            brightness,
+                            speed,
+                            saturation,
+                            value,
+                        };
+                    }
+                    RgbProfile::RainbowWave {
+                        mut brightness,
+                        mut speed,
+                        mut speed_x,
+                        mut speed_y,
+                        mut saturation,
+                        mut value,
+                    } => {
+                        ui.label(t!("rgb.brightness"));
+                        ui.add(Slider::new(&mut brightness, 0..=100));
+
+                        ui.label(t!("rgb.profile.rainbow_wave.speed"));
+                        ui.add(Slider::new(&mut speed, -100..=100));
+
+                        ui.label(t!("rgb.profile.rainbow_wave.speed_x"));
+                        ui.add(Slider::new(&mut speed_x, -100..=100));
+
+                        ui.label(t!("rgb.profile.rainbow_wave.speed_y"));
+                        ui.add(Slider::new(&mut speed_y, -100..=100));
+
+                        ui.label(t!("rgb.saturation"));
+                        ui.add(Slider::new(&mut saturation, 0..=100));
+
+                        ui.label(t!("rgb.value"));
+                        ui.add(Slider::new(&mut value, 0..=100));
+
+                        // TODO: add preview?
+
+                        self.config_editing_rgb = RgbProfile::RainbowWave {
+                            brightness,
+                            speed,
+                            speed_x,
+                            speed_y,
+                            saturation,
+                            value,
+                        };
+                    }
+                }
+            });
 
         ui.allocate_space(ui.available_size_before_wrap());
     }

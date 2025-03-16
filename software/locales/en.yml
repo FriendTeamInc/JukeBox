@@ -64,6 +64,10 @@ update:
     end: "Done!"
 
 rgb:
+  brightness: "Brightness:"
+  saturation: "Saturation:"
+  value: "Value:"
+
   profile:
     off:
       title: "Off"
@@ -71,20 +75,25 @@ rgb:
     static:
       title: "Static"
       description: "Displays a single color."
-      brightness: "Brightness:"
       select_color: "Select Color:"
     wave:
       title: "Wave"
       description: "Waves through a list of colors, transitioning from one to the next constantly."
+      speed_x: "Speed X:"
+      speed_y: "Speed Y:"
     breathe:
       title: "Breathe"
       description: "Rotates through a list of colors, holding on each before transitioning."
     rainbow_solid:
       title: "Rainbow (Solid)"
       description: "Displays the full rainbow of colors on every key."
+      speed: "Speed:"
     rainbow_wave:
       title: "Rainbow (Wave)"
       description: "Displays the full rainbow of colors on each key, offset by its positional speed."
+      speed: "Speed:"
+      speed_x: "Speed X:"
+      speed_y: "Speed Y:"
 
 action:
   meta:
