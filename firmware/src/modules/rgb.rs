@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 
 use embedded_hal::timer::CountDown as _;
-use jukebox_util::color::{hsv2rgb, RgbProfile};
+use jukebox_util::color::RgbProfile;
 use rp2040_hal::{
     fugit::ExtU32,
     gpio::{DynPinId, FunctionPio0, Pin, PullDown},
@@ -58,127 +58,27 @@ impl RgbMod {
         rgb_controls.with_lock(|c| {
             if c.0 {
                 self.rgb_mode = c.1.clone();
-                // TODO: save rgb settings to eeprom
             }
         });
 
-        let mut buffer = [(0, 0, 0).into(); RGB_LEN];
+        let buffer = self.rgb_mode.calculate_matrix(t);
 
-        let brtns = match self.rgb_mode {
-            RgbProfile::Off => {
-                self.clear();
-                0
-            }
-            RgbProfile::StaticSolid { brightness, color } => {
-                for led in buffer.iter_mut() {
-                    *led = color.into();
-                }
-                brightness
-            }
-            RgbProfile::StaticPerKey { brightness, colors } => {
-                for (i, led) in buffer.iter_mut().enumerate() {
-                    *led = colors[i].into();
-                }
-                brightness
-            }
-            RgbProfile::Wave {
-                brightness,
-                speed_x,
-                speed_y,
-                color_count,
-                colors,
-            } => todo!(),
-            RgbProfile::Breathe {
-                brightness,
-                hold_time,
-                trans_time,
-                color_count,
-                colors,
-            } => {
-                let color_count = color_count as usize;
-                let h = (hold_time as u64) * 100_000;
-                let r = (trans_time as u64) * 100_000;
-                let n = color_count as u64;
-                let t = t % (n * (h + r));
-                let c = t % (h + r);
-                let n = (t / (h + r)) as usize;
-
-                if c > h {
-                    // transitioning color
-                    let p = ((c - h) as f32) / (r as f32);
-                    let color1 = colors[n];
-                    let color2 = colors[if n + 1 == color_count { 0 } else { n + 1 }];
-                    let trans_color = (
-                        ((color1.0 as f32) + (((color2.0 as f32) - (color1.0 as f32)) * p)) as u8,
-                        ((color1.1 as f32) + (((color2.1 as f32) - (color1.1 as f32)) * p)) as u8,
-                        ((color1.2 as f32) + (((color2.2 as f32) - (color1.2 as f32)) * p)) as u8,
-                    );
-                    for led in buffer.iter_mut() {
-                        *led = trans_color.into();
-                    }
-                } else {
-                    // holding color
-                    for led in buffer.iter_mut() {
-                        *led = colors[n].into();
-                    }
-                }
-
-                brightness
-            }
-            RgbProfile::RainbowSolid {
-                brightness,
-                speed,
-                saturation,
-                value,
-            } => {
-                let t = t as f32;
-                let s = speed as f32;
-                let sat = (saturation as f32) / 100.0;
-                let val = (value as f32) / 100.0;
-                let s = hsv2rgb((t / 1_000_000.0 * s) % 360.0, sat, val).into();
-
-                for led in buffer.iter_mut() {
-                    *led = s;
-                }
-
-                brightness
-            }
-            RgbProfile::RainbowWave {
-                brightness,
-                speed,
-                speed_x,
-                speed_y,
-                saturation,
-                value,
-            } => {
-                // TODO
-                let t = t as f32;
-                let s = speed as f32;
-                let sx = speed_x as f32;
-                let sy = speed_y as f32;
-
-                let sat = (saturation as f32) / 100.0;
-                let val = (value as f32) / 100.0;
-
-                for (i, led) in buffer.iter_mut().enumerate() {
-                    let x = (i % 4) as f32;
-                    let y = (i / 4) as f32;
-                    *led = hsv2rgb(
-                        (t / 1_000_000.0 * s + (sx * x) + (sy * y)) % 360.0,
-                        sat,
-                        val,
-                    )
-                    .into();
-                }
-
-                brightness
-            }
-        };
+        let brtns = self.rgb_mode.brightness();
 
         // transform zigzag into appropriate grid
         self.buffer = [
-            buffer[0], buffer[1], buffer[2], buffer[3], buffer[7], buffer[6], buffer[5], buffer[4],
-            buffer[8], buffer[9], buffer[10], buffer[11],
+            buffer[0].into(),
+            buffer[1].into(),
+            buffer[2].into(),
+            buffer[3].into(),
+            buffer[7].into(),
+            buffer[6].into(),
+            buffer[5].into(),
+            buffer[4].into(),
+            buffer[8].into(),
+            buffer[9].into(),
+            buffer[10].into(),
+            buffer[11].into(),
         ];
 
         self.ws

@@ -46,11 +46,11 @@ fn get_color(data: &[u8]) -> (u8, u8, u8) {
 
 pub const RGB_PROFILE_OFF: u8 = 0;
 pub const RGB_PROFILE_STATIC_SOLID: u8 = 1;
-pub const RGB_PROFILE_STATIC_PER_KEY: u8 = 6;
-pub const RGB_PROFILE_WAVE: u8 = 2;
-pub const RGB_PROFILE_BREATHE: u8 = 3;
-pub const RGB_PROFILE_RAINBOW_SOLID: u8 = 4;
-pub const RGB_PROFILE_RAINBOW_WAVE: u8 = 5;
+pub const RGB_PROFILE_STATIC_PER_KEY: u8 = 2;
+pub const RGB_PROFILE_WAVE: u8 = 3;
+pub const RGB_PROFILE_BREATHE: u8 = 4;
+pub const RGB_PROFILE_RAINBOW_SOLID: u8 = 5;
+pub const RGB_PROFILE_RAINBOW_WAVE: u8 = 6;
 
 // colors are only 24 bits, the first 8 bits are unused
 #[derive(Debug, Clone, PartialEq)]
@@ -309,5 +309,158 @@ impl RgbProfile {
             },
             _ => Self::Off,
         }
+    }
+
+    pub fn brightness(&self) -> u8 {
+        match self {
+            RgbProfile::Off => 0,
+            RgbProfile::StaticSolid {
+                brightness,
+                color: _,
+            } => *brightness,
+            RgbProfile::StaticPerKey {
+                brightness,
+                colors: _,
+            } => *brightness,
+            RgbProfile::Wave {
+                brightness,
+                speed_x: _,
+                speed_y: _,
+                color_count: _,
+                colors: _,
+            } => *brightness,
+            RgbProfile::Breathe {
+                brightness,
+                hold_time: _,
+                trans_time: _,
+                color_count: _,
+                colors: _,
+            } => *brightness,
+            RgbProfile::RainbowSolid {
+                brightness,
+                speed: _,
+                saturation: _,
+                value: _,
+            } => *brightness,
+            RgbProfile::RainbowWave {
+                brightness,
+                speed: _,
+                speed_x: _,
+                speed_y: _,
+                saturation: _,
+                value: _,
+            } => *brightness,
+        }
+    }
+
+    pub fn calculate_matrix(&self, t: u64) -> [(u8, u8, u8); 12] {
+        let mut buffer = [(0u8, 0u8, 0u8); 12];
+
+        match self {
+            RgbProfile::Off => {}
+            RgbProfile::StaticSolid {
+                brightness: _,
+                color,
+            } => {
+                for led in buffer.iter_mut() {
+                    *led = *color;
+                }
+            }
+            RgbProfile::StaticPerKey {
+                brightness: _,
+                colors,
+            } => {
+                for (i, led) in buffer.iter_mut().enumerate() {
+                    *led = colors[i];
+                }
+            }
+            RgbProfile::Wave {
+                brightness: _,
+                speed_x: _,
+                speed_y: _,
+                color_count: _,
+                colors: _,
+            } => todo!(),
+            RgbProfile::Breathe {
+                brightness: _,
+                hold_time,
+                trans_time,
+                color_count,
+                colors,
+            } => {
+                let color_count = *color_count as usize;
+                let h = (*hold_time as u64) * 100_000;
+                let r = (*trans_time as u64) * 100_000;
+                let n = color_count as u64;
+                let t = t % (n * (h + r));
+                let c = t % (h + r);
+                let n = (t / (h + r)) as usize;
+
+                if c > h {
+                    // transitioning color
+                    let p = ((c - h) as f32) / (r as f32);
+                    let color1 = colors[n];
+                    let color2 = colors[if n + 1 == color_count { 0 } else { n + 1 }];
+                    let trans_color = (
+                        ((color1.0 as f32) + (((color2.0 as f32) - (color1.0 as f32)) * p)) as u8,
+                        ((color1.1 as f32) + (((color2.1 as f32) - (color1.1 as f32)) * p)) as u8,
+                        ((color1.2 as f32) + (((color2.2 as f32) - (color1.2 as f32)) * p)) as u8,
+                    );
+                    for led in buffer.iter_mut() {
+                        *led = trans_color.into();
+                    }
+                } else {
+                    // holding color
+                    for led in buffer.iter_mut() {
+                        *led = colors[n].into();
+                    }
+                }
+            }
+            RgbProfile::RainbowSolid {
+                brightness: _,
+                speed,
+                saturation,
+                value,
+            } => {
+                let t = t as f32;
+                let s = *speed as f32;
+                let sat = (*saturation as f32) / 100.0;
+                let val = (*value as f32) / 100.0;
+                let s = hsv2rgb((t / 1_000_000.0 * s) % 360.0, sat, val).into();
+
+                for led in buffer.iter_mut() {
+                    *led = s;
+                }
+            }
+            RgbProfile::RainbowWave {
+                brightness: _,
+                speed,
+                speed_x,
+                speed_y,
+                saturation,
+                value,
+            } => {
+                let t = t as f32;
+                let s = *speed as f32;
+                let sx = *speed_x as f32;
+                let sy = *speed_y as f32;
+
+                let sat = (*saturation as f32) / 100.0;
+                let val = (*value as f32) / 100.0;
+
+                for (i, led) in buffer.iter_mut().enumerate() {
+                    let x = (i % 4) as f32;
+                    let y = (i / 4) as f32;
+                    *led = hsv2rgb(
+                        (t / 1_000_000.0 * s + (sx * x) + (sy * y)) % 360.0,
+                        sat,
+                        val,
+                    )
+                    .into();
+                }
+            }
+        };
+
+        buffer
     }
 }

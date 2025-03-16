@@ -301,7 +301,6 @@ async fn transmit_set_rgb(f: &mut Box<dyn SerialPort>, rgb_profile: RgbProfile) 
 }
 
 async fn transmit_identify_signal(f: &mut Box<dyn SerialPort>) -> Result<()> {
-    // tell the device to reboot for updating
     let mut cmd = vec![CMD_IDENTIFY];
     cmd.extend_from_slice(CMD_END);
     let mut rsp = vec![RSP_ACK];
@@ -311,7 +310,6 @@ async fn transmit_identify_signal(f: &mut Box<dyn SerialPort>) -> Result<()> {
 }
 
 async fn transmit_update_signal(f: &mut Box<dyn SerialPort>) -> Result<()> {
-    // tell the device to reboot for updating
     let mut cmd = vec![CMD_UPDATE];
     cmd.extend_from_slice(CMD_END);
     let mut rsp = vec![RSP_DISCONNECTED];
