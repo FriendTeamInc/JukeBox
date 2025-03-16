@@ -53,7 +53,6 @@ pub async fn action_task(
 
                 clear_set(&mut prevkeys, device_uid).await;
 
-                // TODO: set RGB here
                 // TODO: set hardware inputs here
                 let (_, current_rgb_profile, _) = get_profile_info(&config, device_uid).await;
                 let rgb_profile =
@@ -112,7 +111,7 @@ pub async fn action_task(
                             .get(&device_uid)
                             .and_then(|t| Some(t.send(SerialCommand::SetRGB(rgb_profile))));
 
-                        // TODO: set hardware inputs here if profile changes
+                        // TODO: set hardware inputs here
                     }
                 });
             }

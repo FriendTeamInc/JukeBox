@@ -68,12 +68,33 @@ impl JukeBoxGui {
                 t!("rgb.profile.off.description"),
             ),
             (
-                RgbProfile::Static {
+                RgbProfile::StaticSolid {
                     brightness: 25,
                     color: (204, 153, 51),
                 },
                 t!("rgb.profile.static.title"),
                 t!("rgb.profile.static.description"),
+            ),
+            (
+                RgbProfile::StaticPerKey {
+                    brightness: 25,
+                    colors: [
+                        (0, 0, 0),
+                        (0, 0, 0),
+                        (0, 0, 0),
+                        (0, 0, 0),
+                        (0, 0, 0),
+                        (0, 0, 0),
+                        (0, 0, 0),
+                        (0, 0, 0),
+                        (0, 0, 0),
+                        (0, 0, 0),
+                        (0, 0, 0),
+                        (0, 0, 0),
+                    ],
+                },
+                t!("rgb.profile.static_solid.title"),
+                t!("rgb.profile.static_solid.description"),
             ),
             (
                 RgbProfile::Wave {
@@ -149,17 +170,29 @@ impl JukeBoxGui {
                 ui.allocate_exact_size(vec2(275.0, 0.0), Sense::empty());
                 match self.config_editing_rgb {
                     RgbProfile::Off => {}
-                    RgbProfile::Static {
+                    RgbProfile::StaticSolid {
                         mut brightness,
                         mut color,
                     } => {
                         ui.label(t!("rgb.brightness"));
                         ui.add(Slider::new(&mut brightness, 0..=100));
 
-                        ui.label(t!("rgb.profile.static.select_color"));
+                        ui.label(t!("rgb.profile.static_solid.select_color"));
                         Self::draw_color_editor(ui, &mut color);
 
-                        self.config_editing_rgb = RgbProfile::Static { brightness, color };
+                        self.config_editing_rgb = RgbProfile::StaticSolid { brightness, color };
+                    }
+                    RgbProfile::StaticPerKey {
+                        mut brightness,
+                        mut colors,
+                    } => {
+                        ui.label(t!("rgb.brightness"));
+                        ui.add(Slider::new(&mut brightness, 0..=100));
+
+                        ui.label(t!("rgb.profile.static_per_key.select_color"));
+                        ui.label("TODO!");
+
+                        self.config_editing_rgb = RgbProfile::StaticPerKey { brightness, colors }
                     }
                     RgbProfile::Wave {
                         mut brightness,

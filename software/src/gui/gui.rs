@@ -83,11 +83,9 @@ impl eframe::App for JukeBoxGui {
         if ctx.input(|i| i.viewport().close_requested()) {
             // TODO: handle this as going to system tray
 
-            {
-                for (_k, tx) in self.scmd_txs.blocking_lock().iter() {
-                    let _ = tx.send(SerialCommand::Disconnect);
-                    // .expect(&format!("could not send disconnect signal to device {}", k));
-                }
+            for (_k, tx) in self.scmd_txs.blocking_lock().iter() {
+                let _ = tx.send(SerialCommand::Disconnect);
+                // .expect(&format!("could not send disconnect signal to device {}", k));
             }
 
             self.thread_breaker

@@ -34,50 +34,6 @@ impl RgbMod {
     ) -> Self {
         count_down.start(FRAME_TIME.millis());
 
-        // let t1 = RGBControl::Off;
-        // let t2 = RGBControl::Static {
-        //     brightness: 0,
-        //     color: (0x33, 0xBB, 0xFF),
-        // };
-        // let t3 = RGBControl::Wave {
-        //     brightness: 0,
-        //     speed_x: 0,
-        //     speed_y: 0,
-        //     color_count: 3,
-        //     colors: [
-        //         (0x33, 0xBB, 0xFF),
-        //         (0x99, 0x77, 0xFF),
-        //         (0xFF, 0x77, 0xDD),
-        //         (0, 0, 0),
-        //     ],
-        // };
-        // let t4 = RGBControl::Breathe {
-        //     brightness: 0,
-        //     hold_time: 50,
-        //     trans_time: 10,
-        //     color_count: 3,
-        //     colors: [
-        //         (0x33, 0xBB, 0xFF),
-        //         (0x99, 0x77, 0xFF),
-        //         (0xFF, 0x77, 0xDD),
-        //         (0, 0, 0),
-        //     ],
-        // };
-        // let t5 = RGBControl::RainbowSolid {
-        //     brightness: 0,
-        //     speed: 30,
-        //     saturation: 100,
-        //     value: 100,
-        // };
-        // let t6 = RGBControl::RainbowWave {
-        //     brightness: 0,
-        //     speed: 100,
-        //     speed_x: 0,
-        //     speed_y: 30,
-        //     saturation: 100,
-        //     value: 100,
-        // };
-
         RgbMod {
             ws: ws,
             buffer: [(0, 0, 0).into(); RGB_LEN],
@@ -113,9 +69,15 @@ impl RgbMod {
                 self.clear();
                 0
             }
-            RgbProfile::Static { brightness, color } => {
+            RgbProfile::StaticSolid { brightness, color } => {
                 for led in buffer.iter_mut() {
                     *led = color.into();
+                }
+                brightness
+            }
+            RgbProfile::StaticPerKey { brightness, colors } => {
+                for (i, led) in buffer.iter_mut().enumerate() {
+                    *led = colors[i].into();
                 }
                 brightness
             }

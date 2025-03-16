@@ -72,10 +72,14 @@ rgb:
     off:
       title: "Off"
       description: "Disables all RGB."
-    static:
-      title: "Static"
-      description: "Displays a single color."
+    static_solid:
+      title: "Static (Solid)"
+      description: "Displays a single color on all keys."
       select_color: "Select Color:"
+    static_per_key:
+      title: "Static (Per Key)"
+      description: "Displays a color on every key."
+      select_color: "Select Colors:"
     wave:
       title: "Wave"
       description: "Waves through a list of colors, transitioning from one to the next constantly."

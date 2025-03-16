@@ -76,8 +76,8 @@ impl SerialMod {
         Self::send(serial, RSP_END);
     }
 
-    fn decode_cmd(&mut self, size: usize) -> (Command, [u8; 32]) {
-        let mut data = [0u8; 32];
+    fn decode_cmd(&mut self, size: usize) -> (Command, [u8; 60]) {
+        let mut data = [0u8; 60];
 
         // if size > 4 {
         //     return Command::Unknown;

@@ -284,8 +284,8 @@ async fn transmit_get_rgb(f: &mut Box<dyn SerialPort>) -> Result<RgbProfile> {
         bail!("failed to parse rgb (wrong amount of data)");
     }
 
-    let mut data = [0u8; 32];
-    data.clone_from_slice(&resp[1..=32]);
+    let mut data = [0u8; 60];
+    data.clone_from_slice(&resp[1..=60]);
 
     Ok(RgbProfile::decode(data))
 }
