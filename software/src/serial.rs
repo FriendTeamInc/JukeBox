@@ -2,7 +2,7 @@
 
 use crate::input::InputKey;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::io::Read;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -443,7 +443,7 @@ pub async fn serial_loop(
 
 pub async fn serial_task(
     brkr: Arc<AtomicBool>,
-    gs_cmd_tx: UnboundedSender<(String, UnboundedSender<SerialCommand>)>,
+    scmd_txs: Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
     sg_tx: UnboundedSender<SerialEvent>,
     sr_tx: UnboundedSender<SerialEvent>,
 ) -> Result<()> {
@@ -474,14 +474,15 @@ pub async fn serial_task(
 
         let (s_cmd_tx, s_cmd_rx) = unbounded_channel::<SerialCommand>();
 
-        let _ = gs_cmd_tx.send((device_uid.clone(), s_cmd_tx));
-
+        scmd_txs.lock().await.insert(device_uid.clone(), s_cmd_tx);
         connected_uids.lock().await.insert(device_uid.clone());
 
         let connected_uids2 = connected_uids.clone();
+        let scmd_txs2 = scmd_txs.clone();
 
         tokio::spawn(async move {
             let connected_uids = connected_uids2;
+            let scmd_txs = scmd_txs2;
 
             let _ = sg_tx2
                 .clone()
@@ -533,6 +534,7 @@ pub async fn serial_task(
             };
 
             connected_uids.lock().await.remove(&device_uid);
+            scmd_txs.lock().await.remove(&device_uid);
         });
     }
 

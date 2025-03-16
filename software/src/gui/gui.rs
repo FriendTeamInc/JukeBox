@@ -66,7 +66,6 @@ pub struct JukeBoxGui {
 
     pub thread_breaker: Arc<AtomicBool>,
     pub sg_rx: UnboundedReceiver<SerialEvent>,
-    pub gs_cmd_rx: UnboundedReceiver<(String, UnboundedSender<SerialCommand>)>,
     pub scmd_txs: Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
     pub us_tx: UnboundedSender<UpdateStatus>,
     pub us_rx: UnboundedReceiver<UpdateStatus>,
@@ -129,8 +128,6 @@ impl JukeBoxGui {
         let (sr_tx, sr_rx) = unbounded_channel::<SerialEvent>(); // serial threads send events to action thread
         let (sg_tx, sg_rx) = unbounded_channel::<SerialEvent>(); // serial threads send events to gui thread
 
-        let (gs_cmd_tx, gs_cmd_rx) =
-            unbounded_channel::<(String, UnboundedSender<SerialCommand>)>(); // serial threads send "serial command senders" to gui
         let scmd_txs: Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>> =
             Arc::new(Mutex::new(HashMap::new()));
 
@@ -139,10 +136,11 @@ impl JukeBoxGui {
 
         let (us_tx, us_rx) = unbounded_channel::<UpdateStatus>(); // update thread sends update statuses to gui thread
 
+        let serial_scmd_txs = scmd_txs.clone();
         let action_config = config.clone();
         let action_scmd_txs = scmd_txs.clone();
 
-        spawn(async move { serial_task(brkr_serial, gs_cmd_tx, sg_tx, sr_tx).await });
+        spawn(async move { serial_task(brkr_serial, serial_scmd_txs, sg_tx, sr_tx).await });
         spawn(async move { action_task(sr_rx, action_config, action_scmd_txs).await });
 
         JukeBoxGui {
@@ -170,7 +168,6 @@ impl JukeBoxGui {
 
             thread_breaker: thread_breaker,
             sg_rx: sg_rx,
-            gs_cmd_rx: gs_cmd_rx,
             scmd_txs: scmd_txs,
             us_tx: us_tx,
             us_rx: us_rx,
@@ -209,13 +206,6 @@ impl JukeBoxGui {
     }
 
     fn handle_serial_events(&mut self) {
-        {
-            let mut scmd_txs = self.scmd_txs.blocking_lock();
-            while let Ok((device_uid, gs_cmd_tx)) = self.gs_cmd_rx.try_recv() {
-                scmd_txs.insert(device_uid, gs_cmd_tx);
-            }
-        }
-
         while let Ok(event) = self.sg_rx.try_recv() {
             match event {
                 SerialEvent::Connected { device_info } => {

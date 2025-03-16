@@ -21,7 +21,7 @@ use usbd_serial::SerialPort;
 
 use crate::{
     peripheral::{inputs_default, inputs_write_report},
-    IdentifyTrigger, PeripheralInputs, RgbControls, UpdateTrigger,
+    ConnectionStatus, IdentifyTrigger, PeripheralInputs, RgbControls, UpdateTrigger,
 };
 
 const BUFFER_SIZE: usize = 1024;
@@ -114,9 +114,15 @@ impl SerialMod {
         self.state.clone()
     }
 
-    fn start_update(&mut self, serial: &mut SerialPort<UsbBus>, update_trigger: &UpdateTrigger) {
+    fn start_update(
+        &mut self,
+        serial: &mut SerialPort<UsbBus>,
+        connection_status: &ConnectionStatus,
+        update_trigger: &UpdateTrigger,
+    ) {
         info!("Command Update");
         Self::send_full_response(serial, &[RSP_DISCONNECTED]);
+        connection_status.with_mut_lock(|c| *c = Connection::NotConnected(true));
         self.state = Connection::NotConnected(true);
         update_trigger.with_mut_lock(|u| *u = true);
     }
@@ -136,6 +142,7 @@ impl SerialMod {
         serial: &mut SerialPort<UsbBus>,
         firmware_version: &str,
         device_uid: &str,
+        connection_status: &ConnectionStatus,
         peripheral_inputs: &PeripheralInputs,
         update_trigger: &UpdateTrigger,
         identify_trigger: &IdentifyTrigger,
@@ -143,6 +150,7 @@ impl SerialMod {
     ) {
         if self.state == Connection::Connected && self.keepalive_timer.wait().is_ok() {
             warn!("Keepalive triggered, disconnecting.");
+            connection_status.with_mut_lock(|c| *c = Connection::NotConnected(false));
             self.state = Connection::NotConnected(false);
         }
 
@@ -173,7 +181,7 @@ impl SerialMod {
         let valid = match self.state {
             Connection::NotConnected(_) => match decode {
                 Command::Update => {
-                    self.start_update(serial, update_trigger);
+                    self.start_update(serial, connection_status, update_trigger);
                     true
                 }
                 Command::Greeting => {
@@ -196,6 +204,7 @@ impl SerialMod {
                     Self::send_end_response(serial);
 
                     self.state = Connection::Connected;
+                    connection_status.with_mut_lock(|c| *c = Connection::Connected);
                     info!("Serial Connected");
                     true
                 }
@@ -260,18 +269,20 @@ impl SerialMod {
                     true
                 }
                 Command::Update => {
-                    self.start_update(serial, update_trigger);
+                    self.start_update(serial, connection_status, update_trigger);
                     true
                 }
                 Command::Disconnect => {
                     Self::send_full_response(serial, &[RSP_DISCONNECTED]);
                     self.state = Connection::NotConnected(true);
+                    connection_status.with_mut_lock(|c| *c = Connection::NotConnected(true));
                     info!("Serial Disconnected");
                     true
                 }
                 Command::NegativeAck => {
                     // we sent something in error, better bail
                     self.state = Connection::NotConnected(false);
+                    connection_status.with_mut_lock(|c| *c = Connection::NotConnected(false));
                     info!("Serial NegativeAck'd");
                     false
                 }

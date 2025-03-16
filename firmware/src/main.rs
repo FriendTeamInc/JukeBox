@@ -19,7 +19,10 @@ pub static PICOTOOL_ENTRIES: [binary_info::EntryAddr; 7] = [
     binary_info::rp_program_url!(c"https://jukebox.friendteam.biz"),
 ];
 
-use jukebox_util::{color::RgbProfile, peripheral::JBInputs};
+use jukebox_util::{
+    color::RgbProfile,
+    peripheral::{Connection, JBInputs},
+};
 use mutually_exclusive_features::exactly_one_of;
 exactly_one_of!("keypad", "knobpad", "pedalpad");
 
@@ -81,7 +84,9 @@ type PeripheralInputs = Mutex<1, JBInputs>;
 type UpdateTrigger = Mutex<2, bool>;
 type IdentifyTrigger = Mutex<3, bool>;
 type RgbControls = Mutex<4, (bool, RgbProfile)>; // (changed, settings)
+type ConnectionStatus = Mutex<5, Connection>;
 
+static CONNECTION_STATUS: ConnectionStatus = Mutex::new(Connection::NotConnected(true));
 static PERIPHERAL_INPUTS: PeripheralInputs = Mutex::new(inputs_default());
 static UPDATE_TRIGGER: UpdateTrigger = Mutex::new(false);
 static IDENTIFY_TRIGGER: IdentifyTrigger = Mutex::new(false);
@@ -356,6 +361,7 @@ fn main() -> ! {
                 &mut usb_serial,
                 ver,
                 uid,
+                &CONNECTION_STATUS,
                 &PERIPHERAL_INPUTS,
                 &UPDATE_TRIGGER,
                 &IDENTIFY_TRIGGER,
