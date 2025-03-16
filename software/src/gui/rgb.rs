@@ -4,7 +4,9 @@ use eframe::egui::{
 };
 use jukebox_util::color::RgbProfile;
 
-use super::gui::JukeBoxGui;
+use crate::serial::SerialCommand;
+
+use super::gui::{GuiTab, JukeBoxGui};
 
 impl JukeBoxGui {
     fn calculate_color_from_hex_string(s: String) -> Option<(u8, u8, u8)> {
@@ -269,7 +271,44 @@ impl JukeBoxGui {
         ui.allocate_space(ui.available_size_before_wrap());
     }
 
+    pub fn set_device_rgb(&mut self, device_uid: &String) {
+        let rgb_profile = {
+            let c = self.config.blocking_lock();
+            let p = c.current_profile.clone();
+            c.profiles
+                .get(&p)
+                .and_then(|d| d.get(device_uid))
+                .and_then(|p| p.1.clone())
+                .unwrap_or(RgbProfile::Off)
+        };
+
+        if self
+            .devices
+            .get(device_uid)
+            .and_then(|d| Some(d.3))
+            .unwrap_or(false)
+        {
+            let txs = self.gs_cmd_txs.blocking_lock();
+            if let Some(tx) = txs.get(device_uid) {
+                let _ = tx.send(SerialCommand::SetRGB(rgb_profile));
+            }
+        }
+    }
+
     pub fn save_rgb_and_exit(&mut self) {
-        todo!()
+        {
+            let mut c = self.config.blocking_lock();
+            let p = c.current_profile.clone();
+            if let Some(profile) = c.profiles.get_mut(&p) {
+                if let Some(device) = profile.get_mut(&self.current_device) {
+                    device.1 = Some(self.config_editing_rgb.clone())
+                }
+            }
+            c.save();
+        }
+
+        self.set_device_rgb(&self.current_device.clone());
+
+        self.gui_tab = GuiTab::Device;
     }
 }

@@ -271,7 +271,7 @@ impl JukeBoxGui {
                         v.4.clear();
                     } else {
                         self.devices.insert(
-                            device_uid,
+                            device_uid.clone(),
                             (
                                 device_type.into(),
                                 device_name,
@@ -281,6 +281,8 @@ impl JukeBoxGui {
                             ),
                         );
                     }
+
+                    self.set_device_rgb(&device_uid);
                 }
                 SerialEvent::LostConnection { device_uid } => {
                     if self.devices.contains_key(&device_uid) {

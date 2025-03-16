@@ -16,8 +16,8 @@ use jukebox_util::peripheral::{
 };
 use jukebox_util::protocol::{
     CMD_DISCONNECT, CMD_END, CMD_GET_INPUT_KEYS, CMD_GET_RGB, CMD_GREET, CMD_IDENTIFY,
-    CMD_NEGATIVE_ACK, CMD_UPDATE, RSP_ACK, RSP_DISCONNECTED, RSP_END, RSP_INPUT_HEADER,
-    RSP_LINK_DELIMITER, RSP_LINK_HEADER, RSP_RGB_HEADER, RSP_UNKNOWN,
+    CMD_NEGATIVE_ACK, CMD_SET_RGB, CMD_UPDATE, RSP_ACK, RSP_DISCONNECTED, RSP_END,
+    RSP_INPUT_HEADER, RSP_LINK_DELIMITER, RSP_LINK_HEADER, RSP_RGB_HEADER, RSP_UNKNOWN,
 };
 use serialport::SerialPort;
 use tokio::task::block_in_place;
@@ -40,7 +40,7 @@ pub struct SerialConnectionDetails {
 pub enum SerialCommand {
     Identify,
     GetRGB,
-    SetRGB,
+    SetRGB(RgbProfile),
     GetScr,
     SetScr,
     Update,
@@ -289,6 +289,16 @@ async fn transmit_get_rgb(f: &mut Box<dyn SerialPort>) -> Result<RgbProfile> {
     Ok(RgbProfile::decode(data))
 }
 
+async fn transmit_set_rgb(f: &mut Box<dyn SerialPort>, rgb_profile: RgbProfile) -> Result<()> {
+    let mut cmd = vec![CMD_SET_RGB];
+    cmd.extend_from_slice(&rgb_profile.encode());
+    cmd.extend_from_slice(CMD_END);
+    let mut rsp = vec![RSP_ACK];
+    rsp.extend_from_slice(RSP_END);
+
+    send_expect(f, &cmd, &rsp).await
+}
+
 async fn transmit_identify_signal(f: &mut Box<dyn SerialPort>) -> Result<()> {
     // tell the device to reboot for updating
     let mut cmd = vec![CMD_IDENTIFY];
@@ -384,8 +394,8 @@ pub async fn serial_loop(
                         })
                         .context("failed to send rgb info to gui")?;
                 }
-                SerialCommand::SetRGB => {
-                    todo!()
+                SerialCommand::SetRGB(rgb_profile) => {
+                    transmit_set_rgb(f, rgb_profile).await?;
                 }
                 SerialCommand::GetScr => {
                     todo!()

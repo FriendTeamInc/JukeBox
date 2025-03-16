@@ -24,9 +24,9 @@ use crate::{
     IdentifyTrigger, PeripheralInputs, RgbControls, UpdateTrigger,
 };
 
-const BUFFER_SIZE: usize = 2048;
+const BUFFER_SIZE: usize = 1024;
 
-const KEEPALIVE: u32 = 250;
+const KEEPALIVE: u32 = 500;
 
 pub struct SerialMod {
     buffer: ConstGenericRingBuffer<u8, BUFFER_SIZE>,
@@ -163,7 +163,7 @@ impl SerialMod {
             return;
         }
         let (decode, data) = self.decode_cmd(size.unwrap());
-        debug!("cmd:{} data:{}", decode as u8, data);
+        // debug!("cmd: {}\ndata:{}", decode, data);
 
         // process command
         let mut unknown = || {
