@@ -15,22 +15,31 @@ use smart_leds::brightness;
 use smart_leds_trait::{SmartLedsWrite, RGB8};
 use ws2812_pio::Ws2812;
 
-use crate::RgbControls;
+use crate::{ConnectionStatus, RgbControls};
 
 const RGB_LEN: usize = 12;
 const FRAME_TIME: u32 = 33;
+
+pub const DEFAULT_RGB: RgbProfile = RgbProfile::StaticSolid {
+    brightness: 25,
+    color: (255, 255, 255),
+};
 
 pub struct RgbMod {
     ws: Ws2812<PIO0, SM0, CountDown, Pin<DynPinId, FunctionPio0, PullDown>>,
     buffer: [RGB8; RGB_LEN],
     timer: CountDown,
     rgb_mode: RgbProfile,
+    connection_status: &'static ConnectionStatus,
+    rgb_controls: &'static RgbControls,
 }
 
 impl RgbMod {
     pub fn new(
         ws: Ws2812<PIO0, SM0, CountDown, Pin<DynPinId, FunctionPio0, PullDown>>,
         mut count_down: CountDown,
+        connection_status: &'static ConnectionStatus,
+        rgb_controls: &'static RgbControls,
     ) -> Self {
         count_down.start(FRAME_TIME.millis());
 
@@ -38,7 +47,9 @@ impl RgbMod {
             ws: ws,
             buffer: [(0, 0, 0).into(); RGB_LEN],
             timer: count_down,
-            rgb_mode: RgbProfile::Off,
+            rgb_mode: DEFAULT_RGB,
+            connection_status,
+            rgb_controls,
         }
     }
 
@@ -48,14 +59,14 @@ impl RgbMod {
             .unwrap();
     }
 
-    pub fn update(&mut self, t: Instant, rgb_controls: &RgbControls) {
+    pub fn update(&mut self, t: Instant) {
         if !self.timer.wait().is_ok() {
             return;
         }
 
         let t = t.duration_since_epoch().ticks();
 
-        rgb_controls.with_lock(|c| {
+        self.rgb_controls.with_lock(|c| {
             if c.0 {
                 self.rgb_mode = c.1.clone();
             }

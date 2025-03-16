@@ -165,7 +165,14 @@ fn main() -> ! {
         .build();
 
     // set up modules
-    let mut serial_mod = serial::SerialMod::new(timer.count_down());
+    let mut serial_mod = serial::SerialMod::new(
+        timer.count_down(),
+        &CONNECTION_STATUS,
+        &PERIPHERAL_INPUTS,
+        &UPDATE_TRIGGER,
+        &IDENTIFY_TRIGGER,
+        &RGB_CONTROLS,
+    );
 
     // core 1 event loop (GPIO)
     core1
@@ -218,7 +225,7 @@ fn main() -> ! {
                     timer.count_down(),
                 );
                 st.init();
-                screen::ScreenMod::new(st, timer.count_down())
+                screen::ScreenMod::new(st, timer.count_down(), &CONNECTION_STATUS)
             };
 
             #[cfg(feature = "keypad")]
@@ -232,7 +239,7 @@ fn main() -> ! {
                     clocks.peripheral_clock.freq(),
                     timer.count_down(),
                 );
-                rgb::RgbMod::new(ws, timer.count_down())
+                rgb::RgbMod::new(ws, timer.count_down(), &CONNECTION_STATUS, &RGB_CONTROLS)
                 // TODO: load rgb mode from eeprom
             };
 
@@ -253,7 +260,7 @@ fn main() -> ! {
                 pwm.enable();
                 let mut channel = pwm.channel_b;
                 channel.output_to(pins.gpio25);
-                led::LedMod::new(channel)
+                led::LedMod::new(channel, &IDENTIFY_TRIGGER)
             };
 
             loop {
@@ -280,7 +287,10 @@ fn main() -> ! {
                 UPDATE_TRIGGER.with_lock(|u| {
                     if *u {
                         #[cfg(feature = "keypad")]
-                        screen_mod.clear();
+                        {
+                            screen_mod.backlight_off();
+                            screen_mod.clear();
+                        }
 
                         #[cfg(feature = "keypad")]
                         rgb_mod.clear();
@@ -297,10 +307,10 @@ fn main() -> ! {
                 });
 
                 // update accessories
-                led_mod.update(timer.get_counter(), &IDENTIFY_TRIGGER);
+                led_mod.update(timer.get_counter());
 
                 #[cfg(feature = "keypad")]
-                rgb_mod.update(timer.get_counter(), &RGB_CONTROLS);
+                rgb_mod.update(timer.get_counter());
 
                 #[cfg(feature = "keypad")]
                 screen_mod.update(timer.get_counter(), &timer);
@@ -357,16 +367,7 @@ fn main() -> ! {
         // update usb devices
         if usb_dev.poll(&mut [&mut usb_hid, &mut usb_serial]) {
             // handle serial
-            serial_mod.update(
-                &mut usb_serial,
-                ver,
-                uid,
-                &CONNECTION_STATUS,
-                &PERIPHERAL_INPUTS,
-                &UPDATE_TRIGGER,
-                &IDENTIFY_TRIGGER,
-                &RGB_CONTROLS,
-            );
+            serial_mod.update(&mut usb_serial, ver, uid);
             match usb_serial.flush() {
                 Ok(_) => {}
                 Err(_) => {}

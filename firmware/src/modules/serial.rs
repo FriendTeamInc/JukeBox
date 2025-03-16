@@ -20,6 +20,7 @@ use rp2040_hal::{fugit::ExtU32, timer::CountDown, usb::UsbBus};
 use usbd_serial::SerialPort;
 
 use crate::{
+    modules::rgb::DEFAULT_RGB,
     peripheral::{inputs_default, inputs_write_report},
     ConnectionStatus, IdentifyTrigger, PeripheralInputs, RgbControls, UpdateTrigger,
 };
@@ -32,16 +33,34 @@ pub struct SerialMod {
     buffer: ConstGenericRingBuffer<u8, BUFFER_SIZE>,
     state: Connection,
     keepalive_timer: CountDown,
+
+    connection_status: &'static ConnectionStatus,
+    peripheral_inputs: &'static PeripheralInputs,
+    update_trigger: &'static UpdateTrigger,
+    identify_trigger: &'static IdentifyTrigger,
+    rgb_controls: &'static RgbControls,
 }
 
 impl SerialMod {
-    pub fn new(mut timer: CountDown) -> Self {
-        timer.start(KEEPALIVE.millis());
+    pub fn new(
+        mut keepalive_timer: CountDown,
+        connection_status: &'static ConnectionStatus,
+        peripheral_inputs: &'static PeripheralInputs,
+        update_trigger: &'static UpdateTrigger,
+        identify_trigger: &'static IdentifyTrigger,
+        rgb_controls: &'static RgbControls,
+    ) -> Self {
+        keepalive_timer.start(KEEPALIVE.millis());
 
         SerialMod {
             buffer: ConstGenericRingBuffer::new(),
             state: Connection::NotConnected(true),
-            keepalive_timer: timer,
+            keepalive_timer,
+            connection_status,
+            peripheral_inputs,
+            update_trigger,
+            identify_trigger,
+            rgb_controls,
         }
     }
 
@@ -114,27 +133,19 @@ impl SerialMod {
         self.state.clone()
     }
 
-    fn start_update(
-        &mut self,
-        serial: &mut SerialPort<UsbBus>,
-        connection_status: &ConnectionStatus,
-        update_trigger: &UpdateTrigger,
-    ) {
+    fn start_update(&mut self, serial: &mut SerialPort<UsbBus>) {
         info!("Command Update");
         Self::send_full_response(serial, &[RSP_DISCONNECTED]);
-        connection_status.with_mut_lock(|c| *c = Connection::NotConnected(true));
+        self.connection_status
+            .with_mut_lock(|c| *c = Connection::NotConnected(true));
         self.state = Connection::NotConnected(true);
-        update_trigger.with_mut_lock(|u| *u = true);
+        self.update_trigger.with_mut_lock(|u| *u = true);
     }
 
-    fn start_identify(
-        &mut self,
-        serial: &mut SerialPort<UsbBus>,
-        identify_trigger: &IdentifyTrigger,
-    ) {
+    fn start_identify(&mut self, serial: &mut SerialPort<UsbBus>) {
         info!("Command Identify");
         Self::send_full_response(serial, &[RSP_ACK]);
-        identify_trigger.with_mut_lock(|u| *u = true);
+        self.identify_trigger.with_mut_lock(|u| *u = true);
     }
 
     pub fn update(
@@ -142,15 +153,15 @@ impl SerialMod {
         serial: &mut SerialPort<UsbBus>,
         firmware_version: &str,
         device_uid: &str,
-        connection_status: &ConnectionStatus,
-        peripheral_inputs: &PeripheralInputs,
-        update_trigger: &UpdateTrigger,
-        identify_trigger: &IdentifyTrigger,
-        rgb_controls: &RgbControls,
     ) {
         if self.state == Connection::Connected && self.keepalive_timer.wait().is_ok() {
             warn!("Keepalive triggered, disconnecting.");
-            connection_status.with_mut_lock(|c| *c = Connection::NotConnected(false));
+            self.connection_status
+                .with_mut_lock(|c| *c = Connection::NotConnected(false));
+            self.rgb_controls.with_mut_lock(|c| {
+                c.0 = true;
+                c.1 = DEFAULT_RGB;
+            });
             self.state = Connection::NotConnected(false);
         }
 
@@ -181,7 +192,7 @@ impl SerialMod {
         let valid = match self.state {
             Connection::NotConnected(_) => match decode {
                 Command::Update => {
-                    self.start_update(serial, connection_status, update_trigger);
+                    self.start_update(serial);
                     true
                 }
                 Command::Greeting => {
@@ -204,7 +215,8 @@ impl SerialMod {
                     Self::send_end_response(serial);
 
                     self.state = Connection::Connected;
-                    connection_status.with_mut_lock(|c| *c = Connection::Connected);
+                    self.connection_status
+                        .with_mut_lock(|c| *c = Connection::Connected);
                     info!("Serial Connected");
                     true
                 }
@@ -215,7 +227,7 @@ impl SerialMod {
                     // copy peripherals and inputs out
                     let inputs = {
                         let mut inputs = inputs_default(); // JBInputs::default();
-                        peripheral_inputs.with_lock(|i| {
+                        self.peripheral_inputs.with_lock(|i| {
                             inputs = *i;
                         });
                         inputs
@@ -231,7 +243,7 @@ impl SerialMod {
                 Command::GetRGB => {
                     let rgb = {
                         let mut rgb = RgbProfile::Off;
-                        rgb_controls.with_lock(|c| {
+                        self.rgb_controls.with_lock(|c| {
                             rgb = c.1.clone();
                         });
                         rgb
@@ -245,7 +257,7 @@ impl SerialMod {
                 }
                 Command::SetRGB => {
                     let rgb = RgbProfile::decode(data);
-                    rgb_controls.with_mut_lock(|c| {
+                    self.rgb_controls.with_mut_lock(|c| {
                         c.0 = true;
                         c.1 = rgb;
                     });
@@ -265,24 +277,34 @@ impl SerialMod {
                 }
                 Command::Identify => {
                     // TODO: flash led for identifying
-                    self.start_identify(serial, identify_trigger);
+                    self.start_identify(serial);
                     true
                 }
                 Command::Update => {
-                    self.start_update(serial, connection_status, update_trigger);
+                    self.start_update(serial);
                     true
                 }
                 Command::Disconnect => {
                     Self::send_full_response(serial, &[RSP_DISCONNECTED]);
                     self.state = Connection::NotConnected(true);
-                    connection_status.with_mut_lock(|c| *c = Connection::NotConnected(true));
+                    self.connection_status
+                        .with_mut_lock(|c| *c = Connection::NotConnected(true));
+                    self.rgb_controls.with_mut_lock(|c| {
+                        c.0 = true;
+                        c.1 = DEFAULT_RGB;
+                    });
                     info!("Serial Disconnected");
                     true
                 }
                 Command::NegativeAck => {
                     // we sent something in error, better bail
                     self.state = Connection::NotConnected(false);
-                    connection_status.with_mut_lock(|c| *c = Connection::NotConnected(false));
+                    self.connection_status
+                        .with_mut_lock(|c| *c = Connection::NotConnected(false));
+                    self.rgb_controls.with_mut_lock(|c| {
+                        c.0 = true;
+                        c.1 = DEFAULT_RGB;
+                    });
                     info!("Serial NegativeAck'd");
                     false
                 }

@@ -214,6 +214,7 @@ where
     pub fn push_framebuffer(&mut self) {
         self.start_pixels();
         for y in 0..SCR_H {
+            #[allow(static_mut_refs)] // This is probably bad. LOL.
             let y = unsafe { FB.get_unchecked(y) };
             for x in 0..SCR_W {
                 let w = unsafe { y.get_unchecked(x) };

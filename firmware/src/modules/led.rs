@@ -9,7 +9,7 @@ use rp2040_hal::{
     timer::Instant,
 };
 
-use crate::mutex::Mutex;
+use crate::IdentifyTrigger;
 
 const BLINK_TIME: u64 = 3_000_000;
 const BLINK_PERIOD: u64 = 1_000_000;
@@ -25,13 +25,19 @@ fn pingpong(x: i64) -> u16 {
 pub struct LedMod {
     led_pin: Channel<Slice<Pwm4, FreeRunning>, B>,
     blink_goal: Option<u64>,
+
+    identify_trigger: &'static IdentifyTrigger,
 }
 
 impl LedMod {
-    pub fn new(led_pin: Channel<Slice<Pwm4, FreeRunning>, B>) -> Self {
+    pub fn new(
+        led_pin: Channel<Slice<Pwm4, FreeRunning>, B>,
+        identify_trigger: &'static IdentifyTrigger,
+    ) -> Self {
         LedMod {
             led_pin: led_pin,
             blink_goal: None,
+            identify_trigger,
         }
     }
 
@@ -39,10 +45,10 @@ impl LedMod {
         self.led_pin.set_duty(0);
     }
 
-    pub fn update(&mut self, t: Instant, identify_trigger: &Mutex<3, bool>) {
+    pub fn update(&mut self, t: Instant) {
         let t = t.duration_since_epoch();
 
-        identify_trigger.with_mut_lock(|i| {
+        self.identify_trigger.with_mut_lock(|i| {
             if *i {
                 *i = false;
                 self.blink_goal = Some(
