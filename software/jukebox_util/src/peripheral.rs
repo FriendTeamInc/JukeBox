@@ -10,6 +10,36 @@ pub const IDENT_PEDAL_INPUT: u8 = b'P';
 #[derive(Debug, PartialEq, Clone, Copy)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum DeviceType {
+    Unknown,
+    KeyPad,
+    KnobPad,
+    PedalPad,
+}
+impl Into<DeviceType> for u8 {
+    fn into(self) -> DeviceType {
+        match self {
+            IDENT_KEY_INPUT => DeviceType::KeyPad,
+            IDENT_KNOB_INPUT => DeviceType::KnobPad,
+            IDENT_PEDAL_INPUT => DeviceType::PedalPad,
+            _ => DeviceType::Unknown,
+        }
+    }
+}
+impl Into<u8> for DeviceType {
+    fn into(self) -> u8 {
+        match self {
+            DeviceType::Unknown => IDENT_UNKNOWN_INPUT,
+            DeviceType::KeyPad => IDENT_KEY_INPUT,
+            DeviceType::KnobPad => IDENT_KNOB_INPUT,
+            DeviceType::PedalPad => IDENT_PEDAL_INPUT,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Connection {
     NotConnected(bool), // false - lost connection, true - clean disconnect
     Connected,

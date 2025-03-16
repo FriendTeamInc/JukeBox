@@ -1,0 +1,339 @@
+use std::collections::HashSet;
+
+use eframe::egui::{
+    vec2, Align, Button, Color32, ComboBox, Direction, Grid, Layout, RichText, TextBuffer,
+    TextEdit, Ui,
+};
+use egui_phosphor::regular as phos;
+use jukebox_util::color::RgbProfile;
+use jukebox_util::peripheral::DeviceType;
+
+use crate::input::InputKey;
+use crate::serial::SerialCommand;
+use crate::update::UpdateStatus;
+
+use super::gui::{GuiTab, JukeBoxGui};
+
+impl JukeBoxGui {
+    pub fn draw_device_page(&mut self, ui: &mut Ui) {
+        let devices = &self.devices;
+        let current_device = &self.current_device;
+
+        if devices.len() <= 0 || current_device.is_empty() {
+            self.draw_no_device(ui);
+            return;
+        }
+
+        let device_type = if let Some(b) = devices.get(current_device) {
+            b.0
+        } else {
+            DeviceType::Unknown
+        };
+
+        match device_type {
+            DeviceType::Unknown => self.draw_unknown_device(ui),
+            DeviceType::KeyPad => self.draw_keypad_device(ui),
+            DeviceType::KnobPad => self.draw_unknown_device(ui),
+            DeviceType::PedalPad => self.draw_pedalpad_device(ui),
+        }
+    }
+
+    fn draw_no_device(&mut self, ui: &mut Ui) {
+        ui.with_layout(Layout::centered_and_justified(Direction::TopDown), |ui| {
+            ui.label(t!("help.no_device"));
+        });
+    }
+
+    fn draw_unknown_device(&mut self, ui: &mut Ui) {
+        ui.with_layout(Layout::centered_and_justified(Direction::TopDown), |ui| {
+            ui.label(t!("help.unknown_device"));
+        });
+        // TODO: add update and identify button
+        // ui.allocate_space(ui.available_size_before_wrap());
+    }
+
+    fn draw_keypad_device(&mut self, ui: &mut Ui) {
+        ui.allocate_space(vec2(0.0, 4.0));
+        ui.horizontal_top(|ui| {
+            self.draw_device_extension_management(ui);
+
+            Grid::new("KBGrid").show(ui, |ui| {
+                let keys = [
+                    [
+                        InputKey::KeySwitch1,
+                        InputKey::KeySwitch2,
+                        InputKey::KeySwitch3,
+                        InputKey::KeySwitch4,
+                    ],
+                    [
+                        InputKey::KeySwitch5,
+                        InputKey::KeySwitch6,
+                        InputKey::KeySwitch7,
+                        InputKey::KeySwitch8,
+                    ],
+                    [
+                        InputKey::KeySwitch9,
+                        InputKey::KeySwitch10,
+                        InputKey::KeySwitch11,
+                        InputKey::KeySwitch12,
+                    ],
+                    // [
+                    //     InputKey::KeySwitch13,
+                    //     InputKey::KeySwitch14,
+                    //     InputKey::KeySwitch15,
+                    //     InputKey::KeySwitch16,
+                    // ],
+                ];
+                for (y, k) in keys.iter().enumerate() {
+                    for (x, k) in k.iter().enumerate() {
+                        let s = format!("F{}", 12 + x + y * 4 + 1);
+                        let rt = RichText::new(s).heading().strong();
+                        let mut b = Button::new(rt);
+                        let inputs = if let Some(s) = self.devices.get(&self.current_device) {
+                            s.4.clone()
+                        } else {
+                            HashSet::new()
+                        };
+                        if inputs.contains(k) {
+                            b = b.corner_radius(20u8);
+                        }
+                        let btn = ui.add_sized([75.0, 75.0], b);
+                        // TODO: display some better text in the buttons
+                        // TODO: add hover text for button info
+
+                        if btn.clicked() {
+                            self.enter_action_editor(k.to_owned());
+                        }
+                    }
+                    ui.end_row();
+                }
+            });
+
+            self.draw_device_firmware_management(ui);
+        });
+        ui.allocate_space(ui.available_size_before_wrap());
+    }
+
+    fn draw_pedalpad_device(&mut self, ui: &mut Ui) {
+        ui.allocate_space(vec2(0.0, 4.0));
+        ui.horizontal_top(|ui| {
+            ui.allocate_ui(vec2(62.0, 231.5), |ui| {
+                ui.allocate_space(ui.available_size_before_wrap());
+            });
+
+            ui.allocate_ui([324.0, 231.0].into(), |ui| {
+                ui.columns_const(|[c1, c2, c3]| {
+                    let inputs = if let Some(s) = self.devices.get(&self.current_device) {
+                        s.4.clone()
+                    } else {
+                        HashSet::new()
+                    };
+
+                    let p1 = Button::new(RichText::new("L").heading().strong());
+                    let p2 = Button::new(RichText::new("M").heading().strong());
+                    let p3 = Button::new(RichText::new("R").heading().strong());
+
+                    let mut i = |c: &mut Ui, mut p: Button<'_>, b| {
+                        if inputs.contains(&b) {
+                            p = p.corner_radius(20u8);
+                        }
+                        let btn = c.add_sized([100.0, 231.0], p);
+                        // TODO: display some better text in the buttons
+                        // TODO: add hover text for button info
+
+                        if btn.clicked() {
+                            self.enter_action_editor(b);
+                        }
+                    };
+
+                    i(c1, p1, InputKey::PedalLeft);
+                    i(c2, p2, InputKey::PedalMiddle);
+                    i(c3, p3, InputKey::PedalRight);
+                });
+            });
+
+            self.draw_device_firmware_management(ui);
+        });
+        ui.allocate_space(ui.available_size_before_wrap());
+    }
+
+    fn draw_device_firmware_management(&mut self, ui: &mut Ui) {
+        ui.allocate_ui(vec2(60.0, 231.5), |ui| {
+            ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
+                let i = self.devices.get(&self.current_device).unwrap();
+                ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
+                    let s = match i.3 {
+                        true => RichText::new(phos::PLUGS_CONNECTED)
+                            .color(Color32::from_rgb(63, 192, 63)),
+                        false => RichText::new(phos::PLUGS).color(Color32::from_rgb(192, 63, 63)),
+                    };
+                    ui.add_enabled_ui(i.3, |ui| {
+                        if ui
+                            .button(s)
+                            .on_hover_text_at_pointer(t!("help.device.identify"))
+                            .clicked()
+                        {
+                            let gs_cmd_txs = self.gs_cmd_txs.blocking_lock();
+                            let tx = gs_cmd_txs.get(&self.current_device).unwrap();
+                            let _ = tx.send(SerialCommand::Identify);
+                        }
+
+                        if ui
+                            .button(phos::DOWNLOAD)
+                            .on_hover_text_at_pointer(t!("help.device.update"))
+                            .clicked()
+                        {
+                            self.gui_tab = GuiTab::Updating;
+                            self.update_progress = 0.0;
+                            self.update_status = UpdateStatus::Start;
+                        }
+                    });
+                });
+                ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
+                    ui.label(
+                        RichText::new(format!("ID:{}", self.current_device))
+                            .monospace()
+                            .size(5.0),
+                    );
+                });
+                ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
+                    ui.label(
+                        RichText::new(format!("Firmware: {}", i.2))
+                            .monospace()
+                            .size(5.0),
+                    );
+                });
+                ui.allocate_space(ui.available_size_before_wrap());
+            });
+        });
+    }
+
+    fn draw_device_extension_management(&mut self, ui: &mut Ui) {
+        ui.allocate_ui(vec2(62.0, 231.5), |ui| {
+            ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
+                ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
+                    if ui
+                        .button(phos::SIREN)
+                        .on_hover_text_at_pointer(t!("help.device.rgb"))
+                        .clicked()
+                    {
+                        self.config_editing_rgb = {
+                            let c = self.config.blocking_lock();
+                            c.profiles
+                                .get(&c.current_profile)
+                                .and_then(|p| p.get(&self.current_device))
+                                .and_then(|d| d.1.clone())
+                                .unwrap_or(RgbProfile::Off)
+                        };
+                        self.gui_tab = GuiTab::EditingRGB;
+                    }
+                    if ui
+                        .button(phos::MONITOR)
+                        .on_hover_text_at_pointer(t!("help.device.screen"))
+                        .clicked()
+                    {
+                        self.gui_tab = GuiTab::EditingScreen;
+                    }
+                });
+                ui.allocate_space(ui.available_size_before_wrap());
+            });
+        });
+    }
+
+    pub fn draw_device_management(&mut self, ui: &mut Ui) {
+        ui.add_enabled_ui(self.gui_tab == GuiTab::Device, |ui| {
+            if self.config_renaming_device {
+                let edit = ui.add(
+                    TextEdit::singleline(&mut self.config_device_name_entry).desired_width(192.0),
+                );
+                if edit.lost_focus() && self.config_device_name_entry.len() > 0 {
+                    self.config_renaming_device = false;
+
+                    let contains = self
+                        .devices
+                        .iter()
+                        .any(|(_, d)| d.1 == self.config_device_name_entry);
+
+                    if !contains {
+                        let d = self.devices.get_mut(&self.current_device).expect("");
+                        d.1 = self.config_device_name_entry.clone();
+
+                        let mut conf = self.config.blocking_lock();
+                        let c = conf.devices.get_mut(&self.current_device).expect("");
+                        c.1 = self.config_device_name_entry.clone();
+                        conf.save();
+                    }
+                }
+                if !edit.has_focus() {
+                    edit.request_focus();
+                }
+            } else {
+                let current_name = if !self.current_device.is_empty() {
+                    &self.devices.get(&self.current_device).unwrap().1
+                } else {
+                    &String::new()
+                };
+                ui.add_enabled_ui(self.devices.iter().count() != 0, |ui| {
+                    let mut devices = self.devices.iter().map(|v| v.clone()).collect::<Vec<_>>();
+                    devices.sort_by(|a, b| a.1 .1.cmp(&b.1 .1));
+
+                    ComboBox::from_id_salt("DeviceSelect")
+                        .selected_text(current_name.clone())
+                        .width(200.0)
+                        .truncate()
+                        .show_ui(ui, |ui| {
+                            for (k, v) in &devices {
+                                let u = ui.selectable_label(v.1 == *current_name, v.1.clone());
+                                if u.clicked() {
+                                    self.current_device = k.to_string();
+                                }
+                            }
+                        })
+                        .response
+                        .on_hover_text_at_pointer(t!("help.device.select"));
+                });
+            }
+
+            ui.add_enabled_ui(!self.config_renaming_device, |ui| {
+                if self.devices.keys().len() <= 0 {
+                    ui.disable();
+                }
+
+                let edit_btn = ui
+                    .button(RichText::new(phos::NOTE_PENCIL))
+                    .on_hover_text_at_pointer(t!("help.device.edit_name"));
+                if edit_btn.clicked() {
+                    self.config_renaming_device = true;
+                    self.config_device_name_entry
+                        .replace_with(&self.devices.get(&self.current_device).unwrap().1);
+                }
+
+                let delete_btn = ui
+                    .button(RichText::new(phos::TRASH))
+                    .on_hover_text_at_pointer(t!("help.device.forget"));
+                if delete_btn.clicked() {
+                    // TODO: make red
+                }
+                if delete_btn.double_clicked() {
+                    let old_device = self.current_device.clone();
+                    self.devices.remove(&old_device);
+                    self.current_device = self
+                        .devices
+                        .keys()
+                        .next()
+                        .unwrap_or(&String::new())
+                        .to_string();
+
+                    let mut conf = self.config.blocking_lock();
+                    conf.devices.remove(&old_device);
+                    for (_, p) in conf.profiles.iter_mut() {
+                        p.remove_entry(&old_device);
+                    }
+                    conf.save();
+
+                    // maybe disconnect device over serial?
+                }
+            })
+        });
+    }
+}

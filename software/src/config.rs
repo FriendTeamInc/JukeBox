@@ -6,10 +6,10 @@ use std::{
     path::PathBuf,
 };
 
-use jukebox_util::color::RgbProfile;
+use jukebox_util::{color::RgbProfile, peripheral::DeviceType};
 use serde::{Deserialize, Serialize};
 
-use crate::{actions::types::Action, gui::DeviceType, input::InputKey};
+use crate::{actions::types::Action, input::InputKey};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DiscordOauthAccess {

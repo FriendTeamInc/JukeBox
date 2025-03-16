@@ -5,13 +5,13 @@ use std::{collections::HashMap, sync::Arc};
 use anyhow::Result;
 use dyn_clone::{clone_trait_object, DynClone};
 use eframe::egui::Ui;
+use jukebox_util::peripheral::DeviceType;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
 use crate::{
     actions::{input::*, meta::*, obs::*, soundboard::*, system::*},
     config::JukeBoxConfig,
-    gui::DeviceType,
     input::InputKey,
 };
 
