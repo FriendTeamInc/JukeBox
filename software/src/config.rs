@@ -16,6 +16,12 @@ pub struct DiscordOauthAccess {
     pub access_token: String,
     pub refresh_token: String,
 }
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ObsAccess {
+    pub host: String,
+    pub port: u16,
+    pub password: Option<String>,
+}
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct JukeBoxConfig {
@@ -31,6 +37,7 @@ pub struct JukeBoxConfig {
     pub enable_splash: bool,
 
     pub discord_oauth_access: Option<DiscordOauthAccess>,
+    pub obs_access: Option<ObsAccess>,
 }
 impl Default for JukeBoxConfig {
     fn default() -> Self {
@@ -40,6 +47,7 @@ impl Default for JukeBoxConfig {
             devices: HashMap::new(),
             enable_splash: true,
             discord_oauth_access: None,
+            obs_access: None,
         }
     }
 }

@@ -28,12 +28,9 @@ impl JukeBoxGui {
 
         ui.horizontal(|ui| {
             ui.with_layout(Layout::top_down(Align::Min), |ui| {
-                // let w = ui.style().spacing.slider_width;
-                // ui.style_mut().spacing.slider_width = 30.0;
                 ui.add(Slider::new(&mut color.0, 0..=255).prefix("R: "));
                 ui.add(Slider::new(&mut color.1, 0..=255).prefix("G: "));
                 ui.add(Slider::new(&mut color.2, 0..=255).prefix("B: "));
-                // ui.style_mut().spacing.slider_width = w;
             });
 
             ui.with_layout(Layout::top_down(Align::Min), |ui| {
@@ -80,7 +77,7 @@ impl JukeBoxGui {
 
     pub fn draw_edit_rgb(&mut self, ui: &mut Ui) {
         ui.label("RGB Mode:");
-        let map = [
+        let rgb_defaults = [
             (
                 RgbProfile::Off,
                 t!("rgb.profile.off.title"),
@@ -162,11 +159,15 @@ impl JukeBoxGui {
         ];
 
         ComboBox::from_id_salt("RGBSelect")
-            .selected_text(map[self.config_editing_rgb.get_type() as usize].1.clone())
+            .selected_text(
+                rgb_defaults[self.config_editing_rgb.get_type() as usize]
+                    .1
+                    .clone(),
+            )
             .width(200.0)
             .truncate()
             .show_ui(ui, |ui| {
-                for (i, t, _) in &map {
+                for (i, t, _) in &rgb_defaults {
                     let u = ui.selectable_label(
                         self.config_editing_rgb.get_type() == i.get_type(),
                         t.clone(),
@@ -179,7 +180,11 @@ impl JukeBoxGui {
             .response
             .on_hover_text_at_pointer(t!("help.device.select"));
 
-        ui.label(map[self.config_editing_rgb.get_type() as usize].2.clone());
+        ui.label(
+            rgb_defaults[self.config_editing_rgb.get_type() as usize]
+                .2
+                .clone(),
+        );
         ui.label("");
 
         ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
