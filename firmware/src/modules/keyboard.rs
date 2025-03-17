@@ -4,6 +4,7 @@
 
 use embedded_hal::digital::v2::{InputPin, OutputPin};
 use embedded_hal::timer::CountDown as _;
+use jukebox_util::peripheral::JBInputs;
 use rp2040_hal::{
     fugit::ExtU32,
     gpio::{DynPinId, FunctionSioInput, FunctionSioOutput, Pin, PullDown},
@@ -92,7 +93,7 @@ impl KeyboardMod {
         let mut i = [false; 12];
         peripheral_inputs.with_lock(|k| {
             match k {
-                jukebox_util::peripheral::JBInputs::KeyPad(key_inputs) => {
+                JBInputs::KeyPad(key_inputs) => {
                     i[0] = key_inputs.key1.into();
                     i[1] = key_inputs.key2.into();
                     i[2] = key_inputs.key3.into();

@@ -24,7 +24,6 @@ pub struct JukeBoxConfig {
     pub profiles:
         HashMap<String, HashMap<String, (HashMap<InputKey, Box<dyn Action>>, Option<RgbProfile>)>>,
     // Profile Name -> ( Device UID -> ( Input Key -> Action Config ) )
-    // TODO: include Option<RgbProfile> per Device UID
 
     // Device UID -> (Device Type, Device Nickname)
     pub devices: HashMap<String, (DeviceType, String)>,

@@ -1,8 +1,8 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use eframe::egui::{
-    color_picker::show_color, vec2, Align, Color32, ComboBox, Layout, ScrollArea, Sense, Slider,
-    TextEdit, Ui,
+    color_picker::show_color_at, vec2, Align, Color32, ComboBox, Layout, Response, ScrollArea,
+    Sense, Slider, StrokeKind, TextEdit, Ui, Vec2,
 };
 use jukebox_util::color::RgbProfile;
 
@@ -37,7 +37,7 @@ impl JukeBoxGui {
             });
 
             ui.with_layout(Layout::top_down(Align::Min), |ui| {
-                show_color(
+                Self::draw_color_preview(
                     ui,
                     Color32::from_rgb(color.0, color.1, color.2),
                     vec2(52.0, 38.0),
@@ -53,6 +53,29 @@ impl JukeBoxGui {
                 }
             });
         });
+    }
+
+    fn draw_color_preview(ui: &mut Ui, color: Color32, size: Vec2) -> Response {
+        let (rect, response) = ui.allocate_exact_size(size, Sense::empty());
+
+        if ui.is_rect_visible(rect) {
+            let visuals = ui.visuals().widgets.noninteractive;
+            let rect = rect.expand(visuals.expansion);
+
+            let stroke_width = 0.5;
+            show_color_at(ui.painter(), color, rect.shrink(stroke_width));
+
+            // TODO: deal with exposed corners
+            let corner_radius = visuals.corner_radius.at_least(8);
+            ui.painter().rect_stroke(
+                rect,
+                corner_radius,
+                (2.0, visuals.bg_fill),
+                StrokeKind::Inside,
+            );
+        }
+
+        response
     }
 
     pub fn draw_edit_rgb(&mut self, ui: &mut Ui) {
@@ -313,11 +336,17 @@ impl JukeBoxGui {
                 let buf = self.config_editing_rgb.calculate_matrix(t as u64);
                 let _brtns = self.config_editing_rgb.brightness(); // TODO
                 ui.vertical(|ui| {
+                    ui.allocate_exact_size(vec2(0.0, 10.0), Sense::empty());
                     for y in 0..3 {
                         ui.horizontal(|ui| {
+                            ui.allocate_exact_size(vec2(3.0, 45.0), Sense::empty());
                             for x in 0..4 {
                                 let c = buf[x + y * 4];
-                                show_color(ui, Color32::from_rgb(c.0, c.1, c.2), vec2(40.0, 40.0));
+                                Self::draw_color_preview(
+                                    ui,
+                                    Color32::from_rgb(c.0, c.1, c.2),
+                                    vec2(40.0, 40.0),
+                                );
                             }
                         });
                     }
