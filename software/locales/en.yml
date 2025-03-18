@@ -191,6 +191,15 @@ action:
   
   obs:
     title: "%{icon} OBS"
+    setup:
+      help_connect: "Connect to OBS-Websocket to use this action!"
+      help_instructions: "Open OBS, go to Tools, then WebSocket Server Settings.\nEnable the WebSocket server, and enter the password below."
+      button: "Connect to OBS"
+      host_address: "Host Address:"
+      host_port: "Host Port:"
+      password: "Password:"
+      success: "Connected to OBS!"
+    
     toggle_stream:
       title: "Toggle Stream"
       help: "Starts or stops OBS streaming."
