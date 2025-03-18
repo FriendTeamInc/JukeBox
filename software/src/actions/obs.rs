@@ -11,8 +11,8 @@ use eframe::egui::{ComboBox, RichText, TextEdit, Ui};
 use egui_phosphor::regular as phos;
 use obws::{
     client::{ConnectConfig, DEFAULT_BROADCAST_CAPACITY},
-    requests::{scene_items::SetEnabled, scenes::SceneId},
-    responses::{scene_items::SceneItem, scenes::Scene},
+    requests::{inputs::InputId, scene_items::SetEnabled, scenes::SceneId},
+    responses::{inputs::Input, scene_items::SceneItem, scenes::Scene},
     Client,
 };
 use serde::{Deserialize, Serialize};
@@ -38,6 +38,8 @@ static OBS_GET_SCENES: OnceLock<AtomicBool> = OnceLock::new();
 static OBS_SCENES: OnceLock<Mutex<Option<Vec<Scene>>>> = OnceLock::new();
 static OBS_GET_SOURCES: OnceLock<AtomicBool> = OnceLock::new();
 static OBS_SOURCES: OnceLock<Mutex<Option<Vec<SceneItem>>>> = OnceLock::new();
+static OBS_GET_INPUTS: OnceLock<AtomicBool> = OnceLock::new();
+static OBS_INPUTS: OnceLock<Mutex<Option<Vec<Input>>>> = OnceLock::new();
 
 #[rustfmt::skip]
 pub fn obs_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
@@ -51,7 +53,7 @@ pub fn obs_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
             (AT::ObsSaveReplay,            Box::new(ObsSaveReplay::default()),     t!("action.obs.save_replay_buffer.title").to_string()),
             // (AT::ObsSaveScreenshot,        Box::new(ObsSaveScreenshot::default()), t!("action.obs.save_screenshot.title").to_string()),
             (AT::ObsSource,                Box::new(ObsSource::default()),         t!("action.obs.toggle_source.title").to_string()),
-            (AT::ObsMute,                  Box::new(MetaNoAction::default()),      t!("action.obs.toggle_mute_audio_source.title").to_string()),
+            (AT::ObsMute,                  Box::new(ObsMute::default()),           t!("action.obs.toggle_mute.title").to_string()),
             (AT::ObsSceneSwitch,           Box::new(MetaNoAction::default()),      t!("action.obs.switch_scene.title").to_string()),
             (AT::ObsSceneCollectionSwitch, Box::new(MetaNoAction::default()),      t!("action.obs.switch_scene_collection.title").to_string()),
             (AT::ObsPreviewScene,          Box::new(MetaNoAction::default()),      t!("action.obs.switch_preview_scene.title").to_string()),
@@ -552,7 +554,6 @@ impl Action for ObsSource {
             let _ = OBS_GET_SCENES.set(true.into());
         }
 
-        // TODO: disable if no scene is selected
         ui.label("Select Source:");
         OBS_GET_SOURCES.get_or_init(|| true.into());
         OBS_SOURCES.get_or_init(|| Mutex::new(None));
@@ -605,6 +606,111 @@ impl Action for ObsSource {
 
     fn help(&self) -> String {
         t!("action.obs.toggle_source.help").to_string()
+    }
+}
+
+#[derive(Default, Serialize, Deserialize, Clone)]
+pub struct ObsMute {
+    input: Option<(Uuid, String)>,
+}
+#[async_trait::async_trait]
+#[typetag::serde]
+impl Action for ObsMute {
+    async fn on_press(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        config: Arc<Mutex<JukeBoxConfig>>,
+    ) -> Result<()> {
+        let c = config.clone();
+        if OBS_CLIENT.get().is_none() {
+            create_client(c).await?;
+        }
+
+        let client = OBS_CLIENT.get().unwrap().lock().await;
+        if let Some(input) = &self.input {
+            client.inputs().toggle_mute(InputId::Uuid(input.0)).await?;
+        } else {
+            bail!("Input not configured!");
+        }
+
+        Ok(())
+    }
+
+    async fn on_release(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: Arc<Mutex<JukeBoxConfig>>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    fn get_type(&self) -> AT {
+        AT::ObsMute
+    }
+
+    fn edit_ui(
+        &mut self,
+        ui: &mut Ui,
+        _device_uid: &String,
+        _input_key: InputKey,
+        config: Arc<Mutex<JukeBoxConfig>>,
+    ) {
+        if account_warning(ui, config).is_none() {
+            return;
+        }
+
+        ui.label("");
+
+        ui.label("Select Scene:");
+        OBS_GET_INPUTS.get_or_init(|| true.into());
+        OBS_INPUTS.get_or_init(|| Mutex::new(None));
+        let ir = ComboBox::from_id_salt("ObsInputSelect")
+            .width(200.0)
+            .selected_text(
+                self.input
+                    .clone()
+                    .and_then(|s| Some(s.1))
+                    .unwrap_or("".to_string()),
+            )
+            .show_ui(ui, |ui| {
+                let inputs = OBS_INPUTS.get().unwrap().blocking_lock().clone();
+                if let Some(inputs) = inputs {
+                    for input in inputs {
+                        let selected = if let Some(selected_input) = &self.input {
+                            selected_input.0 == input.id.uuid
+                        } else {
+                            false
+                        };
+                        let l = ui.selectable_label(selected, input.id.name.clone());
+                        if l.clicked() {
+                            self.input = Some((input.id.uuid, input.id.name));
+                        }
+                    }
+                } else {
+                    ui.label("Loading...");
+                }
+            });
+        if ComboBox::is_open(ui.ctx(), ir.response.id) {
+            if OBS_GET_INPUTS.get().unwrap().load(Ordering::Relaxed) {
+                *OBS_INPUTS.get().unwrap().blocking_lock() = None;
+                tokio::spawn(async {
+                    let client = OBS_CLIENT.get().unwrap().lock().await;
+                    if let Ok(input_list) = client.inputs().list(None).await {
+                        // TODO: filter out non-audio sources
+                        *OBS_INPUTS.get().unwrap().lock().await = Some(input_list);
+                    }
+                });
+            }
+            let _ = OBS_GET_INPUTS.set(false.into());
+        } else {
+            let _ = OBS_GET_INPUTS.set(true.into());
+        }
+    }
+
+    fn help(&self) -> String {
+        t!("action.obs.toggle_mute.help").to_string()
     }
 }
 

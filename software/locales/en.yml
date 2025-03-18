@@ -221,7 +221,7 @@ action:
     toggle_source:
       title: "Toggle Source"
       help: "Shows or hides a specified source."
-    toggle_mute_audio_source:
+    toggle_mute:
       title: "Toggle Mute Audio Source"
       help: "Mutes or unmutes a specified audio source's sound."
     switch_scene:
