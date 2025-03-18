@@ -200,6 +200,11 @@ action:
       password: "Password:"
       success: "Connected to OBS!"
     
+    options:
+      loading: "Loading..."
+      select_scene: "Select Scene:"
+      select_source: "Select Source:"
+    
     toggle_stream:
       title: "Toggle Stream"
       help: "Starts or stops OBS streaming."
