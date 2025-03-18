@@ -227,12 +227,15 @@ action:
     switch_scene:
       title: "Switch to Scene"
       help: "Switches to a specified scene."
+    switch_preview_scene:
+      title: "Switch to Preview Scene"
+      help: "Switches to a specified scene for preview (when in Studio Mode)."
+    push_preview_scene:
+      title: "Push Preview Scene"
+      help: "Pushes your preview scene live (when in Studio Mode)."
     switch_scene_collection:
       title: "Switch to Scene Collection"
       help: "Switches to a specified scene collection."
-    switch_preview_scene:
-      title: "Switch to Preview Scene"
-      help: "Pushes your preview scene live (when in Studio Mode)."
     toggle_filter:
       title: "Toggle Filter"
       help: "Shows or hides a specified filter on a source."
