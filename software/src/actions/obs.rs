@@ -516,7 +516,7 @@ impl Action for ObsSource {
 
         ui.label("");
 
-        ui.label(t!("obs.options.select_scene"));
+        ui.label(t!("action.obs.options.select_scene"));
         let ir = ComboBox::from_id_salt("ObsSceneSelect")
             .width(200.0)
             .selected_text(
@@ -541,7 +541,7 @@ impl Action for ObsSource {
                         }
                     }
                 } else {
-                    ui.label(t!("obs.options.loading"));
+                    ui.label(t!("action.obs.options.loading"));
                 }
             });
         if ComboBox::is_open(ui.ctx(), ir.response.id) {
@@ -559,7 +559,7 @@ impl Action for ObsSource {
             let _ = OBS_GET_SCENES.set(true.into());
         }
 
-        ui.label(t!("obs.options.select_source"));
+        ui.label(t!("action.obs.options.select_source"));
         let ir = ui
             .add_enabled_ui(self.scene.is_some(), |ui| {
                 ComboBox::from_id_salt("ObsSourceSelect")
@@ -585,7 +585,7 @@ impl Action for ObsSource {
                                 }
                             }
                         } else {
-                            ui.label(t!("obs.options.loading"));
+                            ui.label(t!("action.obs.options.loading"));
                         }
                     })
             })
@@ -666,7 +666,7 @@ impl Action for ObsMute {
 
         ui.label("");
 
-        ui.label(t!("obs.options.select_scene"));
+        ui.label(t!("action.obs.options.select_scene"));
         let ir = ComboBox::from_id_salt("ObsInputSelect")
             .width(200.0)
             .selected_text(
@@ -690,7 +690,7 @@ impl Action for ObsMute {
                         }
                     }
                 } else {
-                    ui.label(t!("obs.options.loading"));
+                    ui.label(t!("action.obs.options.loading"));
                 }
             });
         if ComboBox::is_open(ui.ctx(), ir.response.id) {
@@ -772,7 +772,7 @@ impl Action for ObsSceneSwitch {
 
         ui.label("");
 
-        ui.label(t!("obs.options.select_scene"));
+        ui.label(t!("action.obs.options.select_scene"));
         let ir = ComboBox::from_id_salt("ObsSceneSelect")
             .width(200.0)
             .selected_text(
@@ -796,7 +796,7 @@ impl Action for ObsSceneSwitch {
                         }
                     }
                 } else {
-                    ui.label(t!("obs.options.loading"));
+                    ui.label(t!("action.obs.options.loading"));
                 }
             });
         if ComboBox::is_open(ui.ctx(), ir.response.id) {
@@ -877,7 +877,7 @@ impl Action for ObsPreviewSceneSwitch {
 
         ui.label("");
 
-        ui.label(t!("obs.options.select_scene"));
+        ui.label(t!("action.obs.options.select_scene"));
         let ir = ComboBox::from_id_salt("ObsSceneSelect")
             .width(200.0)
             .selected_text(
@@ -901,7 +901,7 @@ impl Action for ObsPreviewSceneSwitch {
                         }
                     }
                 } else {
-                    ui.label(t!("obs.options.loading"));
+                    ui.label(t!("action.obs.options.loading"));
                 }
             });
         if ComboBox::is_open(ui.ctx(), ir.response.id) {
