@@ -5,12 +5,13 @@ use std::{collections::HashMap, sync::Arc};
 use anyhow::Result;
 use dyn_clone::{clone_trait_object, DynClone};
 use eframe::egui::Ui;
+use egui_phosphor::regular as phos;
 use jukebox_util::peripheral::DeviceType;
 use tokio::sync::Mutex;
 
 use crate::{
     actions::{input::*, meta::*, obs::*, soundboard::*, system::*},
-    config::JukeBoxConfig,
+    config::{ActionConfig, ActionIcon, JukeBoxConfig},
     input::InputKey,
 };
 
@@ -92,42 +93,49 @@ impl ActionMap {
         self.enum_map.get(&t).unwrap().clone()
     }
 
-    pub fn default_action_config(&self, d: DeviceType) -> HashMap<InputKey, Box<dyn Action>> {
+    pub fn default_action_config(&self, d: DeviceType) -> HashMap<InputKey, ActionConfig> {
+        use InputKey as IK;
         let keys = match d {
             DeviceType::Unknown => &[][..],
             DeviceType::KeyPad => &[
-                InputKey::KeySwitch1,
-                InputKey::KeySwitch1,
-                InputKey::KeySwitch2,
-                InputKey::KeySwitch3,
-                InputKey::KeySwitch4,
-                InputKey::KeySwitch5,
-                InputKey::KeySwitch6,
-                InputKey::KeySwitch7,
-                InputKey::KeySwitch8,
-                InputKey::KeySwitch9,
-                InputKey::KeySwitch10,
-                InputKey::KeySwitch11,
-                InputKey::KeySwitch12,
+                (IK::KeySwitch1, phos::ARROW_SQUARE_DOWN),
+                (IK::KeySwitch1, phos::ARROW_SQUARE_DOWN),
+                (IK::KeySwitch2, phos::ARROW_SQUARE_DOWN),
+                (IK::KeySwitch3, phos::ARROW_SQUARE_DOWN),
+                (IK::KeySwitch4, phos::ARROW_SQUARE_DOWN),
+                (IK::KeySwitch5, phos::ARROW_SQUARE_DOWN),
+                (IK::KeySwitch6, phos::ARROW_SQUARE_DOWN),
+                (IK::KeySwitch7, phos::ARROW_SQUARE_DOWN),
+                (IK::KeySwitch8, phos::ARROW_SQUARE_DOWN),
+                (IK::KeySwitch9, phos::ARROW_SQUARE_DOWN),
+                (IK::KeySwitch10, phos::ARROW_SQUARE_DOWN),
+                (IK::KeySwitch11, phos::ARROW_SQUARE_DOWN),
+                (IK::KeySwitch12, phos::ARROW_SQUARE_DOWN),
             ][..],
             DeviceType::KnobPad => &[
-                InputKey::KnobLeftSwitch,
-                InputKey::KnobLeftClockwise,
-                InputKey::KnobLeftCounterClockwise,
-                InputKey::KnobRightSwitch,
-                InputKey::KnobRightClockwise,
-                InputKey::KnobRightCounterClockwise,
+                (IK::KnobLeftSwitch, phos::ARROW_CIRCLE_DOWN),
+                (IK::KnobLeftClockwise, phos::ARROW_CLOCKWISE),
+                (IK::KnobLeftCounterClockwise, phos::ARROW_COUNTER_CLOCKWISE),
+                (IK::KnobRightSwitch, phos::ARROW_CIRCLE_DOWN),
+                (IK::KnobRightClockwise, phos::ARROW_CLOCKWISE),
+                (IK::KnobRightCounterClockwise, phos::ARROW_COUNTER_CLOCKWISE),
             ][..],
             DeviceType::PedalPad => &[
-                InputKey::PedalLeft,
-                InputKey::PedalMiddle,
-                InputKey::PedalRight,
+                (IK::PedalLeft, phos::ALIGN_LEFT_SIMPLE),
+                (IK::PedalMiddle, phos::ALIGN_BOTTOM_SIMPLE),
+                (IK::PedalRight, phos::ALIGN_RIGHT_SIMPLE),
             ][..],
         };
 
         let mut c = HashMap::new();
         for k in keys {
-            c.insert(*k, self.enum_map.get("MetaNoAction").unwrap().clone());
+            c.insert(
+                k.0,
+                ActionConfig {
+                    action: self.enum_map.get("MetaNoAction").unwrap().clone(),
+                    icon: ActionIcon::GlyphIcon(k.1.into()),
+                },
+            );
         }
 
         c

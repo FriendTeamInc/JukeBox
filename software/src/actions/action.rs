@@ -41,6 +41,7 @@ pub async fn action_task(
             .get(&c.current_profile)
             .and_then(|p| p.get(device_uid))
             .and_then(|p| Some(p.clone()))
+            .and_then(|p| Some((p.key_map, p.rgb_profile)))
             .unwrap_or((HashMap::new(), None));
 
         (profile, rgb, c.current_profile.clone()) // TODO: add hardware input info
@@ -84,13 +85,13 @@ pub async fn action_task(
 
                     for p in pressed {
                         if let Some(r) = current_profile.get(p) {
-                            futures.push(r.on_press(&device_uid, *p, config.clone()));
+                            futures.push(r.action.on_press(&device_uid, *p, config.clone()));
                         }
                     }
 
                     for p in released {
                         if let Some(r) = current_profile.get(p) {
-                            futures.push(r.on_release(&device_uid, *p, config.clone()));
+                            futures.push(r.action.on_release(&device_uid, *p, config.clone()));
                         }
                     }
 

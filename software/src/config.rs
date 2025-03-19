@@ -16,6 +16,7 @@ pub struct DiscordOauthAccess {
     pub access_token: String,
     pub refresh_token: String,
 }
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ObsAccess {
     pub host: String,
@@ -24,11 +25,29 @@ pub struct ObsAccess {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
+pub enum ActionIcon {
+    GlyphIcon(String),
+    ImageIcon(String),
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ActionConfig {
+    pub action: Box<dyn Action>,
+    pub icon: ActionIcon,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct DeviceConfig {
+    pub key_map: HashMap<InputKey, ActionConfig>,
+    pub rgb_profile: Option<RgbProfile>,
+    // pub screen_profile: Option<ScreenProfile>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct JukeBoxConfig {
     // Profile Name
     pub current_profile: String,
-    pub profiles:
-        HashMap<String, HashMap<String, (HashMap<InputKey, Box<dyn Action>>, Option<RgbProfile>)>>,
+    pub profiles: HashMap<String, HashMap<String, DeviceConfig>>,
     // Profile Name -> ( Device UID -> ( Input Key -> Action Config ) )
 
     // Device UID -> (Device Type, Device Nickname)

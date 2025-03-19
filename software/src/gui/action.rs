@@ -6,7 +6,10 @@ use eframe::egui::{
 };
 use egui_phosphor::regular as phos;
 
-use crate::input::InputKey;
+use crate::{
+    config::{ActionConfig, ActionIcon, DeviceConfig},
+    input::InputKey,
+};
 
 use super::gui::{GuiTab, JukeBoxGui};
 
@@ -22,10 +25,10 @@ impl JukeBoxGui {
                 .profiles
                 .get(&c.current_profile)
                 .and_then(|p| p.get(&self.current_device))
-                .and_then(|d| d.0.get(&self.config_editing_key))
+                .and_then(|d| d.key_map.get(&self.config_editing_key))
             {
-                self.config_editing_action_type = r.get_type();
-                self.config_editing_action = r.clone();
+                self.config_editing_action_type = r.action.get_type();
+                self.config_editing_action = r.action.clone();
             } else {
                 self.config_editing_action_type = "MetaNoAction".to_string();
                 self.config_editing_action = self
@@ -42,17 +45,29 @@ impl JukeBoxGui {
         let current_profile = c.current_profile.clone();
         let profile = c.profiles.get_mut(&current_profile).unwrap();
         if let Some(d) = profile.get_mut(&self.current_device) {
-            d.0.insert(
+            d.key_map.insert(
                 self.config_editing_key.clone(),
-                self.config_editing_action.clone(),
+                ActionConfig {
+                    action: self.config_editing_action.clone(),
+                    icon: ActionIcon::GlyphIcon(phos::SEAL_QUESTION.into()),
+                },
             );
         } else {
             let mut d = HashMap::new();
             d.insert(
                 self.config_editing_key.clone(),
-                self.config_editing_action.clone(),
+                ActionConfig {
+                    action: self.config_editing_action.clone(),
+                    icon: ActionIcon::GlyphIcon(phos::SEAL_QUESTION.into()),
+                },
             );
-            profile.insert(self.current_device.clone(), (d, None));
+            profile.insert(
+                self.current_device.clone(),
+                DeviceConfig {
+                    key_map: d,
+                    rgb_profile: None,
+                },
+            );
         }
         c.save();
     }

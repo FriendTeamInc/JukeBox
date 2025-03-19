@@ -222,7 +222,7 @@ impl JukeBoxGui {
                             c.profiles
                                 .get(&c.current_profile)
                                 .and_then(|p| p.get(&self.current_device))
-                                .and_then(|d| d.1.clone())
+                                .and_then(|d| d.rgb_profile.clone())
                                 .unwrap_or(RgbProfile::Off)
                         };
                         self.gui_tab = GuiTab::EditingRGB;

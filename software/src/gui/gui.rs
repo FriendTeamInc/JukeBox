@@ -24,7 +24,7 @@ use crate::actions::{
     meta::MetaNoAction,
     types::{Action, ActionMap},
 };
-use crate::config::JukeBoxConfig;
+use crate::config::{DeviceConfig, JukeBoxConfig};
 use crate::input::InputKey;
 use crate::serial::{serial_task, SerialCommand, SerialEvent};
 use crate::splash::SPLASH_MESSAGES;
@@ -235,11 +235,12 @@ impl JukeBoxGui {
                                 if !v.contains_key(&device_uid) {
                                     v.insert(
                                         device_uid.clone(),
-                                        (
-                                            self.action_map
+                                        DeviceConfig {
+                                            key_map: self
+                                                .action_map
                                                 .default_action_config(device_type.into()),
-                                            None,
-                                        ),
+                                            rgb_profile: None,
+                                        },
                                     );
                                 }
                             }

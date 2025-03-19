@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use eframe::egui::{ComboBox, RichText, TextBuffer, TextEdit, Ui};
 use egui_phosphor::regular as phos;
 
+use crate::config::DeviceConfig;
+
 use super::gui::{GuiTab, JukeBoxGui};
 
 impl JukeBoxGui {
@@ -30,15 +32,15 @@ impl JukeBoxGui {
                         // TODO: edit configs to reference new profile instead of wiping it
                         for (_, p) in conf.profiles.iter_mut() {
                             for (_, d) in p.iter_mut() {
-                                for (_, k) in d.0.iter_mut() {
-                                    match k.get_type().as_ref() {
+                                for (_, k) in d.key_map.iter_mut() {
+                                    match k.action.get_type().as_ref() {
                                         "MetaSwitchProfile" => {
-                                            *k = self
+                                            k.action = self
                                                 .action_map
                                                 .enum_new("MetaSwitchProfile".to_string());
                                         }
                                         "MetaCopyFromProfile" => {
-                                            *k = self
+                                            k.action = self
                                                 .action_map
                                                 .enum_new("MetaCopyFromProfile".to_string());
                                         }
@@ -94,7 +96,10 @@ impl JukeBoxGui {
                     for (d, t) in &self.devices {
                         m.insert(
                             d.clone(),
-                            (self.action_map.default_action_config(t.0.into()), None),
+                            DeviceConfig {
+                                key_map: self.action_map.default_action_config(t.0.into()),
+                                rgb_profile: None,
+                            },
                         );
                     }
                     conf.profiles.insert(name, m);
@@ -128,15 +133,15 @@ impl JukeBoxGui {
 
                     for (_, p) in conf.profiles.iter_mut() {
                         for (_, d) in p.iter_mut() {
-                            for (_, k) in d.0.iter_mut() {
-                                match k.get_type().as_ref() {
+                            for (_, k) in d.key_map.iter_mut() {
+                                match k.action.get_type().as_ref() {
                                     "MetaSwitchProfile" => {
-                                        *k = self
+                                        k.action = self
                                             .action_map
                                             .enum_new("MetaSwitchProfile".to_string());
                                     }
                                     "MetaCopyFromProfile" => {
-                                        *k = self
+                                        k.action = self
                                             .action_map
                                             .enum_new("MetaCopyFromProfile".to_string());
                                     }

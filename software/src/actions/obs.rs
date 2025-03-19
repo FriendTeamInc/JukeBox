@@ -31,25 +31,25 @@ static OBS_HOST_PORT: OnceLock<Mutex<String>> = OnceLock::new();
 static OBS_PASSWORD: OnceLock<Mutex<String>> = OnceLock::new();
 static OBS_CLIENT: OnceLock<Mutex<Client>> = OnceLock::new();
 
-static OBS_GET_SCENE_COLLECTIONS: OnceLock<AtomicBool> = OnceLock::new();
-static OBS_SCENE_COLLECTIONS: OnceLock<Mutex<Option<Vec<String>>>> = OnceLock::new();
 static OBS_GET_SCENES: OnceLock<AtomicBool> = OnceLock::new();
 static OBS_SCENES: OnceLock<Mutex<Option<Vec<Scene>>>> = OnceLock::new();
 static OBS_GET_SOURCES: OnceLock<AtomicBool> = OnceLock::new();
 static OBS_SOURCES: OnceLock<Mutex<Option<Vec<SceneItem>>>> = OnceLock::new();
 static OBS_GET_INPUTS: OnceLock<AtomicBool> = OnceLock::new();
 static OBS_INPUTS: OnceLock<Mutex<Option<Vec<Input>>>> = OnceLock::new();
+static OBS_GET_SCENE_COLLECTIONS: OnceLock<AtomicBool> = OnceLock::new();
+static OBS_SCENE_COLLECTIONS: OnceLock<Mutex<Option<Vec<String>>>> = OnceLock::new();
 
 #[rustfmt::skip]
 pub fn obs_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
-    OBS_GET_SCENE_COLLECTIONS.get_or_init(|| true.into());
-    OBS_SCENE_COLLECTIONS.get_or_init(|| Mutex::new(None));
     OBS_GET_SCENES.get_or_init(|| true.into());
     OBS_SCENES.get_or_init(|| Mutex::new(None));
     OBS_GET_SOURCES.get_or_init(|| true.into());
     OBS_SOURCES.get_or_init(|| Mutex::new(None));
     OBS_GET_INPUTS.get_or_init(|| true.into());
     OBS_INPUTS.get_or_init(|| Mutex::new(None));
+    OBS_GET_SCENE_COLLECTIONS.get_or_init(|| true.into());
+    OBS_SCENE_COLLECTIONS.get_or_init(|| Mutex::new(None));
 
     (
         t!("action.obs.title", icon = phos::VINYL_RECORD).into(),

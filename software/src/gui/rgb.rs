@@ -369,7 +369,7 @@ impl JukeBoxGui {
             c.profiles
                 .get(&p)
                 .and_then(|d| d.get(device_uid))
-                .and_then(|p| p.1.clone())
+                .and_then(|p| p.rgb_profile.clone())
                 .unwrap_or(RgbProfile::Off)
         };
 
@@ -392,7 +392,7 @@ impl JukeBoxGui {
             let p = c.current_profile.clone();
             if let Some(profile) = c.profiles.get_mut(&p) {
                 if let Some(device) = profile.get_mut(&self.current_device) {
-                    device.1 = Some(self.config_editing_rgb.clone())
+                    device.rgb_profile = Some(self.config_editing_rgb.clone())
                 }
             }
             c.save();
