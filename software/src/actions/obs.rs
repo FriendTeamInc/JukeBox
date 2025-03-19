@@ -24,13 +24,15 @@ use crate::{
     input::InputKey,
 };
 
-use super::{meta::MetaNoAction, types::Action};
+use super::types::Action;
 
 static OBS_HOST_ADDRESS: OnceLock<Mutex<String>> = OnceLock::new();
 static OBS_HOST_PORT: OnceLock<Mutex<String>> = OnceLock::new();
 static OBS_PASSWORD: OnceLock<Mutex<String>> = OnceLock::new();
 static OBS_CLIENT: OnceLock<Mutex<Client>> = OnceLock::new();
 
+static OBS_GET_SCENE_COLLECTIONS: OnceLock<AtomicBool> = OnceLock::new();
+static OBS_SCENE_COLLECTIONS: OnceLock<Mutex<Option<Vec<String>>>> = OnceLock::new();
 static OBS_GET_SCENES: OnceLock<AtomicBool> = OnceLock::new();
 static OBS_SCENES: OnceLock<Mutex<Option<Vec<Scene>>>> = OnceLock::new();
 static OBS_GET_SOURCES: OnceLock<AtomicBool> = OnceLock::new();
@@ -40,6 +42,8 @@ static OBS_INPUTS: OnceLock<Mutex<Option<Vec<Input>>>> = OnceLock::new();
 
 #[rustfmt::skip]
 pub fn obs_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
+    OBS_GET_SCENE_COLLECTIONS.get_or_init(|| true.into());
+    OBS_SCENE_COLLECTIONS.get_or_init(|| Mutex::new(None));
     OBS_GET_SCENES.get_or_init(|| true.into());
     OBS_SCENES.get_or_init(|| Mutex::new(None));
     OBS_GET_SOURCES.get_or_init(|| true.into());
@@ -50,20 +54,20 @@ pub fn obs_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
     (
         t!("action.obs.title", icon = phos::VINYL_RECORD).into(),
         vec![
-            ("ObsStream".into(),                Box::new(ObsStream::default()),             t!("action.obs.toggle_stream.title").into()),
-            ("ObsRecord".into(),                Box::new(ObsRecord::default()),             t!("action.obs.toggle_record.title").into()),
-            ("ObsPauseRecord".into(),           Box::new(ObsPauseRecord::default()),        t!("action.obs.pause_record.title").into()),
-            ("ObsReplayBuffer".into(),          Box::new(ObsReplayBuffer::default()),       t!("action.obs.toggle_replay_buffer.title").into()),
-            ("ObsSaveReplay".into(),            Box::new(ObsSaveReplay::default()),         t!("action.obs.save_replay_buffer.title").into()),
-            ("ObsSource".into(),                Box::new(ObsSource::default()),             t!("action.obs.toggle_source.title").into()),
-            ("ObsMute".into(),                  Box::new(ObsMute::default()),               t!("action.obs.toggle_mute.title").into()),
-            ("ObsSceneSwitch".into(),           Box::new(ObsSceneSwitch::default()),        t!("action.obs.switch_scene.title").into()),
-            ("ObsPreviewSceneSwitch".into(),    Box::new(ObsPreviewSceneSwitch::default()), t!("action.obs.switch_preview_scene.title").into()),
-            ("ObsPreviewScenePush".into(),      Box::new(ObsPreviewScenePush::default()),   t!("action.obs.push_preview_scene.title").into()),
-            ("ObsSceneCollectionSwitch".into(), Box::new(MetaNoAction::default()),          t!("action.obs.switch_scene_collection.title").into()),
-            ("ObsFilter".into(),                Box::new(MetaNoAction::default()),          t!("action.obs.toggle_filter.title").into()),
-            ("ObsTransition".into(),            Box::new(MetaNoAction::default()),          t!("action.obs.switch_transition.title").into()),
-            ("ObsChapterMarker".into(),         Box::new(ObsChapterMarker::default()),      t!("action.obs.add_chapter_marker.title").into()),
+            ("ObsStream".into(),                Box::new(ObsStream::default()),                t!("action.obs.toggle_stream.title").into()),
+            ("ObsRecord".into(),                Box::new(ObsRecord::default()),                t!("action.obs.toggle_record.title").into()),
+            ("ObsPauseRecord".into(),           Box::new(ObsPauseRecord::default()),           t!("action.obs.pause_record.title").into()),
+            ("ObsReplayBuffer".into(),          Box::new(ObsReplayBuffer::default()),          t!("action.obs.toggle_replay_buffer.title").into()),
+            ("ObsSaveReplay".into(),            Box::new(ObsSaveReplay::default()),            t!("action.obs.save_replay_buffer.title").into()),
+            ("ObsSource".into(),                Box::new(ObsSource::default()),                t!("action.obs.toggle_source.title").into()),
+            ("ObsMute".into(),                  Box::new(ObsMute::default()),                  t!("action.obs.toggle_mute.title").into()),
+            ("ObsSceneSwitch".into(),           Box::new(ObsSceneSwitch::default()),           t!("action.obs.switch_scene.title").into()),
+            ("ObsPreviewSceneSwitch".into(),    Box::new(ObsPreviewSceneSwitch::default()),    t!("action.obs.switch_preview_scene.title").into()),
+            ("ObsPreviewScenePush".into(),      Box::new(ObsPreviewScenePush::default()),      t!("action.obs.push_preview_scene.title").into()),
+            ("ObsSceneCollectionSwitch".into(), Box::new(ObsSceneCollectionSwitch::default()), t!("action.obs.switch_scene_collection.title").into()),
+            // ("ObsFilter".into(),                Box::new(ObsFilter::default()),                t!("action.obs.toggle_filter.title").into()),
+            // ("ObsTransition".into(),            Box::new(ObsTransition::default()),            t!("action.obs.switch_transition.title").into()),
+            ("ObsChapterMarker".into(),         Box::new(ObsChapterMarker::default()),         t!("action.obs.add_chapter_marker.title").into()),
         ],
     )
 }
@@ -969,6 +973,111 @@ impl Action for ObsPreviewScenePush {
 
     fn help(&self) -> String {
         t!("action.obs.push_preview_scene.help").into()
+    }
+}
+
+#[derive(Default, Serialize, Deserialize, Clone)]
+pub struct ObsSceneCollectionSwitch {
+    scene_collection: Option<String>,
+}
+#[async_trait::async_trait]
+#[typetag::serde]
+impl Action for ObsSceneCollectionSwitch {
+    async fn on_press(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        config: Arc<Mutex<JukeBoxConfig>>,
+    ) -> Result<()> {
+        let c = config.clone();
+        if OBS_CLIENT.get().is_none() {
+            create_client(c).await?;
+        }
+
+        let client = OBS_CLIENT.get().unwrap().lock().await;
+        if let Some(scene_collection) = &self.scene_collection {
+            client
+                .scene_collections()
+                .set_current(scene_collection)
+                .await?;
+        } else {
+            bail!("Scene not configured!");
+        }
+
+        Ok(())
+    }
+
+    async fn on_release(
+        &self,
+        _device_uid: &String,
+        _input_key: InputKey,
+        _config: Arc<Mutex<JukeBoxConfig>>,
+    ) -> Result<()> {
+        Ok(())
+    }
+
+    fn get_type(&self) -> String {
+        "ObsSceneCollectionSwitch".into()
+    }
+
+    fn edit_ui(
+        &mut self,
+        ui: &mut Ui,
+        _device_uid: &String,
+        _input_key: InputKey,
+        config: Arc<Mutex<JukeBoxConfig>>,
+    ) {
+        if account_warning(ui, config).is_none() {
+            return;
+        }
+
+        ui.label("");
+
+        ui.label(t!("action.obs.options.select_scene"));
+        let ir = ComboBox::from_id_salt("ObsSceneSelect")
+            .width(200.0)
+            .selected_text(self.scene_collection.clone().unwrap_or("".into()))
+            .show_ui(ui, |ui| {
+                let collections = OBS_SCENE_COLLECTIONS.get().unwrap().blocking_lock().clone();
+                if let Some(collections) = collections {
+                    for collection in collections {
+                        let selected = if let Some(selected_collection) = &self.scene_collection {
+                            *selected_collection == collection
+                        } else {
+                            false
+                        };
+                        let l = ui.selectable_label(selected, collection.clone());
+                        if l.clicked() {
+                            self.scene_collection = Some(collection);
+                        }
+                    }
+                } else {
+                    ui.label(t!("action.obs.options.loading"));
+                }
+            });
+        if ComboBox::is_open(ui.ctx(), ir.response.id) {
+            if OBS_GET_SCENE_COLLECTIONS
+                .get()
+                .unwrap()
+                .load(Ordering::Relaxed)
+            {
+                *OBS_SCENE_COLLECTIONS.get().unwrap().blocking_lock() = None;
+                tokio::spawn(async {
+                    let client = OBS_CLIENT.get().unwrap().lock().await;
+                    if let Ok(collection_list) = client.scene_collections().list().await {
+                        *OBS_SCENE_COLLECTIONS.get().unwrap().lock().await =
+                            Some(collection_list.collections);
+                    }
+                });
+            }
+            let _ = OBS_GET_SCENE_COLLECTIONS.set(false.into());
+        } else {
+            let _ = OBS_GET_SCENE_COLLECTIONS.set(true.into());
+        }
+    }
+
+    fn help(&self) -> String {
+        t!("action.obs.switch_scene_collection.help").into()
     }
 }
 
