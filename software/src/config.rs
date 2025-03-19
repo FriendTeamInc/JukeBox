@@ -48,7 +48,7 @@ pub struct JukeBoxConfig {
     // Profile Name
     pub current_profile: String,
     pub profiles: HashMap<String, HashMap<String, DeviceConfig>>,
-    // Profile Name -> ( Device UID -> ( Input Key -> Action Config ) )
+    // Profile Name -> Device UID -> Device Config
 
     // Device UID -> (Device Type, Device Nickname)
     pub devices: HashMap<String, (DeviceType, String)>,
@@ -61,8 +61,8 @@ pub struct JukeBoxConfig {
 impl Default for JukeBoxConfig {
     fn default() -> Self {
         JukeBoxConfig {
-            current_profile: "Default Profile".to_string(),
-            profiles: HashMap::from([("Default Profile".to_string(), HashMap::new())]),
+            current_profile: "Default Profile".into(),
+            profiles: HashMap::from([("Default Profile".into(), HashMap::new())]),
             devices: HashMap::new(),
             enable_splash: true,
             discord_oauth_access: None,

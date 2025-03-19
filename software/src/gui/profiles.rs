@@ -37,12 +37,12 @@ impl JukeBoxGui {
                                         "MetaSwitchProfile" => {
                                             k.action = self
                                                 .action_map
-                                                .enum_new("MetaSwitchProfile".to_string());
+                                                .enum_new("MetaSwitchProfile".into());
                                         }
                                         "MetaCopyFromProfile" => {
                                             k.action = self
                                                 .action_map
-                                                .enum_new("MetaCopyFromProfile".to_string());
+                                                .enum_new("MetaCopyFromProfile".into());
                                         }
                                         _ => {}
                                     }
@@ -68,7 +68,7 @@ impl JukeBoxGui {
                         for k in &profiles {
                             let u = ui.selectable_label(*k == current, &*k.clone());
                             if u.clicked() {
-                                conf.current_profile = k.to_string();
+                                conf.current_profile = k.into();
                                 conf.save();
                             }
                         }
@@ -86,7 +86,7 @@ impl JukeBoxGui {
                     let mut conf = self.config.blocking_lock();
                     let mut idx = conf.profiles.keys().len() + 1;
                     let name = loop {
-                        let name = t!("profile_name_new", idx = idx).to_string();
+                        let name = t!("profile_name_new", idx = idx).into();
                         if !conf.profiles.contains_key(&name) {
                             break name;
                         }
@@ -136,14 +136,12 @@ impl JukeBoxGui {
                             for (_, k) in d.key_map.iter_mut() {
                                 match k.action.get_type().as_ref() {
                                     "MetaSwitchProfile" => {
-                                        k.action = self
-                                            .action_map
-                                            .enum_new("MetaSwitchProfile".to_string());
+                                        k.action =
+                                            self.action_map.enum_new("MetaSwitchProfile".into());
                                     }
                                     "MetaCopyFromProfile" => {
-                                        k.action = self
-                                            .action_map
-                                            .enum_new("MetaCopyFromProfile".to_string());
+                                        k.action =
+                                            self.action_map.enum_new("MetaCopyFromProfile".into());
                                     }
                                     _ => {}
                                 }

@@ -336,7 +336,7 @@ pub fn serial_get_device(connected_uids: &HashSet<String>) -> Result<Box<dyn Ser
             serialport::SerialPortType::UsbPort(p) => {
                 p.vid == 0x1209
                     && (p.pid == 0xF209 || p.pid == 0xF20A || p.pid == 0xF20B || p.pid == 0xF20C)
-                    && !connected_uids.contains(&p.serial_number.clone().unwrap_or("".to_string()))
+                    && !connected_uids.contains(&p.serial_number.clone().unwrap_or("".into()))
             }
             _ => false,
         })

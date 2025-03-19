@@ -30,7 +30,7 @@ impl JukeBoxGui {
                 self.config_editing_action_type = r.action.get_type();
                 self.config_editing_action = r.action.clone();
             } else {
-                self.config_editing_action_type = "MetaNoAction".to_string();
+                self.config_editing_action_type = "MetaNoAction".into();
                 self.config_editing_action = self
                     .action_map
                     .enum_new(self.config_editing_action_type.clone());

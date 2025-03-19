@@ -317,12 +317,8 @@ impl JukeBoxGui {
                 if delete_btn.double_clicked() {
                     let old_device = self.current_device.clone();
                     self.devices.remove(&old_device);
-                    self.current_device = self
-                        .devices
-                        .keys()
-                        .next()
-                        .unwrap_or(&String::new())
-                        .to_string();
+                    self.current_device =
+                        self.devices.keys().next().unwrap_or(&String::new()).into();
 
                     let mut conf = self.config.blocking_lock();
                     conf.devices.remove(&old_device);

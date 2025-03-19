@@ -24,7 +24,7 @@ use crate::actions::{
     meta::MetaNoAction,
     types::{Action, ActionMap},
 };
-use crate::config::{DeviceConfig, JukeBoxConfig};
+use crate::config::{ActionIcon, DeviceConfig, JukeBoxConfig};
 use crate::input::InputKey;
 use crate::serial::{serial_task, SerialCommand, SerialEvent};
 use crate::splash::SPLASH_MESSAGES;
@@ -56,6 +56,7 @@ pub struct JukeBoxGui {
     pub config_renaming_device: bool,
     pub config_device_name_entry: String,
     pub config_editing_key: InputKey,
+    pub config_editing_action_icon: ActionIcon,
     pub config_editing_action_type: String,
     pub config_editing_action: Box<dyn Action>,
     pub config_editing_rgb: RgbProfile,
@@ -113,11 +114,11 @@ impl JukeBoxGui {
                 .map(|(k, v)| {
                     (
                         k.clone(),
-                        (v.0, v.1.clone(), "?".to_string(), false, HashSet::new()),
+                        (v.0, v.1.clone(), "?".into(), false, HashSet::new()),
                     )
                 })
                 .collect();
-        let current_device = devices.keys().next().unwrap_or(&String::new()).to_string();
+        let current_device = devices.keys().next().unwrap_or(&String::new()).into();
         let config_enable_splash = config.enable_splash;
         let config = Arc::new(Mutex::new(JukeBoxConfig::load()));
 
@@ -158,7 +159,8 @@ impl JukeBoxGui {
             config_renaming_device: false,
             config_device_name_entry: String::new(),
             config_editing_key: InputKey::UnknownKey,
-            config_editing_action_type: "MetaNoAction".to_string(),
+            config_editing_action_icon: ActionIcon::GlyphIcon(phos::SEAL_QUESTION.into()),
+            config_editing_action_type: "MetaNoAction".into(),
             config_editing_action: Box::new(MetaNoAction::default()),
             config_editing_rgb: RgbProfile::Off,
             config_enable_splash: config_enable_splash,
@@ -216,7 +218,7 @@ impl JukeBoxGui {
                     let short_uid = device_uid[..4].to_string();
 
                     // TODO: double check that the device is fine to use
-                    let device_name = match Into::<DeviceType>::into(device_type) {
+                    let device_name: String = match Into::<DeviceType>::into(device_type) {
                         DeviceType::Unknown => t!("device_name.unknown", uid = device_uid.clone()),
                         DeviceType::KeyPad => t!("device_name.keypad", uid = short_uid),
                         DeviceType::KnobPad => t!("device_name.knobpad", uid = short_uid),

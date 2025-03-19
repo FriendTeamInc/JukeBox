@@ -54,7 +54,7 @@ impl JukeBoxGui {
                         .set_directory("~")
                         .pick_file()
                     {
-                        self.send_update_signal(f.to_string_lossy().to_string());
+                        self.send_update_signal(f.to_string_lossy().into());
                     }
                 }
             });
