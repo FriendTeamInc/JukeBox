@@ -3,8 +3,6 @@ use std::collections::HashMap;
 use eframe::egui::{ComboBox, RichText, TextBuffer, TextEdit, Ui};
 use egui_phosphor::regular as phos;
 
-use crate::actions::types::ActionType;
-
 use super::gui::{GuiTab, JukeBoxGui};
 
 impl JukeBoxGui {
@@ -33,13 +31,16 @@ impl JukeBoxGui {
                         for (_, p) in conf.profiles.iter_mut() {
                             for (_, d) in p.iter_mut() {
                                 for (_, k) in d.0.iter_mut() {
-                                    use ActionType as r;
-                                    match k.get_type() {
-                                        r::MetaSwitchProfile => {
-                                            *k = self.action_map.enum_new(r::MetaSwitchProfile);
+                                    match k.get_type().as_ref() {
+                                        "MetaSwitchProfile" => {
+                                            *k = self
+                                                .action_map
+                                                .enum_new("MetaSwitchProfile".to_string());
                                         }
-                                        r::MetaCopyFromProfile => {
-                                            *k = self.action_map.enum_new(r::MetaCopyFromProfile);
+                                        "MetaCopyFromProfile" => {
+                                            *k = self
+                                                .action_map
+                                                .enum_new("MetaCopyFromProfile".to_string());
                                         }
                                         _ => {}
                                     }
@@ -128,13 +129,16 @@ impl JukeBoxGui {
                     for (_, p) in conf.profiles.iter_mut() {
                         for (_, d) in p.iter_mut() {
                             for (_, k) in d.0.iter_mut() {
-                                use ActionType as r;
-                                match k.get_type() {
-                                    r::MetaSwitchProfile => {
-                                        *k = self.action_map.enum_new(r::MetaSwitchProfile);
+                                match k.get_type().as_ref() {
+                                    "MetaSwitchProfile" => {
+                                        *k = self
+                                            .action_map
+                                            .enum_new("MetaSwitchProfile".to_string());
                                     }
-                                    r::MetaCopyFromProfile => {
-                                        *k = self.action_map.enum_new(r::MetaCopyFromProfile);
+                                    "MetaCopyFromProfile" => {
+                                        *k = self
+                                            .action_map
+                                            .enum_new("MetaCopyFromProfile".to_string());
                                     }
                                     _ => {}
                                 }

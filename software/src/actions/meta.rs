@@ -8,16 +8,16 @@ use tokio::sync::Mutex;
 
 use crate::{config::JukeBoxConfig, input::InputKey};
 
-use super::types::{Action, ActionType as AT};
+use super::types::Action;
 
 #[rustfmt::skip]
-pub fn meta_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
+pub fn meta_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
     (
-        t!("action.meta.title", icon = phos::GEAR).to_string(),
+        t!("action.meta.title", icon = phos::GEAR).into(),
         vec![
-            (AT::MetaNoAction,        Box::new(MetaNoAction::default()),        t!("action.meta.no_action.title").to_string()),
-            (AT::MetaSwitchProfile,   Box::new(MetaSwitchProfile::default()),   t!("action.meta.switch_profile.title").to_string()),
-            (AT::MetaCopyFromProfile, Box::new(MetaCopyFromProfile::default()), t!("action.meta.copy_from_profile.title").to_string()),
+            ("MetaNoAction".into(),        Box::new(MetaNoAction::default()),        t!("action.meta.no_action.title").into()),
+            ("MetaSwitchProfile".into(),   Box::new(MetaSwitchProfile::default()),   t!("action.meta.switch_profile.title").into()),
+            ("MetaCopyFromProfile".into(), Box::new(MetaCopyFromProfile::default()), t!("action.meta.copy_from_profile.title").into()),
         ],
     )
 }
@@ -55,8 +55,8 @@ impl Action for MetaNoAction {
         Ok(())
     }
 
-    fn get_type(&self) -> AT {
-        AT::MetaNoAction
+    fn get_type(&self) -> String {
+        "MetaNoAction".into()
     }
 
     fn edit_ui(
@@ -69,7 +69,7 @@ impl Action for MetaNoAction {
     }
 
     fn help(&self) -> String {
-        t!("action.meta.no_action.help").to_string()
+        t!("action.meta.no_action.help").into()
     }
 }
 
@@ -108,8 +108,8 @@ impl Action for MetaSwitchProfile {
         }
     }
 
-    fn get_type(&self) -> AT {
-        AT::MetaSwitchProfile
+    fn get_type(&self) -> String {
+        "MetaSwitchProfile".into()
     }
 
     fn edit_ui(
@@ -138,7 +138,7 @@ impl Action for MetaSwitchProfile {
     }
 
     fn help(&self) -> String {
-        t!("action.meta.switch_profile.help").to_string()
+        t!("action.meta.switch_profile.help").into()
     }
 }
 
@@ -201,8 +201,8 @@ impl Action for MetaCopyFromProfile {
         }
     }
 
-    fn get_type(&self) -> AT {
-        AT::MetaCopyFromProfile
+    fn get_type(&self) -> String {
+        "MetaCopyFromProfile".into()
     }
 
     fn edit_ui(
@@ -228,7 +228,7 @@ impl Action for MetaCopyFromProfile {
                         .get(&input_key)
                         .unwrap()
                         .get_type()
-                        == AT::MetaCopyFromProfile
+                        == "MetaCopyFromProfile"
                     {
                         continue;
                     }
@@ -242,6 +242,6 @@ impl Action for MetaCopyFromProfile {
     }
 
     fn help(&self) -> String {
-        t!("action.meta.copy_from_profile.help").to_string()
+        t!("action.meta.copy_from_profile.help").into()
     }
 }

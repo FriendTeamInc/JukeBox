@@ -16,7 +16,7 @@ use crate::{
     input::InputKey,
 };
 
-use super::types::{Action, ActionType as AT};
+use super::types::Action;
 
 const DISCORD_CLIENT_ID: &str = env!("DISCORD_CLIENT_ID");
 const DISCORD_CLIENT_SECRET: &str = env!("DISCORD_CLIENT_SECRET");
@@ -26,15 +26,15 @@ static DISCORD_DEAFENED: OnceLock<Mutex<bool>> = OnceLock::new();
 static REQWEST_CLIENT: OnceLock<Mutex<Client>> = OnceLock::new();
 
 #[rustfmt::skip]
-pub fn discord_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
+pub fn discord_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
     (
-        t!("action.discord.title", icon = phos::DISCORD_LOGO).to_string(),
+        t!("action.discord.title", icon = phos::DISCORD_LOGO).into(),
         vec![
-            (AT::DiscordToggleMute,   Box::new(DiscordToggleMute::default()),   t!("action.discord.toggle_mute.title").to_string()),
-            (AT::DiscordToggleDeafen, Box::new(DiscordToggleDeafen::default()), t!("action.discord.toggle_deafen.title").to_string()),
-            (AT::DiscordPushToTalk,   Box::new(DiscordPushToTalk::default()),   t!("action.discord.push_to_talk.title").to_string()),
-            (AT::DiscordPushToMute,   Box::new(DiscordPushToMute::default()),   t!("action.discord.push_to_mute.title").to_string()),
-            (AT::DiscordPushToDeafen, Box::new(DiscordPushToDeafen::default()), t!("action.discord.push_to_deafen.title").to_string()),
+            ("DiscordToggleMute".into(),   Box::new(DiscordToggleMute::default()),   t!("action.discord.toggle_mute.title").into()),
+            ("DiscordToggleDeafen".into(), Box::new(DiscordToggleDeafen::default()), t!("action.discord.toggle_deafen.title").into()),
+            ("DiscordPushToTalk".into(),   Box::new(DiscordPushToTalk::default()),   t!("action.discord.push_to_talk.title").into()),
+            ("DiscordPushToMute".into(),   Box::new(DiscordPushToMute::default()),   t!("action.discord.push_to_mute.title").into()),
+            ("DiscordPushToDeafen".into(), Box::new(DiscordPushToDeafen::default()), t!("action.discord.push_to_deafen.title").into()),
         ],
     )
 }
@@ -201,8 +201,8 @@ impl Action for DiscordToggleMute {
         Ok(())
     }
 
-    fn get_type(&self) -> AT {
-        AT::DiscordToggleMute
+    fn get_type(&self) -> String {
+        "DiscordToggleMute".into()
     }
 
     fn edit_ui(
@@ -216,7 +216,7 @@ impl Action for DiscordToggleMute {
     }
 
     fn help(&self) -> String {
-        t!("action.discord.toggle_mute.help").to_string()
+        t!("action.discord.toggle_mute.help").into()
     }
 }
 
@@ -267,8 +267,8 @@ impl Action for DiscordToggleDeafen {
         Ok(())
     }
 
-    fn get_type(&self) -> AT {
-        AT::DiscordToggleDeafen
+    fn get_type(&self) -> String {
+        "DiscordToggleDeafen".into()
     }
 
     fn edit_ui(
@@ -282,7 +282,7 @@ impl Action for DiscordToggleDeafen {
     }
 
     fn help(&self) -> String {
-        t!("action.discord.toggle_deafen.help").to_string()
+        t!("action.discord.toggle_deafen.help").into()
     }
 }
 
@@ -345,8 +345,8 @@ impl Action for DiscordPushToTalk {
         .unwrap()?
     }
 
-    fn get_type(&self) -> AT {
-        AT::DiscordPushToTalk
+    fn get_type(&self) -> String {
+        "DiscordPushToTalk".into()
     }
 
     fn edit_ui(
@@ -360,7 +360,7 @@ impl Action for DiscordPushToTalk {
     }
 
     fn help(&self) -> String {
-        t!("action.discord.push_to_talk.help").to_string()
+        t!("action.discord.push_to_talk.help").into()
     }
 }
 
@@ -423,8 +423,8 @@ impl Action for DiscordPushToMute {
         .unwrap()?
     }
 
-    fn get_type(&self) -> AT {
-        AT::DiscordPushToMute
+    fn get_type(&self) -> String {
+        "DiscordPushToMute".into()
     }
 
     fn edit_ui(
@@ -438,7 +438,7 @@ impl Action for DiscordPushToMute {
     }
 
     fn help(&self) -> String {
-        t!("action.discord.push_to_mute.help").to_string()
+        t!("action.discord.push_to_mute.help").into()
     }
 }
 
@@ -503,8 +503,8 @@ impl Action for DiscordPushToDeafen {
         .unwrap()?
     }
 
-    fn get_type(&self) -> AT {
-        AT::DiscordPushToDeafen
+    fn get_type(&self) -> String {
+        "DiscordPushToDeafen".into()
     }
 
     fn edit_ui(
@@ -518,6 +518,6 @@ impl Action for DiscordPushToDeafen {
     }
 
     fn help(&self) -> String {
-        t!("action.discord.push_to_deafen.help").to_string()
+        t!("action.discord.push_to_deafen.help").into()
     }
 }

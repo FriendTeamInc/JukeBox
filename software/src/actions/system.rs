@@ -9,17 +9,17 @@ use tokio::{sync::Mutex, task::spawn_blocking};
 
 use crate::{config::JukeBoxConfig, input::InputKey};
 
-use super::types::{Action, ActionType as AT};
+use super::types::Action;
 
 #[rustfmt::skip]
-pub fn system_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
+pub fn system_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
     (
-        t!("action.system.title", icon = phos::DESKTOP_TOWER).to_string(),
+        t!("action.system.title", icon = phos::DESKTOP_TOWER).into(),
         vec![
-            (AT::SystemLaunchApplication,  Box::new(SystemLaunchApplication::default()),  t!("action.system.launch_app.title").to_string()),
-            (AT::SystemOpenWebsite,        Box::new(SystemOpenWebsite::default()),        t!("action.system.open_website.title").to_string()),
-            (AT::SystemAudioInputControl,  Box::new(SystemAudioInputControl::default()),  t!("action.system.audio_input_control.title").to_string()),
-            (AT::SystemAudioOutputControl, Box::new(SystemAudioOutputControl::default()), t!("action.system.audio_output_control.title").to_string()),
+            ("SystemLaunchApplication".into(),  Box::new(SystemLaunchApplication::default()),  t!("action.system.launch_app.title").into()),
+            ("SystemOpenWebsite".into(),        Box::new(SystemOpenWebsite::default()),        t!("action.system.open_website.title").into()),
+            ("SystemAudioInputControl".into(),  Box::new(SystemAudioInputControl::default()),  t!("action.system.audio_input_control.title").into()),
+            ("SystemAudioOutputControl".into(), Box::new(SystemAudioOutputControl::default()), t!("action.system.audio_output_control.title").into()),
         ],
     )
 }
@@ -59,8 +59,8 @@ impl Action for SystemLaunchApplication {
         Ok(())
     }
 
-    fn get_type(&self) -> AT {
-        AT::SystemLaunchApplication
+    fn get_type(&self) -> String {
+        "SystemLaunchApplication".into()
     }
 
     fn edit_ui(
@@ -101,7 +101,7 @@ impl Action for SystemLaunchApplication {
     }
 
     fn help(&self) -> String {
-        t!("action.system.launch_app.help").to_string()
+        t!("action.system.launch_app.help").into()
     }
 }
 
@@ -132,8 +132,8 @@ impl Action for SystemOpenWebsite {
         Ok(())
     }
 
-    fn get_type(&self) -> AT {
-        AT::SystemOpenWebsite
+    fn get_type(&self) -> String {
+        "SystemOpenWebsite".into()
     }
 
     fn edit_ui(
@@ -148,7 +148,7 @@ impl Action for SystemOpenWebsite {
     }
 
     fn help(&self) -> String {
-        t!("action.system.open_website.help").to_string()
+        t!("action.system.open_website.help").into()
     }
 }
 
@@ -179,8 +179,8 @@ impl Action for SystemAudioInputControl {
         Ok(())
     }
 
-    fn get_type(&self) -> AT {
-        AT::SystemAudioInputControl
+    fn get_type(&self) -> String {
+        "SystemAudioInputControl".into()
     }
 
     fn edit_ui(
@@ -203,7 +203,7 @@ impl Action for SystemAudioInputControl {
     }
 
     fn help(&self) -> String {
-        t!("action.system.audio_input_control.help").to_string()
+        t!("action.system.audio_input_control.help").into()
     }
 }
 
@@ -234,8 +234,8 @@ impl Action for SystemAudioOutputControl {
         Ok(())
     }
 
-    fn get_type(&self) -> AT {
-        AT::SystemAudioOutputControl
+    fn get_type(&self) -> String {
+        "SystemAudioOutputControl".into()
     }
 
     fn edit_ui(
@@ -258,6 +258,6 @@ impl Action for SystemAudioOutputControl {
     }
 
     fn help(&self) -> String {
-        t!("action.system.audio_output_control.help").to_string()
+        t!("action.system.audio_output_control.help").into()
     }
 }

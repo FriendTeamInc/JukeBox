@@ -22,7 +22,7 @@ use tokio::{
 use crate::actions::{
     action::action_task,
     meta::MetaNoAction,
-    types::{Action, ActionMap, ActionType},
+    types::{Action, ActionMap},
 };
 use crate::config::JukeBoxConfig;
 use crate::input::InputKey;
@@ -56,7 +56,7 @@ pub struct JukeBoxGui {
     pub config_renaming_device: bool,
     pub config_device_name_entry: String,
     pub config_editing_key: InputKey,
-    pub config_editing_action_type: ActionType,
+    pub config_editing_action_type: String,
     pub config_editing_action: Box<dyn Action>,
     pub config_editing_rgb: RgbProfile,
     pub config_enable_splash: bool,
@@ -158,7 +158,7 @@ impl JukeBoxGui {
             config_renaming_device: false,
             config_device_name_entry: String::new(),
             config_editing_key: InputKey::UnknownKey,
-            config_editing_action_type: ActionType::MetaNoAction,
+            config_editing_action_type: "MetaNoAction".to_string(),
             config_editing_action: Box::new(MetaNoAction::default()),
             config_editing_rgb: RgbProfile::Off,
             config_enable_splash: config_enable_splash,

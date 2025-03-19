@@ -24,10 +24,7 @@ use crate::{
     input::InputKey,
 };
 
-use super::{
-    meta::MetaNoAction,
-    types::{Action, ActionType as AT},
-};
+use super::{meta::MetaNoAction, types::Action};
 
 static OBS_HOST_ADDRESS: OnceLock<Mutex<String>> = OnceLock::new();
 static OBS_HOST_PORT: OnceLock<Mutex<String>> = OnceLock::new();
@@ -42,7 +39,7 @@ static OBS_GET_INPUTS: OnceLock<AtomicBool> = OnceLock::new();
 static OBS_INPUTS: OnceLock<Mutex<Option<Vec<Input>>>> = OnceLock::new();
 
 #[rustfmt::skip]
-pub fn obs_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
+pub fn obs_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
     OBS_GET_SCENES.get_or_init(|| true.into());
     OBS_SCENES.get_or_init(|| Mutex::new(None));
     OBS_GET_SOURCES.get_or_init(|| true.into());
@@ -51,22 +48,22 @@ pub fn obs_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
     OBS_INPUTS.get_or_init(|| Mutex::new(None));
 
     (
-        t!("action.obs.title", icon = phos::VINYL_RECORD).to_string(),
+        t!("action.obs.title", icon = phos::VINYL_RECORD).into(),
         vec![
-            (AT::ObsStream,                Box::new(ObsStream::default()),             t!("action.obs.toggle_stream.title").to_string()),
-            (AT::ObsRecord,                Box::new(ObsRecord::default()),             t!("action.obs.toggle_record.title").to_string()),
-            (AT::ObsPauseRecord,           Box::new(ObsPauseRecord::default()),        t!("action.obs.pause_record.title").to_string()),
-            (AT::ObsReplayBuffer,          Box::new(ObsReplayBuffer::default()),       t!("action.obs.toggle_replay_buffer.title").to_string()),
-            (AT::ObsSaveReplay,            Box::new(ObsSaveReplay::default()),         t!("action.obs.save_replay_buffer.title").to_string()),
-            (AT::ObsSource,                Box::new(ObsSource::default()),             t!("action.obs.toggle_source.title").to_string()),
-            (AT::ObsMute,                  Box::new(ObsMute::default()),               t!("action.obs.toggle_mute.title").to_string()),
-            (AT::ObsSceneSwitch,           Box::new(ObsSceneSwitch::default()),        t!("action.obs.switch_scene.title").to_string()),
-            (AT::ObsPreviewSceneSwitch,    Box::new(ObsPreviewSceneSwitch::default()), t!("action.obs.switch_preview_scene.title").to_string()),
-            (AT::ObsPreviewScenePush,      Box::new(ObsPreviewScenePush::default()),   t!("action.obs.push_preview_scene.title").to_string()),
-            (AT::ObsSceneCollectionSwitch, Box::new(MetaNoAction::default()),          t!("action.obs.switch_scene_collection.title").to_string()),
-            (AT::ObsFilter,                Box::new(MetaNoAction::default()),          t!("action.obs.toggle_filter.title").to_string()),
-            (AT::ObsTransition,            Box::new(MetaNoAction::default()),          t!("action.obs.switch_transition.title").to_string()),
-            (AT::ObsChapterMarker,         Box::new(ObsChapterMarker::default()),      t!("action.obs.add_chapter_marker.title").to_string()),
+            ("ObsStream".into(),                Box::new(ObsStream::default()),             t!("action.obs.toggle_stream.title").into()),
+            ("ObsRecord".into(),                Box::new(ObsRecord::default()),             t!("action.obs.toggle_record.title").into()),
+            ("ObsPauseRecord".into(),           Box::new(ObsPauseRecord::default()),        t!("action.obs.pause_record.title").into()),
+            ("ObsReplayBuffer".into(),          Box::new(ObsReplayBuffer::default()),       t!("action.obs.toggle_replay_buffer.title").into()),
+            ("ObsSaveReplay".into(),            Box::new(ObsSaveReplay::default()),         t!("action.obs.save_replay_buffer.title").into()),
+            ("ObsSource".into(),                Box::new(ObsSource::default()),             t!("action.obs.toggle_source.title").into()),
+            ("ObsMute".into(),                  Box::new(ObsMute::default()),               t!("action.obs.toggle_mute.title").into()),
+            ("ObsSceneSwitch".into(),           Box::new(ObsSceneSwitch::default()),        t!("action.obs.switch_scene.title").into()),
+            ("ObsPreviewSceneSwitch".into(),    Box::new(ObsPreviewSceneSwitch::default()), t!("action.obs.switch_preview_scene.title").into()),
+            ("ObsPreviewScenePush".into(),      Box::new(ObsPreviewScenePush::default()),   t!("action.obs.push_preview_scene.title").into()),
+            ("ObsSceneCollectionSwitch".into(), Box::new(MetaNoAction::default()),          t!("action.obs.switch_scene_collection.title").into()),
+            ("ObsFilter".into(),                Box::new(MetaNoAction::default()),          t!("action.obs.toggle_filter.title").into()),
+            ("ObsTransition".into(),            Box::new(MetaNoAction::default()),          t!("action.obs.switch_transition.title").into()),
+            ("ObsChapterMarker".into(),         Box::new(ObsChapterMarker::default()),      t!("action.obs.add_chapter_marker.title").into()),
         ],
     )
 }
@@ -130,11 +127,11 @@ fn account_warning(ui: &mut Ui, config: Arc<Mutex<JukeBoxConfig>>) -> Option<()>
         if let Some(c) = c.obs_access {
             OBS_HOST_ADDRESS.get_or_init(|| Mutex::new(c.host));
             OBS_HOST_PORT.get_or_init(|| Mutex::new(c.port.to_string()));
-            OBS_PASSWORD.get_or_init(|| Mutex::new(c.password.unwrap_or("".to_string())));
+            OBS_PASSWORD.get_or_init(|| Mutex::new(c.password.unwrap_or("".into())));
         } else {
-            OBS_HOST_ADDRESS.get_or_init(|| Mutex::new("localhost".to_string()));
-            OBS_HOST_PORT.get_or_init(|| Mutex::new("4455".to_string()));
-            OBS_PASSWORD.get_or_init(|| Mutex::new("".to_string()));
+            OBS_HOST_ADDRESS.get_or_init(|| Mutex::new("localhost".into()));
+            OBS_HOST_PORT.get_or_init(|| Mutex::new("4455".into()));
+            OBS_PASSWORD.get_or_init(|| Mutex::new("".into()));
         }
     }
 
@@ -227,8 +224,8 @@ impl Action for ObsStream {
         Ok(())
     }
 
-    fn get_type(&self) -> AT {
-        AT::ObsStream
+    fn get_type(&self) -> String {
+        "ObsStream".into()
     }
 
     fn edit_ui(
@@ -242,7 +239,7 @@ impl Action for ObsStream {
     }
 
     fn help(&self) -> String {
-        t!("action.obs.toggle_stream.help").to_string()
+        t!("action.obs.toggle_stream.help").into()
     }
 }
 
@@ -277,8 +274,8 @@ impl Action for ObsRecord {
         Ok(())
     }
 
-    fn get_type(&self) -> AT {
-        AT::ObsRecord
+    fn get_type(&self) -> String {
+        "ObsRecord".into()
     }
 
     fn edit_ui(
@@ -292,7 +289,7 @@ impl Action for ObsRecord {
     }
 
     fn help(&self) -> String {
-        t!("action.obs.toggle_record.help").to_string()
+        t!("action.obs.toggle_record.help").into()
     }
 }
 
@@ -327,8 +324,8 @@ impl Action for ObsPauseRecord {
         Ok(())
     }
 
-    fn get_type(&self) -> AT {
-        AT::ObsPauseRecord
+    fn get_type(&self) -> String {
+        "ObsPauseRecord".into()
     }
 
     fn edit_ui(
@@ -342,7 +339,7 @@ impl Action for ObsPauseRecord {
     }
 
     fn help(&self) -> String {
-        t!("action.obs.pause_record.help").to_string()
+        t!("action.obs.pause_record.help").into()
     }
 }
 
@@ -377,8 +374,8 @@ impl Action for ObsReplayBuffer {
         Ok(())
     }
 
-    fn get_type(&self) -> AT {
-        AT::ObsReplayBuffer
+    fn get_type(&self) -> String {
+        "ObsReplayBuffer".into()
     }
 
     fn edit_ui(
@@ -392,7 +389,7 @@ impl Action for ObsReplayBuffer {
     }
 
     fn help(&self) -> String {
-        t!("action.obs.toggle_replay_buffer.help").to_string()
+        t!("action.obs.toggle_replay_buffer.help").into()
     }
 }
 
@@ -427,8 +424,8 @@ impl Action for ObsSaveReplay {
         Ok(())
     }
 
-    fn get_type(&self) -> AT {
-        AT::ObsSaveReplay
+    fn get_type(&self) -> String {
+        "ObsSaveReplay".into()
     }
 
     fn edit_ui(
@@ -442,7 +439,7 @@ impl Action for ObsSaveReplay {
     }
 
     fn help(&self) -> String {
-        t!("action.obs.save_replay_buffer.help").to_string()
+        t!("action.obs.save_replay_buffer.help").into()
     }
 }
 
@@ -499,8 +496,8 @@ impl Action for ObsSource {
         Ok(())
     }
 
-    fn get_type(&self) -> AT {
-        AT::ObsSource
+    fn get_type(&self) -> String {
+        "ObsSource".into()
     }
 
     fn edit_ui(
@@ -523,7 +520,7 @@ impl Action for ObsSource {
                 self.scene
                     .clone()
                     .and_then(|s| Some(s.1))
-                    .unwrap_or("".to_string()),
+                    .unwrap_or("".into()),
             )
             .show_ui(ui, |ui| {
                 let scenes = OBS_SCENES.get().unwrap().blocking_lock().clone();
@@ -568,7 +565,7 @@ impl Action for ObsSource {
                         self.source
                             .clone()
                             .and_then(|s| Some(s.1))
-                            .unwrap_or("".to_string()),
+                            .unwrap_or("".into()),
                     )
                     .show_ui(ui, |ui| {
                         let sources = OBS_SOURCES.get().unwrap().blocking_lock().clone();
@@ -608,7 +605,7 @@ impl Action for ObsSource {
     }
 
     fn help(&self) -> String {
-        t!("action.obs.toggle_source.help").to_string()
+        t!("action.obs.toggle_source.help").into()
     }
 }
 
@@ -649,8 +646,8 @@ impl Action for ObsMute {
         Ok(())
     }
 
-    fn get_type(&self) -> AT {
-        AT::ObsMute
+    fn get_type(&self) -> String {
+        "ObsMute".into()
     }
 
     fn edit_ui(
@@ -673,7 +670,7 @@ impl Action for ObsMute {
                 self.input
                     .clone()
                     .and_then(|s| Some(s.1))
-                    .unwrap_or("".to_string()),
+                    .unwrap_or("".into()),
             )
             .show_ui(ui, |ui| {
                 let inputs = OBS_INPUTS.get().unwrap().blocking_lock().clone();
@@ -711,7 +708,7 @@ impl Action for ObsMute {
     }
 
     fn help(&self) -> String {
-        t!("action.obs.toggle_mute.help").to_string()
+        t!("action.obs.toggle_mute.help").into()
     }
 }
 
@@ -755,8 +752,8 @@ impl Action for ObsSceneSwitch {
         Ok(())
     }
 
-    fn get_type(&self) -> AT {
-        AT::ObsSceneSwitch
+    fn get_type(&self) -> String {
+        "ObsSceneSwitch".into()
     }
 
     fn edit_ui(
@@ -779,7 +776,7 @@ impl Action for ObsSceneSwitch {
                 self.scene
                     .clone()
                     .and_then(|s| Some(s.1))
-                    .unwrap_or("".to_string()),
+                    .unwrap_or("".into()),
             )
             .show_ui(ui, |ui| {
                 let scenes = OBS_SCENES.get().unwrap().blocking_lock().clone();
@@ -816,7 +813,7 @@ impl Action for ObsSceneSwitch {
     }
 
     fn help(&self) -> String {
-        t!("action.obs.switch_scene.help").to_string()
+        t!("action.obs.switch_scene.help").into()
     }
 }
 
@@ -860,8 +857,8 @@ impl Action for ObsPreviewSceneSwitch {
         Ok(())
     }
 
-    fn get_type(&self) -> AT {
-        AT::ObsPreviewSceneSwitch
+    fn get_type(&self) -> String {
+        "ObsPreviewSceneSwitch".into()
     }
 
     fn edit_ui(
@@ -884,7 +881,7 @@ impl Action for ObsPreviewSceneSwitch {
                 self.scene
                     .clone()
                     .and_then(|s| Some(s.1))
-                    .unwrap_or("".to_string()),
+                    .unwrap_or("".into()),
             )
             .show_ui(ui, |ui| {
                 let scenes = OBS_SCENES.get().unwrap().blocking_lock().clone();
@@ -921,7 +918,7 @@ impl Action for ObsPreviewSceneSwitch {
     }
 
     fn help(&self) -> String {
-        t!("action.obs.switch_preview_scene.help").to_string()
+        t!("action.obs.switch_preview_scene.help").into()
     }
 }
 
@@ -956,8 +953,8 @@ impl Action for ObsPreviewScenePush {
         Ok(())
     }
 
-    fn get_type(&self) -> AT {
-        AT::ObsPreviewScenePush
+    fn get_type(&self) -> String {
+        "ObsPreviewScenePush".into()
     }
 
     fn edit_ui(
@@ -971,7 +968,7 @@ impl Action for ObsPreviewScenePush {
     }
 
     fn help(&self) -> String {
-        t!("action.obs.push_preview_scene.help").to_string()
+        t!("action.obs.push_preview_scene.help").into()
     }
 }
 
@@ -1006,8 +1003,8 @@ impl Action for ObsChapterMarker {
         Ok(())
     }
 
-    fn get_type(&self) -> AT {
-        AT::ObsChapterMarker
+    fn get_type(&self) -> String {
+        "ObsChapterMarker".into()
     }
 
     fn edit_ui(
@@ -1021,6 +1018,6 @@ impl Action for ObsChapterMarker {
     }
 
     fn help(&self) -> String {
-        t!("action.obs.add_chapter_marker.help").to_string()
+        t!("action.obs.add_chapter_marker.help").into()
     }
 }

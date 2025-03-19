@@ -6,7 +6,6 @@ use anyhow::Result;
 use dyn_clone::{clone_trait_object, DynClone};
 use eframe::egui::Ui;
 use jukebox_util::peripheral::DeviceType;
-use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
 use crate::{
@@ -35,7 +34,7 @@ pub trait Action: Sync + Send + DynClone {
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()>;
 
-    fn get_type(&self) -> ActionType;
+    fn get_type(&self) -> String;
 
     fn edit_ui(
         &mut self,
@@ -49,56 +48,9 @@ pub trait Action: Sync + Send + DynClone {
 }
 clone_trait_object!(Action);
 
-// TODO: eventually move away from this and just use strings
-#[derive(Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy, Debug)]
-pub enum ActionType {
-    // Meta
-    MetaNoAction,
-    MetaSwitchProfile,
-    MetaCopyFromProfile,
-
-    // Input
-    InputKeyboard,
-    InputMouse,
-    // InputGamepad,
-
-    // System
-    SystemLaunchApplication,
-    SystemOpenWebsite,
-    SystemAudioInputControl,
-    SystemAudioOutputControl,
-
-    // Soundboard
-    SoundboardPlaySound,
-
-    // Discord
-    DiscordToggleMute,
-    DiscordToggleDeafen,
-    DiscordPushToTalk,
-    DiscordPushToMute,
-    DiscordPushToDeafen,
-
-    // OBS
-    ObsStream,
-    ObsRecord,
-    ObsPauseRecord,
-    ObsReplayBuffer,
-    ObsSaveReplay,
-    ObsSaveScreenshot,
-    ObsSource,
-    ObsMute,
-    ObsSceneSwitch,
-    ObsPreviewSceneSwitch,
-    ObsPreviewScenePush,
-    ObsSceneCollectionSwitch,
-    ObsFilter,
-    ObsTransition,
-    ObsChapterMarker,
-}
-
 pub struct ActionMap {
-    ui_list: Vec<(String, Vec<(ActionType, String)>)>,
-    enum_map: HashMap<ActionType, Box<dyn Action>>,
+    ui_list: Vec<(String, Vec<(String, String)>)>,
+    enum_map: HashMap<String, Box<dyn Action>>,
 }
 impl ActionMap {
     pub fn new() -> Self {
@@ -132,11 +84,11 @@ impl ActionMap {
         Self { ui_list, enum_map }
     }
 
-    pub fn ui_list(&self) -> Vec<(String, Vec<(ActionType, String)>)> {
+    pub fn ui_list(&self) -> Vec<(String, Vec<(String, String)>)> {
         self.ui_list.clone()
     }
 
-    pub fn enum_new(&self, t: ActionType) -> Box<dyn Action> {
+    pub fn enum_new(&self, t: String) -> Box<dyn Action> {
         self.enum_map.get(&t).unwrap().clone()
     }
 
@@ -175,13 +127,7 @@ impl ActionMap {
 
         let mut c = HashMap::new();
         for k in keys {
-            c.insert(
-                *k,
-                self.enum_map
-                    .get(&ActionType::MetaNoAction)
-                    .unwrap()
-                    .clone(),
-            );
+            c.insert(*k, self.enum_map.get("MetaNoAction").unwrap().clone());
         }
 
         c

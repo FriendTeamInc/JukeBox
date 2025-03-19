@@ -8,16 +8,16 @@ use tokio::sync::Mutex;
 
 use crate::{config::JukeBoxConfig, input::InputKey};
 
-use super::types::{Action, ActionType as AT};
+use super::types::Action;
 
 #[rustfmt::skip]
-pub fn input_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
+pub fn input_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
     (
-        t!("action.input.title", icon = phos::CURSOR_CLICK).to_string(),
+        t!("action.input.title", icon = phos::CURSOR_CLICK).into(),
         vec![
-            (AT::InputKeyboard, Box::new(InputKeyboard::default()), t!("action.input.keyboard.title").to_string()),
-            (AT::InputMouse,    Box::new(InputMouse::default()),    t!("action.input.mouse.title").to_string()),
-            // (AT::InputGamepad,  Box::new(InputGamepad::default()),  t!("action.input.gamepad.title").to_string()),
+            ("InputKeyboard".into(), Box::new(InputKeyboard::default()), t!("action.input.keyboard.title").into()),
+            ("InputMouse".into(),    Box::new(InputMouse::default()),    t!("action.input.mouse.title").into()),
+            // ("InputGamepad".into(),  Box::new(InputGamepad::default()),  t!("action.input.gamepad.title").into()),
         ],
     )
 }
@@ -223,8 +223,8 @@ impl Action for InputKeyboard {
         Ok(())
     }
 
-    fn get_type(&self) -> AT {
-        AT::InputKeyboard
+    fn get_type(&self) -> String {
+        "InputKeyboard".into()
     }
 
     fn edit_ui(
@@ -263,7 +263,7 @@ impl Action for InputKeyboard {
     }
 
     fn help(&self) -> String {
-        t!("action.input.keyboard.help").to_string()
+        t!("action.input.keyboard.help").into()
     }
 }
 
@@ -298,8 +298,8 @@ impl Action for InputMouse {
         Ok(())
     }
 
-    fn get_type(&self) -> AT {
-        AT::InputMouse
+    fn get_type(&self) -> String {
+        "InputMouse".into()
     }
 
     fn edit_ui(
@@ -375,6 +375,6 @@ impl Action for InputMouse {
     }
 
     fn help(&self) -> String {
-        t!("action.input.mouse.help").to_string()
+        t!("action.input.mouse.help").into()
     }
 }

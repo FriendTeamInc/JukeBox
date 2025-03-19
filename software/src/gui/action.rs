@@ -6,7 +6,6 @@ use eframe::egui::{
 };
 use egui_phosphor::regular as phos;
 
-use crate::actions::types::ActionType;
 use crate::input::InputKey;
 
 use super::gui::{GuiTab, JukeBoxGui};
@@ -28,9 +27,10 @@ impl JukeBoxGui {
                 self.config_editing_action_type = r.get_type();
                 self.config_editing_action = r.clone();
             } else {
-                self.config_editing_action_type = ActionType::MetaNoAction;
-                self.config_editing_action =
-                    self.action_map.enum_new(self.config_editing_action_type);
+                self.config_editing_action_type = "MetaNoAction".to_string();
+                self.config_editing_action = self
+                    .action_map
+                    .enum_new(self.config_editing_action_type.clone());
             }
         };
     }
@@ -167,6 +167,8 @@ impl JukeBoxGui {
     }
 
     fn reset_editing_action(&mut self) {
-        self.config_editing_action = self.action_map.enum_new(self.config_editing_action_type);
+        self.config_editing_action = self
+            .action_map
+            .enum_new(self.config_editing_action_type.clone());
     }
 }

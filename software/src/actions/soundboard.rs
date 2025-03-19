@@ -9,13 +9,13 @@ use tokio::sync::Mutex;
 
 use crate::{config::JukeBoxConfig, input::InputKey};
 
-use super::types::{Action, ActionType as AT};
+use super::types::Action;
 
 #[rustfmt::skip]
-pub fn soundboard_action_list() -> (String, Vec<(AT, Box<dyn Action>, String)>) {
+pub fn soundboard_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
     (
-        t!("action.soundboard.title", icon = phos::MUSIC_NOTES).to_string(),
-        vec![(AT::SoundboardPlaySound, Box::new(SoundboardPlaySound::default()), t!("action.soundboard.play_sound.title").to_string())],
+        t!("action.soundboard.title", icon = phos::MUSIC_NOTES).into(),
+        vec![("SoundboardPlaySound".into(), Box::new(SoundboardPlaySound::default()), t!("action.soundboard.play_sound.title").into())],
     )
 }
 
@@ -47,8 +47,8 @@ impl Action for SoundboardPlaySound {
         Ok(())
     }
 
-    fn get_type(&self) -> AT {
-        AT::SoundboardPlaySound
+    fn get_type(&self) -> String {
+        "SoundboardPlaySound".into()
     }
 
     fn edit_ui(
@@ -83,6 +83,6 @@ impl Action for SoundboardPlaySound {
     }
 
     fn help(&self) -> String {
-        t!("action.soundboard.play_sound.help").to_string()
+        t!("action.soundboard.play_sound.help").into()
     }
 }
