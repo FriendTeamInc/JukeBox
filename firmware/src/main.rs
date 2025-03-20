@@ -31,14 +31,10 @@ mod peripheral;
 mod st7789;
 mod uid;
 mod modules {
-    #[cfg(feature = "keypad")]
     pub mod keyboard;
     pub mod led;
-    #[cfg(feature = "pedalpad")]
     pub mod pedals;
-    #[cfg(feature = "keypad")]
     pub mod rgb;
-    #[cfg(feature = "keypad")]
     pub mod screen;
     pub mod serial;
 }
@@ -92,7 +88,7 @@ static CONNECTION_STATUS: ConnectionStatus = Mutex::new(Connection::NotConnected
 static PERIPHERAL_INPUTS: PeripheralInputs = Mutex::new(inputs_default());
 static UPDATE_TRIGGER: UpdateTrigger = Mutex::new(false);
 static IDENTIFY_TRIGGER: IdentifyTrigger = Mutex::new(false);
-static RGB_CONTROLS: RgbControls = Mutex::new((false, RgbProfile::Off));
+static RGB_CONTROLS: RgbControls = Mutex::new((false, RgbProfile::default_device_profile()));
 
 #[entry]
 fn main() -> ! {

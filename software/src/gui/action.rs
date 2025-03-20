@@ -27,9 +27,11 @@ impl JukeBoxGui {
                 .and_then(|p| p.get(&self.current_device))
                 .and_then(|d| d.key_map.get(&self.config_editing_key))
             {
+                self.config_editing_action_icon = r.icon.clone();
                 self.config_editing_action_type = r.action.get_type();
                 self.config_editing_action = r.action.clone();
             } else {
+                self.config_editing_action_icon = ActionIcon::default();
                 self.config_editing_action_type = "MetaNoAction".into();
                 self.config_editing_action = self
                     .action_map
@@ -49,7 +51,7 @@ impl JukeBoxGui {
                 self.config_editing_key.clone(),
                 ActionConfig {
                     action: self.config_editing_action.clone(),
-                    icon: ActionIcon::GlyphIcon(phos::SEAL_QUESTION.into()),
+                    icon: self.config_editing_action_icon.clone(),
                 },
             );
         } else {
@@ -58,7 +60,7 @@ impl JukeBoxGui {
                 self.config_editing_key.clone(),
                 ActionConfig {
                     action: self.config_editing_action.clone(),
-                    icon: ActionIcon::GlyphIcon(phos::SEAL_QUESTION.into()),
+                    icon: self.config_editing_action_icon.clone(),
                 },
             );
             profile.insert(
@@ -75,11 +77,12 @@ impl JukeBoxGui {
     pub fn draw_edit_action(&mut self, ui: &mut Ui) {
         ui.columns_const(|[c1, c2]| {
             c1.horizontal(|ui| {
+                let rt = match &self.config_editing_action_icon {
+                    ActionIcon::GlyphIcon(s) => RichText::new(s).heading().strong(),
+                    ActionIcon::ImageIcon(_) => RichText::new("IMAGE HERE").heading().strong(),
+                };
                 let test_btn = ui
-                    .add_sized(
-                        [50.0, 50.0],
-                        Button::new(RichText::new(phos::APERTURE).heading().strong()),
-                    )
+                    .add_sized([50.0, 50.0], Button::new(rt))
                     .on_hover_text_at_pointer(t!("help.action.test_input"));
                 if test_btn.clicked() {
                     // TODO: fix for discord and hardware inputs

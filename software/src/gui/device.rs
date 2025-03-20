@@ -8,9 +8,9 @@ use egui_phosphor::regular as phos;
 use jukebox_util::color::RgbProfile;
 use jukebox_util::peripheral::DeviceType;
 
-use crate::input::InputKey;
 use crate::serial::SerialCommand;
 use crate::update::UpdateStatus;
+use crate::{config::ActionIcon, input::InputKey};
 
 use super::gui::{GuiTab, JukeBoxGui};
 
@@ -84,11 +84,36 @@ impl JukeBoxGui {
                     //     InputKey::KeySwitch16,
                     // ],
                 ];
-                for (y, k) in keys.iter().enumerate() {
-                    for (x, k) in k.iter().enumerate() {
-                        let s = format!("F{}", 12 + x + y * 4 + 1);
-                        let rt = RichText::new(s).heading().strong();
+
+                let c = {
+                    let c = self.config.blocking_lock();
+                    let d = c
+                        .profiles
+                        .get(&c.current_profile)
+                        .unwrap()
+                        .get(&self.current_device)
+                        .unwrap()
+                        .clone();
+                    d
+                };
+
+                for k in keys.iter() {
+                    for k in k.iter() {
+                        let i = c
+                            .key_map
+                            .get(&k)
+                            .and_then(|c| Some(c.icon.clone()))
+                            .unwrap_or_default();
+
+                        let rt = match i {
+                            ActionIcon::GlyphIcon(s) => RichText::new(s).heading().strong(),
+                            ActionIcon::ImageIcon(_) => {
+                                RichText::new("IMAGE HERE").heading().strong()
+                            }
+                        };
+
                         let mut b = Button::new(rt);
+
                         let inputs = if let Some(s) = self.devices.get(&self.current_device) {
                             s.4.clone()
                         } else {
@@ -98,7 +123,6 @@ impl JukeBoxGui {
                             b = b.corner_radius(20u8);
                         }
                         let btn = ui.add_sized([75.0, 75.0], b);
-                        // TODO: display some better text in the buttons
                         // TODO: add hover text for button info
 
                         if btn.clicked() {
@@ -129,16 +153,38 @@ impl JukeBoxGui {
                         HashSet::new()
                     };
 
-                    let p1 = Button::new(RichText::new("L").heading().strong());
-                    let p2 = Button::new(RichText::new("M").heading().strong());
-                    let p3 = Button::new(RichText::new("R").heading().strong());
+                    let c = {
+                        let c = self.config.blocking_lock();
+                        let d = c
+                            .profiles
+                            .get(&c.current_profile)
+                            .unwrap()
+                            .get(&self.current_device)
+                            .unwrap()
+                            .clone();
+                        d
+                    };
 
-                    let mut i = |c: &mut Ui, mut p: Button<'_>, b| {
+                    let mut i = |ui: &mut Ui, b| {
+                        let i = c
+                            .key_map
+                            .get(&b)
+                            .and_then(|c| Some(c.icon.clone()))
+                            .unwrap_or_default();
+
+                        let rt = match i {
+                            ActionIcon::GlyphIcon(s) => RichText::new(s).heading().strong(),
+                            ActionIcon::ImageIcon(_) => {
+                                RichText::new("IMAGE HERE").heading().strong()
+                            }
+                        };
+
+                        let mut p = Button::new(rt);
+
                         if inputs.contains(&b) {
                             p = p.corner_radius(20u8);
                         }
-                        let btn = c.add_sized([100.0, 231.0], p);
-                        // TODO: display some better text in the buttons
+                        let btn = ui.add_sized([100.0, 231.0], p);
                         // TODO: add hover text for button info
 
                         if btn.clicked() {
@@ -146,9 +192,9 @@ impl JukeBoxGui {
                         }
                     };
 
-                    i(c1, p1, InputKey::PedalLeft);
-                    i(c2, p2, InputKey::PedalMiddle);
-                    i(c3, p3, InputKey::PedalRight);
+                    i(c1, InputKey::PedalLeft);
+                    i(c2, InputKey::PedalMiddle);
+                    i(c3, InputKey::PedalRight);
                 });
             });
 
@@ -223,7 +269,7 @@ impl JukeBoxGui {
                                 .get(&c.current_profile)
                                 .and_then(|p| p.get(&self.current_device))
                                 .and_then(|d| d.rgb_profile.clone())
-                                .unwrap_or(RgbProfile::Off)
+                                .unwrap_or(RgbProfile::default_gui_profile())
                         };
                         self.gui_tab = GuiTab::EditingRGB;
                     }

@@ -6,6 +6,7 @@ use std::{
     path::PathBuf,
 };
 
+use egui_phosphor::regular as phos;
 use jukebox_util::{color::RgbProfile, peripheral::DeviceType};
 use serde::{Deserialize, Serialize};
 
@@ -28,6 +29,11 @@ pub struct ObsAccess {
 pub enum ActionIcon {
     GlyphIcon(String),
     ImageIcon(String),
+}
+impl Default for ActionIcon {
+    fn default() -> Self {
+        Self::GlyphIcon(phos::SEAL_QUESTION.into())
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]

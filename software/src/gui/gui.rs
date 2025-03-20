@@ -211,6 +211,7 @@ impl JukeBoxGui {
         while let Ok(event) = self.sg_rx.try_recv() {
             match event {
                 SerialEvent::Connected { device_info } => {
+                    // TODO: We shouldn't really keep this in the gui thread.
                     let device_uid = device_info.device_uid;
                     let device_type = device_info.input_identifier;
                     let firmware_version = device_info.firmware_version;

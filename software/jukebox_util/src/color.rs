@@ -463,4 +463,25 @@ impl RgbProfile {
 
         buffer
     }
+
+    pub const fn default_device_profile() -> Self {
+        Self::Breathe {
+            brightness: 25,
+            hold_time: 30,
+            trans_time: 10,
+            color_count: 2,
+            colors: [(255, 255, 255), (127, 127, 127), (0, 0, 0), (0, 0, 0)],
+        }
+    }
+
+    pub const fn default_gui_profile() -> Self {
+        Self::RainbowWave {
+            brightness: 25,
+            speed: 100,
+            speed_x: 0,
+            speed_y: 30,
+            saturation: 100,
+            value: 100,
+        }
+    }
 }
