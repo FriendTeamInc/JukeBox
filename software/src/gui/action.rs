@@ -4,7 +4,6 @@ use eframe::egui::{
     scroll_area::ScrollBarVisibility, vec2, Align, Button, CollapsingHeader, Grid, Image,
     ImageSource, Layout, RichText, ScrollArea, Ui,
 };
-use egui_phosphor::regular as phos;
 
 use crate::{
     config::{ActionConfig, ActionIcon, DeviceConfig},
@@ -108,26 +107,23 @@ impl JukeBoxGui {
                     //         .await
                     // });
                 }
-                ui.vertical(|ui| {
-                    ui.allocate_space(vec2(0.0, 2.0));
-                    if ui
-                        .button(RichText::new(phos::FOLDER))
-                        .on_hover_text_at_pointer(t!("help.action.image_icon"))
-                        .clicked()
-                    {
-                        log::info!("TODO: choose image icon");
-                        // self.config_editing_action_icon = ActionIcon::ImageIcon(
-                        //     "file:///home/apex/Pictures/jukebox-icons/meta-noaction.bmp".into(),
-                        // )
-                    }
-                    if ui
-                        .button(RichText::new(phos::SEAL))
-                        .on_hover_text_at_pointer(t!("help.action.glyph_icon"))
-                        .clicked()
-                    {
-                        log::info!("TODO: choose glyph icon");
-                    }
-                });
+                // ui.vertical(|ui| {
+                //     ui.allocate_space(vec2(0.0, 2.0));
+                //     if ui
+                //         .button(RichText::new(phos::FOLDER))
+                //         .on_hover_text_at_pointer(t!("help.action.image_icon"))
+                //         .clicked()
+                //     {
+                //         log::info!("TODO: choose image icon");
+                //     }
+                //     if ui
+                //         .button(RichText::new(phos::SEAL))
+                //         .on_hover_text_at_pointer(t!("help.action.glyph_icon"))
+                //         .clicked()
+                //     {
+                //         log::info!("TODO: choose glyph icon");
+                //     }
+                // });
                 ui.with_layout(
                     Layout::centered_and_justified(eframe::egui::Direction::TopDown)
                         .with_cross_justify(false),

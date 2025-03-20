@@ -26,6 +26,7 @@ use crate::{
 
 use super::types::Action;
 
+// TODO: finish icons
 const ICON_STREAM: ImageSource = include_image!("../../../assets/action_icons/obs-base.bmp");
 const ICON_RECORD: ImageSource = include_image!("../../../assets/action_icons/obs-base.bmp");
 const ICON_PAUSE_RECORD: ImageSource = include_image!("../../../assets/action_icons/obs-base.bmp");

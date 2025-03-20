@@ -10,8 +10,9 @@ use crate::{config::JukeBoxConfig, input::InputKey};
 
 use super::types::Action;
 
-const ICON_KEYBOARD: ImageSource = include_image!("../../../assets/action_icons/meta-base.bmp");
-const ICON_MOUSE: ImageSource = include_image!("../../../assets/action_icons/meta-base.bmp");
+const ICON_KEYBOARD: ImageSource =
+    include_image!("../../../assets/action_icons/input-keyboard.bmp");
+const ICON_MOUSE: ImageSource = include_image!("../../../assets/action_icons/input-mouse.bmp");
 
 #[rustfmt::skip]
 pub fn input_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {

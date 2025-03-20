@@ -6,7 +6,6 @@ use std::{
     path::PathBuf,
 };
 
-use egui_phosphor::regular as phos;
 use jukebox_util::{color::RgbProfile, peripheral::DeviceType};
 use serde::{Deserialize, Serialize};
 
@@ -36,7 +35,7 @@ pub enum ActionIcon {
 }
 impl Default for ActionIcon {
     fn default() -> Self {
-        Self::GlyphIcon(phos::SEAL_QUESTION.into())
+        Self::DefaultActionIcon
     }
 }
 
