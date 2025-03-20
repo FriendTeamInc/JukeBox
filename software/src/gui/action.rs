@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use eframe::egui::{
-    scroll_area::ScrollBarVisibility, vec2, Align, Button, CollapsingHeader, Grid, Layout,
-    RichText, ScrollArea, Ui,
+    scroll_area::ScrollBarVisibility, vec2, Align, Button, CollapsingHeader, Grid, Image,
+    ImageSource, Layout, RichText, ScrollArea, Ui,
 };
 use egui_phosphor::regular as phos;
 
@@ -77,12 +77,21 @@ impl JukeBoxGui {
     pub fn draw_edit_action(&mut self, ui: &mut Ui) {
         ui.columns_const(|[c1, c2]| {
             c1.horizontal(|ui| {
-                let rt = match &self.config_editing_action_icon {
-                    ActionIcon::GlyphIcon(s) => RichText::new(s).heading().strong(),
-                    ActionIcon::ImageIcon(_) => RichText::new("IMAGE HERE").heading().strong(),
+                let test_btn = match &self.config_editing_action_icon {
+                    ActionIcon::GlyphIcon(s) => Button::new(RichText::new(s).heading().strong()),
+                    ActionIcon::ImageIcon(s) => {
+                        let i = Image::new(ImageSource::Uri(s.into()))
+                            .corner_radius(2.0)
+                            .max_size(vec2(64.0, 64.0));
+                        Button::image(i)
+                    }
+                    ActionIcon::DefaultActionIcon => {
+                        let i = self.config_editing_action.icon();
+                        Button::image(i)
+                    }
                 };
                 let test_btn = ui
-                    .add_sized([50.0, 50.0], Button::new(rt))
+                    .add_sized([50.0, 50.0], test_btn)
                     .on_hover_text_at_pointer(t!("help.action.test_input"));
                 if test_btn.clicked() {
                     // TODO: fix for discord and hardware inputs
@@ -107,6 +116,9 @@ impl JukeBoxGui {
                         .clicked()
                     {
                         log::info!("TODO: choose image icon");
+                        // self.config_editing_action_icon = ActionIcon::ImageIcon(
+                        //     "file:///home/apex/Pictures/jukebox-icons/meta-noaction.bmp".into(),
+                        // )
                     }
                     if ui
                         .button(RichText::new(phos::SEAL))

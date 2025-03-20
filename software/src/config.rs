@@ -10,7 +10,10 @@ use egui_phosphor::regular as phos;
 use jukebox_util::{color::RgbProfile, peripheral::DeviceType};
 use serde::{Deserialize, Serialize};
 
-use crate::{actions::types::Action, input::InputKey};
+use crate::{
+    actions::{meta::MetaNoAction, types::Action},
+    input::InputKey,
+};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct DiscordOauthAccess {
@@ -29,6 +32,7 @@ pub struct ObsAccess {
 pub enum ActionIcon {
     GlyphIcon(String),
     ImageIcon(String),
+    DefaultActionIcon,
 }
 impl Default for ActionIcon {
     fn default() -> Self {
@@ -40,6 +44,14 @@ impl Default for ActionIcon {
 pub struct ActionConfig {
     pub action: Box<dyn Action>,
     pub icon: ActionIcon,
+}
+impl Default for ActionConfig {
+    fn default() -> Self {
+        Self {
+            action: Box::new(MetaNoAction {}),
+            icon: Default::default(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]

@@ -4,8 +4,7 @@ use std::{collections::HashMap, sync::Arc};
 
 use anyhow::Result;
 use dyn_clone::{clone_trait_object, DynClone};
-use eframe::egui::Ui;
-use egui_phosphor::regular as phos;
+use eframe::egui::{vec2, Image, ImageSource, TextureFilter, TextureOptions, TextureWrapMode, Ui};
 use jukebox_util::peripheral::DeviceType;
 use tokio::sync::Mutex;
 
@@ -46,6 +45,20 @@ pub trait Action: Sync + Send + DynClone {
     );
 
     fn help(&self) -> String;
+
+    fn icon_source(&self) -> ImageSource;
+
+    fn icon(&self) -> Image {
+        Image::new(self.icon_source())
+            .texture_options(TextureOptions {
+                magnification: TextureFilter::Nearest,
+                minification: TextureFilter::Linear,
+                wrap_mode: TextureWrapMode::ClampToEdge,
+                mipmap_mode: None,
+            })
+            .corner_radius(2.0)
+            .max_size(vec2(64.0, 64.0))
+    }
 }
 clone_trait_object!(Action);
 
@@ -98,41 +111,37 @@ impl ActionMap {
         let keys = match d {
             DeviceType::Unknown => &[][..],
             DeviceType::KeyPad => &[
-                (IK::KeySwitch1, "F13"),
-                (IK::KeySwitch2, "F14"),
-                (IK::KeySwitch3, "F15"),
-                (IK::KeySwitch4, "F16"),
-                (IK::KeySwitch5, "F17"),
-                (IK::KeySwitch6, "F18"),
-                (IK::KeySwitch7, "F19"),
-                (IK::KeySwitch8, "F20"),
-                (IK::KeySwitch9, "F21"),
-                (IK::KeySwitch10, "F22"),
-                (IK::KeySwitch11, "F23"),
-                (IK::KeySwitch12, "F24"),
+                IK::KeySwitch1,
+                IK::KeySwitch2,
+                IK::KeySwitch3,
+                IK::KeySwitch4,
+                IK::KeySwitch5,
+                IK::KeySwitch6,
+                IK::KeySwitch7,
+                IK::KeySwitch8,
+                IK::KeySwitch9,
+                IK::KeySwitch10,
+                IK::KeySwitch11,
+                IK::KeySwitch12,
             ][..],
             DeviceType::KnobPad => &[
-                (IK::KnobLeftSwitch, phos::ARROW_CIRCLE_DOWN),
-                (IK::KnobLeftClockwise, phos::ARROW_CLOCKWISE),
-                (IK::KnobLeftCounterClockwise, phos::ARROW_COUNTER_CLOCKWISE),
-                (IK::KnobRightSwitch, phos::ARROW_CIRCLE_DOWN),
-                (IK::KnobRightClockwise, phos::ARROW_CLOCKWISE),
-                (IK::KnobRightCounterClockwise, phos::ARROW_COUNTER_CLOCKWISE),
+                IK::KnobLeftSwitch,
+                IK::KnobLeftClockwise,
+                IK::KnobLeftCounterClockwise,
+                IK::KnobRightSwitch,
+                IK::KnobRightClockwise,
+                IK::KnobRightCounterClockwise,
             ][..],
-            DeviceType::PedalPad => &[
-                (IK::PedalLeft, phos::ALIGN_LEFT_SIMPLE),
-                (IK::PedalMiddle, phos::ALIGN_BOTTOM_SIMPLE),
-                (IK::PedalRight, phos::ALIGN_RIGHT_SIMPLE),
-            ][..],
+            DeviceType::PedalPad => &[IK::PedalLeft, IK::PedalMiddle, IK::PedalRight][..],
         };
 
         let mut c = HashMap::new();
         for k in keys {
             c.insert(
-                k.0,
+                *k,
                 ActionConfig {
                     action: self.enum_map.get("MetaNoAction").unwrap().clone(),
-                    icon: ActionIcon::GlyphIcon(k.1.into()),
+                    icon: ActionIcon::DefaultActionIcon,
                 },
             );
         }

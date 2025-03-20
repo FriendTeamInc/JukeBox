@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use eframe::egui::{ComboBox, Slider, Ui};
+use eframe::egui::{include_image, ComboBox, ImageSource, Slider, Ui};
 use egui_phosphor::regular as phos;
 use rfd::FileDialog;
 use serde::{Deserialize, Serialize};
@@ -10,6 +10,9 @@ use tokio::sync::Mutex;
 use crate::{config::JukeBoxConfig, input::InputKey};
 
 use super::types::Action;
+
+const ICON_PLAY_SOUND: ImageSource =
+    include_image!("../../../assets/action_icons/soundboard-play.bmp");
 
 #[rustfmt::skip]
 pub fn soundboard_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
@@ -84,5 +87,9 @@ impl Action for SoundboardPlaySound {
 
     fn help(&self) -> String {
         t!("action.soundboard.play_sound.help").into()
+    }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_PLAY_SOUND
     }
 }

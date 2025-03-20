@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
 use eframe::egui::{
-    vec2, Align, Button, Color32, ComboBox, Direction, Grid, Layout, RichText, TextBuffer,
-    TextEdit, Ui,
+    vec2, Align, Button, Color32, ComboBox, Direction, Grid, Image, ImageSource, Layout, RichText,
+    TextBuffer, TextEdit, Ui,
 };
 use egui_phosphor::regular as phos;
 use jukebox_util::color::RgbProfile;
@@ -99,20 +99,29 @@ impl JukeBoxGui {
 
                 for k in keys.iter() {
                     for k in k.iter() {
-                        let i = c
+                        let ac = c
                             .key_map
                             .get(&k)
-                            .and_then(|c| Some(c.icon.clone()))
+                            .and_then(|c| Some(c.clone()))
                             .unwrap_or_default();
+                        let a = ac.action;
+                        let i = ac.icon;
 
-                        let rt = match i {
-                            ActionIcon::GlyphIcon(s) => RichText::new(s).heading().strong(),
-                            ActionIcon::ImageIcon(_) => {
-                                RichText::new("IMAGE HERE").heading().strong()
+                        let mut b = match i {
+                            ActionIcon::GlyphIcon(s) => {
+                                Button::new(RichText::new(s).heading().strong())
+                            }
+                            ActionIcon::ImageIcon(s) => {
+                                let i = Image::new(ImageSource::Uri(s.into()))
+                                    .corner_radius(2.0)
+                                    .max_size(vec2(64.0, 64.0));
+                                Button::image(i)
+                            }
+                            ActionIcon::DefaultActionIcon => {
+                                let i = a.icon();
+                                Button::image(i)
                             }
                         };
-
-                        let mut b = Button::new(rt);
 
                         let inputs = if let Some(s) = self.devices.get(&self.current_device) {
                             s.4.clone()
@@ -122,8 +131,9 @@ impl JukeBoxGui {
                         if inputs.contains(k) {
                             b = b.corner_radius(20u8);
                         }
-                        let btn = ui.add_sized([75.0, 75.0], b);
-                        // TODO: add hover text for button info
+                        let btn = ui
+                            .add_sized([75.0, 75.0], b)
+                            .on_hover_text_at_pointer(a.help());
 
                         if btn.clicked() {
                             self.enter_action_editor(k.to_owned());
@@ -166,26 +176,36 @@ impl JukeBoxGui {
                     };
 
                     let mut i = |ui: &mut Ui, b| {
-                        let i = c
+                        let ac = c
                             .key_map
                             .get(&b)
-                            .and_then(|c| Some(c.icon.clone()))
+                            .and_then(|c| Some(c.clone()))
                             .unwrap_or_default();
+                        let a = ac.action;
+                        let i = ac.icon;
 
-                        let rt = match i {
-                            ActionIcon::GlyphIcon(s) => RichText::new(s).heading().strong(),
-                            ActionIcon::ImageIcon(_) => {
-                                RichText::new("IMAGE HERE").heading().strong()
+                        let mut p = match i {
+                            ActionIcon::GlyphIcon(s) => {
+                                Button::new(RichText::new(s).heading().strong())
+                            }
+                            ActionIcon::ImageIcon(s) => {
+                                let i = Image::new(ImageSource::Uri(s.into()))
+                                    .corner_radius(2.0)
+                                    .max_size(vec2(64.0, 64.0));
+                                Button::image(i)
+                            }
+                            ActionIcon::DefaultActionIcon => {
+                                let i = a.icon();
+                                Button::image(i)
                             }
                         };
-
-                        let mut p = Button::new(rt);
 
                         if inputs.contains(&b) {
                             p = p.corner_radius(20u8);
                         }
-                        let btn = ui.add_sized([100.0, 231.0], p);
-                        // TODO: add hover text for button info
+                        let btn = ui
+                            .add_sized([100.0, 231.0], p)
+                            .on_hover_text_at_pointer(a.help());
 
                         if btn.clicked() {
                             self.enter_action_editor(b);

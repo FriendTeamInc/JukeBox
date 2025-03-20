@@ -5,7 +5,7 @@ use std::{
 
 use anyhow::{bail, Result};
 use discord_rich_presence::{voice_settings::VoiceSettings, DiscordIpc, DiscordIpcClient};
-use eframe::egui::{vec2, Button, Ui};
+use eframe::egui::{include_image, vec2, Button, ImageSource, Ui};
 use egui_phosphor::regular as phos;
 use reqwest::blocking::Client;
 use serde::{Deserialize, Serialize};
@@ -17,6 +17,17 @@ use crate::{
 };
 
 use super::types::Action;
+
+const ICON_MUTE: ImageSource =
+    include_image!("../../../assets/action_icons/discord-microphone-2.bmp");
+const ICON_DEAFEN: ImageSource =
+    include_image!("../../../assets/action_icons/discord-headphones-2.bmp");
+const ICON_PUSH_TO_TALK: ImageSource =
+    include_image!("../../../assets/action_icons/discord-talking-1.bmp");
+const ICON_PUSH_TO_MUTE: ImageSource =
+    include_image!("../../../assets/action_icons/discord-microphone-1.bmp");
+const ICON_PUSH_TO_DEAFEN: ImageSource =
+    include_image!("../../../assets/action_icons/discord-headphones-1.bmp");
 
 const DISCORD_CLIENT_ID: &str = env!("DISCORD_CLIENT_ID");
 const DISCORD_CLIENT_SECRET: &str = env!("DISCORD_CLIENT_SECRET");
@@ -218,6 +229,10 @@ impl Action for DiscordToggleMute {
     fn help(&self) -> String {
         t!("action.discord.toggle_mute.help").into()
     }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_MUTE
+    }
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
@@ -283,6 +298,10 @@ impl Action for DiscordToggleDeafen {
 
     fn help(&self) -> String {
         t!("action.discord.toggle_deafen.help").into()
+    }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_DEAFEN
     }
 }
 
@@ -362,6 +381,10 @@ impl Action for DiscordPushToTalk {
     fn help(&self) -> String {
         t!("action.discord.push_to_talk.help").into()
     }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_PUSH_TO_TALK
+    }
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
@@ -439,6 +462,10 @@ impl Action for DiscordPushToMute {
 
     fn help(&self) -> String {
         t!("action.discord.push_to_mute.help").into()
+    }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_PUSH_TO_MUTE
     }
 }
 
@@ -519,5 +546,9 @@ impl Action for DiscordPushToDeafen {
 
     fn help(&self) -> String {
         t!("action.discord.push_to_deafen.help").into()
+    }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_PUSH_TO_DEAFEN
     }
 }

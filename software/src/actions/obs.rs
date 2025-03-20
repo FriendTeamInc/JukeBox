@@ -7,7 +7,7 @@ use std::{
 };
 
 use anyhow::{bail, Result};
-use eframe::egui::{ComboBox, RichText, TextEdit, Ui};
+use eframe::egui::{include_image, ComboBox, ImageSource, RichText, TextEdit, Ui};
 use egui_phosphor::regular as phos;
 use obws::{
     client::{ConnectConfig, DEFAULT_BROADCAST_CAPACITY},
@@ -25,6 +25,22 @@ use crate::{
 };
 
 use super::types::Action;
+
+const ICON_STREAM: ImageSource = include_image!("../../../assets/action_icons/obs-base.bmp");
+const ICON_RECORD: ImageSource = include_image!("../../../assets/action_icons/obs-base.bmp");
+const ICON_PAUSE_RECORD: ImageSource = include_image!("../../../assets/action_icons/obs-base.bmp");
+const ICON_REPLAY_BUFFER: ImageSource = include_image!("../../../assets/action_icons/obs-base.bmp");
+const ICON_SAVE_REPLAY: ImageSource = include_image!("../../../assets/action_icons/obs-base.bmp");
+const ICON_SOURCE: ImageSource = include_image!("../../../assets/action_icons/obs-base.bmp");
+const ICON_MUTE: ImageSource = include_image!("../../../assets/action_icons/obs-base.bmp");
+const ICON_SWITCH_SCENE: ImageSource = include_image!("../../../assets/action_icons/obs-base.bmp");
+const ICON_SWITCH_PREVIEW: ImageSource =
+    include_image!("../../../assets/action_icons/obs-base.bmp");
+const ICON_PUSH_PREVIEW: ImageSource = include_image!("../../../assets/action_icons/obs-base.bmp");
+const ICON_SWITCH_COLLECTION: ImageSource =
+    include_image!("../../../assets/action_icons/obs-base.bmp");
+const ICON_CHAPTER_MARKER: ImageSource =
+    include_image!("../../../assets/action_icons/obs-base.bmp");
 
 static OBS_HOST_ADDRESS: OnceLock<Mutex<String>> = OnceLock::new();
 static OBS_HOST_PORT: OnceLock<Mutex<String>> = OnceLock::new();
@@ -245,6 +261,10 @@ impl Action for ObsStream {
     fn help(&self) -> String {
         t!("action.obs.toggle_stream.help").into()
     }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_STREAM
+    }
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
@@ -294,6 +314,10 @@ impl Action for ObsRecord {
 
     fn help(&self) -> String {
         t!("action.obs.toggle_record.help").into()
+    }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_RECORD
     }
 }
 
@@ -345,6 +369,10 @@ impl Action for ObsPauseRecord {
     fn help(&self) -> String {
         t!("action.obs.pause_record.help").into()
     }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_PAUSE_RECORD
+    }
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
@@ -395,6 +423,10 @@ impl Action for ObsReplayBuffer {
     fn help(&self) -> String {
         t!("action.obs.toggle_replay_buffer.help").into()
     }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_REPLAY_BUFFER
+    }
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
@@ -444,6 +476,10 @@ impl Action for ObsSaveReplay {
 
     fn help(&self) -> String {
         t!("action.obs.save_replay_buffer.help").into()
+    }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_SAVE_REPLAY
     }
 }
 
@@ -611,6 +647,10 @@ impl Action for ObsSource {
     fn help(&self) -> String {
         t!("action.obs.toggle_source.help").into()
     }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_SOURCE
+    }
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
@@ -713,6 +753,10 @@ impl Action for ObsMute {
 
     fn help(&self) -> String {
         t!("action.obs.toggle_mute.help").into()
+    }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_MUTE
     }
 }
 
@@ -819,6 +863,10 @@ impl Action for ObsSceneSwitch {
     fn help(&self) -> String {
         t!("action.obs.switch_scene.help").into()
     }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_SWITCH_SCENE
+    }
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
@@ -924,6 +972,10 @@ impl Action for ObsPreviewSceneSwitch {
     fn help(&self) -> String {
         t!("action.obs.switch_preview_scene.help").into()
     }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_SWITCH_PREVIEW
+    }
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
@@ -973,6 +1025,10 @@ impl Action for ObsPreviewScenePush {
 
     fn help(&self) -> String {
         t!("action.obs.push_preview_scene.help").into()
+    }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_PUSH_PREVIEW
     }
 }
 
@@ -1079,6 +1135,10 @@ impl Action for ObsSceneCollectionSwitch {
     fn help(&self) -> String {
         t!("action.obs.switch_scene_collection.help").into()
     }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_SWITCH_COLLECTION
+    }
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
@@ -1128,5 +1188,9 @@ impl Action for ObsChapterMarker {
 
     fn help(&self) -> String {
         t!("action.obs.add_chapter_marker.help").into()
+    }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_CHAPTER_MARKER
     }
 }

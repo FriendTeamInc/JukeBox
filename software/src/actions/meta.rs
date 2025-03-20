@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::{bail, Result};
-use eframe::egui::{ComboBox, Ui};
+use eframe::egui::{include_image, ComboBox, ImageSource, Ui};
 use egui_phosphor::regular as phos;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
@@ -9,6 +9,13 @@ use tokio::sync::Mutex;
 use crate::{config::JukeBoxConfig, input::InputKey};
 
 use super::types::Action;
+
+const ICON_NO_ACTION: ImageSource =
+    include_image!("../../../assets/action_icons/meta-noaction.bmp");
+const ICON_SWITCH_PROFILE: ImageSource =
+    include_image!("../../../assets/action_icons/meta-switchprofile.bmp");
+const ICON_COPY_FROM_PROFILE: ImageSource =
+    include_image!("../../../assets/action_icons/meta-copyfromprofile.bmp");
 
 #[rustfmt::skip]
 pub fn meta_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
@@ -70,6 +77,10 @@ impl Action for MetaNoAction {
 
     fn help(&self) -> String {
         t!("action.meta.no_action.help").into()
+    }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_NO_ACTION
     }
 }
 
@@ -139,6 +150,10 @@ impl Action for MetaSwitchProfile {
 
     fn help(&self) -> String {
         t!("action.meta.switch_profile.help").into()
+    }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_SWITCH_PROFILE
     }
 }
 
@@ -244,5 +259,9 @@ impl Action for MetaCopyFromProfile {
 
     fn help(&self) -> String {
         t!("action.meta.copy_from_profile.help").into()
+    }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_COPY_FROM_PROFILE
     }
 }

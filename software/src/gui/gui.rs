@@ -6,6 +6,7 @@ use std::time::{Duration, Instant};
 
 use eframe::egui::{vec2, Align, CentralPanel, Context, Layout, RichText, Ui, ViewportBuilder};
 use eframe::Frame;
+use egui_extras::install_image_loaders;
 use egui_phosphor::regular as phos;
 use jukebox_util::color::RgbProfile;
 use jukebox_util::peripheral::DeviceType;
@@ -390,6 +391,7 @@ pub fn basic_gui() {
             let mut fonts = eframe::egui::FontDefinitions::default();
             egui_phosphor::add_to_fonts(&mut fonts, egui_phosphor::Variant::Regular);
             ctx.set_fonts(fonts);
+            install_image_loaders(ctx);
 
             Ok(Box::new(JukeBoxGui::new()))
         }),

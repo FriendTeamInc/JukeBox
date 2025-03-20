@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use eframe::egui::{ComboBox, Slider, Ui};
+use eframe::egui::{include_image, ComboBox, ImageSource, Slider, Ui};
 use egui_phosphor::regular as phos;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
@@ -9,6 +9,9 @@ use tokio::sync::Mutex;
 use crate::{config::JukeBoxConfig, input::InputKey};
 
 use super::types::Action;
+
+const ICON_KEYBOARD: ImageSource = include_image!("../../../assets/action_icons/meta-base.bmp");
+const ICON_MOUSE: ImageSource = include_image!("../../../assets/action_icons/meta-base.bmp");
 
 #[rustfmt::skip]
 pub fn input_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
@@ -265,6 +268,10 @@ impl Action for InputKeyboard {
     fn help(&self) -> String {
         t!("action.input.keyboard.help").into()
     }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_KEYBOARD
+    }
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
@@ -376,5 +383,9 @@ impl Action for InputMouse {
 
     fn help(&self) -> String {
         t!("action.input.mouse.help").into()
+    }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_MOUSE
     }
 }

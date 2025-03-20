@@ -1,7 +1,7 @@
 use std::{process::Command, sync::Arc};
 
 use anyhow::Result;
-use eframe::egui::{ComboBox, Slider, Ui};
+use eframe::egui::{include_image, ComboBox, ImageSource, Slider, Ui};
 use egui_phosphor::regular as phos;
 use rfd::FileDialog;
 use serde::{Deserialize, Serialize};
@@ -10,6 +10,15 @@ use tokio::{sync::Mutex, task::spawn_blocking};
 use crate::{config::JukeBoxConfig, input::InputKey};
 
 use super::types::Action;
+
+const ICON_LAUNCH_APPLICATION: ImageSource =
+    include_image!("../../../assets/action_icons/system-appopen.bmp");
+const ICON_OPEN_WEBSITE: ImageSource =
+    include_image!("../../../assets/action_icons/system-webopen.bmp");
+const ICON_INPUT_CONTROL: ImageSource =
+    include_image!("../../../assets/action_icons/system-inputcontrol.bmp");
+const ICON_OUTPUT_CONTROL: ImageSource =
+    include_image!("../../../assets/action_icons/system-outputcontrol.bmp");
 
 #[rustfmt::skip]
 pub fn system_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
@@ -103,6 +112,10 @@ impl Action for SystemLaunchApplication {
     fn help(&self) -> String {
         t!("action.system.launch_app.help").into()
     }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_LAUNCH_APPLICATION
+    }
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
@@ -149,6 +162,10 @@ impl Action for SystemOpenWebsite {
 
     fn help(&self) -> String {
         t!("action.system.open_website.help").into()
+    }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_OPEN_WEBSITE
     }
 }
 
@@ -205,6 +222,10 @@ impl Action for SystemAudioInputControl {
     fn help(&self) -> String {
         t!("action.system.audio_input_control.help").into()
     }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_INPUT_CONTROL
+    }
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
@@ -259,5 +280,9 @@ impl Action for SystemAudioOutputControl {
 
     fn help(&self) -> String {
         t!("action.system.audio_output_control.help").into()
+    }
+
+    fn icon_source(&self) -> ImageSource {
+        ICON_OUTPUT_CONTROL
     }
 }
