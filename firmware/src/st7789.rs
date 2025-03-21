@@ -13,7 +13,7 @@ use rp2040_hal::{
 
 const SCR_W: usize = 240;
 const SCR_H: usize = 320;
-static mut FB: [[u16; SCR_W]; SCR_H] = [[0x00FFu16; SCR_W]; SCR_H];
+static mut FB: [[u16; SCR_W]; SCR_H] = [[0x0000u16; SCR_W]; SCR_H];
 // The framebuffer is a static so that it does not end up on core1's stack.
 
 pub struct St7789<P, SM, I>
@@ -75,7 +75,7 @@ where
             .buffers(rp2040_hal::pio::Buffers::OnlyTx)
             .out_shift_direction(rp2040_hal::pio::ShiftDirection::Left)
             .autopull(true)
-            .pull_threshold(8)
+            .pull_threshold(16)
             // misc config
             .clock_divisor_fixed_point(1, 0)
             .build(sm);
@@ -110,29 +110,17 @@ where
     pub fn init(&mut self) {
         // init sequence
         // 16bit startup sequence
-        // self.write_cmd(&[0x01]); // Software reset
-        // self.write_cmd(&[0x11]); // Exit sleep mode
-        // self.write_cmd(&[0x3A, 0x55]); // Set colour mode to 16 bit
-        // self.write_cmd(&[0x36, 0x00]); // Set MADCTL: row then column, refresh is bottom to top ????
-        // self.write_cmd(&[0x2A, 0x00, SCR_W as u16]); // CASET: column addresses
-        // self.write_cmd(&[0x2B, 0x00, SCR_H as u16]); // RASET: row addresses
-        // self.write_cmd(&[0x21]); // Inversion on (supposedly a hack?)
-        // self.write_cmd(&[0x13]); // Normal display on
-        // self.write_cmd(&[0x29]); // Main screen turn on
-
-        // 8 bit startup sequence
-        self.write_cmd(&[0x01]); // Software reset
-        self.write_cmd(&[0x11]); // Exit sleep mode
-        self.write_cmd(&[0x3A, 0x55]); // Set colour mode to 16 bit
-        self.write_cmd(&[0x36, 0x00]); // Set MADCTL: row then column, refresh is bottom to top ????
-        self.write_cmd(&[0x2A, 0x00, 0x00, (SCR_W >> 8) as u8, (SCR_W & 0xFF) as u8]); // CASET: column addresses
-        self.write_cmd(&[0x2B, 0x00, 0x00, (SCR_H >> 8) as u8, (SCR_H & 0xFF) as u8]); // RASET: row addresses
-        self.write_cmd(&[0x21]); // Inversion on (supposedly a hack?)
-        self.write_cmd(&[0x13]); // Normal display on
-        self.write_cmd(&[0x29]); // Main screen turn on
+        self.write_cmd(&[0x0001]); // Software reset
+        self.write_cmd(&[0x0011]); // Exit sleep mode
+        self.write_cmd(&[0x003A, 0x5500]); // Set colour mode to 16 bit
+        self.write_cmd(&[0x0036, 0x0000]); // Set MADCTL: row then column, refresh is bottom to top ????
+        self.write_cmd(&[0x002A, 0x0000, SCR_W as u16]); // CASET: column addresses
+        self.write_cmd(&[0x002B, 0x0000, SCR_H as u16]); // RASET: row addresses
+        self.write_cmd(&[0x0021]); // Inversion on (supposedly a hack?)
+        self.write_cmd(&[0x0013]); // Normal display on
+        self.write_cmd(&[0x0029]); // Main screen turn on
 
         self.push_framebuffer();
-        self.backlight_on();
     }
 
     fn wait_idle(&mut self) {
@@ -150,14 +138,14 @@ where
         }
     }
 
-    fn write(&mut self, word: u8) {
-        let w = (word as u32) << 24;
+    fn write(&mut self, word: u16) {
+        let w = (word as u32) << 16;
         while !self.tx.write(w) {
             cortex_m::asm::nop();
         }
     }
 
-    fn write_cmd(&mut self, cmd: &[u8]) {
+    fn write_cmd(&mut self, cmd: &[u16]) {
         self.wait_idle();
         self.set_dc_cs(false, false);
 
@@ -196,6 +184,10 @@ where
         self.set_dc_cs(true, false);
     }
 
+    fn end_pixels(&mut self) {
+        self.set_dc_cs(false, false);
+    }
+
     pub fn fill_framebuffer(&mut self, color: u16) {
         for y in 0..SCR_H {
             for x in 0..SCR_W {
@@ -218,12 +210,7 @@ where
             let y = unsafe { FB.get_unchecked(y) };
             for x in 0..SCR_W {
                 let w = unsafe { y.get_unchecked(x) };
-                // self.write(*w);
-                let w1 = (*w >> 8) as u8;
-                let w2 = *w as u8;
-
-                self.write(w1);
-                self.write(w2);
+                self.write(*w);
             }
         }
     }
