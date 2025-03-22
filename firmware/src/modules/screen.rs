@@ -34,7 +34,26 @@ macro_rules! load_bmp {
     }};
 }
 
-const DISCORD_ICON: [u16; 4096] = load_bmp!("../../../assets/action_icons/discord-base.bmp");
+const ICON_BASE: &[[u16; 4096]] = &[
+    load_bmp!("../../../assets/action_icons/meta-noaction.bmp"),
+    load_bmp!("../../../assets/action_icons/meta-switchprofile.bmp"),
+    load_bmp!("../../../assets/action_icons/meta-copyfromprofile.bmp"),
+    load_bmp!("../../../assets/action_icons/system-appopen.bmp"),
+    // load_bmp!("../../../assets/action_icons/system-webopen.bmp"),
+    // load_bmp!("../../../assets/action_icons/system-inputcontrol.bmp"),
+    load_bmp!("../../../assets/action_icons/system-outputcontrol.bmp"),
+    load_bmp!("../../../assets/action_icons/soundboard-play.bmp"),
+    load_bmp!("../../../assets/action_icons/input-keyboard.bmp"),
+    load_bmp!("../../../assets/action_icons/input-mouse.bmp"),
+    load_bmp!("../../../assets/action_icons/input-gamepad.bmp"),
+    load_bmp!("../../../assets/action_icons/discord-headphones-1.bmp"),
+    // load_bmp!("../../../assets/action_icons/discord-headphones-2.bmp"),
+    load_bmp!("../../../assets/action_icons/discord-microphone-1.bmp"),
+    // load_bmp!("../../../assets/action_icons/discord-microphone-2.bmp"),
+    // load_bmp!("../../../assets/action_icons/discord-talking-1.bmp"),
+    // load_bmp!("../../../assets/action_icons/discord-talking-2.bmp"),
+    load_bmp!("../../../assets/action_icons/obs-base.bmp"),
+];
 
 const REFRESH_RATE: u32 = 33;
 
@@ -113,7 +132,7 @@ impl ScreenMod {
 
         for y in 0..3 {
             for x in 0..4 {
-                self.draw_icon(&DISCORD_ICON, 2 + (64 + 6) * y, 23 + (64 + 6) * x);
+                self.draw_icon(&ICON_BASE[y * 4 + x], 2 + (64 + 6) * y, 23 + (64 + 6) * x);
             }
         }
 
