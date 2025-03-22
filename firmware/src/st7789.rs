@@ -11,8 +11,8 @@ use rp2040_hal::{
     timer::CountDown,
 };
 
-const SCR_W: usize = 240;
-const SCR_H: usize = 320;
+pub const SCR_W: usize = 240;
+pub const SCR_H: usize = 320;
 static mut FB: [[u16; SCR_W]; SCR_H] = [[0x0000u16; SCR_W]; SCR_H];
 // The framebuffer is a static so that it does not end up on core1's stack.
 
@@ -30,6 +30,8 @@ where
     cs_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
     _rst_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
     timer: CountDown,
+
+    color: u16,
 }
 
 impl<P, SM, I> St7789<P, SM, I>
@@ -96,6 +98,8 @@ where
             cs_pin: cs_pin,
             _rst_pin: rst_pin,
             timer: timer,
+
+            color: 0,
         }
     }
 
@@ -188,24 +192,46 @@ where
         self.set_dc_cs(false, false);
     }
 
-    pub fn fill_framebuffer(&mut self, color: u16) {
-        for y in 0..SCR_H {
-            for x in 0..SCR_W {
-                // doing unchecked access did not meaningfully improve performance
-                unsafe {
-                    FB[y][x] = color;
-                }
+    pub fn get_color(&mut self) -> u16 {
+        self.color
+    }
+
+    pub fn set_color(&mut self, color: u16) {
+        self.color = color;
+    }
+
+    pub fn put_pixel(&mut self, x: usize, y: usize) {
+        if x >= SCR_W || y >= SCR_H {
+            return;
+        }
+        // doing unchecked access did not meaningfully improve performance
+        unsafe {
+            FB[y][x] = self.color;
+        }
+    }
+
+    pub fn rectangle(&mut self, x: usize, y: usize, w: usize, h: usize) {
+        for h in 0..h {
+            for w in 0..w {
+                self.put_pixel(x + w, y + h);
             }
         }
     }
 
+    pub fn fill_framebuffer(&mut self) {
+        self.rectangle(0, 0, SCR_H, SCR_W);
+    }
+
     pub fn clear_framebuffer(&mut self) {
-        self.fill_framebuffer(0);
+        let old_color = self.get_color();
+        self.set_color(0);
+        self.fill_framebuffer();
+        self.set_color(old_color);
     }
 
     pub fn push_framebuffer(&mut self) {
         self.start_pixels();
-        for y in 0..SCR_H {
+        for y in (0..SCR_H).rev() {
             #[allow(static_mut_refs)] // This is probably bad. LOL.
             let y = unsafe { FB.get_unchecked(y) };
             for x in 0..SCR_W {

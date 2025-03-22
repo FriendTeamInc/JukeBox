@@ -20,10 +20,7 @@ use crate::{ConnectionStatus, RgbControls};
 const RGB_LEN: usize = 12;
 const FRAME_TIME: u32 = 33;
 
-pub const DEFAULT_RGB: RgbProfile = RgbProfile::StaticSolid {
-    brightness: 25,
-    color: (255, 255, 255),
-};
+pub const DEFAULT_RGB: RgbProfile = RgbProfile::default_device_profile();
 
 pub struct RgbMod {
     ws: Ws2812<PIO0, SM0, CountDown, Pin<DynPinId, FunctionPio0, PullDown>>,

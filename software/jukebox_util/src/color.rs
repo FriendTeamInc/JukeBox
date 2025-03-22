@@ -466,8 +466,8 @@ impl RgbProfile {
 
     pub const fn default_device_profile() -> Self {
         Self::Breathe {
-            brightness: 25,
-            hold_time: 30,
+            brightness: 20,
+            hold_time: 20,
             trans_time: 10,
             color_count: 2,
             colors: [(255, 255, 255), (127, 127, 127), (0, 0, 0), (0, 0, 0)],

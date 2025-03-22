@@ -75,7 +75,7 @@ use usbd_serial::SerialPort;
 use defmt::*;
 use defmt_rtt as _;
 
-static CORE1_STACK: Stack<8192> = Stack::new();
+static CORE1_STACK: Stack<16384> = Stack::new();
 
 // inter-core mutexes
 type PeripheralInputs = Mutex<1, JBInputs>;
