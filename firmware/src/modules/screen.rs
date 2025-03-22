@@ -128,6 +128,8 @@ impl ScreenMod {
             return;
         }
 
+        let time_start = _timer.get_counter();
+
         self.st.clear_framebuffer();
 
         for y in 0..3 {
@@ -136,6 +138,12 @@ impl ScreenMod {
             }
         }
 
+        let elapse1 = (_timer.get_counter() - time_start).to_micros();
+
+        let time_start = _timer.get_counter();
         self.st.push_framebuffer();
+        let elapse2 = (_timer.get_counter() - time_start).to_micros();
+
+        info!("times: fill-fb={}us, push-fb={}us", elapse1, elapse2);
     }
 }
