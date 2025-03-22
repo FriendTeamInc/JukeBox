@@ -269,6 +269,15 @@ fn main() -> ! {
                 #[cfg(feature = "pedalpad")]
                 pedal_mod.update();
 
+                // update accessories
+                led_mod.update(timer.get_counter());
+
+                #[cfg(feature = "keypad")]
+                rgb_mod.update(timer.get_counter());
+
+                #[cfg(feature = "keypad")]
+                screen_mod.update(keyboard_mod.get_pressed_keys(), timer.get_counter(), &timer);
+
                 // update mutexes
                 PERIPHERAL_INPUTS.with_mut_lock(|i| {
                     #[cfg(feature = "keypad")]
@@ -286,12 +295,9 @@ fn main() -> ! {
                     if *u {
                         #[cfg(feature = "keypad")]
                         {
-                            screen_mod.backlight_off();
                             screen_mod.clear();
+                            rgb_mod.clear();
                         }
-
-                        #[cfg(feature = "keypad")]
-                        rgb_mod.clear();
 
                         led_mod.clear();
 
@@ -303,15 +309,6 @@ fn main() -> ! {
                         reset_to_usb_boot(0, 0);
                     }
                 });
-
-                // update accessories
-                led_mod.update(timer.get_counter());
-
-                #[cfg(feature = "keypad")]
-                rgb_mod.update(timer.get_counter());
-
-                #[cfg(feature = "keypad")]
-                screen_mod.update(timer.get_counter(), &timer);
             }
         })
         .expect("failed to start core1");

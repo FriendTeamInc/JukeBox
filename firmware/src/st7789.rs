@@ -3,6 +3,11 @@
 use core::u32;
 
 use cortex_m::prelude::_embedded_hal_timer_CountDown;
+use embedded_graphics::{
+    pixelcolor::Bgr565,
+    prelude::{IntoStorage, Point},
+};
+use embedded_graphics_framebuf::FrameBuf;
 use embedded_hal::digital::v2::OutputPin as _;
 use rp2040_hal::{
     fugit::{ExtU64, MicrosDurationU64},
@@ -11,10 +16,7 @@ use rp2040_hal::{
     timer::CountDown,
 };
 
-pub const SCR_W: usize = 240;
-pub const SCR_H: usize = 320;
-static mut FB: [[u16; SCR_W]; SCR_H] = [[0x0000u16; SCR_W]; SCR_H];
-// The framebuffer is a static so that it does not end up on core1's stack.
+use crate::modules::screen::{SCR_H, SCR_W};
 
 pub struct St7789<P, SM, I>
 where
@@ -124,7 +126,7 @@ where
         self.write_cmd(&[0x0013]); // Normal display on
         self.write_cmd(&[0x0029]); // Main screen turn on
 
-        self.push_framebuffer();
+        // self.push_framebuffer();
     }
 
     fn wait_idle(&mut self) {
@@ -192,51 +194,23 @@ where
         self.set_dc_cs(false, false);
     }
 
-    pub fn get_color(&mut self) -> u16 {
-        self.color
-    }
+    pub fn clear_screen(&mut self) {
+        self.start_pixels();
 
-    pub fn set_color(&mut self, color: u16) {
-        self.color = color;
-    }
-
-    pub fn put_pixel(&mut self, x: usize, y: usize) {
-        if x >= SCR_W || y >= SCR_H {
-            return;
-        }
-        // doing unchecked access did not meaningfully improve performance
-        unsafe {
-            FB[y][x] = self.color;
-        }
-    }
-
-    pub fn rectangle(&mut self, x: usize, y: usize, w: usize, h: usize) {
-        for h in 0..h {
-            for w in 0..w {
-                self.put_pixel(x + w, y + h);
+        for _ in 0..SCR_H {
+            for _ in 0..SCR_W {
+                self.write(0);
             }
         }
     }
 
-    pub fn fill_framebuffer(&mut self) {
-        self.rectangle(0, 0, SCR_H, SCR_W);
-    }
-
-    pub fn clear_framebuffer(&mut self) {
-        let old_color = self.get_color();
-        self.set_color(0);
-        self.fill_framebuffer();
-        self.set_color(old_color);
-    }
-
-    pub fn push_framebuffer(&mut self) {
+    pub fn push_framebuffer(&mut self, fb: &FrameBuf<Bgr565, &'static mut [Bgr565; 76800]>) {
         self.start_pixels();
+
         for y in (0..SCR_H).rev() {
-            #[allow(static_mut_refs)] // This is probably bad. LOL.
-            let y = unsafe { FB.get_unchecked(y) };
             for x in 0..SCR_W {
-                let w = unsafe { y.get_unchecked(x) };
-                self.write(*w);
+                let w = fb.get_color_at(Point::new(x as i32, y as i32));
+                self.write(w.into_storage());
             }
         }
     }
