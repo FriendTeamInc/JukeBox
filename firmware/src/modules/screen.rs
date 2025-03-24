@@ -127,13 +127,13 @@ impl ScreenMod {
 
     pub fn clear(&mut self) {
         // self.clear_fb();
-        self.push_fb();
+        // self.push_fb();
         self.backlight_off();
     }
 
-    fn push_fb(&mut self) {
-        self.st.push_framebuffer(&self.fb);
-    }
+    // fn push_fb(&mut self) {
+    //     self.st.push_framebuffer(&self.fb);
+    // }
 
     fn draw_icon(&mut self, icon: &[Bgr565], x: i32, y: i32) {
         let mut h = 0i32;
@@ -160,8 +160,6 @@ impl ScreenMod {
             return self;
         }
 
-        // let t = ((t.duration_since_epoch().ticks() >> 14) % 360) as f32;
-
         let time_start = timer.get_counter();
         (self.dma_ch0, self.fb) = {
             let (dma_ch0, _, fb) = single_buffer::Config::new(self.dma_ch0, CLEAR_VAL, self.fb)
@@ -170,7 +168,6 @@ impl ScreenMod {
 
             (dma_ch0, fb)
         };
-        // self.clear_fb();
         let elapse_clear_fb = timer.get_counter() - time_start;
 
         let time_start = timer.get_counter();
@@ -226,7 +223,7 @@ impl ScreenMod {
         let elapse_draw_icons = timer.get_counter() - time_start;
 
         let time_start = timer.get_counter();
-        self.push_fb();
+        (self.st, self.dma_ch0, self.fb) = self.st.push_fb(self.dma_ch0, self.fb);
         let elapse_push_fb = timer.get_counter() - time_start;
 
         info!(

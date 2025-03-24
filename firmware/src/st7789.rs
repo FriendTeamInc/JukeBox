@@ -3,13 +3,11 @@
 use core::u32;
 
 use cortex_m::prelude::_embedded_hal_timer_CountDown;
-use embedded_graphics::{
-    pixelcolor::Bgr565,
-    prelude::{IntoStorage, Point},
-};
+use embedded_graphics::pixelcolor::Bgr565;
 use embedded_graphics_framebuf::FrameBuf;
 use embedded_hal::digital::v2::OutputPin as _;
 use rp2040_hal::{
+    dma::{single_buffer, Channel, CH0},
     fugit::{ExtU64, MicrosDurationU64},
     gpio::{AnyPin, DynPinId, FunctionSioOutput, Pin, PullDown},
     pio::{PIOBuilder, PIOExt, StateMachineIndex, Tx, UninitStateMachine, PIO},
@@ -194,28 +192,23 @@ where
         self.set_dc_cs(false, false);
     }
 
-    pub fn clear_screen(&mut self) {
+    pub fn push_fb(
+        mut self,
+        dma_ch0: Channel<CH0>,
+        fb: FrameBuf<Bgr565, &'static mut [Bgr565; 76800]>,
+    ) -> (
+        Self,
+        Channel<CH0>,
+        FrameBuf<Bgr565, &'static mut [Bgr565; 76800]>,
+    ) {
         self.start_pixels();
-        for _ in 0..SCR_H {
-            for _ in 0..SCR_W {
-                self.write(0);
-            }
-        }
-    }
 
-    // Some back-of-the-napkin math...
-    // This PIO can run about half as fast as the clock of the device (120 MHz).
-    // This PIO runs at 60 MHz. Each bit needs a single Hz to push to the screen.
-    // There are 320 * 240 * 16 = 1228800 bits to push. That's a lot.
-    // 1228800 / 60 gives us a timing of 20 milliseconds to push all the data.
-    // This does not account for the time necessary to access the array.
-    pub fn push_framebuffer(&mut self, fb: &FrameBuf<Bgr565, &'static mut [Bgr565; 76800]>) {
-        self.start_pixels();
-        for y in (0..SCR_H).rev() {
-            for x in 0..SCR_W {
-                let w = fb.get_color_at(Point::new(x as i32, y as i32));
-                self.write(w.into_storage());
-            }
-        }
+        let (dma_ch0, fb, tx) = single_buffer::Config::new(dma_ch0, fb, self.tx)
+            .start()
+            .wait();
+
+        self.tx = tx;
+
+        (self, dma_ch0, fb)
     }
 }
