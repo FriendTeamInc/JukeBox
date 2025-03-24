@@ -5,7 +5,7 @@
 
 #[link_section = ".boot2"]
 #[used]
-pub static BOOT_LOADER: [u8; 256] = rp2040_boot2::BOOT_LOADER_GENERIC_03H;
+pub static BOOT_LOADER: [u8; 256] = rp2040_boot2::BOOT_LOADER_W25Q080; // rp2040_boot2::BOOT_LOADER_GENERIC_03H;
 
 #[link_section = ".bi_entries"]
 #[used]
@@ -14,7 +14,7 @@ pub static PICOTOOL_ENTRIES: [binary_info::EntryAddr; 7] = [
     binary_info::rp_cargo_version!(),
     binary_info::rp_program_build_attribute!(),
     binary_info::rp_pico_board!(c"pico"),
-    binary_info::rp_boot2_name(c"boot2_generic_03h").addr(),
+    binary_info::rp_boot2_name(c"boot2_w25q080").addr(),
     binary_info::rp_program_description!(c"Firmware for JukeBox V5."),
     binary_info::rp_program_url!(c"https://jukebox.friendteam.biz"),
 ];
@@ -49,6 +49,7 @@ use peripheral::inputs_default;
 use rp2040_hal::{
     binary_info,
     clocks::init_clocks_and_plls,
+    dma::DMAExt,
     entry,
     fugit::ExtU32,
     gpio::Pins,
@@ -182,6 +183,7 @@ fn main() -> ! {
                 sio.gpio_bank0,
                 &mut pac.RESETS,
             );
+            let dma = pac.DMA.split(&mut pac.RESETS);
 
             // set up GPIO and modules
             #[cfg(feature = "keypad")]
@@ -223,7 +225,7 @@ fn main() -> ! {
                     timer.count_down(),
                 );
                 st.init();
-                screen::ScreenMod::new(st, timer.count_down(), &CONNECTION_STATUS)
+                screen::ScreenMod::new(st, dma.ch0, timer.count_down(), &CONNECTION_STATUS)
             };
 
             #[cfg(feature = "keypad")]
@@ -276,7 +278,13 @@ fn main() -> ! {
                 rgb_mod.update(timer.get_counter());
 
                 #[cfg(feature = "keypad")]
-                screen_mod.update(keyboard_mod.get_pressed_keys(), timer.get_counter(), &timer);
+                {
+                    screen_mod = screen_mod.update(
+                        keyboard_mod.get_pressed_keys(),
+                        timer.get_counter(),
+                        &timer,
+                    );
+                }
 
                 // update mutexes
                 PERIPHERAL_INPUTS.with_mut_lock(|i| {

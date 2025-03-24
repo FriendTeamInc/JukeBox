@@ -196,7 +196,6 @@ where
 
     pub fn clear_screen(&mut self) {
         self.start_pixels();
-
         for _ in 0..SCR_H {
             for _ in 0..SCR_W {
                 self.write(0);
@@ -204,9 +203,14 @@ where
         }
     }
 
+    // Some back-of-the-napkin math...
+    // This PIO can run about half as fast as the clock of the device (120 MHz).
+    // This PIO runs at 60 MHz. Each bit needs a single Hz to push to the screen.
+    // There are 320 * 240 * 16 = 1228800 bits to push. That's a lot.
+    // 1228800 / 60 gives us a timing of 20 milliseconds to push all the data.
+    // This does not account for the time necessary to access the array.
     pub fn push_framebuffer(&mut self, fb: &FrameBuf<Bgr565, &'static mut [Bgr565; 76800]>) {
         self.start_pixels();
-
         for y in (0..SCR_H).rev() {
             for x in 0..SCR_W {
                 let w = fb.get_color_at(Point::new(x as i32, y as i32));

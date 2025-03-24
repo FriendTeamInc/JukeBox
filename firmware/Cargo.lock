@@ -435,6 +435,7 @@ dependencies = [
  "cortex-m-rt",
  "defmt",
  "defmt-rtt",
+ "embedded-dma",
  "embedded-graphics",
  "embedded-graphics-framebuf",
  "embedded-hal 0.2.7",
