@@ -84,12 +84,14 @@ type UpdateTrigger = Mutex<2, bool>;
 type IdentifyTrigger = Mutex<3, bool>;
 type RgbControls = Mutex<4, (bool, RgbProfile)>; // (changed, settings)
 type ConnectionStatus = Mutex<5, Connection>;
+type Icons = Mutex<6, [[u16; 32 * 32]; 12]>;
 
 static CONNECTION_STATUS: ConnectionStatus = Mutex::new(Connection::NotConnected(true));
 static PERIPHERAL_INPUTS: PeripheralInputs = Mutex::new(inputs_default());
 static UPDATE_TRIGGER: UpdateTrigger = Mutex::new(false);
 static IDENTIFY_TRIGGER: IdentifyTrigger = Mutex::new(false);
 static RGB_CONTROLS: RgbControls = Mutex::new((false, RgbProfile::default_device_profile()));
+static ICONS: Icons = Mutex::new([[0; 32 * 32]; 12]);
 
 #[entry]
 fn main() -> ! {
@@ -163,6 +165,23 @@ fn main() -> ! {
         .composite_with_iads()
         .build();
 
+    // Test icons
+    ICONS.with_mut_lock(|icons| {
+        let mut i = 0;
+        while i < icons.len() {
+            let mut y = 0;
+            while y < 32 {
+                let mut x = 0;
+                while x < 32 {
+                    icons[i][32 * y + x] = x as u16;
+                    x += 1;
+                }
+                y += 1;
+            }
+            i += 1;
+        }
+    });
+
     // set up modules
     let mut serial_mod = serial::SerialMod::new(
         timer.count_down(),
@@ -225,15 +244,7 @@ fn main() -> ! {
                     timer.count_down(),
                 );
                 st.init();
-                screen::ScreenMod::new(
-                    st,
-                    dma.ch0,
-                    dma.ch1,
-                    dma.ch2,
-                    dma.ch3,
-                    timer.count_down(),
-                    &CONNECTION_STATUS,
-                )
+                screen::ScreenMod::new(st, dma.ch0, timer.count_down(), &ICONS, &CONNECTION_STATUS)
             };
 
             #[cfg(feature = "keypad")]
@@ -288,7 +299,7 @@ fn main() -> ! {
                 #[cfg(feature = "keypad")]
                 {
                     screen_mod = screen_mod.update(
-                        // keyboard_mod.get_pressed_keys(),
+                        &keyboard_mod.get_pressed_keys(),
                         timer.get_counter(),
                         &timer,
                     );
