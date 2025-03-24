@@ -102,16 +102,14 @@ pub struct ScreenMod {
 
 impl ScreenMod {
     pub fn new(
-        mut st: St7789<PIO1, SM1, Pin<DynPinId, FunctionPio1, PullDown>>,
+        st: St7789<PIO1, SM1, Pin<DynPinId, FunctionPio1, PullDown>>,
         dma_ch0: Channel<CH0>,
         mut timer: CountDown,
         connection_status: &'static ConnectionStatus,
     ) -> Self {
         timer.start(REFRESH_RATE.millis());
 
-        st.backlight_on();
-
-        ScreenMod {
+        Self {
             st,
             dma_ch0,
             timer,
@@ -121,14 +119,10 @@ impl ScreenMod {
         }
     }
 
-    fn backlight_off(&mut self) {
-        self.st.backlight_off();
-    }
-
     pub fn clear(&mut self) {
         // self.clear_fb();
         self.push_fb();
-        self.backlight_off();
+        self.st.backlight_off();
     }
 
     fn push_fb(&mut self) {
@@ -160,17 +154,15 @@ impl ScreenMod {
             return self;
         }
 
-        // let t = ((t.duration_since_epoch().ticks() >> 14) % 360) as f32;
-
         let time_start = timer.get_counter();
         (self.dma_ch0, self.fb) = {
+            // ideally we'd split the fb up into equal slices for multiple channels to clear it
             let (dma_ch0, _, fb) = single_buffer::Config::new(self.dma_ch0, CLEAR_VAL, self.fb)
                 .start()
                 .wait();
 
             (dma_ch0, fb)
         };
-        // self.clear_fb();
         let elapse_clear_fb = timer.get_counter() - time_start;
 
         let time_start = timer.get_counter();
@@ -227,6 +219,7 @@ impl ScreenMod {
 
         let time_start = timer.get_counter();
         self.push_fb();
+        self.st.backlight_on();
         let elapse_push_fb = timer.get_counter() - time_start;
 
         info!(
