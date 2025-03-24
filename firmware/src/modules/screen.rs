@@ -5,8 +5,10 @@
 #[allow(unused_imports)]
 use defmt::*;
 
+use embedded_dma::Word;
 use embedded_hal::timer::CountDown as _;
 use rp2040_hal::{
+    dma::{single_buffer, Channel, CH0, CH1, CH2, CH3},
     fugit::ExtU32,
     gpio::{DynPinId, FunctionPio1, Pin, PullDown},
     pac::PIO1,
@@ -55,95 +57,153 @@ const ICON_BASE: &[[u16; 4096]] = &[
     load_bmp!("../../../assets/action_icons/obs-base.bmp"),
 ];
 
-const REFRESH_RATE: u32 = 33;
+const REFRESH_RATE: u32 = 50;
+pub const SCR_W: usize = 240;
+pub const SCR_H: usize = 320;
+static mut FBDATA: [u16; SCR_W * SCR_H] = [0; SCR_W * SCR_H];
+static CLEAR_VAL: RepeatReadTarget<u16> = RepeatReadTarget(0);
+#[derive(Clone, Copy)]
+struct RepeatReadTarget<W: Word>(W);
+unsafe impl<W: Word> embedded_dma::ReadTarget for RepeatReadTarget<W> {
+    type Word = W;
+}
+unsafe impl<W: Word> rp2040_hal::dma::ReadTarget for RepeatReadTarget<W> {
+    type ReceivedWord = W;
+
+    fn rx_treq() -> Option<u8> {
+        None
+    }
+
+    fn rx_address_count(&self) -> (u32, u32) {
+        (self as *const Self as u32, u32::MAX)
+    }
+
+    fn rx_increment(&self) -> bool {
+        false
+    }
+}
 
 pub struct ScreenMod {
     st: St7789<PIO1, SM1, Pin<DynPinId, FunctionPio1, PullDown>>,
+    dma_ch0: Channel<CH0>,
+    dma_ch1: Channel<CH1>,
+    dma_ch2: Channel<CH2>,
+    dma_ch3: Channel<CH3>,
     timer: CountDown,
     connection_status: &'static ConnectionStatus,
 }
 
 impl ScreenMod {
     pub fn new(
-        mut st: St7789<PIO1, SM1, Pin<DynPinId, FunctionPio1, PullDown>>,
-        mut count_down: CountDown,
+        st: St7789<PIO1, SM1, Pin<DynPinId, FunctionPio1, PullDown>>,
+        dma_ch0: Channel<CH0>,
+        dma_ch1: Channel<CH1>,
+        dma_ch2: Channel<CH2>,
+        dma_ch3: Channel<CH3>,
+        mut timer: CountDown,
         connection_status: &'static ConnectionStatus,
     ) -> Self {
-        count_down.start(REFRESH_RATE.millis());
-
-        st.backlight_on();
+        timer.start(REFRESH_RATE.millis());
 
         ScreenMod {
-            st: st,
-            timer: count_down,
+            st,
+            dma_ch0,
+            dma_ch1,
+            dma_ch2,
+            dma_ch3,
+            timer,
             connection_status,
         }
     }
 
-    pub fn backlight_off(&mut self) {
+    pub fn clear(&mut self) {
         self.st.backlight_off();
     }
 
-    pub fn clear(&mut self) {
-        self.st.clear_framebuffer();
-        self.st.push_framebuffer();
+    const fn put_pixel(&mut self, color: u16, x: usize, y: usize) {
+        if x >= SCR_W || y >= SCR_H {
+            return;
+        }
+        // doing unchecked access did not meaningfully improve performance
+        unsafe {
+            FBDATA[y * SCR_W + x] = color;
+        }
     }
 
-    pub fn draw_icon(&mut self, icon: &[u16], x: usize, y: usize) {
-        let old_color = self.st.get_color();
+    fn rectangle(&mut self, color: u16, x: usize, y: usize, w: usize, h: usize) {
+        for h in 0..h {
+            for w in 0..w {
+                self.put_pixel(color, x + w, y + h);
+            }
+        }
+    }
+
+    fn draw_icon(&mut self, icon: &[u16], x: usize, y: usize) {
+        // icon drawing
         let mut h = 0;
         while h < 64 {
             let mut w = 0;
             while w < 64 {
                 let c = icon[64 * h + w];
-                self.st.set_color(c);
-                self.st.put_pixel(63 - h + x, w + y);
+                self.put_pixel(c, 63 - h + x, w + y);
                 w += 1;
             }
             h += 1;
         }
-        self.st.set_color(0);
 
-        self.st.rectangle(x, y, 2, 2);
-        self.st.rectangle(x, y, 4, 1);
-        self.st.rectangle(x, y, 1, 4);
-
-        self.st.rectangle(x, y + 64 - 2, 2, 2);
-        self.st.rectangle(x, y + 64 - 2 + 1, 4, 1);
-        self.st.rectangle(x, y + 64 - 2 - 2, 1, 4);
-
-        self.st.rectangle(x + 64 - 2, y, 2, 2);
-        self.st.rectangle(x + 64 - 2 - 2, y, 4, 1);
-        self.st.rectangle(x + 64 - 2 + 1, y, 1, 4);
-
-        self.st.rectangle(x + 64 - 2, y + 64 - 2, 2, 2);
-        self.st.rectangle(x + 64 - 2 - 2, y + 64 - 2 + 1, 4, 1);
-        self.st.rectangle(x + 64 - 2 + 1, y + 64 - 2 - 2, 1, 4);
-
-        self.st.set_color(old_color);
+        // rounded corners
+        self.rectangle(0, x, y, 2, 2);
+        self.rectangle(0, x, y, 4, 1);
+        self.rectangle(0, x, y, 1, 4);
+        self.rectangle(0, x, y + 64 - 2, 2, 2);
+        self.rectangle(0, x, y + 64 - 2 + 1, 4, 1);
+        self.rectangle(0, x, y + 64 - 2 - 2, 1, 4);
+        self.rectangle(0, x + 64 - 2, y, 2, 2);
+        self.rectangle(0, x + 64 - 2 - 2, y, 4, 1);
+        self.rectangle(0, x + 64 - 2 + 1, y, 1, 4);
+        self.rectangle(0, x + 64 - 2, y + 64 - 2, 2, 2);
+        self.rectangle(0, x + 64 - 2 - 2, y + 64 - 2 + 1, 4, 1);
+        self.rectangle(0, x + 64 - 2 + 1, y + 64 - 2 - 2, 1, 4);
     }
 
-    pub fn update(&mut self, _t: Instant, _timer: &Timer) {
+    pub fn update(mut self, _t: Instant, _timer: &Timer) -> Self {
         if !self.timer.wait().is_ok() {
-            return;
+            return self;
         }
 
-        let time_start = _timer.get_counter();
+        let s = _timer.get_counter();
+        // using multiple channels did not meaningfully improve performance.
+        self.dma_ch0 = {
+            let (dma_ch0, _, _) =
+                single_buffer::Config::new(self.dma_ch0, CLEAR_VAL, unsafe { &mut FBDATA })
+                    .start()
+                    .wait();
 
-        self.st.clear_framebuffer();
+            dma_ch0
+        };
+        let elapse_clear_fb = _timer.get_counter() - s;
 
+        let s = _timer.get_counter();
         for y in 0..3 {
             for x in 0..4 {
                 self.draw_icon(&ICON_BASE[y * 4 + x], 2 + (64 + 6) * y, 23 + (64 + 6) * x);
             }
         }
-
-        let elapse1 = (_timer.get_counter() - time_start).to_micros();
+        let elapse_draw_icons = _timer.get_counter() - s;
 
         let time_start = _timer.get_counter();
-        self.st.push_framebuffer();
-        let elapse2 = (_timer.get_counter() - time_start).to_micros();
+        self.st.push_framebuffer(unsafe { &FBDATA });
+        let elapse_push_fb = _timer.get_counter() - time_start;
+        self.st.backlight_on();
 
-        info!("times: fill-fb={}us, push-fb={}us", elapse1, elapse2);
+        info!(
+            "times:\nclear-fb={}us\ndraw-icons={}us\npush-fb={}us\ntotal={}",
+            elapse_clear_fb.to_micros(),
+            elapse_draw_icons.to_micros(),
+            elapse_push_fb.to_micros(),
+            (elapse_clear_fb + elapse_draw_icons + elapse_push_fb).to_micros()
+        );
+
+        self
     }
 }

@@ -346,6 +346,7 @@ dependencies = [
  "cortex-m-rt",
  "defmt",
  "defmt-rtt",
+ "embedded-dma",
  "embedded-hal 0.2.7",
  "itertools 0.14.0",
  "jukebox_util",

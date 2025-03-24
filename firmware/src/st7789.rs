@@ -11,9 +11,11 @@ use rp2040_hal::{
     timer::CountDown,
 };
 
-pub const SCR_W: usize = 240;
-pub const SCR_H: usize = 320;
-static mut FB: [[u16; SCR_W]; SCR_H] = [[0x0000u16; SCR_W]; SCR_H];
+use crate::modules::screen::{SCR_H, SCR_W};
+
+// pub const SCR_W: usize = 240;
+// pub const SCR_H: usize = 320;
+// static mut FB: [[u16; SCR_W]; SCR_H] = [[0x0000u16; SCR_W]; SCR_H];
 // The framebuffer is a static so that it does not end up on core1's stack.
 
 pub struct St7789<P, SM, I>
@@ -30,8 +32,6 @@ where
     cs_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
     _rst_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
     timer: CountDown,
-
-    color: u16,
 }
 
 impl<P, SM, I> St7789<P, SM, I>
@@ -98,8 +98,6 @@ where
             cs_pin: cs_pin,
             _rst_pin: rst_pin,
             timer: timer,
-
-            color: 0,
         }
     }
 
@@ -116,15 +114,13 @@ where
         // 16bit startup sequence
         self.write_cmd(&[0x0001]); // Software reset
         self.write_cmd(&[0x0011]); // Exit sleep mode
-        self.write_cmd(&[0x003A, 0x5500]); // Set colour mode to 16 bit
+        self.write_cmd(&[0x003A, 0x5500]); // Set color mode to 16 bit
         self.write_cmd(&[0x0036, 0x0000]); // Set MADCTL: row then column, refresh is bottom to top ????
         self.write_cmd(&[0x002A, 0x0000, SCR_W as u16]); // CASET: column addresses
         self.write_cmd(&[0x002B, 0x0000, SCR_H as u16]); // RASET: row addresses
         self.write_cmd(&[0x0021]); // Inversion on (supposedly a hack?)
         self.write_cmd(&[0x0013]); // Normal display on
         self.write_cmd(&[0x0029]); // Main screen turn on
-
-        self.push_framebuffer();
     }
 
     fn wait_idle(&mut self) {
@@ -192,50 +188,11 @@ where
         self.set_dc_cs(false, false);
     }
 
-    pub fn get_color(&mut self) -> u16 {
-        self.color
-    }
-
-    pub fn set_color(&mut self, color: u16) {
-        self.color = color;
-    }
-
-    pub fn put_pixel(&mut self, x: usize, y: usize) {
-        if x >= SCR_W || y >= SCR_H {
-            return;
-        }
-        // doing unchecked access did not meaningfully improve performance
-        unsafe {
-            FB[y][x] = self.color;
-        }
-    }
-
-    pub fn rectangle(&mut self, x: usize, y: usize, w: usize, h: usize) {
-        for h in 0..h {
-            for w in 0..w {
-                self.put_pixel(x + w, y + h);
-            }
-        }
-    }
-
-    pub fn fill_framebuffer(&mut self) {
-        self.rectangle(0, 0, SCR_H, SCR_W);
-    }
-
-    pub fn clear_framebuffer(&mut self) {
-        let old_color = self.get_color();
-        self.set_color(0);
-        self.fill_framebuffer();
-        self.set_color(old_color);
-    }
-
-    pub fn push_framebuffer(&mut self) {
+    pub fn push_framebuffer(&mut self, fb: &[u16]) {
         self.start_pixels();
         for y in (0..SCR_H).rev() {
-            #[allow(static_mut_refs)] // This is probably bad. LOL.
-            let y = unsafe { FB.get_unchecked(y) };
             for x in 0..SCR_W {
-                let w = unsafe { y.get_unchecked(x) };
+                let w = unsafe { fb.get_unchecked(y * SCR_W + x) };
                 self.write(*w);
             }
         }
