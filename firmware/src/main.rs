@@ -94,6 +94,18 @@ macro_rules! load_bmp {
 }
 
 const DEFAULT_ICONS: &[[u16; 32 * 32]] = &[
+    // load_bmp!("../../assets/action_icons/meta-noaction.bmp"),
+    // load_bmp!("../../assets/action_icons/meta-switchprofile.bmp"),
+    // load_bmp!("../../assets/action_icons/meta-copyfromprofile.bmp"),
+    // load_bmp!("../../assets/action_icons/system-appopen.bmp"),
+    // load_bmp!("../../assets/action_icons/system-outputcontrol.bmp"),
+    // load_bmp!("../../assets/action_icons/soundboard-play.bmp"),
+    // load_bmp!("../../assets/action_icons/input-keyboard.bmp"),
+    // load_bmp!("../../assets/action_icons/input-mouse.bmp"),
+    // load_bmp!("../../assets/action_icons/input-gamepad.bmp"),
+    // load_bmp!("../../assets/action_icons/discord-headphones-1.bmp"),
+    // load_bmp!("../../assets/action_icons/discord-microphone-1.bmp"),
+    // load_bmp!("../../assets/action_icons/obs-base.bmp"),
     load_bmp!("../../assets/action_icons/F13.bmp"),
     load_bmp!("../../assets/action_icons/F14.bmp"),
     load_bmp!("../../assets/action_icons/F15.bmp"),

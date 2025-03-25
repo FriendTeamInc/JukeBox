@@ -23,7 +23,7 @@ const REFRESH_RATE: u32 = 33;
 pub const SCR_W: usize = 240;
 pub const SCR_H: usize = 320;
 static mut FBDATA: [u16; SCR_W * SCR_H] = [0; SCR_W * SCR_H];
-const BG_COLOR: u16 = 0x4208;
+const BG_COLOR: u16 = 0x1082;
 static CLEAR_VAL: RepeatReadTarget<u16> = RepeatReadTarget(BG_COLOR);
 #[derive(Clone, Copy)]
 struct RepeatReadTarget<W: Word>(W);
@@ -95,29 +95,29 @@ impl ScreenMod {
         }
     }
 
-    fn rounded_rect(&mut self, x: usize, y: usize, s: usize, r: usize) {
-        self.rectangle(BG_COLOR, x, y, 2 * r, 2 * r);
-        self.rectangle(BG_COLOR, x, y, 4 * r, 1 * r);
-        self.rectangle(BG_COLOR, x, y, 1 * r, 4 * r);
+    fn rounded_rect(&mut self, color: u16, x: usize, y: usize, s: usize, r: usize) {
+        self.rectangle(color, x, y, 2 * r, 2 * r);
+        self.rectangle(color, x, y, 4 * r, 1 * r);
+        self.rectangle(color, x, y, 1 * r, 4 * r);
 
-        self.rectangle(BG_COLOR, x, y + s - 2 * r, 2 * r, 2 * r);
-        self.rectangle(BG_COLOR, x, y + s - 2 * r + 1 * r, 4 * r, 1 * r);
-        self.rectangle(BG_COLOR, x, y + s - 2 * r - 2 * r, 1 * r, 4 * r);
+        self.rectangle(color, x, y + s - 2 * r, 2 * r, 2 * r);
+        self.rectangle(color, x, y + s - 2 * r + 1 * r, 4 * r, 1 * r);
+        self.rectangle(color, x, y + s - 2 * r - 2 * r, 1 * r, 4 * r);
 
-        self.rectangle(BG_COLOR, x + s - 2 * r, y, 2 * r, 2 * r);
-        self.rectangle(BG_COLOR, x + s - 2 * r - 2 * r, y, 4 * r, 1 * r);
-        self.rectangle(BG_COLOR, x + s - 2 * r + 1 * r, y, 1 * r, 4 * r);
+        self.rectangle(color, x + s - 2 * r, y, 2 * r, 2 * r);
+        self.rectangle(color, x + s - 2 * r - 2 * r, y, 4 * r, 1 * r);
+        self.rectangle(color, x + s - 2 * r + 1 * r, y, 1 * r, 4 * r);
 
-        self.rectangle(BG_COLOR, x + s - 2 * r, y + s - 2 * r, 2 * r, 2 * r);
+        self.rectangle(color, x + s - 2 * r, y + s - 2 * r, 2 * r, 2 * r);
         self.rectangle(
-            BG_COLOR,
+            color,
             x + s - 2 * r - 2 * r,
             y + s - 2 * r + 1 * r,
             4 * r,
             1 * r,
         );
         self.rectangle(
-            BG_COLOR,
+            color,
             x + s - 2 * r + 1 * r,
             y + s - 2 * r - 2 * r,
             1 * r,
@@ -140,9 +140,9 @@ impl ScreenMod {
 
         // rounded corners
         if key {
-            self.rounded_rect(x, y, 64, 4);
+            self.rounded_rect(0xFFFF, x, y, 64, 4);
         } else {
-            self.rounded_rect(x, y, 64, 1);
+            self.rounded_rect(0xFFFF, x, y, 64, 1);
         }
     }
 
