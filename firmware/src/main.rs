@@ -76,6 +76,38 @@ use usbd_serial::SerialPort;
 use defmt::*;
 use defmt_rtt as _;
 
+macro_rules! load_bmp {
+    ($path:literal) => {{
+        let (_, bmp) = include_bytes!($path).split_at(0x7A);
+        if bmp.len() != (32 * 32 * 2) {
+            core::panic!()
+        }
+        let mut bytes = [0u16; 32 * 32];
+
+        let mut i = 0;
+        while i < (32 * 32) {
+            bytes[i] = ((bmp[i * 2 + 1] as u16) << 8) | (bmp[i * 2] as u16);
+            i += 1;
+        }
+        bytes
+    }};
+}
+
+const DEFAULT_ICONS: &[[u16; 32 * 32]] = &[
+    load_bmp!("../../assets/action_icons/F13.bmp"),
+    load_bmp!("../../assets/action_icons/F14.bmp"),
+    load_bmp!("../../assets/action_icons/F15.bmp"),
+    load_bmp!("../../assets/action_icons/F16.bmp"),
+    load_bmp!("../../assets/action_icons/F17.bmp"),
+    load_bmp!("../../assets/action_icons/F18.bmp"),
+    load_bmp!("../../assets/action_icons/F19.bmp"),
+    load_bmp!("../../assets/action_icons/F20.bmp"),
+    load_bmp!("../../assets/action_icons/F21.bmp"),
+    load_bmp!("../../assets/action_icons/F22.bmp"),
+    load_bmp!("../../assets/action_icons/F23.bmp"),
+    load_bmp!("../../assets/action_icons/F24.bmp"),
+];
+
 static CORE1_STACK: Stack<16384> = Stack::new();
 
 // inter-core mutexes
@@ -173,7 +205,8 @@ fn main() -> ! {
             while y < 32 {
                 let mut x = 0;
                 while x < 32 {
-                    icons[i][32 * y + x] = x as u16;
+                    // TODO: use dma to swap out the icons
+                    icons[i][32 * y + x] = DEFAULT_ICONS[i][32 * y + x];
                     x += 1;
                 }
                 y += 1;
