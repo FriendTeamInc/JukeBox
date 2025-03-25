@@ -22,7 +22,7 @@ use usbd_serial::SerialPort;
 use crate::{
     modules::rgb::DEFAULT_RGB,
     peripheral::{inputs_default, inputs_write_report},
-    ConnectionStatus, IdentifyTrigger, PeripheralInputs, RgbControls, UpdateTrigger,
+    reset_icons, ConnectionStatus, IdentifyTrigger, PeripheralInputs, RgbControls, UpdateTrigger,
 };
 
 const BUFFER_SIZE: usize = 1024;
@@ -162,6 +162,7 @@ impl SerialMod {
                 c.0 = true;
                 c.1 = DEFAULT_RGB;
             });
+            reset_icons();
             self.state = Connection::NotConnected(false);
         }
 
@@ -293,6 +294,8 @@ impl SerialMod {
                         c.0 = true;
                         c.1 = DEFAULT_RGB;
                     });
+                    reset_icons();
+
                     info!("Serial Disconnected");
                     true
                 }
@@ -305,6 +308,8 @@ impl SerialMod {
                         c.0 = true;
                         c.1 = DEFAULT_RGB;
                     });
+                    reset_icons();
+
                     info!("Serial NegativeAck'd");
                     false
                 }

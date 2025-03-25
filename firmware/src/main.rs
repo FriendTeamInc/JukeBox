@@ -125,6 +125,25 @@ static IDENTIFY_TRIGGER: IdentifyTrigger = Mutex::new(false);
 static RGB_CONTROLS: RgbControls = Mutex::new((false, RgbProfile::default_device_profile()));
 static ICONS: Icons = Mutex::new([[0; 32 * 32]; 12]);
 
+fn reset_icons() {
+    ICONS.with_mut_lock(|icons| {
+        let mut i = 0;
+        while i < icons.len() {
+            let mut y = 0;
+            while y < 32 {
+                let mut x = 0;
+                while x < 32 {
+                    // TODO: use dma to swap out the icons
+                    icons[i][32 * y + x] = DEFAULT_ICONS[i][32 * y + x];
+                    x += 1;
+                }
+                y += 1;
+            }
+            i += 1;
+        }
+    });
+}
+
 #[entry]
 fn main() -> ! {
     // set up hardware interfaces
@@ -197,23 +216,7 @@ fn main() -> ! {
         .composite_with_iads()
         .build();
 
-    // Test icons
-    ICONS.with_mut_lock(|icons| {
-        let mut i = 0;
-        while i < icons.len() {
-            let mut y = 0;
-            while y < 32 {
-                let mut x = 0;
-                while x < 32 {
-                    // TODO: use dma to swap out the icons
-                    icons[i][32 * y + x] = DEFAULT_ICONS[i][32 * y + x];
-                    x += 1;
-                }
-                y += 1;
-            }
-            i += 1;
-        }
-    });
+    reset_icons();
 
     // set up modules
     let mut serial_mod = serial::SerialMod::new(
