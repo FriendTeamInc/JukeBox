@@ -15,8 +15,8 @@ use jukebox_util::peripheral::{
     IDENT_UNKNOWN_INPUT,
 };
 use jukebox_util::protocol::{
-    CMD_DISCONNECT, CMD_END, CMD_GET_INPUT_KEYS, CMD_GET_RGB, CMD_GREET, CMD_IDENTIFY,
-    CMD_NEGATIVE_ACK, CMD_SET_RGB, CMD_UPDATE, RSP_ACK, RSP_DISCONNECTED, RSP_END,
+    decode_packet_size, encode_packet_size, CMD_DISCONNECT, CMD_GET_INPUT_KEYS, CMD_GET_RGB,
+    CMD_GREET, CMD_IDENTIFY, CMD_NEGATIVE_ACK, CMD_SET_RGB, CMD_UPDATE, RSP_ACK, RSP_DISCONNECTED,
     RSP_INPUT_HEADER, RSP_LINK_DELIMITER, RSP_LINK_HEADER, RSP_RGB_HEADER, RSP_UNKNOWN,
 };
 use serialport::SerialPort;
@@ -73,6 +73,7 @@ async fn get_serial_string(f: &mut Box<dyn SerialPort>) -> Result<Vec<u8>> {
     block_in_place(|| {
         let timeout = Instant::now() + Duration::from_secs(3);
         let mut buf = Vec::new();
+        let mut size = 0usize;
 
         loop {
             if Instant::now() >= timeout {
@@ -91,11 +92,20 @@ async fn get_serial_string(f: &mut Box<dyn SerialPort>) -> Result<Vec<u8>> {
             }
             buf.push(b[0]);
 
-            if buf.len() > RSP_END.len() {
-                let s = &buf[(buf.len() - RSP_END.len())..buf.len()];
-                let c = s.iter().zip(RSP_END).all(|(a, b)| a == b);
-                if c {
-                    return Ok(buf);
+            if buf.len() >= 3 {
+                if size == 0 {
+                    let w1 = buf[0];
+                    let w2 = buf[1];
+                    let w3 = buf[2];
+                    size = decode_packet_size(w1, w2, w3);
+                } else {
+                    size -= 1;
+                    if size == 0 {
+                        buf.remove(0);
+                        buf.remove(0);
+                        buf.remove(0);
+                        return Ok(buf);
+                    }
                 }
             }
         }
@@ -103,8 +113,7 @@ async fn get_serial_string(f: &mut Box<dyn SerialPort>) -> Result<Vec<u8>> {
 }
 
 async fn send_cmd(f: &mut Box<dyn SerialPort>, c: u8) -> Result<()> {
-    let mut cmd = vec![c];
-    cmd.extend_from_slice(CMD_END);
+    let cmd = vec![c];
     send_bytes(f, cmd.as_slice())
         .await
         .with_context(|| format!("failed to send cmd {}", c))
@@ -112,6 +121,8 @@ async fn send_cmd(f: &mut Box<dyn SerialPort>, c: u8) -> Result<()> {
 
 async fn send_bytes(f: &mut Box<dyn SerialPort>, bytes: &[u8]) -> Result<()> {
     block_in_place(|| {
+        f.write_all(&encode_packet_size(bytes.len()))
+            .with_context(|| format!("failed to write message size for {:?}", bytes))?;
         f.write_all(bytes)
             .with_context(|| format!("failed to write message {:?}", bytes))?;
         f.flush().context("failed to flush message")?;
@@ -128,8 +139,8 @@ async fn expect_string(f: &mut Box<dyn SerialPort>, expect: &[u8]) -> Result<()>
     if !matching {
         let matches_unknown = s
             .iter()
-            .zip([RSP_UNKNOWN].iter().chain(RSP_END).collect::<Vec<_>>())
-            .filter(|&(a, b)| a == b)
+            .zip([RSP_UNKNOWN])
+            .filter(|&(a, b)| *a == b)
             .count()
             == s.len();
         if matches_unknown {
@@ -280,50 +291,41 @@ async fn transmit_get_rgb(f: &mut Box<dyn SerialPort>) -> Result<RgbProfile> {
         bail!("failed to parse rgb (command character mismatch)");
     }
 
-    if resp.len() != (32 + 1 + RSP_END.len()) {
+    if resp.len() != (32 + 1) {
         bail!("failed to parse rgb (wrong amount of data)");
     }
 
     let mut data = [0u8; 60];
     data.clone_from_slice(&resp[1..=60]);
 
-    Ok(RgbProfile::decode(data))
+    Ok(RgbProfile::decode(&data))
 }
 
 async fn transmit_set_rgb(f: &mut Box<dyn SerialPort>, rgb_profile: RgbProfile) -> Result<()> {
     let mut cmd = vec![CMD_SET_RGB];
     cmd.extend_from_slice(&rgb_profile.encode());
-    cmd.extend_from_slice(CMD_END);
-    let mut rsp = vec![RSP_ACK];
-    rsp.extend_from_slice(RSP_END);
+    let rsp = vec![RSP_ACK];
 
     send_expect(f, &cmd, &rsp).await
 }
 
 async fn transmit_identify_signal(f: &mut Box<dyn SerialPort>) -> Result<()> {
-    let mut cmd = vec![CMD_IDENTIFY];
-    cmd.extend_from_slice(CMD_END);
-    let mut rsp = vec![RSP_ACK];
-    rsp.extend_from_slice(RSP_END);
+    let cmd = vec![CMD_IDENTIFY];
+    let rsp = vec![RSP_ACK];
 
     send_expect(f, &cmd, &rsp).await
 }
 
 async fn transmit_update_signal(f: &mut Box<dyn SerialPort>) -> Result<()> {
-    let mut cmd = vec![CMD_UPDATE];
-    cmd.extend_from_slice(CMD_END);
-    let mut rsp = vec![RSP_DISCONNECTED];
-    rsp.extend_from_slice(RSP_END);
+    let cmd = vec![CMD_UPDATE];
+    let rsp = vec![RSP_DISCONNECTED];
 
     send_expect(f, &cmd, &rsp).await
 }
 
 async fn transmit_disconnect_signal(f: &mut Box<dyn SerialPort>) -> Result<()> {
-    // tell the device to disconnect cleanly
-    let mut cmd = vec![CMD_DISCONNECT];
-    cmd.extend_from_slice(CMD_END);
-    let mut rsp = vec![RSP_DISCONNECTED];
-    rsp.extend_from_slice(RSP_END);
+    let cmd = vec![CMD_DISCONNECT];
+    let rsp = vec![RSP_DISCONNECTED];
 
     send_expect(f, &cmd, &rsp).await
 }

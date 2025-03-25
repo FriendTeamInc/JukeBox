@@ -183,13 +183,13 @@ impl ScreenMod {
         let elapse_push_fb = _timer.get_counter() - time_start;
         self.st.backlight_on();
 
-        info!(
-            "times:\nclear-fb={}us\ndraw-icons={}us\npush-fb={}us\ntotal={}",
-            elapse_clear_fb.to_micros(),
-            elapse_draw_icons.to_micros(),
-            elapse_push_fb.to_micros(),
-            (elapse_clear_fb + elapse_draw_icons + elapse_push_fb).to_micros()
-        );
+        // info!(
+        //     "times:\nclear-fb={}us\ndraw-icons={}us\npush-fb={}us\ntotal={}",
+        //     elapse_clear_fb.to_micros(),
+        //     elapse_draw_icons.to_micros(),
+        //     elapse_push_fb.to_micros(),
+        //     (elapse_clear_fb + elapse_draw_icons + elapse_push_fb).to_micros()
+        // );
 
         self
     }

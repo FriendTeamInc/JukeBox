@@ -21,13 +21,12 @@ pub static PICOTOOL_ENTRIES: [binary_info::EntryAddr; 7] = [
 
 use jukebox_util::{
     color::RgbProfile,
-    peripheral::{Connection, JBInputs},
+    peripheral::{Connection, JBInputs, KeyInputs, KnobInputs, PedalInputs},
 };
 use mutually_exclusive_features::exactly_one_of;
 exactly_one_of!("keypad", "knobpad", "pedalpad");
 
 mod mutex;
-mod peripheral;
 mod st7789;
 mod uid;
 mod modules {
@@ -44,7 +43,6 @@ use mutex::Mutex;
 
 use embedded_hal::timer::CountDown as _;
 use panic_probe as _;
-use peripheral::inputs_default;
 
 use rp2040_hal::{
     binary_info,
@@ -154,6 +152,18 @@ fn reset_icons() {
             i += 1;
         }
     });
+}
+
+const fn inputs_default() -> JBInputs {
+    if cfg!(feature = "keypad") {
+        JBInputs::KeyPad(KeyInputs::default())
+    } else if cfg!(feature = "knobpad") {
+        JBInputs::KnobPad(KnobInputs::default())
+    } else if cfg!(feature = "pedalpad") {
+        JBInputs::PedalPad(PedalInputs::default())
+    } else {
+        JBInputs::KeyPad(KeyInputs::default())
+    }
 }
 
 #[entry]

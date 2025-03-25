@@ -4,15 +4,15 @@
 use defmt::*;
 
 use embedded_hal::timer::{Cancel as _, CountDown as _};
-use itertools::Itertools;
 use jukebox_util::{
     color::RgbProfile,
     peripheral::{
-        Connection, IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT, IDENT_UNKNOWN_INPUT,
+        Connection, JBInputs, IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT,
+        IDENT_UNKNOWN_INPUT,
     },
     protocol::{
-        Command, CMD_END, RSP_ACK, RSP_DISCONNECTED, RSP_END, RSP_INPUT_HEADER, RSP_LINK_DELIMITER,
-        RSP_LINK_HEADER, RSP_RGB_HEADER, RSP_UNKNOWN,
+        decode_packet_size, Command, MAX_PACKET_SIZE, RSP_ACK, RSP_DISCONNECTED, RSP_INPUT_HEADER,
+        RSP_LINK_DELIMITER, RSP_LINK_HEADER, RSP_RGB_HEADER, RSP_UNKNOWN,
     },
 };
 use ringbuffer::{ConstGenericRingBuffer, RingBuffer};
@@ -20,12 +20,11 @@ use rp2040_hal::{fugit::ExtU32, timer::CountDown, usb::UsbBus};
 use usbd_serial::SerialPort;
 
 use crate::{
-    modules::rgb::DEFAULT_RGB,
-    peripheral::{inputs_default, inputs_write_report},
-    reset_icons, ConnectionStatus, IdentifyTrigger, PeripheralInputs, RgbControls, UpdateTrigger,
+    inputs_default, modules::rgb::DEFAULT_RGB, reset_icons, ConnectionStatus, IdentifyTrigger,
+    PeripheralInputs, RgbControls, UpdateTrigger,
 };
 
-const BUFFER_SIZE: usize = 1024;
+const BUFFER_SIZE: usize = 2048;
 
 const KEEPALIVE: u32 = 500;
 
@@ -64,19 +63,6 @@ impl SerialMod {
         }
     }
 
-    fn check_cmd(&mut self) -> Option<usize> {
-        // we measure out a command token by looking for the end-of-command string: "\r\n"
-        // if one is not found, we do not have a valid command ready to be read
-        // TODO: better match the characters in CMD_END
-        for ((_, r), (i, n)) in self.buffer.iter().enumerate().tuple_windows() {
-            if *r == CMD_END[0] && *n == CMD_END[1] {
-                return Some(i + 1);
-            }
-        }
-
-        None
-    }
-
     fn send(serial: &mut SerialPort<UsbBus>, rsp: &[u8]) {
         // TODO: its possible for write to drop some characters, if we're not careful.
         // we should probably handle that before we take on larger communications.
@@ -86,46 +72,36 @@ impl SerialMod {
         }
     }
 
-    fn send_full_response(serial: &mut SerialPort<UsbBus>, rsp: &[u8]) {
-        Self::send(serial, rsp);
-        Self::send_end_response(serial);
-    }
+    fn check_cmd(&mut self) -> Option<(Command, [u8; MAX_PACKET_SIZE])> {
+        if self.buffer.len() >= 3 {
+            let w1 = *self.buffer.get(0).unwrap();
+            let w2 = *self.buffer.get(1).unwrap();
+            let w3 = *self.buffer.get(2).unwrap();
 
-    fn send_end_response(serial: &mut SerialPort<UsbBus>) {
-        Self::send(serial, RSP_END);
-    }
+            let size = decode_packet_size(w1, w2, w3);
 
-    fn decode_cmd(&mut self, size: usize) -> (Command, [u8; 60]) {
-        let mut data = [0u8; 60];
-
-        // if size > 4 {
-        //     return Command::Unknown;
-        // }
-
-        let w1 = self.buffer.get(0).unwrap_or(&b'\0');
-        let w2 = self.buffer.get(size - 2).unwrap_or(&b'\0');
-        let w3 = self.buffer.get(size - 1).unwrap_or(&b'\0');
-
-        // debug!("cmd: {} {} {} (size:{})", w1, w2, w3, size);
-
-        let cmd = Command::decode(*w1);
-
-        if cmd != Command::Unknown && !(*w2 == CMD_END[0] && *w3 == CMD_END[1]) {
-            for _ in 0..size {
+            if self.buffer.len() >= size + 3 {
+                // dequeue packet size
                 self.buffer.dequeue();
+                self.buffer.dequeue();
+                self.buffer.dequeue();
+
+                // dequeue command type
+                let c = self.buffer.dequeue().unwrap();
+                let cmd = Command::decode(c);
+
+                let mut data = [0u8; MAX_PACKET_SIZE];
+                for i in 0..size - 1 {
+                    data[i] = self.buffer.dequeue().unwrap();
+                }
+
+                Some((cmd, data))
+            } else {
+                None
             }
-
-            return (Command::Unknown, data);
+        } else {
+            None
         }
-
-        self.buffer.dequeue();
-        for i in 0..size - 3 {
-            data[i] = self.buffer.dequeue().unwrap();
-        }
-        self.buffer.dequeue();
-        self.buffer.dequeue();
-
-        (cmd, data)
     }
 
     #[allow(dead_code)]
@@ -135,7 +111,7 @@ impl SerialMod {
 
     fn start_update(&mut self, serial: &mut SerialPort<UsbBus>) {
         info!("Command Update");
-        Self::send_full_response(serial, &[RSP_DISCONNECTED]);
+        Self::send(serial, &[b'0', b'0', b'1', RSP_DISCONNECTED]);
         self.connection_status
             .with_mut_lock(|c| *c = Connection::NotConnected(true));
         self.state = Connection::NotConnected(true);
@@ -144,7 +120,7 @@ impl SerialMod {
 
     fn start_identify(&mut self, serial: &mut SerialPort<UsbBus>) {
         info!("Command Identify");
-        Self::send_full_response(serial, &[RSP_ACK]);
+        Self::send(serial, &[b'0', b'0', b'1', RSP_ACK]);
         self.identify_trigger.with_mut_lock(|u| *u = true);
     }
 
@@ -178,16 +154,15 @@ impl SerialMod {
         }
 
         // load and decode command if available
-        let size = self.check_cmd();
-        if size.is_none() {
+        let (decode, data) = if let Some(d) = self.check_cmd() {
+            d
+        } else {
             return;
-        }
-        let (decode, data) = self.decode_cmd(size.unwrap());
-        // debug!("cmd: {}\ndata:{}", decode, data);
+        };
 
         // process command
         let mut unknown = || {
-            Self::send_full_response(serial, &[RSP_UNKNOWN]);
+            Self::send(serial, &[b'0', b'0', b'1', RSP_UNKNOWN]);
             false
         };
         let valid = match self.state {
@@ -197,7 +172,6 @@ impl SerialMod {
                     true
                 }
                 Command::Greeting => {
-                    Self::send(serial, &[RSP_LINK_HEADER, RSP_LINK_DELIMITER]);
                     let dtype = if cfg!(feature = "keypad") {
                         IDENT_KEY_INPUT
                     } else if cfg!(feature = "knobpad") {
@@ -207,13 +181,22 @@ impl SerialMod {
                     } else {
                         IDENT_UNKNOWN_INPUT
                     };
-                    Self::send(serial, &[dtype]);
-                    Self::send(serial, &[RSP_LINK_DELIMITER]);
+                    Self::send(
+                        serial,
+                        &[
+                            b'0',
+                            b'1',
+                            b'B',
+                            RSP_LINK_HEADER,
+                            RSP_LINK_DELIMITER,
+                            dtype,
+                            RSP_LINK_DELIMITER,
+                        ],
+                    );
                     Self::send(serial, firmware_version.as_bytes());
                     Self::send(serial, &[RSP_LINK_DELIMITER]);
                     Self::send(serial, device_uid.as_bytes());
                     Self::send(serial, &[RSP_LINK_DELIMITER]);
-                    Self::send_end_response(serial);
 
                     self.state = Connection::Connected;
                     self.connection_status
@@ -227,7 +210,7 @@ impl SerialMod {
                 Command::GetInputKeys => {
                     // copy peripherals and inputs out
                     let inputs = {
-                        let mut inputs = inputs_default(); // JBInputs::default();
+                        let mut inputs = inputs_default();
                         self.peripheral_inputs.with_lock(|i| {
                             inputs = *i;
                         });
@@ -235,9 +218,23 @@ impl SerialMod {
                     };
 
                     // write all the inputs out
-                    Self::send(serial, &[RSP_INPUT_HEADER]);
-                    inputs_write_report(inputs, serial);
-                    Self::send_end_response(serial);
+                    let _ = match inputs {
+                        JBInputs::KeyPad(i) => {
+                            Self::send(serial, b"004");
+                            Self::send(serial, &[RSP_INPUT_HEADER]);
+                            Self::send(serial, &i.encode());
+                        }
+                        JBInputs::KnobPad(i) => {
+                            Self::send(serial, b"003");
+                            Self::send(serial, &[RSP_INPUT_HEADER]);
+                            Self::send(serial, &i.encode());
+                        }
+                        JBInputs::PedalPad(i) => {
+                            Self::send(serial, b"003");
+                            Self::send(serial, &[RSP_INPUT_HEADER]);
+                            Self::send(serial, &i.encode());
+                        }
+                    };
 
                     true
                 }
@@ -250,21 +247,21 @@ impl SerialMod {
                         rgb
                     };
 
+                    Self::send(serial, b"03D");
                     Self::send(serial, &[RSP_RGB_HEADER]);
-                    let _ = serial.write(&rgb.encode());
-                    Self::send_end_response(serial);
+                    Self::send(serial, &rgb.encode());
 
                     true
                 }
                 Command::SetRGB => {
-                    let rgb = RgbProfile::decode(data);
+                    let rgb = RgbProfile::decode(&data);
                     self.rgb_controls.with_mut_lock(|c| {
                         c.0 = true;
                         c.1 = rgb;
                     });
 
+                    Self::send(serial, b"001");
                     Self::send(serial, &[RSP_ACK]);
-                    Self::send_end_response(serial);
 
                     true
                 }
@@ -286,7 +283,7 @@ impl SerialMod {
                     true
                 }
                 Command::Disconnect => {
-                    Self::send_full_response(serial, &[RSP_DISCONNECTED]);
+                    Self::send(serial, &[b'0', b'0', b'1', RSP_DISCONNECTED]);
                     self.state = Connection::NotConnected(true);
                     self.connection_status
                         .with_mut_lock(|c| *c = Connection::NotConnected(true));
