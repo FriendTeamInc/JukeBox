@@ -27,21 +27,26 @@ use crate::{
 use super::types::Action;
 
 // TODO: finish icons
-const ICON_STREAM: ImageSource = include_image!("../../../assets/action_icons/obs-base.bmp");
-const ICON_RECORD: ImageSource = include_image!("../../../assets/action_icons/obs-base.bmp");
-const ICON_PAUSE_RECORD: ImageSource = include_image!("../../../assets/action_icons/obs-base.bmp");
-const ICON_REPLAY_BUFFER: ImageSource = include_image!("../../../assets/action_icons/obs-base.bmp");
-const ICON_SAVE_REPLAY: ImageSource = include_image!("../../../assets/action_icons/obs-base.bmp");
-const ICON_SOURCE: ImageSource = include_image!("../../../assets/action_icons/obs-base.bmp");
-const ICON_MUTE: ImageSource = include_image!("../../../assets/action_icons/obs-base.bmp");
-const ICON_SWITCH_SCENE: ImageSource = include_image!("../../../assets/action_icons/obs-base.bmp");
+const ICON_STREAM: ImageSource = include_image!("../../../assets/action_icons/obs-stream.bmp");
+const ICON_RECORD: ImageSource = include_image!("../../../assets/action_icons/obs-record.bmp");
+const ICON_PAUSE_RECORD: ImageSource =
+    include_image!("../../../assets/action_icons/obs-recordpause.bmp");
+const ICON_REPLAY_BUFFER: ImageSource =
+    include_image!("../../../assets/action_icons/obs-replaybufferpause.bmp");
+const ICON_SAVE_REPLAY: ImageSource =
+    include_image!("../../../assets/action_icons/obs-replaybuffer.bmp");
+const ICON_SOURCE: ImageSource = include_image!("../../../assets/action_icons/obs-source.bmp");
+const ICON_MUTE: ImageSource = include_image!("../../../assets/action_icons/obs-mute.bmp");
+const ICON_SWITCH_SCENE: ImageSource =
+    include_image!("../../../assets/action_icons/obs-sceneswitch.bmp");
 const ICON_SWITCH_PREVIEW: ImageSource =
-    include_image!("../../../assets/action_icons/obs-base.bmp");
-const ICON_PUSH_PREVIEW: ImageSource = include_image!("../../../assets/action_icons/obs-base.bmp");
+    include_image!("../../../assets/action_icons/obs-previewswitch.bmp");
+const ICON_PUSH_PREVIEW: ImageSource =
+    include_image!("../../../assets/action_icons/obs-previewpush.bmp");
 const ICON_SWITCH_COLLECTION: ImageSource =
-    include_image!("../../../assets/action_icons/obs-base.bmp");
+    include_image!("../../../assets/action_icons/obs-collectionswitch.bmp");
 const ICON_CHAPTER_MARKER: ImageSource =
-    include_image!("../../../assets/action_icons/obs-base.bmp");
+    include_image!("../../../assets/action_icons/obs-chaptermarker.bmp");
 
 static OBS_HOST_ADDRESS: OnceLock<Mutex<String>> = OnceLock::new();
 static OBS_HOST_PORT: OnceLock<Mutex<String>> = OnceLock::new();
