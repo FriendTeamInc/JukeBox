@@ -51,8 +51,8 @@ pub trait Action: Sync + Send + DynClone {
     fn icon(&self) -> Image {
         Image::new(self.icon_source())
             .texture_options(TextureOptions {
-                magnification: TextureFilter::Linear, // TODO: change to nearest
-                minification: TextureFilter::Linear,
+                magnification: TextureFilter::Nearest, // TODO: change to nearest
+                minification: TextureFilter::Nearest,
                 wrap_mode: TextureWrapMode::ClampToEdge,
                 mipmap_mode: None,
             })
