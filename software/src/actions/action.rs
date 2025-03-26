@@ -61,7 +61,7 @@ pub async fn action_task(
                 let txs = scmd_txs.lock().await;
                 let _ = txs
                     .get(device_uid)
-                    .and_then(|t| Some(t.send(SerialCommand::SetRGB(rgb_profile))));
+                    .and_then(|t| Some(t.send(SerialCommand::SetRgbMode(rgb_profile))));
             }
             SerialEvent::GetInputKeys { device_uid, keys } => {
                 if !prevkeys.contains_key(&device_uid) {
@@ -110,7 +110,7 @@ pub async fn action_task(
                         let txs = scmd_txs.lock().await;
                         let _ = txs
                             .get(&device_uid)
-                            .and_then(|t| Some(t.send(SerialCommand::SetRGB(rgb_profile))));
+                            .and_then(|t| Some(t.send(SerialCommand::SetRgbMode(rgb_profile))));
 
                         // TODO: set hardware inputs here
                     }
@@ -122,7 +122,6 @@ pub async fn action_task(
             SerialEvent::Disconnected { device_uid } => {
                 clear_set(&mut prevkeys, &device_uid).await;
             }
-            _ => {}
         }
     }
 

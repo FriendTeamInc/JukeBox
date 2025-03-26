@@ -381,7 +381,7 @@ impl JukeBoxGui {
         {
             let txs = self.scmd_txs.blocking_lock();
             if let Some(tx) = txs.get(device_uid) {
-                let _ = tx.send(SerialCommand::SetRGB(rgb_profile));
+                let _ = tx.send(SerialCommand::SetRgbMode(rgb_profile));
             }
         }
     }

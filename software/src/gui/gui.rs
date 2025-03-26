@@ -300,10 +300,6 @@ impl JukeBoxGui {
                         v.4 = keys;
                     }
                 }
-                SerialEvent::GetRGB {
-                    device_uid: _device_uid,
-                    rgb_control,
-                } => self.config_editing_rgb = rgb_control,
             }
         }
     }

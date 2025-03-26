@@ -15,9 +15,9 @@ use jukebox_util::peripheral::{
     IDENT_UNKNOWN_INPUT,
 };
 use jukebox_util::protocol::{
-    decode_packet_size, encode_packet_size, CMD_DISCONNECT, CMD_GET_INPUT_KEYS, CMD_GET_RGB,
-    CMD_GREET, CMD_IDENTIFY, CMD_NEGATIVE_ACK, CMD_SET_RGB, CMD_UPDATE, RSP_ACK, RSP_DISCONNECTED,
-    RSP_INPUT_HEADER, RSP_LINK_DELIMITER, RSP_LINK_HEADER, RSP_RGB_HEADER, RSP_UNKNOWN,
+    decode_packet_size, encode_packet_size, CMD_DISCONNECT, CMD_GET_INPUT_KEYS, CMD_GREET,
+    CMD_IDENTIFY, CMD_NEGATIVE_ACK, CMD_SET_RGB_MODE, CMD_UPDATE, RSP_ACK, RSP_DISCONNECTED,
+    RSP_INPUT_HEADER, RSP_LINK_DELIMITER, RSP_LINK_HEADER, RSP_UNKNOWN,
 };
 use serialport::SerialPort;
 use tokio::task::block_in_place;
@@ -40,10 +40,9 @@ pub struct SerialConnectionDetails {
 #[allow(unused)]
 pub enum SerialCommand {
     Identify,
-    GetRGB,
-    SetRGB(RgbProfile),
-    GetScr,
-    SetScr,
+    SetRgbMode(RgbProfile),
+    SetScrMode,
+    SetScrIcon,
     Update,
     Disconnect,
 }
@@ -56,10 +55,6 @@ pub enum SerialEvent {
     GetInputKeys {
         device_uid: String,
         keys: HashSet<InputKey>,
-    },
-    GetRGB {
-        device_uid: String,
-        rgb_control: RgbProfile,
     },
     LostConnection {
         device_uid: String,
@@ -279,30 +274,8 @@ async fn transmit_get_input_keys(f: &mut Box<dyn SerialPort>) -> Result<HashSet<
     Ok(result)
 }
 
-async fn transmit_get_rgb(f: &mut Box<dyn SerialPort>) -> Result<RgbProfile> {
-    send_cmd(f, CMD_GET_RGB)
-        .await
-        .context("failed to set get rgb")?;
-    let resp = get_serial_string(f).await?;
-
-    if *resp.get(0).unwrap_or(&0) != RSP_RGB_HEADER {
-        log::info!("rsp rgb: {:?}", resp);
-        send_negative_ack(f).await?;
-        bail!("failed to parse rgb (command character mismatch)");
-    }
-
-    if resp.len() != (32 + 1) {
-        bail!("failed to parse rgb (wrong amount of data)");
-    }
-
-    let mut data = [0u8; 60];
-    data.clone_from_slice(&resp[1..=60]);
-
-    Ok(RgbProfile::decode(&data))
-}
-
 async fn transmit_set_rgb(f: &mut Box<dyn SerialPort>, rgb_profile: RgbProfile) -> Result<()> {
-    let mut cmd = vec![CMD_SET_RGB];
+    let mut cmd = vec![CMD_SET_RGB_MODE];
     cmd.extend_from_slice(&rgb_profile.encode());
     let rsp = vec![RSP_ACK];
 
@@ -386,22 +359,13 @@ pub async fn serial_loop(
                 SerialCommand::Identify => {
                     transmit_identify_signal(f).await?;
                 }
-                SerialCommand::GetRGB => {
-                    let rgb_control = transmit_get_rgb(f).await?;
-                    sg_tx
-                        .send(SerialEvent::GetRGB {
-                            device_uid: device_uid.clone(),
-                            rgb_control: rgb_control,
-                        })
-                        .context("failed to send rgb info to gui")?;
-                }
-                SerialCommand::SetRGB(rgb_profile) => {
+                SerialCommand::SetRgbMode(rgb_profile) => {
                     transmit_set_rgb(f, rgb_profile).await?;
                 }
-                SerialCommand::GetScr => {
+                SerialCommand::SetScrMode => {
                     todo!()
                 }
-                SerialCommand::SetScr => {
+                SerialCommand::SetScrIcon => {
                     todo!()
                 }
                 SerialCommand::Update => {

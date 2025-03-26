@@ -12,7 +12,7 @@ use jukebox_util::{
     },
     protocol::{
         decode_packet_size, Command, MAX_PACKET_SIZE, RSP_ACK, RSP_DISCONNECTED, RSP_INPUT_HEADER,
-        RSP_LINK_DELIMITER, RSP_LINK_HEADER, RSP_RGB_HEADER, RSP_UNKNOWN,
+        RSP_LINK_DELIMITER, RSP_LINK_HEADER, RSP_UNKNOWN,
     },
 };
 use ringbuffer::{ConstGenericRingBuffer, RingBuffer};
@@ -238,22 +238,7 @@ impl SerialMod {
 
                     true
                 }
-                Command::GetRGB => {
-                    let rgb = {
-                        let mut rgb = RgbProfile::Off;
-                        self.rgb_controls.with_lock(|c| {
-                            rgb = c.1.clone();
-                        });
-                        rgb
-                    };
-
-                    Self::send(serial, b"03D");
-                    Self::send(serial, &[RSP_RGB_HEADER]);
-                    Self::send(serial, &rgb.encode());
-
-                    true
-                }
-                Command::SetRGB => {
+                Command::SetRgbMode => {
                     let rgb = RgbProfile::decode(&data);
                     self.rgb_controls.with_mut_lock(|c| {
                         c.0 = true;
@@ -265,11 +250,11 @@ impl SerialMod {
 
                     true
                 }
-                Command::GetScr => {
+                Command::SetScrMode => {
                     // TODO:
                     unknown()
                 }
-                Command::SetScr => {
+                Command::SetScrIcon => {
                     // TODO:
                     unknown()
                 }
