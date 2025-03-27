@@ -49,7 +49,7 @@ use rp2040_hal::{
     clocks::init_clocks_and_plls,
     dma::DMAExt,
     entry,
-    fugit::ExtU32,
+    fugit::{Duration, ExtU32},
     gpio::Pins,
     multicore::{Multicore, Stack},
     pac::Peripherals,
@@ -134,6 +134,12 @@ static UPDATE_TRIGGER: UpdateTrigger = Mutex::new(false);
 static IDENTIFY_TRIGGER: IdentifyTrigger = Mutex::new(false);
 static RGB_CONTROLS: RgbControls = Mutex::new((false, RgbProfile::default_device_profile()));
 static ICONS: Icons = Mutex::new([[0; 32 * 32]; 12]);
+
+fn time_func(t: &Timer, mut f: impl FnMut() -> ()) -> Duration<u64, 1, 1000000> {
+    let s = t.get_counter();
+    f();
+    t.get_counter() - s
+}
 
 fn reset_icons() {
     ICONS.with_mut_lock(|icons| {
@@ -356,11 +362,7 @@ fn main() -> ! {
 
                 #[cfg(feature = "keypad")]
                 {
-                    screen_mod = screen_mod.update(
-                        &keyboard_mod.get_pressed_keys(),
-                        timer.get_counter(),
-                        &timer,
-                    );
+                    screen_mod = screen_mod.update(&keyboard_mod.get_pressed_keys(), &timer);
                 }
 
                 // update mutexes

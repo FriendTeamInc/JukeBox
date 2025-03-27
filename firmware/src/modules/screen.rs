@@ -8,16 +8,16 @@ use defmt::*;
 use embedded_dma::Word;
 use embedded_hal::timer::CountDown as _;
 use rp2040_hal::{
-    dma::{single_buffer, Channel, CH0},
+    dma::{Channel, CH0},
     fugit::ExtU32,
     gpio::{DynPinId, FunctionPio1, Pin, PullDown},
     pac::PIO1,
     pio::SM1,
-    timer::{CountDown, Instant},
+    timer::CountDown,
     Timer,
 };
 
-use crate::{st7789::St7789, ConnectionStatus, Icons};
+use crate::{st7789::St7789, time_func, ConnectionStatus, Icons};
 
 const REFRESH_RATE: u32 = 33;
 pub const SCR_W: usize = 240;
@@ -152,7 +152,7 @@ impl ScreenMod {
         }
     }
 
-    pub fn update(mut self, keys: &[bool], _t: Instant, _timer: &Timer) -> Self {
+    pub fn update(mut self, keys: &[bool], t: &Timer) -> Self {
         for i in 0..12 {
             if keys[i] {
                 self.keys_status[i] = 5;
@@ -163,43 +163,43 @@ impl ScreenMod {
             return self;
         }
 
-        let s = _timer.get_counter();
-        // using multiple channels did not meaningfully improve performance.
-        // self.dma_ch0 = {
-        //     let (dma_ch0, _, _) =
-        //         single_buffer::Config::new(self.dma_ch0, CLEAR_VAL, unsafe { &mut FBDATA })
-        //             .start()
-        //             .wait();
-
-        //     dma_ch0
-        // };
-        let elapse_clear_fb = _timer.get_counter() - s;
-
-        let s = _timer.get_counter();
-        self.icons.with_lock(|i| {
-            for y in 0..3 {
-                for x in 0..4 {
-                    let idx = y * 4 + x;
-
-                    if self.keys_status[idx] == self.keys_previous_frame[idx] {
-                        continue;
-                    }
-
-                    self.draw_icon(
-                        &i[idx],
-                        self.keys_status[idx],
-                        4 + (64 + 6) * y,
-                        23 + (64 + 6) * x,
-                    );
-                }
-            }
+        let elapse_clear_fb = time_func(t, || {
+            // // using multiple channels did not meaningfully improve performance.
+            // self.dma_ch0 = {
+            //     let (dma_ch0, _, _) =
+            //         single_buffer::Config::new(self.dma_ch0, CLEAR_VAL, unsafe { &mut FBDATA })
+            //             .start()
+            //             .wait();
+            //     dma_ch0
+            // };
         });
-        let elapse_draw_icons = _timer.get_counter() - s;
 
-        let time_start = _timer.get_counter();
-        self.st.push_framebuffer(unsafe { &FBDATA });
-        self.st.backlight_on();
-        let elapse_push_fb = _timer.get_counter() - time_start;
+        let elapse_draw_icons = time_func(t, || {
+            self.icons.with_lock(|i| {
+                for y in 0..3 {
+                    for x in 0..4 {
+                        let idx = y * 4 + x;
+
+                        if self.keys_status[idx] == self.keys_previous_frame[idx] {
+                            continue;
+                        }
+
+                        self.draw_icon(
+                            &i[idx],
+                            self.keys_status[idx],
+                            4 + (64 + 6) * y,
+                            23 + (64 + 6) * x,
+                        );
+                    }
+                }
+            });
+        });
+
+        let elapse_push_fb = time_func(t, || {
+            #[allow(static_mut_refs)]
+            self.st.push_framebuffer(unsafe { &FBDATA });
+            self.st.backlight_on();
+        });
 
         info!(
             "times:\nclear-fb={}us\ndraw-icons={}us\npush-fb={}us\ntotal={}",
