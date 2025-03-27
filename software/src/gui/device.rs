@@ -283,7 +283,7 @@ impl JukeBoxGui {
                         .on_hover_text_at_pointer(t!("help.device.rgb"))
                         .clicked()
                     {
-                        self.config_editing_rgb = {
+                        self.editing_rgb = {
                             let c = self.config.blocking_lock();
                             c.profiles
                                 .get(&c.current_profile)
@@ -308,25 +308,24 @@ impl JukeBoxGui {
 
     pub fn draw_device_management(&mut self, ui: &mut Ui) {
         ui.add_enabled_ui(self.gui_tab == GuiTab::Device, |ui| {
-            if self.config_renaming_device {
-                let edit = ui.add(
-                    TextEdit::singleline(&mut self.config_device_name_entry).desired_width(192.0),
-                );
-                if edit.lost_focus() && self.config_device_name_entry.len() > 0 {
-                    self.config_renaming_device = false;
+            if self.device_renaming {
+                let edit =
+                    ui.add(TextEdit::singleline(&mut self.device_name_entry).desired_width(192.0));
+                if edit.lost_focus() && self.device_name_entry.len() > 0 {
+                    self.device_renaming = false;
 
                     let contains = self
                         .devices
                         .iter()
-                        .any(|(_, d)| d.1 == self.config_device_name_entry);
+                        .any(|(_, d)| d.1 == self.device_name_entry);
 
                     if !contains {
                         let d = self.devices.get_mut(&self.current_device).expect("");
-                        d.1 = self.config_device_name_entry.clone();
+                        d.1 = self.device_name_entry.clone();
 
                         let mut conf = self.config.blocking_lock();
                         let c = conf.devices.get_mut(&self.current_device).expect("");
-                        c.1 = self.config_device_name_entry.clone();
+                        c.1 = self.device_name_entry.clone();
                         conf.save();
                     }
                 }
@@ -360,7 +359,7 @@ impl JukeBoxGui {
                 });
             }
 
-            ui.add_enabled_ui(!self.config_renaming_device, |ui| {
+            ui.add_enabled_ui(!self.device_renaming, |ui| {
                 if self.devices.keys().len() <= 0 {
                     ui.disable();
                 }
@@ -369,8 +368,8 @@ impl JukeBoxGui {
                     .button(RichText::new(phos::NOTE_PENCIL))
                     .on_hover_text_at_pointer(t!("help.device.edit_name"));
                 if edit_btn.clicked() {
-                    self.config_renaming_device = true;
-                    self.config_device_name_entry
+                    self.device_renaming = true;
+                    self.device_name_entry
                         .replace_with(&self.devices.get(&self.current_device).unwrap().1);
                 }
 

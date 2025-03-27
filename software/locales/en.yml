@@ -16,6 +16,11 @@ help:
     button: "Back"
     save_button: "Save and Back"
 
+    modal_title: "Save and Exit?"
+    modal_save: "Save and Exit"
+    modal_exit: "Exit without Saving"
+    modal_cancel: "Cancel"
+
   profile:
     select: "Profile Select"
     new: "New Profile"
@@ -25,6 +30,7 @@ help:
   settings:
     button: "Settings"
     splash: " - Enable splash text in bottom right."
+    exit_on_save: " - Always save changes when exiting a menu."
 
   device:
     select: "Device Select"

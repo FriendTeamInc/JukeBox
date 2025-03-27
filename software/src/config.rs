@@ -70,10 +70,11 @@ pub struct JukeBoxConfig {
     // Device UID -> (Device Type, Device Nickname)
     pub devices: HashMap<String, (DeviceType, String)>,
 
-    pub enable_splash: bool,
-
     pub discord_oauth_access: Option<DiscordOauthAccess>,
     pub obs_access: Option<ObsAccess>,
+
+    pub enable_splash: bool,
+    pub always_save_on_exit: bool,
 }
 impl Default for JukeBoxConfig {
     fn default() -> Self {
@@ -81,9 +82,12 @@ impl Default for JukeBoxConfig {
             current_profile: "Default Profile".into(),
             profiles: HashMap::from([("Default Profile".into(), HashMap::new())]),
             devices: HashMap::new(),
-            enable_splash: true,
+
             discord_oauth_access: None,
             obs_access: None,
+
+            enable_splash: true,
+            always_save_on_exit: false,
         }
     }
 }

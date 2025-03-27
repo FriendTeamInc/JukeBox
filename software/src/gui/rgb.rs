@@ -8,7 +8,7 @@ use jukebox_util::color::RgbProfile;
 
 use crate::serial::SerialCommand;
 
-use super::gui::{GuiTab, JukeBoxGui};
+use super::gui::JukeBoxGui;
 
 impl JukeBoxGui {
     fn calculate_color_from_hex_string(s: String) -> Option<(u8, u8, u8)> {
@@ -159,39 +159,29 @@ impl JukeBoxGui {
         ];
 
         ComboBox::from_id_salt("RGBSelect")
-            .selected_text(
-                rgb_defaults[self.config_editing_rgb.get_type() as usize]
-                    .1
-                    .clone(),
-            )
+            .selected_text(rgb_defaults[self.editing_rgb.get_type() as usize].1.clone())
             .width(200.0)
             .truncate()
             .show_ui(ui, |ui| {
                 for (i, t, _) in &rgb_defaults {
-                    let u = ui.selectable_label(
-                        self.config_editing_rgb.get_type() == i.get_type(),
-                        t.clone(),
-                    );
+                    let u =
+                        ui.selectable_label(self.editing_rgb.get_type() == i.get_type(), t.clone());
                     if u.clicked() {
-                        self.config_editing_rgb = i.clone();
+                        self.editing_rgb = i.clone();
                     }
                 }
             })
             .response
             .on_hover_text_at_pointer(t!("help.device.select"));
 
-        ui.label(
-            rgb_defaults[self.config_editing_rgb.get_type() as usize]
-                .2
-                .clone(),
-        );
+        ui.label(rgb_defaults[self.editing_rgb.get_type() as usize].2.clone());
         ui.label("");
 
         ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
             ui.vertical(|ui| {
                 ScrollArea::vertical().max_height(164.0).show(ui, |ui| {
                     ui.allocate_exact_size(vec2(250.0, 0.0), Sense::empty());
-                    match self.config_editing_rgb {
+                    match self.editing_rgb {
                         RgbProfile::Off => {}
                         RgbProfile::StaticSolid {
                             mut brightness,
@@ -203,7 +193,7 @@ impl JukeBoxGui {
                             ui.label(t!("rgb.profile.static_solid.select_color"));
                             Self::draw_color_editor(ui, &mut color);
 
-                            self.config_editing_rgb = RgbProfile::StaticSolid { brightness, color };
+                            self.editing_rgb = RgbProfile::StaticSolid { brightness, color };
                         }
                         RgbProfile::StaticPerKey {
                             mut brightness,
@@ -221,8 +211,7 @@ impl JukeBoxGui {
                                 ui.label("");
                             }
 
-                            self.config_editing_rgb =
-                                RgbProfile::StaticPerKey { brightness, colors }
+                            self.editing_rgb = RgbProfile::StaticPerKey { brightness, colors }
                         }
                         RgbProfile::Wave {
                             mut brightness,
@@ -236,7 +225,7 @@ impl JukeBoxGui {
 
                             ui.label("todo!");
 
-                            self.config_editing_rgb = RgbProfile::Wave {
+                            self.editing_rgb = RgbProfile::Wave {
                                 brightness,
                                 speed_x,
                                 speed_y,
@@ -256,7 +245,7 @@ impl JukeBoxGui {
 
                             ui.label("todo!");
 
-                            self.config_editing_rgb = RgbProfile::Breathe {
+                            self.editing_rgb = RgbProfile::Breathe {
                                 brightness,
                                 hold_time,
                                 trans_time,
@@ -284,7 +273,7 @@ impl JukeBoxGui {
 
                             // TODO: add preview?
 
-                            self.config_editing_rgb = RgbProfile::RainbowSolid {
+                            self.editing_rgb = RgbProfile::RainbowSolid {
                                 brightness,
                                 speed,
                                 saturation,
@@ -319,7 +308,7 @@ impl JukeBoxGui {
 
                             // TODO: add preview?
 
-                            self.config_editing_rgb = RgbProfile::RainbowWave {
+                            self.editing_rgb = RgbProfile::RainbowWave {
                                 brightness,
                                 speed,
                                 speed_x,
@@ -338,8 +327,8 @@ impl JukeBoxGui {
                     .unwrap()
                     .as_micros()
                     % 1_000_000_000;
-                let buf = self.config_editing_rgb.calculate_matrix(t as u64);
-                let _brtns = self.config_editing_rgb.brightness(); // TODO
+                let buf = self.editing_rgb.calculate_matrix(t as u64);
+                let _brtns = self.editing_rgb.brightness(); // TODO
                 ui.vertical(|ui| {
                     ui.allocate_exact_size(vec2(0.0, 10.0), Sense::empty());
                     for y in 0..3 {
@@ -387,19 +376,15 @@ impl JukeBoxGui {
     }
 
     pub fn save_rgb_and_exit(&mut self) {
-        {
-            let mut c = self.config.blocking_lock();
-            let p = c.current_profile.clone();
-            if let Some(profile) = c.profiles.get_mut(&p) {
-                if let Some(device) = profile.get_mut(&self.current_device) {
-                    device.rgb_profile = Some(self.config_editing_rgb.clone())
-                }
-            }
-            c.save();
-        }
-
         self.set_device_rgb(&self.current_device.clone());
 
-        self.gui_tab = GuiTab::Device;
+        let mut c = self.config.blocking_lock();
+        let p = c.current_profile.clone();
+        if let Some(profile) = c.profiles.get_mut(&p) {
+            if let Some(device) = profile.get_mut(&self.current_device) {
+                device.rgb_profile = Some(self.editing_rgb.clone())
+            }
+        }
+        c.save();
     }
 }

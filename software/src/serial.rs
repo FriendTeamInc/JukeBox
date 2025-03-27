@@ -365,7 +365,7 @@ pub async fn serial_loop(
                 SerialCommand::SetScrMode => {
                     todo!()
                 }
-                SerialCommand::SetScrIcon(slot, icon_data) => {
+                SerialCommand::SetScrIcon(_slot, _icon_data) => {
                     todo!()
                 }
                 SerialCommand::Update => {

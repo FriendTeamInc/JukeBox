@@ -4,7 +4,9 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{atomic::AtomicBool, Arc};
 use std::time::{Duration, Instant};
 
-use eframe::egui::{vec2, Align, CentralPanel, Context, Layout, RichText, Ui, ViewportBuilder};
+use eframe::egui::{
+    vec2, Align, CentralPanel, Context, Id, Layout, Modal, RichText, Ui, ViewportBuilder,
+};
 use eframe::Frame;
 use egui_extras::install_image_loaders;
 use egui_phosphor::regular as phos;
@@ -52,16 +54,23 @@ pub struct JukeBoxGui {
     pub devices: HashMap<String, (DeviceType, String, String, bool, HashSet<InputKey>)>,
 
     pub config: Arc<Mutex<JukeBoxConfig>>,
-    pub config_renaming_profile: bool,
-    pub config_profile_name_entry: String,
-    pub config_renaming_device: bool,
-    pub config_device_name_entry: String,
-    pub config_editing_key: InputKey,
-    pub config_editing_action_icon: ActionIcon,
-    pub config_editing_action_type: String,
-    pub config_editing_action: Box<dyn Action>,
-    pub config_editing_rgb: RgbProfile,
     pub config_enable_splash: bool,
+    pub config_always_save_on_exit: bool,
+
+    pub profile_renaming: bool,
+    pub profile_name_entry: String,
+
+    pub device_renaming: bool,
+    pub device_name_entry: String,
+
+    pub editing_key: InputKey,
+    pub editing_action_icon: ActionIcon,
+    pub editing_action_type: String,
+    pub editing_action: Box<dyn Action>,
+
+    pub editing_rgb: RgbProfile,
+
+    pub exit_save_modal: bool,
 
     pub update_progress: f32,
     pub update_status: UpdateStatus,
@@ -79,6 +88,8 @@ impl eframe::App for JukeBoxGui {
         // TODO: give ctx to other threads?, so ui can be updated as necessary.
         // but only once
 
+        // TODO: move this to App::tick when available
+        // https://github.com/emilk/egui/issues/5113
         self.handle_serial_events();
 
         if ctx.input(|i| i.viewport().close_requested()) {
@@ -121,6 +132,7 @@ impl JukeBoxGui {
                 .collect();
         let current_device = devices.keys().next().unwrap_or(&String::new()).into();
         let config_enable_splash = config.enable_splash;
+        let config_always_save_on_exit = config.always_save_on_exit;
         let config = Arc::new(Mutex::new(JukeBoxConfig::load()));
 
         // when gui exits, we use these to signal the other threads to stop
@@ -155,16 +167,23 @@ impl JukeBoxGui {
             devices: devices,
 
             config: config,
-            config_renaming_profile: false,
-            config_profile_name_entry: String::new(),
-            config_renaming_device: false,
-            config_device_name_entry: String::new(),
-            config_editing_key: InputKey::UnknownKey,
-            config_editing_action_icon: ActionIcon::GlyphIcon(phos::SEAL_QUESTION.into()),
-            config_editing_action_type: "MetaNoAction".into(),
-            config_editing_action: Box::new(MetaNoAction::default()),
-            config_editing_rgb: RgbProfile::Off,
             config_enable_splash: config_enable_splash,
+            config_always_save_on_exit: config_always_save_on_exit,
+
+            profile_renaming: false,
+            profile_name_entry: String::new(),
+
+            device_renaming: false,
+            device_name_entry: String::new(),
+
+            editing_key: InputKey::UnknownKey,
+            editing_action_icon: ActionIcon::GlyphIcon(phos::SEAL_QUESTION.into()),
+            editing_action_type: "MetaNoAction".into(),
+            editing_action: Box::new(MetaNoAction::default()),
+
+            editing_rgb: RgbProfile::Off,
+
+            exit_save_modal: false,
 
             update_progress: 0.0,
             update_status: UpdateStatus::Start,
@@ -311,25 +330,65 @@ impl JukeBoxGui {
                 && (self.update_status == UpdateStatus::Start
                     || self.update_status == UpdateStatus::End),
             |ui| {
+                let saveable = match self.gui_tab {
+                    GuiTab::EditingAction | GuiTab::EditingRGB | GuiTab::EditingScreen => true,
+                    _ => false,
+                };
                 if ui
                     .button(RichText::new(phos::ARROW_BEND_UP_LEFT))
-                    .on_hover_text_at_pointer(match self.gui_tab {
-                        GuiTab::EditingAction | GuiTab::EditingRGB | GuiTab::EditingScreen => {
-                            t!("help.back.save_button")
-                        }
-                        _ => t!("help.back.button"),
+                    .on_hover_text_at_pointer(match saveable {
+                        true => t!("help.back.save_button"),
+                        false => t!("help.back.button"),
                     })
                     .clicked()
                 {
-                    match self.gui_tab {
-                        GuiTab::EditingAction => self.save_action_and_exit(),
-                        GuiTab::EditingRGB => self.save_rgb_and_exit(),
-                        // GuiTab::EditingScreen => self.save_screen_and_exit(),
-                        _ => self.gui_tab = GuiTab::Device,
+                    if saveable {
+                        if self.config_always_save_on_exit {
+                            match self.gui_tab {
+                                GuiTab::EditingAction => self.save_action_and_exit(),
+                                GuiTab::EditingRGB => self.save_rgb_and_exit(),
+                                // GuiTab::EditingScreen => self.save_screen_and_exit(),
+                                _ => self.gui_tab = GuiTab::Device,
+                            }
+                        } else {
+                            self.exit_save_modal = true;
+                        }
+                    } else {
+                        self.gui_tab = GuiTab::Device;
                     }
                 }
             },
         );
+
+        if self.exit_save_modal {
+            Modal::new(Id::new("ExitSaveModal")).show(ui.ctx(), |ui| {
+                ui.set_width(200.0);
+                ui.heading(t!("help.back.modal_title"));
+
+                ui.add_space(32.0);
+
+                ui.horizontal(|ui| {
+                    if ui.button(t!("help.back.modal_save")).clicked() {
+                        self.exit_save_modal = false;
+                        self.gui_tab = GuiTab::Device;
+
+                        match self.gui_tab {
+                            GuiTab::EditingAction => self.save_action_and_exit(),
+                            GuiTab::EditingRGB => self.save_rgb_and_exit(),
+                            // GuiTab::EditingScreen => self.save_screen_and_exit(),
+                            _ => (),
+                        }
+                    }
+                    if ui.button(t!("help.back.modal_exit")).clicked() {
+                        self.exit_save_modal = false;
+                        self.gui_tab = GuiTab::Device;
+                    }
+                    if ui.button(t!("help.back.modal_cancel")).clicked() {
+                        self.exit_save_modal = false;
+                    }
+                });
+            });
+        }
     }
 
     fn draw_splash_text(&mut self, ui: &mut Ui) {

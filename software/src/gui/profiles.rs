@@ -11,23 +11,20 @@ impl JukeBoxGui {
     pub fn draw_profile_management(&mut self, ui: &mut Ui) {
         ui.add_enabled_ui(self.gui_tab == GuiTab::Device, |ui| {
             // Profile select/edit
-            if self.config_renaming_profile {
+            if self.profile_renaming {
                 // TODO: this shifts everything down a bit too much, fix later
-                let edit = ui.add(
-                    TextEdit::singleline(&mut self.config_profile_name_entry).desired_width(142.0),
-                );
-                if edit.lost_focus() && self.config_profile_name_entry.len() > 0 {
-                    self.config_renaming_profile = false;
+                let edit =
+                    ui.add(TextEdit::singleline(&mut self.profile_name_entry).desired_width(142.0));
+                if edit.lost_focus() && self.profile_name_entry.len() > 0 {
+                    self.profile_renaming = false;
 
                     let mut conf = self.config.blocking_lock();
 
-                    if !conf.profiles.contains_key(&self.config_profile_name_entry) {
+                    if !conf.profiles.contains_key(&self.profile_name_entry) {
                         let p = conf.current_profile.clone();
                         let c = conf.profiles.remove(&p).expect("");
-                        conf.profiles
-                            .insert(self.config_profile_name_entry.clone(), c);
-                        conf.current_profile
-                            .replace_with(&self.config_profile_name_entry);
+                        conf.profiles.insert(self.profile_name_entry.clone(), c);
+                        conf.current_profile.replace_with(&self.profile_name_entry);
 
                         // TODO: edit configs to reference new profile instead of wiping it
                         for (_, p) in conf.profiles.iter_mut() {
@@ -78,7 +75,7 @@ impl JukeBoxGui {
             }
 
             // Profile management
-            ui.add_enabled_ui(!self.config_renaming_profile, |ui| {
+            ui.add_enabled_ui(!self.profile_renaming, |ui| {
                 let new_btn = ui
                     .button(RichText::new(phos::PLUS_CIRCLE))
                     .on_hover_text_at_pointer(t!("help.profile.new"));
@@ -111,9 +108,8 @@ impl JukeBoxGui {
                     .on_hover_text_at_pointer(t!("help.profile.edit_name"));
                 if edit_btn.clicked() {
                     let conf = self.config.blocking_lock();
-                    self.config_renaming_profile = true;
-                    self.config_profile_name_entry
-                        .replace_with(&conf.current_profile);
+                    self.profile_renaming = true;
+                    self.profile_name_entry.replace_with(&conf.current_profile);
                 }
 
                 let mut conf = self.config.blocking_lock();

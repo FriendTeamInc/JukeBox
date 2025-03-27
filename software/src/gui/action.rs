@@ -14,52 +14,49 @@ use super::gui::{GuiTab, JukeBoxGui};
 
 impl JukeBoxGui {
     pub fn enter_action_editor(&mut self, key: InputKey) {
-        self.config_renaming_device = false;
-        self.config_renaming_profile = false;
+        self.device_renaming = false;
+        self.profile_renaming = false;
         self.gui_tab = GuiTab::EditingAction;
-        self.config_editing_key = key;
+        self.editing_key = key;
         {
             let c = self.config.blocking_lock();
             if let Some(r) = c
                 .profiles
                 .get(&c.current_profile)
                 .and_then(|p| p.get(&self.current_device))
-                .and_then(|d| d.key_map.get(&self.config_editing_key))
+                .and_then(|d| d.key_map.get(&self.editing_key))
             {
-                self.config_editing_action_icon = r.icon.clone();
-                self.config_editing_action_type = r.action.get_type();
-                self.config_editing_action = r.action.clone();
+                self.editing_action_icon = r.icon.clone();
+                self.editing_action_type = r.action.get_type();
+                self.editing_action = r.action.clone();
             } else {
-                self.config_editing_action_icon = ActionIcon::default();
-                self.config_editing_action_type = "MetaNoAction".into();
-                self.config_editing_action = self
-                    .action_map
-                    .enum_new(self.config_editing_action_type.clone());
+                self.editing_action_icon = ActionIcon::default();
+                self.editing_action_type = "MetaNoAction".into();
+                self.editing_action = self.action_map.enum_new(self.editing_action_type.clone());
             }
         };
     }
 
     pub fn save_action_and_exit(&mut self) {
         // TODO: have config validate input?
-        self.gui_tab = GuiTab::Device;
         let mut c = self.config.blocking_lock();
         let current_profile = c.current_profile.clone();
         let profile = c.profiles.get_mut(&current_profile).unwrap();
         if let Some(d) = profile.get_mut(&self.current_device) {
             d.key_map.insert(
-                self.config_editing_key.clone(),
+                self.editing_key.clone(),
                 ActionConfig {
-                    action: self.config_editing_action.clone(),
-                    icon: self.config_editing_action_icon.clone(),
+                    action: self.editing_action.clone(),
+                    icon: self.editing_action_icon.clone(),
                 },
             );
         } else {
             let mut d = HashMap::new();
             d.insert(
-                self.config_editing_key.clone(),
+                self.editing_key.clone(),
                 ActionConfig {
-                    action: self.config_editing_action.clone(),
-                    icon: self.config_editing_action_icon.clone(),
+                    action: self.editing_action.clone(),
+                    icon: self.editing_action_icon.clone(),
                 },
             );
             profile.insert(
@@ -76,7 +73,7 @@ impl JukeBoxGui {
     pub fn draw_edit_action(&mut self, ui: &mut Ui) {
         ui.columns_const(|[c1, c2]| {
             c1.horizontal(|ui| {
-                let test_btn = match &self.config_editing_action_icon {
+                let test_btn = match &self.editing_action_icon {
                     ActionIcon::GlyphIcon(s) => Button::new(RichText::new(s).heading().strong()),
                     ActionIcon::ImageIcon(s) => {
                         let i = Image::new(ImageSource::Uri(s.into()))
@@ -85,7 +82,7 @@ impl JukeBoxGui {
                         Button::image(i)
                     }
                     ActionIcon::DefaultActionIcon => {
-                        let i = self.config_editing_action.icon();
+                        let i = self.editing_action.icon();
                         Button::image(i)
                     }
                 };
@@ -128,7 +125,7 @@ impl JukeBoxGui {
                     Layout::centered_and_justified(eframe::egui::Direction::TopDown)
                         .with_cross_justify(false),
                     |ui| {
-                        ui.label(RichText::new(self.config_editing_action.help()).size(10.0));
+                        ui.label(RichText::new(self.editing_action.help()).size(10.0));
                     },
                 );
             });
@@ -141,10 +138,10 @@ impl JukeBoxGui {
                     .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
                     .show(ui, |ui| {
                         ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
-                            self.config_editing_action.edit_ui(
+                            self.editing_action.edit_ui(
                                 ui,
                                 &self.current_device,
-                                self.config_editing_key,
+                                self.editing_key,
                                 self.config.clone(),
                             );
                             ui.allocate_space(ui.available_size_before_wrap());
@@ -177,11 +174,7 @@ impl JukeBoxGui {
                 .show(ui, |ui| {
                     for (action_type, label) in options {
                         if ui
-                            .selectable_value(
-                                &mut self.config_editing_action_type,
-                                action_type,
-                                label,
-                            )
+                            .selectable_value(&mut self.editing_action_type, action_type, label)
                             .changed()
                         {
                             self.reset_editing_action();
@@ -193,8 +186,6 @@ impl JukeBoxGui {
     }
 
     fn reset_editing_action(&mut self) {
-        self.config_editing_action = self
-            .action_map
-            .enum_new(self.config_editing_action_type.clone());
+        self.editing_action = self.action_map.enum_new(self.editing_action_type.clone());
     }
 }
