@@ -38,7 +38,7 @@ typetag = "0.2"
 dyn-clone = "1.0"
 
 obws = "0.14"
-discord-rich-presence = { path = "../../discord-rich-presence", optional = true }
+discord-rich-presence = { git = "https://github.com/NotQuiteApex/discord-rich-presence", branch = "voice-settings", optional = true }
 reqwest = { version = "0.12", features = ["json", "blocking"], optional = true }
 rustls = "0.23.25"
 uuid = "1.16.0"
