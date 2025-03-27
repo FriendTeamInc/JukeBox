@@ -79,7 +79,7 @@ fn decode_size_digit(w: u8) -> usize {
         b'E' => 0xE,
         b'f' => 0xF,
         b'F' => 0xF,
-        _ => 0,
+        _ => panic!("cannot decode digit"),
     }
 }
 
@@ -101,7 +101,7 @@ fn encode_size_digit(w: usize) -> u8 {
         0xD => b'D',
         0xE => b'E',
         0xF => b'F',
-        _ => b'0',
+        _ => panic!("cannot encode digit"),
     }
 }
 

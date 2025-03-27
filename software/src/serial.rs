@@ -42,7 +42,7 @@ pub enum SerialCommand {
     Identify,
     SetRgbMode(RgbProfile),
     SetScrMode,
-    SetScrIcon,
+    SetScrIcon(u8, [u16; 32 * 32]),
     Update,
     Disconnect,
 }
@@ -365,7 +365,7 @@ pub async fn serial_loop(
                 SerialCommand::SetScrMode => {
                     todo!()
                 }
-                SerialCommand::SetScrIcon => {
+                SerialCommand::SetScrIcon(slot, icon_data) => {
                     todo!()
                 }
                 SerialCommand::Update => {

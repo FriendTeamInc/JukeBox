@@ -144,7 +144,7 @@ fn reset_icons() {
                 let mut x = 0;
                 while x < 32 {
                     // TODO: use dma to swap out the icons
-                    icons[i][32 * y + x] = DEFAULT_ICONS[i][32 * y + x];
+                    icons[i][32 * y + x] = !DEFAULT_ICONS[i][32 * y + x];
                     x += 1;
                 }
                 y += 1;

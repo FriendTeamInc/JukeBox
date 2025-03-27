@@ -108,9 +108,13 @@ pub async fn action_task(
                         let rgb_profile =
                             new_rgb_profile.unwrap_or(jukebox_util::color::RgbProfile::Off);
                         let txs = scmd_txs.lock().await;
-                        let _ = txs
-                            .get(&device_uid)
-                            .and_then(|t| Some(t.send(SerialCommand::SetRgbMode(rgb_profile))));
+                        let tx = if let Some(tx) = txs.get(&device_uid) {
+                            tx
+                        } else {
+                            return;
+                        };
+
+                        let _ = tx.send(SerialCommand::SetRgbMode(rgb_profile));
 
                         // TODO: set hardware inputs here
                     }

@@ -22,8 +22,8 @@ use crate::{st7789::St7789, ConnectionStatus, Icons};
 const REFRESH_RATE: u32 = 33;
 pub const SCR_W: usize = 240;
 pub const SCR_H: usize = 320;
-static mut FBDATA: [u16; SCR_W * SCR_H] = [0; SCR_W * SCR_H];
 const BG_COLOR: u16 = 0x1082;
+static mut FBDATA: [u16; SCR_W * SCR_H] = [BG_COLOR; SCR_W * SCR_H];
 static CLEAR_VAL: RepeatReadTarget<u16> = RepeatReadTarget(BG_COLOR);
 #[derive(Clone, Copy)]
 struct RepeatReadTarget<W: Word>(W);
@@ -52,6 +52,9 @@ pub struct ScreenMod {
     timer: CountDown,
     icons: &'static Icons,
     connection_status: &'static ConnectionStatus,
+
+    keys_status: [u8; 12],
+    keys_previous_frame: [u8; 12],
 }
 
 impl ScreenMod {
@@ -70,6 +73,9 @@ impl ScreenMod {
             timer,
             icons,
             connection_status,
+
+            keys_status: [0; 12],
+            keys_previous_frame: [1; 12],
         }
     }
 
@@ -125,7 +131,7 @@ impl ScreenMod {
         );
     }
 
-    fn draw_icon(&mut self, icon: &[u16], key: bool, x: usize, y: usize) {
+    fn draw_icon(&mut self, icon: &[u16], key: u8, x: usize, y: usize) {
         // icon drawing
         let mut h = 0;
         while h < 32 {
@@ -139,37 +145,49 @@ impl ScreenMod {
         }
 
         // rounded corners
-        if key {
-            self.rounded_rect(0xFFFF, x, y, 64, 4);
+        if key > 0 {
+            self.rounded_rect(BG_COLOR, x, y, 64, key as usize);
         } else {
-            self.rounded_rect(0xFFFF, x, y, 64, 1);
+            self.rounded_rect(BG_COLOR, x, y, 64, 1);
         }
     }
 
     pub fn update(mut self, keys: &[bool], _t: Instant, _timer: &Timer) -> Self {
+        for i in 0..12 {
+            if keys[i] {
+                self.keys_status[i] = 5;
+            }
+        }
+
         if !self.timer.wait().is_ok() {
             return self;
         }
 
         let s = _timer.get_counter();
         // using multiple channels did not meaningfully improve performance.
-        self.dma_ch0 = {
-            let (dma_ch0, _, _) =
-                single_buffer::Config::new(self.dma_ch0, CLEAR_VAL, unsafe { &mut FBDATA })
-                    .start()
-                    .wait();
+        // self.dma_ch0 = {
+        //     let (dma_ch0, _, _) =
+        //         single_buffer::Config::new(self.dma_ch0, CLEAR_VAL, unsafe { &mut FBDATA })
+        //             .start()
+        //             .wait();
 
-            dma_ch0
-        };
+        //     dma_ch0
+        // };
         let elapse_clear_fb = _timer.get_counter() - s;
 
         let s = _timer.get_counter();
         self.icons.with_lock(|i| {
             for y in 0..3 {
                 for x in 0..4 {
+                    let idx = y * 4 + x;
+
+                    if self.keys_status[idx] == self.keys_previous_frame[idx] {
+                        continue;
+                    }
+
                     self.draw_icon(
-                        &i[y * 4 + x],
-                        keys[y * 4 + x],
+                        &i[idx],
+                        self.keys_status[idx],
                         4 + (64 + 6) * y,
                         23 + (64 + 6) * x,
                     );
@@ -180,17 +198,28 @@ impl ScreenMod {
 
         let time_start = _timer.get_counter();
         self.st.push_framebuffer(unsafe { &FBDATA });
-        let elapse_push_fb = _timer.get_counter() - time_start;
         self.st.backlight_on();
+        let elapse_push_fb = _timer.get_counter() - time_start;
 
-        // info!(
-        //     "times:\nclear-fb={}us\ndraw-icons={}us\npush-fb={}us\ntotal={}",
-        //     elapse_clear_fb.to_micros(),
-        //     elapse_draw_icons.to_micros(),
-        //     elapse_push_fb.to_micros(),
-        //     (elapse_clear_fb + elapse_draw_icons + elapse_push_fb).to_micros()
-        // );
+        info!(
+            "times:\nclear-fb={}us\ndraw-icons={}us\npush-fb={}us\ntotal={}",
+            elapse_clear_fb.to_micros(),
+            elapse_draw_icons.to_micros(),
+            elapse_push_fb.to_micros(),
+            (elapse_clear_fb + elapse_draw_icons + elapse_push_fb).to_micros()
+        );
+
+        self.keys_previous_frame = self.keys_status;
+        for k in self.keys_status.iter_mut() {
+            sub_if_not_zero(k);
+        }
 
         self
+    }
+}
+
+fn sub_if_not_zero(w: &mut u8) {
+    if *w > 0 {
+        *w -= 1;
     }
 }
