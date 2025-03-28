@@ -20,19 +20,19 @@ jobs:
           target: thumbv6m-none-eabi
       - name: "Install Cargo dependencies"
         run: cargo install flip-link
-      - name: "Build debug binary with Cargo"
-        run: cd firmware/ && cargo build
-      - name: "Build release binary with Cargo"
-        run: cd firmware/ && cargo build --release
-      - name: "Upload debug binary artifact"
+      - name: "Build debug binary with Cargo (Keypad)"
+        run: cd firmware/ && cargo build -F "keypad"
+      - name: "Upload debug binary artifact (Keypad)"
         uses: actions/upload-artifact@v4
         with:
-          name: jb_firmware_debug
+          name: jb_firmware_keypad_debug
           path: firmware/target/thumbv6m-none-eabi/debug/jukebox_firmware
           retention-days: 90
-      - name: "Upload release binary artifact"
+      - name: "Build debug binary with Cargo (Pedalpad)"
+        run: cd firmware/ && cargo build -F "pedalpad"
+      - name: "Upload debug binary artifact (Pedalpad)"
         uses: actions/upload-artifact@v4
         with:
-          name: jb_firmware_release
-          path: firmware/target/thumbv6m-none-eabi/release/jukebox_firmware
+          name: jb_firmware_pedalpad_debug
+          path: firmware/target/thumbv6m-none-eabi/debug/jukebox_firmware
           retention-days: 90
