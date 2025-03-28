@@ -58,7 +58,7 @@ impl JukeBoxGui {
 
         if ui
             .checkbox(
-                &mut self.config_enable_splash,
+                &mut self.config_always_save_on_exit,
                 t!("help.settings.exit_on_save"),
             )
             .changed()

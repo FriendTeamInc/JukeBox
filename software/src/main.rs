@@ -25,9 +25,10 @@ fn main() -> Result<()> {
 
     env_logger::init();
 
-    rustls::crypto::aws_lc_rs::default_provider()
-        .install_default()
-        .expect("failed to install rustls crypto provider");
+    // For OBS websocket TLS support, currently unused.
+    // rustls::crypto::aws_lc_rs::default_provider()
+    //     .install_default()
+    //     .expect("failed to install rustls crypto provider");
 
     gui::gui::basic_gui();
 

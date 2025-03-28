@@ -370,14 +370,13 @@ impl JukeBoxGui {
                 ui.horizontal(|ui| {
                     if ui.button(t!("help.back.modal_save")).clicked() {
                         self.exit_save_modal = false;
-                        self.gui_tab = GuiTab::Device;
-
                         match self.gui_tab {
                             GuiTab::EditingAction => self.save_action_and_exit(),
                             GuiTab::EditingRGB => self.save_rgb_and_exit(),
                             // GuiTab::EditingScreen => self.save_screen_and_exit(),
                             _ => (),
                         }
+                        self.gui_tab = GuiTab::Device;
                     }
                     if ui.button(t!("help.back.modal_exit")).clicked() {
                         self.exit_save_modal = false;
