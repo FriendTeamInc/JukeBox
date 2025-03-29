@@ -126,14 +126,14 @@ type UpdateTrigger = Mutex<2, bool>;
 type IdentifyTrigger = Mutex<3, bool>;
 type RgbControls = Mutex<4, (bool, RgbProfile)>; // (changed, settings)
 type ConnectionStatus = Mutex<5, Connection>;
-type Icons = Mutex<6, [[u16; 32 * 32]; 12]>;
+type Icons = Mutex<6, [(bool, [u16; 32 * 32]); 12]>;
 
 static CONNECTION_STATUS: ConnectionStatus = Mutex::new(Connection::NotConnected(true));
 static PERIPHERAL_INPUTS: PeripheralInputs = Mutex::new(inputs_default());
 static UPDATE_TRIGGER: UpdateTrigger = Mutex::new(false);
 static IDENTIFY_TRIGGER: IdentifyTrigger = Mutex::new(false);
 static RGB_CONTROLS: RgbControls = Mutex::new((false, RgbProfile::default_device_profile()));
-static ICONS: Icons = Mutex::new([[0; 32 * 32]; 12]);
+static ICONS: Icons = Mutex::new([(false, [0; 32 * 32]); 12]);
 
 fn time_func(t: &Timer, mut f: impl FnMut() -> ()) -> Duration<u64, 1, 1000000> {
     let s = t.get_counter();
@@ -150,11 +150,12 @@ fn reset_icons() {
                 let mut x = 0;
                 while x < 32 {
                     // TODO: use dma to swap out the icons
-                    icons[i][32 * y + x] = !DEFAULT_ICONS[i][32 * y + x];
+                    icons[i].1[32 * y + x] = !DEFAULT_ICONS[i][32 * y + x];
                     x += 1;
                 }
                 y += 1;
             }
+            icons[i].0 = true;
             i += 1;
         }
     });
@@ -254,6 +255,7 @@ fn main() -> ! {
         &UPDATE_TRIGGER,
         &IDENTIFY_TRIGGER,
         &RGB_CONTROLS,
+        &ICONS,
     );
 
     // core 1 event loop (GPIO)

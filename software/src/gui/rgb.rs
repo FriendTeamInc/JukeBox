@@ -4,7 +4,7 @@ use eframe::egui::{
     color_picker::show_color_at, vec2, Align, Color32, ComboBox, Layout, Response, ScrollArea,
     Sense, Slider, StrokeKind, TextEdit, Ui, Vec2,
 };
-use jukebox_util::color::RgbProfile;
+use jukebox_util::{color::RgbProfile, peripheral::DeviceType};
 
 use crate::serial::SerialCommand;
 
@@ -352,6 +352,16 @@ impl JukeBoxGui {
     }
 
     pub fn set_device_rgb(&mut self, device_uid: &String) {
+        if self
+            .devices
+            .get(device_uid)
+            .and_then(|d| Some(d.0))
+            .unwrap_or(DeviceType::Unknown)
+            != DeviceType::KeyPad
+        {
+            return;
+        }
+
         let rgb_profile = {
             let c = self.config.blocking_lock();
             let p = c.current_profile.clone();
@@ -376,15 +386,17 @@ impl JukeBoxGui {
     }
 
     pub fn save_rgb_and_exit(&mut self) {
-        self.set_device_rgb(&self.current_device.clone());
-
-        let mut c = self.config.blocking_lock();
-        let p = c.current_profile.clone();
-        if let Some(profile) = c.profiles.get_mut(&p) {
-            if let Some(device) = profile.get_mut(&self.current_device) {
-                device.rgb_profile = Some(self.editing_rgb.clone())
+        {
+            let mut c = self.config.blocking_lock();
+            let p = c.current_profile.clone();
+            if let Some(profile) = c.profiles.get_mut(&p) {
+                if let Some(device) = profile.get_mut(&self.current_device) {
+                    device.rgb_profile = Some(self.editing_rgb.clone())
+                }
             }
+            c.save();
         }
-        c.save();
+
+        self.set_device_rgb(&self.current_device.clone());
     }
 }

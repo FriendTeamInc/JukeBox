@@ -44,7 +44,7 @@ impl Command {
             CMD_GREET => Self::Greeting,
             CMD_GET_INPUT_KEYS => Self::GetInputKeys,
             CMD_SET_RGB_MODE => Self::SetRgbMode,
-            CMD_SET_SCR_ICON => Self::SetScrMode,
+            CMD_SET_SCR_ICON => Self::SetScrIcon,
             CMD_SET_SCR_MODE => Self::SetScrMode,
             CMD_IDENTIFY => Self::Identify,
             CMD_UPDATE => Self::Update,
@@ -79,7 +79,7 @@ fn decode_size_digit(w: u8) -> usize {
         b'E' => 0xE,
         b'f' => 0xF,
         b'F' => 0xF,
-        _ => panic!("cannot decode digit"),
+        _ => panic!("cannot decode digit {}", w),
     }
 }
 
@@ -101,7 +101,7 @@ fn encode_size_digit(w: usize) -> u8 {
         0xD => b'D',
         0xE => b'E',
         0xF => b'F',
-        _ => panic!("cannot encode digit"),
+        _ => panic!("cannot encode digit {}", w),
     }
 }
 

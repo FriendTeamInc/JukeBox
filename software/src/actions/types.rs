@@ -4,7 +4,9 @@ use std::{collections::HashMap, sync::Arc};
 
 use anyhow::Result;
 use dyn_clone::{clone_trait_object, DynClone};
-use eframe::egui::{vec2, Image, ImageSource, TextureFilter, TextureOptions, TextureWrapMode, Ui};
+use eframe::egui::{
+    load::Bytes, vec2, Image, ImageSource, TextureFilter, TextureOptions, TextureWrapMode, Ui,
+};
 use jukebox_util::peripheral::DeviceType;
 use tokio::sync::Mutex;
 
@@ -148,4 +150,26 @@ impl ActionMap {
 
         c
     }
+}
+
+pub fn get_icon_bytes(icon_source: ImageSource) -> [u8; 32 * 32 * 2] {
+    let b = match icon_source {
+        ImageSource::Uri(_) => panic!(),
+        ImageSource::Texture(_) => panic!(),
+        ImageSource::Bytes { uri: _, bytes } => match bytes {
+            Bytes::Static(items) => items,
+            Bytes::Shared(items) => &items.clone(),
+        },
+    };
+
+    let (_, b) = b.split_at(0x7A);
+
+    if b.len() != (32 * 32 * 2) {
+        panic!();
+    }
+
+    let mut bytes = [0u8; 32 * 32 * 2];
+    bytes.copy_from_slice(b);
+
+    bytes
 }

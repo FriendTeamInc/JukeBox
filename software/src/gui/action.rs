@@ -4,10 +4,13 @@ use eframe::egui::{
     scroll_area::ScrollBarVisibility, vec2, Align, Button, CollapsingHeader, Grid, Image,
     ImageSource, Layout, RichText, ScrollArea, Ui,
 };
+use jukebox_util::peripheral::DeviceType;
 
 use crate::{
+    actions::types::get_icon_bytes,
     config::{ActionConfig, ActionIcon, DeviceConfig},
     input::InputKey,
+    serial::SerialCommand,
 };
 
 use super::gui::{GuiTab, JukeBoxGui};
@@ -37,37 +40,96 @@ impl JukeBoxGui {
         };
     }
 
+    fn set_device_action_icon(&mut self, device_uid: &String) {
+        if self
+            .devices
+            .get(device_uid)
+            .and_then(|d| Some(d.0))
+            .unwrap_or(DeviceType::Unknown)
+            != DeviceType::KeyPad
+        {
+            return;
+        }
+
+        let icon = if let Some(icon) = {
+            let c = self.config.blocking_lock().clone();
+            c.profiles
+                .clone()
+                .get(&c.current_profile)
+                .and_then(|d| d.get(device_uid))
+                .and_then(|p| p.key_map.get(&self.editing_key))
+                .and_then(|a| Some(a.action.icon_source()))
+        } {
+            get_icon_bytes(icon)
+        } else {
+            return;
+        };
+
+        let slot = match self.editing_key {
+            InputKey::KeySwitch1 => 0,
+            InputKey::KeySwitch2 => 1,
+            InputKey::KeySwitch3 => 2,
+            InputKey::KeySwitch4 => 3,
+            InputKey::KeySwitch5 => 4,
+            InputKey::KeySwitch6 => 5,
+            InputKey::KeySwitch7 => 6,
+            InputKey::KeySwitch8 => 7,
+            InputKey::KeySwitch9 => 8,
+            InputKey::KeySwitch10 => 9,
+            InputKey::KeySwitch11 => 10,
+            InputKey::KeySwitch12 => 11,
+            _ => panic!(),
+        };
+
+        if self
+            .devices
+            .get(device_uid)
+            .and_then(|d| Some(d.3))
+            .unwrap_or(false)
+        {
+            let txs = self.scmd_txs.blocking_lock();
+            if let Some(tx) = txs.get(device_uid) {
+                let _ = tx.send(SerialCommand::SetScrIcon(slot, icon));
+            }
+        }
+    }
+
     pub fn save_action_and_exit(&mut self) {
         // TODO: have config validate input?
-        let mut c = self.config.blocking_lock();
-        let current_profile = c.current_profile.clone();
-        let profile = c.profiles.get_mut(&current_profile).unwrap();
-        if let Some(d) = profile.get_mut(&self.current_device) {
-            d.key_map.insert(
-                self.editing_key.clone(),
-                ActionConfig {
-                    action: self.editing_action.clone(),
-                    icon: self.editing_action_icon.clone(),
-                },
-            );
-        } else {
-            let mut d = HashMap::new();
-            d.insert(
-                self.editing_key.clone(),
-                ActionConfig {
-                    action: self.editing_action.clone(),
-                    icon: self.editing_action_icon.clone(),
-                },
-            );
-            profile.insert(
-                self.current_device.clone(),
-                DeviceConfig {
-                    key_map: d,
-                    rgb_profile: None,
-                },
-            );
+
+        {
+            let mut c = self.config.blocking_lock();
+            let current_profile = c.current_profile.clone();
+            let profile = c.profiles.get_mut(&current_profile).unwrap();
+            if let Some(d) = profile.get_mut(&self.current_device) {
+                d.key_map.insert(
+                    self.editing_key.clone(),
+                    ActionConfig {
+                        action: self.editing_action.clone(),
+                        icon: self.editing_action_icon.clone(),
+                    },
+                );
+            } else {
+                let mut d = HashMap::new();
+                d.insert(
+                    self.editing_key.clone(),
+                    ActionConfig {
+                        action: self.editing_action.clone(),
+                        icon: self.editing_action_icon.clone(),
+                    },
+                );
+                profile.insert(
+                    self.current_device.clone(),
+                    DeviceConfig {
+                        key_map: d,
+                        rgb_profile: None,
+                    },
+                );
+            }
+            c.save();
         }
-        c.save();
+
+        self.set_device_action_icon(&self.current_device.clone());
     }
 
     pub fn draw_edit_action(&mut self, ui: &mut Ui) {

@@ -163,7 +163,7 @@ impl ScreenMod {
             return self;
         }
 
-        let elapse_clear_fb = time_func(t, || {
+        let _elapse_clear_fb = time_func(t, || {
             // // using multiple channels did not meaningfully improve performance.
             // self.dma_ch0 = {
             //     let (dma_ch0, _, _) =
@@ -174,40 +174,42 @@ impl ScreenMod {
             // };
         });
 
-        let elapse_draw_icons = time_func(t, || {
-            self.icons.with_lock(|i| {
+        let _elapse_draw_icons = time_func(t, || {
+            self.icons.with_mut_lock(|i| {
                 for y in 0..3 {
                     for x in 0..4 {
                         let idx = y * 4 + x;
 
-                        if self.keys_status[idx] == self.keys_previous_frame[idx] {
+                        if self.keys_status[idx] == self.keys_previous_frame[idx] && !i[idx].0 {
                             continue;
                         }
 
                         self.draw_icon(
-                            &i[idx],
+                            &i[idx].1,
                             self.keys_status[idx],
                             4 + (64 + 6) * y,
                             23 + (64 + 6) * x,
                         );
+
+                        i[idx].0 = false;
                     }
                 }
             });
         });
 
-        let elapse_push_fb = time_func(t, || {
+        let _elapse_push_fb = time_func(t, || {
             #[allow(static_mut_refs)]
             self.st.push_framebuffer(unsafe { &FBDATA });
             self.st.backlight_on();
         });
 
-        info!(
-            "times:\nclear-fb={}us\ndraw-icons={}us\npush-fb={}us\ntotal={}",
-            elapse_clear_fb.to_micros(),
-            elapse_draw_icons.to_micros(),
-            elapse_push_fb.to_micros(),
-            (elapse_clear_fb + elapse_draw_icons + elapse_push_fb).to_micros()
-        );
+        // info!(
+        //     "times:\nclear-fb={}us\ndraw-icons={}us\npush-fb={}us\ntotal={}",
+        //     _elapse_clear_fb.to_micros(),
+        //     _elapse_draw_icons.to_micros(),
+        //     _elapse_push_fb.to_micros(),
+        //     (_elapse_clear_fb + _elapse_draw_icons + _elapse_push_fb).to_micros()
+        // );
 
         self.keys_previous_frame = self.keys_status;
         for k in self.keys_status.iter_mut() {

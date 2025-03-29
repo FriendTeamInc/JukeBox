@@ -16,8 +16,8 @@ use jukebox_util::peripheral::{
 };
 use jukebox_util::protocol::{
     decode_packet_size, encode_packet_size, CMD_DISCONNECT, CMD_GET_INPUT_KEYS, CMD_GREET,
-    CMD_IDENTIFY, CMD_NEGATIVE_ACK, CMD_SET_RGB_MODE, CMD_UPDATE, RSP_ACK, RSP_DISCONNECTED,
-    RSP_INPUT_HEADER, RSP_LINK_DELIMITER, RSP_LINK_HEADER, RSP_UNKNOWN,
+    CMD_IDENTIFY, CMD_NEGATIVE_ACK, CMD_SET_RGB_MODE, CMD_SET_SCR_ICON, CMD_UPDATE, RSP_ACK,
+    RSP_DISCONNECTED, RSP_INPUT_HEADER, RSP_LINK_DELIMITER, RSP_LINK_HEADER, RSP_UNKNOWN,
 };
 use serialport::SerialPort;
 use tokio::task::block_in_place;
@@ -42,7 +42,7 @@ pub enum SerialCommand {
     Identify,
     SetRgbMode(RgbProfile),
     SetScrMode,
-    SetScrIcon(u8, [u16; 32 * 32]),
+    SetScrIcon(u8, [u8; 32 * 32 * 2]),
     Update,
     Disconnect,
 }
@@ -108,15 +108,23 @@ async fn get_serial_string(f: &mut Box<dyn SerialPort>) -> Result<Vec<u8>> {
 }
 
 async fn send_cmd(f: &mut Box<dyn SerialPort>, c: u8) -> Result<()> {
-    let cmd = vec![c];
-    send_bytes(f, cmd.as_slice())
+    send_bytes(f, &[c])
         .await
         .with_context(|| format!("failed to send cmd {}", c))
 }
 
 async fn send_bytes(f: &mut Box<dyn SerialPort>, bytes: &[u8]) -> Result<()> {
     block_in_place(|| {
-        f.write_all(&encode_packet_size(bytes.len()))
+        let size = &encode_packet_size(bytes.len());
+
+        log::debug!(
+            "send_bytes: {} ({:?}) {:?}",
+            decode_packet_size(size[0], size[1], size[2]),
+            size,
+            bytes
+        );
+
+        f.write_all(size)
             .with_context(|| format!("failed to write message size for {:?}", bytes))?;
         f.write_all(bytes)
             .with_context(|| format!("failed to write message {:?}", bytes))?;
@@ -277,30 +285,32 @@ async fn transmit_get_input_keys(f: &mut Box<dyn SerialPort>) -> Result<HashSet<
 async fn transmit_set_rgb(f: &mut Box<dyn SerialPort>, rgb_profile: RgbProfile) -> Result<()> {
     let mut cmd = vec![CMD_SET_RGB_MODE];
     cmd.extend_from_slice(&rgb_profile.encode());
-    let rsp = vec![RSP_ACK];
 
-    send_expect(f, &cmd, &rsp).await
+    send_expect(f, &cmd, &[RSP_ACK]).await
+}
+
+async fn transmit_set_scr_icon(
+    f: &mut Box<dyn SerialPort>,
+    slot: u8,
+    icon_data: [u8; 32 * 32 * 2],
+) -> Result<()> {
+    let mut cmd = vec![CMD_SET_SCR_ICON];
+    cmd.extend_from_slice(&[slot]);
+    cmd.extend_from_slice(&icon_data);
+
+    send_expect(f, &cmd, &[RSP_ACK]).await
 }
 
 async fn transmit_identify_signal(f: &mut Box<dyn SerialPort>) -> Result<()> {
-    let cmd = vec![CMD_IDENTIFY];
-    let rsp = vec![RSP_ACK];
-
-    send_expect(f, &cmd, &rsp).await
+    send_expect(f, &[CMD_IDENTIFY], &[RSP_ACK]).await
 }
 
 async fn transmit_update_signal(f: &mut Box<dyn SerialPort>) -> Result<()> {
-    let cmd = vec![CMD_UPDATE];
-    let rsp = vec![RSP_DISCONNECTED];
-
-    send_expect(f, &cmd, &rsp).await
+    send_expect(f, &[CMD_UPDATE], &[RSP_DISCONNECTED]).await
 }
 
 async fn transmit_disconnect_signal(f: &mut Box<dyn SerialPort>) -> Result<()> {
-    let cmd = vec![CMD_DISCONNECT];
-    let rsp = vec![RSP_DISCONNECTED];
-
-    send_expect(f, &cmd, &rsp).await
+    send_expect(f, &[CMD_DISCONNECT], &[RSP_DISCONNECTED]).await
 }
 
 pub fn serial_get_device(connected_uids: &HashSet<String>) -> Result<Box<dyn SerialPort>> {
@@ -365,8 +375,8 @@ pub async fn serial_loop(
                 SerialCommand::SetScrMode => {
                     todo!()
                 }
-                SerialCommand::SetScrIcon(_slot, _icon_data) => {
-                    todo!()
+                SerialCommand::SetScrIcon(slot, icon_data) => {
+                    transmit_set_scr_icon(f, slot, icon_data).await?;
                 }
                 SerialCommand::Update => {
                     transmit_update_signal(f).await?;

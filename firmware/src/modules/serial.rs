@@ -20,11 +20,11 @@ use rp2040_hal::{fugit::ExtU32, timer::CountDown, usb::UsbBus};
 use usbd_serial::SerialPort;
 
 use crate::{
-    inputs_default, modules::rgb::DEFAULT_RGB, reset_icons, ConnectionStatus, IdentifyTrigger,
-    PeripheralInputs, RgbControls, UpdateTrigger,
+    inputs_default, modules::rgb::DEFAULT_RGB, reset_icons, ConnectionStatus, Icons,
+    IdentifyTrigger, PeripheralInputs, RgbControls, UpdateTrigger,
 };
 
-const BUFFER_SIZE: usize = 2048;
+const BUFFER_SIZE: usize = 4096;
 
 const KEEPALIVE: u32 = 500;
 
@@ -38,6 +38,7 @@ pub struct SerialMod {
     update_trigger: &'static UpdateTrigger,
     identify_trigger: &'static IdentifyTrigger,
     rgb_controls: &'static RgbControls,
+    icons: &'static Icons,
 }
 
 impl SerialMod {
@@ -48,6 +49,7 @@ impl SerialMod {
         update_trigger: &'static UpdateTrigger,
         identify_trigger: &'static IdentifyTrigger,
         rgb_controls: &'static RgbControls,
+        icons: &'static Icons,
     ) -> Self {
         keepalive_timer.start(KEEPALIVE.millis());
 
@@ -60,6 +62,7 @@ impl SerialMod {
             update_trigger,
             identify_trigger,
             rgb_controls,
+            icons,
         }
     }
 
@@ -256,7 +259,25 @@ impl SerialMod {
                 }
                 Command::SetScrIcon => {
                     // TODO:
-                    unknown()
+
+                    let slot = data[0];
+                    let new_icon = &data[1..32 * 32 * 2 + 1];
+
+                    self.icons.with_mut_lock(|icons| {
+                        let scr_icon = &mut icons[slot as usize];
+                        let mut i = 0;
+                        while i < 32 * 32 {
+                            scr_icon.1[i] =
+                                ((new_icon[i * 2 + 1] as u16) << 8) | (new_icon[i * 2] as u16);
+                            i += 1;
+                        }
+                        scr_icon.0 = true;
+                    });
+
+                    Self::send(serial, b"001");
+                    Self::send(serial, &[RSP_ACK]);
+
+                    true
                 }
                 Command::Identify => {
                     // TODO: flash led for identifying
