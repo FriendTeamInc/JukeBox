@@ -1,6 +1,6 @@
 # <img src="assets/textlogo.svg" alt="JukeBox!" width="400"/>
 
-An affordable, adorable, powerful hotkey device to run macros, play funny sounds, mute your microphone, change paint brush settings, or manage items in OBS! It can even have RGB or show PC stats!
+An affordable, adorable, powerful hotkey device to run macros, play funny sounds, managing your audio settings, change paint brush settings, configuring items in OBS, and so much more!
 
 (TODO: physical image here)
 

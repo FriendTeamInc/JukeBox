@@ -2,12 +2,12 @@ name: "Build case models"
 on:
   push:
     paths:
-      - "hardware-case/**"
-      - ".github/workflows/build-hardware-case.yaml"
+      - "case/**"
+      - ".github/workflows/build-case.yaml"
       - "assets/textlogo.svg"
 
 jobs:
-  build-hardware-case:
+  build-case:
     runs-on: ubuntu-latest
     steps:
       - name: "Get dependencies"
@@ -19,10 +19,10 @@ jobs:
       - name: "Checkout repo"
         uses: actions/checkout@v4
       - name: "OpenSCAD build"
-        run: ./hardware-case/build.sh
+        run: ./case/build.sh
       - name: "Upload artifact"
         uses: actions/upload-artifact@v4
         with:
-          name: jb-hardware-case
-          path: hardware-case/build/case-*.stl
+          name: jb-case
+          path: case/build/case-*.stl
           retention-days: 90

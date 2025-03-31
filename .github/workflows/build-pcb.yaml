@@ -2,11 +2,11 @@ name: "Build PCB gerbers"
 on:
   push:
     paths:
-      - "hardware-pcb/**"
-      - ".github/workflows/build-hardware-pcb.yaml"
+      - "pcb/**"
+      - ".github/workflows/build-pcb.yaml"
 
 jobs:
-  build-hardware-pcb:
+  build-pcb:
     runs-on: ubuntu-latest
     steps:
       - name: "Add KiCAD 8 PPA"
@@ -20,11 +20,11 @@ jobs:
       - name: "Checkout repo"
         uses: actions/checkout@v4
       - name: "Plot gerbers"
-        run: mkdir hardware-pcb/gerbers/ && kicad-cli pcb export gerbers -o hardware-pcb/gerbers/ hardware-pcb/JukeBox.kicad_pcb
+        run: mkdir pcb/gerbers/ && kicad-cli pcb export gerbers -o pcb/gerbers/ pcb/JukeBox.kicad_pcb
       - name: "Upload artifact"
         uses: actions/upload-artifact@v4
         with:
-          name: jb-hardware-pcb
-          path: hardware-pcb/gerbers/*
+          name: jb-pcb
+          path: pcb/gerbers/*
           retention-days: 90
     # TODO: check that these gerbers are good

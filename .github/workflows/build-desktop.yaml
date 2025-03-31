@@ -2,11 +2,11 @@ name: "Build desktop app"
 on:
   push:
     paths:
-      - "software/**"
-      - ".github/workflows/build-software.yaml"
+      - "desktop/**"
+      - ".github/workflows/build-desktop.yaml"
 
 jobs:
-  build-software-linux:
+  build-desktop-linux:
     runs-on: ubuntu-latest
     steps:
       - name: "Checkout repo"
@@ -19,16 +19,16 @@ jobs:
           packages: libudev-dev
       - name: "Update Rust"
         uses: dtolnay/rust-toolchain@stable
-      - name: "Build software (Linux)"
-        run: cd software/ && cargo build --release
+      - name: "Build desktop (Linux)"
+        run: cd desktop/ && cargo build --release
       - name: "Upload artifact (Linux)"
         uses: actions/upload-artifact@v4
         with:
-          name: jb-software-linux
-          path: software/target/release/jukebox_desktop
+          name: jb-desktop-linux
+          path: desktop/target/release/jukebox_desktop
           retention-days: 90
 
-  build-software-windows:
+  build-desktop-windows:
     runs-on: ubuntu-latest
     steps:
       - name: "Checkout repo"
@@ -39,11 +39,11 @@ jobs:
         uses: cargo-bins/cargo-binstall@v1.10.12
       - name: "Install cross-rs"
         run: cargo binstall cross
-      - name: "Build software (Windows)"
-        run: cd software/ && cross build --target x86_64-pc-windows-gnu --release
+      - name: "Build desktop (Windows)"
+        run: cd desktop/ && cross build --target x86_64-pc-windows-gnu --release
       - name: "Upload artifact (Windows)"
         uses: actions/upload-artifact@v4
         with:
-          name: jb-software-windows
-          path: software/target/x86_64-pc-windows-gnu/release/jukebox_desktop.exe
+          name: jb-desktop-windows
+          path: desktop/target/x86_64-pc-windows-gnu/release/jukebox_desktop.exe
           retention-days: 90
