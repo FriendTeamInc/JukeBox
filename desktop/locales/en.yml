@@ -1,0 +1,259 @@
+_version: 1
+
+window_title: "JukeBox Desktop"
+
+settings:
+  title: "JukeBox Desktop"
+  donate: "Donate"
+  repository: "Repository"
+  homepage: "Homepage"
+  copyright: "Made w/ <3 by Friend Team Inc. (c) 2024"
+
+help:
+  no_device: "Please connect a device."
+
+  back:
+    button: "Back"
+    save_button: "Save and Back"
+
+    modal_title: "Save and Exit?"
+    modal_save: "Save and Exit"
+    modal_exit: "Exit without Saving"
+    modal_cancel: "Cancel"
+
+  profile:
+    select: "Profile Select"
+    new: "New Profile"
+    edit_name: "Edit Profile Name"
+    delete: "Delete Profile\n(double click)"
+
+  settings:
+    button: "Settings"
+    splash: " - Enable splash text in bottom right."
+    exit_on_save: " - Always save changes when exiting a menu."
+
+  device:
+    select: "Device Select"
+    edit_name: "Edit Device Name"
+    forget: "Forget Device\n(double click)"
+    identify: "Identify Device"
+    update: "Update Device"
+    rgb: "RGB Control"
+    screen: "Screen Control"
+    none: "Please connect a device."
+    unknown: "Unknown device registered."
+
+  action:
+    test_input: "Test Action"
+    image_icon: "Choose Image Icon"
+    glyph_icon: "Choose Glyph Icon"
+
+profile_name_new: "Profile %{idx}"
+
+device_name:
+  unknown: "Unknown Device %{uid}"
+  keypad: "JukeBox KeyPad %{uid}"
+  knobpad: "JukeBox KnobPad %{uid}"
+  pedalpad: "JukeBox PedalPad %{uid}"
+
+update:
+  title: "Update Device"
+  button: "Update"
+  cfw_button: "CFW"
+  filter_name: "UF2 Firmware"
+  status:
+    start: ""
+    connecting: "Connecting to device..."
+    preparing: "Preparing firmware..."
+    erasing: "Erasing old firmware..."
+    writing: "Writing new firmware..."
+    end: "Done!"
+
+rgb:
+  brightness: "Brightness:"
+  saturation: "Saturation:"
+  value: "Value:"
+
+  profile:
+    off:
+      title: "Off"
+      description: "Disables all RGB."
+    static_solid:
+      title: "Static (Solid)"
+      description: "Displays a single color on all keys."
+      select_color: "Select Color:"
+    static_per_key:
+      title: "Static (Per Key)"
+      description: "Displays a color on every key."
+      select_color: "Select Colors:"
+    wave:
+      title: "Wave"
+      description: "Waves through a list of colors, transitioning from one to the next constantly."
+      speed_x: "Speed X:"
+      speed_y: "Speed Y:"
+    breathe:
+      title: "Breathe"
+      description: "Rotates through a list of colors, holding on each before transitioning."
+    rainbow_solid:
+      title: "Rainbow (Solid)"
+      description: "Displays the full rainbow of colors on every key."
+      speed: "Speed:"
+    rainbow_wave:
+      title: "Rainbow (Wave)"
+      description: "Displays the full rainbow of colors on each key, offset by its positional speed."
+      speed: "Speed:"
+      speed_x: "Speed X:"
+      speed_y: "Speed Y:"
+
+action:
+  meta:
+    title: "%{icon} Meta"
+    no_action:
+      title: "No Action"
+      help: "Does nothing!"
+    switch_profile:
+      title: "Switch Profile"
+      help: "Switches to specified profile on release."
+      profile_select: "Profile:"
+      error_msg: "Can't switch to profile \"%{profile}\", no longer exists!"
+    copy_from_profile:
+      title: "Copy from Profile"
+      help: "Copies action on the same key from specified profile."
+      profile_select: "Profile:"
+      error_profile_msg: "Can't copy from profile \"%{profile}\"!\n(profile \"%{profile}\", device \"%{uid}\", key %{key})"
+  
+  input:
+    title: "%{icon} Input"
+    keyboard:
+      title: "Keyboard Event"
+      help: "Trigger a keyboard event."
+      add_keys: "Keys:"
+    mouse:
+      title: "Mouse Event"
+      help: "Trigger a mouse event."
+      buttons: "Buttons:"
+      button:
+        left: "Left"
+        middle: "Middle"
+        right: "Right"
+        unknown: "?"
+      move_x: "Move X:"
+      move_y: "Move Y:"
+      scroll_y: "Scroll Y:"
+      scroll_x: "Scroll X:"
+  
+  system:
+    title: "%{icon} System"
+    launch_app:
+      title: "Launch Application"
+      help: "Launches a system application on press."
+      choose_file: "Choose File"
+      add_arguments: "Arguments:"
+    open_website:
+      title: "Open Website"
+      help: "Opens a website on press."
+      url: "URL:"
+    audio_input_control:
+      title: "Audio Input Control"
+      help: "Adjust an Audio Input Device volume by specified amount on press."
+      input_device: "Input Device:"
+      volume_adjust: "Volume Adjust:"
+    audio_output_control:
+      title: "Audio Output Control"
+      help: "Adjust an Audio Output Device volume by specified amount on press."
+      output_device: "Output Device:"
+      volume_adjust: "Volume Adjust:"
+  
+  soundboard:
+    title: "%{icon} Soundboard"
+    play_sound:
+      title: "Play Sound"
+      help: "Plays a sound file to an output audio device on press."
+      choose_file: "Choose File"
+      output_device: "Output Device:"
+      volume: "Volume:"
+  
+  discord:
+    title: "%{icon} Discord"
+    warning:
+      help: "You need to connect your Discord Account before using this action!"
+      button: "Connect to Discord Account"
+      success: "Discord account connected!"
+    toggle_mute:
+      title: "Toggle Mute"
+      help: "Toggle mutes your microphone on Discord when pressed."
+    toggle_deafen:
+      title: "Toggle Deafen"
+      help: "Toggle deafens your audio on Discord when pressed."
+    push_to_talk:
+      title: "Push to Talk"
+      help: "Unmutes your microphone on Discord while held."
+    push_to_mute:
+      title: "Push to Mute"
+      help: "Mutes your microphone on Discord while held."
+    push_to_deafen:
+      title: "Push to Deafen"
+      help: "Deafens your audio on Discord while held."
+  
+  obs:
+    title: "%{icon} OBS"
+    setup:
+      help_connect: "Connect to OBS-Websocket to use this action!"
+      help_instructions: "Open OBS, go to Tools, then WebSocket Server Settings.\nEnable the WebSocket server, and enter the password below."
+      button: "Connect to OBS"
+      host_address: "Host Address:"
+      host_port: "Host Port:"
+      password: "Password:"
+      success: "Connected to OBS!"
+    
+    options:
+      loading: "Loading..."
+      select_scene: "Select Scene:"
+      select_source: "Select Source:"
+    
+    toggle_stream:
+      title: "Toggle Stream"
+      help: "Starts or stops OBS streaming."
+    toggle_record:
+      title: "Toggle Record"
+      help: "Starts or stops OBS recording."
+    pause_record:
+      title: "Pause Record"
+      help: "Pauses OBS recording if currently recording."
+    toggle_replay_buffer:
+      title: "Toggle Replay Buffer"
+      help: "Starts or stops the OBS replay buffer."
+    save_replay_buffer:
+      title: "Save Replay Buffer"
+      help: "Saves the OBS replay buffer if active."
+    save_screenshot:
+      title: "Save Screenshot"
+      help: "Saves a screenshot of the output scene."
+    toggle_source:
+      title: "Toggle Source"
+      help: "Shows or hides a specified source."
+    toggle_mute:
+      title: "Toggle Mute Audio Source"
+      help: "Mutes or unmutes a specified audio source's sound."
+    switch_scene:
+      title: "Switch to Scene"
+      help: "Switches to a specified scene."
+    switch_preview_scene:
+      title: "Switch to Preview Scene"
+      help: "Switches to a specified scene for preview (when in Studio Mode)."
+    push_preview_scene:
+      title: "Push Preview Scene"
+      help: "Pushes your preview scene live (when in Studio Mode)."
+    switch_scene_collection:
+      title: "Switch to Scene Collection"
+      help: "Switches to a specified scene collection."
+    toggle_filter:
+      title: "Toggle Filter"
+      help: "Shows or hides a specified filter on a source."
+    switch_transition:
+      title: "Switch Transition"
+      help: "Switches to a specified scene transition."
+    add_chapter_marker:
+      title: "Add Chapter Marker"
+      help: "Addes a chapter marker to an active recording."
+

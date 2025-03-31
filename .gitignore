@@ -1,0 +1,8 @@
+.vscode/
+
+# Rust target folder
+target/
+
+# Case build files
+build/
+*.json

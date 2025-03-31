@@ -1,0 +1,38 @@
+name: "Build firmware"
+on:
+  push:
+    paths:
+      - "firmware/**"
+      - ".github/workflows/build-firmware.yaml"
+
+jobs:
+  build-firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout repo"
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: "Update Rust"
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          target: thumbv6m-none-eabi
+      - name: "Install Cargo dependencies"
+        run: cargo install flip-link
+      - name: "Build debug binary with Cargo (Keypad)"
+        run: cd firmware/ && cargo build -F "keypad"
+      - name: "Upload debug binary artifact (Keypad)"
+        uses: actions/upload-artifact@v4
+        with:
+          name: jb_firmware_keypad
+          path: firmware/target/thumbv6m-none-eabi/debug/jukebox_firmware
+          retention-days: 90
+      - name: "Build debug binary with Cargo (Pedalpad)"
+        run: cd firmware/ && cargo build -F "pedalpad"
+      - name: "Upload debug binary artifact (Pedalpad)"
+        uses: actions/upload-artifact@v4
+        with:
+          name: jb_firmware_pedalpad
+          path: firmware/target/thumbv6m-none-eabi/debug/jukebox_firmware
+          retention-days: 90

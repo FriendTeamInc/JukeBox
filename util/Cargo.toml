@@ -1,0 +1,14 @@
+[package]
+name = "jukebox_util"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bitmatch = "0.1.1"
+defmt = { version = "0.3", optional = true }
+serde = { version = "1.0", features = ["derive"], optional = true }
+
+[features]
+default = []
+defmt = ["dep:defmt"]
+serde = ["dep:serde"]
