@@ -7,7 +7,7 @@ use anyhow::{bail, Result};
 use discord_rich_presence::{voice_settings::VoiceSettings, DiscordIpc, DiscordIpcClient};
 use eframe::egui::{include_image, vec2, Button, ImageSource, Ui};
 use egui_phosphor::regular as phos;
-use reqwest::blocking::Client;
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tokio::{sync::Mutex, task::spawn_blocking};
 
@@ -50,7 +50,7 @@ pub fn discord_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>)
     )
 }
 
-fn discord_access_token_request(
+async fn discord_access_token_request(
     code: &str,
     client_id: &str,
     client_secret: &str,
@@ -65,19 +65,21 @@ fn discord_access_token_request(
 
     let r = REQWEST_CLIENT
         .get_or_init(|| Mutex::new(Client::new()))
-        .blocking_lock()
+        .lock()
+        .await
         .post("https://discord.com/api/oauth2/token")
         .form(&params)
-        .send()?;
+        .send()
+        .await?;
 
-    if let Ok(j) = r.json() {
+    if let Ok(j) = r.json().await {
         Ok(j)
     } else {
         bail!("failed to gain oauth access");
     }
 }
 
-fn discord_refresh_access_token(
+async fn discord_refresh_access_token(
     refresh_token: &str,
     client_id: &str,
     client_secret: &str,
@@ -91,12 +93,14 @@ fn discord_refresh_access_token(
 
     let r = REQWEST_CLIENT
         .get_or_init(|| Mutex::new(Client::new()))
-        .blocking_lock()
+        .lock()
+        .await
         .post("https://discord.com/api/oauth2/token")
         .form(&params)
-        .send()?;
+        .send()
+        .await?;
 
-    if let Ok(j) = r.json() {
+    if let Ok(j) = r.json().await {
         Ok(j)
     } else {
         bail!("failed to refresh oauth access");
@@ -104,17 +108,18 @@ fn discord_refresh_access_token(
 }
 
 // TODO: better error handling
-fn create_client(config: Arc<Mutex<JukeBoxConfig>>) -> Result<()> {
+async fn create_client(config: Arc<Mutex<JukeBoxConfig>>) -> Result<()> {
     let mut client = DiscordIpcClient::new(DISCORD_CLIENT_ID);
     client.connect().expect("cannot connect to discord");
 
-    let mut config = config.blocking_lock();
+    let mut config = config.lock().await;
 
     if config.discord_oauth_access.is_none() {
         let code = client
             .authorize(&["rpc", "rpc.voice.read", "rpc.voice.write"])
             .expect("failed to authorize wtih discord");
         let oauth = discord_access_token_request(&code, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET)
+            .await
             .expect("failed to get oauth access token");
 
         config.discord_oauth_access = Some(oauth);
@@ -126,6 +131,7 @@ fn create_client(config: Arc<Mutex<JukeBoxConfig>>) -> Result<()> {
             DISCORD_CLIENT_ID,
             DISCORD_CLIENT_SECRET,
         )
+        .await
         .expect("failed to refresh oauth access token");
 
         config.discord_oauth_access = Some(oauth);
@@ -147,7 +153,8 @@ fn account_warning(ui: &mut Ui, config: Arc<Mutex<JukeBoxConfig>>) {
     if DISCORD_CLIENT.get().is_none() {
         let has_oauth = config.blocking_lock().discord_oauth_access.is_some();
         if has_oauth {
-            let _ = create_client(config);
+            let _ = tokio::runtime::Handle::current()
+                .block_on(async move { create_client(config).await });
         } else {
             ui.vertical_centered(|ui| ui.label(t!("action.discord.warning.help")));
             ui.label("");
@@ -158,7 +165,8 @@ fn account_warning(ui: &mut Ui, config: Arc<Mutex<JukeBoxConfig>>) {
                 )
                 .clicked()
             {
-                let _ = create_client(config);
+                let _ = tokio::runtime::Handle::current()
+                    .block_on(async move { create_client(config).await });
             }
         }
     } else {
@@ -178,11 +186,10 @@ impl Action for DiscordToggleMute {
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()> {
         let c = config.clone();
+        if DISCORD_CLIENT.get().is_none() {
+            create_client(c).await?;
+        }
         spawn_blocking(move || {
-            if DISCORD_CLIENT.get().is_none() {
-                create_client(c)?;
-            }
-
             let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
             let mut muted = DISCORD_MUTED
                 .get_or_init(|| Mutex::new(false))
@@ -247,11 +254,10 @@ impl Action for DiscordToggleDeafen {
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()> {
         let c = config.clone();
+        if DISCORD_CLIENT.get().is_none() {
+            create_client(c).await?;
+        }
         spawn_blocking(move || {
-            if DISCORD_CLIENT.get().is_none() {
-                create_client(c)?;
-            }
-
             let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
             let mut deafened = DISCORD_DEAFENED
                 .get_or_init(|| Mutex::new(false))
@@ -317,11 +323,10 @@ impl Action for DiscordPushToTalk {
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()> {
         let c = config.clone();
+        if DISCORD_CLIENT.get().is_none() {
+            create_client(c).await?;
+        }
         spawn_blocking(move || {
-            if DISCORD_CLIENT.get().is_none() {
-                create_client(c)?;
-            }
-
             let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
 
             client
@@ -344,11 +349,10 @@ impl Action for DiscordPushToTalk {
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()> {
         let c = config.clone();
+        if DISCORD_CLIENT.get().is_none() {
+            create_client(c).await?;
+        }
         spawn_blocking(move || {
-            if DISCORD_CLIENT.get().is_none() {
-                create_client(c)?;
-            }
-
             let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
 
             client
@@ -399,11 +403,10 @@ impl Action for DiscordPushToMute {
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()> {
         let c = config.clone();
+        if DISCORD_CLIENT.get().is_none() {
+            create_client(c).await?;
+        }
         spawn_blocking(move || {
-            if DISCORD_CLIENT.get().is_none() {
-                create_client(c)?;
-            }
-
             let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
 
             client
@@ -426,11 +429,10 @@ impl Action for DiscordPushToMute {
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()> {
         let c = config.clone();
+        if DISCORD_CLIENT.get().is_none() {
+            create_client(c).await?;
+        }
         spawn_blocking(move || {
-            if DISCORD_CLIENT.get().is_none() {
-                create_client(c)?;
-            }
-
             let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
 
             client
@@ -481,11 +483,10 @@ impl Action for DiscordPushToDeafen {
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()> {
         let c = config.clone();
+        if DISCORD_CLIENT.get().is_none() {
+            create_client(c).await?;
+        }
         spawn_blocking(move || {
-            if DISCORD_CLIENT.get().is_none() {
-                create_client(c)?;
-            }
-
             let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
 
             client
@@ -509,11 +510,10 @@ impl Action for DiscordPushToDeafen {
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<()> {
         let c = config.clone();
+        if DISCORD_CLIENT.get().is_none() {
+            create_client(c).await?;
+        }
         spawn_blocking(move || {
-            if DISCORD_CLIENT.get().is_none() {
-                create_client(c)?;
-            }
-
             let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
 
             client
