@@ -14,7 +14,13 @@ mod serial;
 mod splash;
 mod update;
 
+use std::sync::OnceLock;
+
 use anyhow::Result;
+use reqwest::Client;
+
+#[allow(dead_code)]
+static REQWEST_CLIENT: OnceLock<Client> = OnceLock::new();
 
 fn main() -> Result<()> {
     // TODO: add CPU and Memory monitoring support through sysinfo crate

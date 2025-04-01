@@ -2751,16 +2751,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "libyml"
-version = "0.0.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3302702afa434ffa30847a83305f0a69d6abd74293b6554c18ec85c7ef30c980"
-dependencies = [
- "anyhow",
- "version_check",
-]
-
-[[package]]
 name = "linux-raw-sys"
 version = "0.4.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3768,9 +3758,9 @@ dependencies = [
 
 [[package]]
 name = "quick-xml"
-version = "0.37.3"
+version = "0.37.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf763ab1c7a3aa408be466efc86efe35ed1bd3dd74173ed39d6b0d0a6f0ba148"
+checksum = "a4ce8c88de324ff838700f36fb6ab86c96df0e3c4ab6ef3a9b2044465cce1369"
 dependencies = [
  "memchr",
 ]
@@ -4119,9 +4109,9 @@ dependencies = [
 
 [[package]]
 name = "rust-i18n"
-version = "3.1.3"
+version = "3.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71b3a6e1c6565b77c86d868eea3068b0eb39582510f9c78cfbd5c67bd36fda9b"
+checksum = "a2b6307cde881492032919adf26e254981604a6657b339ae23cce8358e9ee203"
 dependencies = [
  "globwalk",
  "once_cell",
@@ -4133,9 +4123,9 @@ dependencies = [
 
 [[package]]
 name = "rust-i18n-macro"
-version = "3.1.3"
+version = "3.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6180d8506af2b485ffc1eab7fc6d15678336a694f2b5efac5f2ca78c52928275"
+checksum = "1c0dc724669fe2ddbbec5ed9daea8147a9030de87ebb46fdc7bb9315701d9912"
 dependencies = [
  "glob",
  "once_cell",
@@ -4144,15 +4134,15 @@ dependencies = [
  "rust-i18n-support",
  "serde",
  "serde_json",
- "serde_yml",
+ "serde_yaml",
  "syn 2.0.100",
 ]
 
 [[package]]
 name = "rust-i18n-support"
-version = "3.1.3"
+version = "3.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "938f16094e2b09e893b1f85c9da251739a832d4272a5957217977da3a0713bb6"
+checksum = "b47501de04282525d0192c4b4133f9e3574e1fab3542ddc7bb109ff773dc108b"
 dependencies = [
  "arc-swap",
  "base62",
@@ -4165,7 +4155,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
- "serde_yml",
+ "serde_yaml",
  "siphasher 1.0.1",
  "toml",
  "triomphe",
@@ -4198,9 +4188,9 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "1.0.3"
+version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e56a18552996ac8d29ecc3b190b4fdbb2d91ca4ec396de7bbffaf43f3d637e96"
+checksum = "d97817398dd4bb2e6da002002db259209759911da105da92bec29ccb12cf58bf"
 dependencies = [
  "bitflags 2.9.0",
  "errno",
@@ -4432,18 +4422,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde_yml"
-version = "0.0.12"
+name = "serde_yaml"
+version = "0.9.34+deprecated"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59e2dd588bf1597a252c3b920e0143eb99b0f76e4e082f4c92ce34fbc9e71ddd"
+checksum = "6a8b1a1a2ebf674015cc02edccce75287f1a0130d394307b36743c2f5d504b47"
 dependencies = [
  "indexmap 2.8.0",
  "itoa",
- "libyml",
- "memchr",
  "ryu",
  "serde",
- "version_check",
+ "unsafe-libyaml",
 ]
 
 [[package]]
@@ -4782,7 +4770,7 @@ dependencies = [
  "fastrand",
  "getrandom 0.3.2",
  "once_cell",
- "rustix 1.0.3",
+ "rustix 1.0.5",
  "windows-sys 0.59.0",
 ]
 
@@ -5207,6 +5195,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 
 [[package]]
+name = "unsafe-libyaml"
+version = "0.2.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "673aac59facbab8a9007c7f6108d11f63b603f7cabff99fabf650fea5c32b861"
+
+[[package]]
 name = "untrusted"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5559,7 +5553,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "896fdafd5d28145fce7958917d69f2fd44469b1d4e861cb5961bcbeebc6d1484"
 dependencies = [
  "proc-macro2",
- "quick-xml 0.37.3",
+ "quick-xml 0.37.4",
  "quote",
 ]
 

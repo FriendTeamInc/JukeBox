@@ -16,7 +16,7 @@ eframe = "0.31"
 egui_extras = { version = "*", features = ["all_loaders"] }
 image = { version = "0.25", features = ["bmp"] }
 egui-phosphor = "0.9"
-egui-theme-switch = "0.3.0"
+egui-theme-switch = "0.3"
 rfd = "0.15"
 open = "5.3"
 rust-i18n = "3"
@@ -37,19 +37,19 @@ async-trait = "0.1"
 typetag = "0.2"
 dyn-clone = "1.0"
 
+reqwest = { version = "0.12", features = ["json"] }
 obws = "0.14"
 discord-rich-presence = { git = "https://github.com/NotQuiteApex/discord-rich-presence", branch = "voice-settings", optional = true }
-reqwest = { version = "0.12", features = ["json"], optional = true }
-# rustls = "0.23.25"
-uuid = "1.16.0"
-downcast-rs = "2.0.1"
+# rustls = "0.23"
+uuid = "1.16"
+downcast-rs = "2.0"
 
 [build-dependencies]
-winresource = "0.1.17"
+winresource = "0.1"
 
 [features]
 default = []
-discord = ["dep:discord-rich-presence", "dep:reqwest"]
+discord = ["dep:discord-rich-presence"]
 
 [profile.release]
 strip = true

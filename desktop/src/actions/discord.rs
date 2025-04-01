@@ -14,6 +14,7 @@ use tokio::{sync::Mutex, task::spawn_blocking};
 use crate::{
     config::{DiscordOauthAccess, JukeBoxConfig},
     input::InputKey,
+    REQWEST_CLIENT,
 };
 
 use super::types::Action;
@@ -34,7 +35,6 @@ const DISCORD_CLIENT_SECRET: &str = env!("DISCORD_CLIENT_SECRET");
 static DISCORD_CLIENT: OnceLock<Mutex<DiscordIpcClient>> = OnceLock::new();
 static DISCORD_MUTED: OnceLock<Mutex<bool>> = OnceLock::new();
 static DISCORD_DEAFENED: OnceLock<Mutex<bool>> = OnceLock::new();
-static REQWEST_CLIENT: OnceLock<Mutex<Client>> = OnceLock::new();
 
 #[rustfmt::skip]
 pub fn discord_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
@@ -64,9 +64,7 @@ async fn discord_access_token_request(
     ]);
 
     let r = REQWEST_CLIENT
-        .get_or_init(|| Mutex::new(Client::new()))
-        .lock()
-        .await
+        .get_or_init(|| Client::new())
         .post("https://discord.com/api/oauth2/token")
         .form(&params)
         .send()
@@ -92,9 +90,7 @@ async fn discord_refresh_access_token(
     ]);
 
     let r = REQWEST_CLIENT
-        .get_or_init(|| Mutex::new(Client::new()))
-        .lock()
-        .await
+        .get_or_init(|| Client::new())
         .post("https://discord.com/api/oauth2/token")
         .form(&params)
         .send()
