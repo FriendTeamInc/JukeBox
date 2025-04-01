@@ -10,6 +10,10 @@ use crate::{config::JukeBoxConfig, input::InputKey};
 
 use super::types::Action;
 
+pub const AID_META_NO_ACTION: &str = "MetaNoAction";
+pub const AID_META_SWITCH_PROFILE: &str = "MetaSwitchProfile";
+pub const AID_META_COPY_FROM_PROFILE: &str = "MetaCopyFromProfile";
+
 const ICON_NO_ACTION: ImageSource =
     include_image!("../../../assets/action-icons/meta-noaction.bmp");
 const ICON_SWITCH_PROFILE: ImageSource =
@@ -22,9 +26,9 @@ pub fn meta_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
     (
         t!("action.meta.title", icon = phos::GEAR).into(),
         vec![
-            ("MetaNoAction".into(),        Box::new(MetaNoAction::default()),        t!("action.meta.no_action.title").into()),
-            ("MetaSwitchProfile".into(),   Box::new(MetaSwitchProfile::default()),   t!("action.meta.switch_profile.title").into()),
-            ("MetaCopyFromProfile".into(), Box::new(MetaCopyFromProfile::default()), t!("action.meta.copy_from_profile.title").into()),
+            (AID_META_NO_ACTION.into(),        Box::new(MetaNoAction::default()),        t!("action.meta.no_action.title").into()),
+            (AID_META_SWITCH_PROFILE.into(),   Box::new(MetaSwitchProfile::default()),   t!("action.meta.switch_profile.title").into()),
+            (AID_META_COPY_FROM_PROFILE.into(), Box::new(MetaCopyFromProfile::default()), t!("action.meta.copy_from_profile.title").into()),
         ],
     )
 }
@@ -63,7 +67,7 @@ impl Action for MetaNoAction {
     }
 
     fn get_type(&self) -> String {
-        "MetaNoAction".into()
+        AID_META_NO_ACTION.into()
     }
 
     fn edit_ui(
@@ -120,7 +124,7 @@ impl Action for MetaSwitchProfile {
     }
 
     fn get_type(&self) -> String {
-        "MetaSwitchProfile".into()
+        AID_META_SWITCH_PROFILE.into()
     }
 
     fn edit_ui(
@@ -217,7 +221,7 @@ impl Action for MetaCopyFromProfile {
     }
 
     fn get_type(&self) -> String {
-        "MetaCopyFromProfile".into()
+        AID_META_COPY_FROM_PROFILE.into()
     }
 
     fn edit_ui(
@@ -244,7 +248,7 @@ impl Action for MetaCopyFromProfile {
                         .unwrap()
                         .action
                         .get_type()
-                        == "MetaCopyFromProfile"
+                        == AID_META_COPY_FROM_PROFILE
                     {
                         continue;
                     }

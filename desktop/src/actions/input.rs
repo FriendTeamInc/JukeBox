@@ -11,6 +11,10 @@ use crate::{config::JukeBoxConfig, input::InputKey};
 
 use super::types::Action;
 
+pub const AID_INPUT_KEYBOARD: &str = "InputKeyboard";
+pub const AID_INPUT_MOUSE: &str = "InputMouse";
+// pub const AID_INPUT_GAMEPAD: &str = "InputGamepad";
+
 const ICON_KEYBOARD: ImageSource =
     include_image!("../../../assets/action-icons/input-keyboard.bmp");
 const ICON_MOUSE: ImageSource = include_image!("../../../assets/action-icons/input-mouse.bmp");
@@ -20,9 +24,9 @@ pub fn input_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
     (
         t!("action.input.title", icon = phos::CURSOR_CLICK).into(),
         vec![
-            ("InputKeyboard".into(), Box::new(InputKeyboard::default()), t!("action.input.keyboard.title").into()),
-            // ("InputMouse".into(),    Box::new(InputMouse::default()),    t!("action.input.mouse.title").into()),
-            // ("InputGamepad".into(),  Box::new(InputGamepad::default()),  t!("action.input.gamepad.title").into()),
+            (AID_INPUT_KEYBOARD.into(), Box::new(InputKeyboard::default()), t!("action.input.keyboard.title").into()),
+            // (AID_INPUT_MOUSE.into(),    Box::new(InputMouse::default()),    t!("action.input.mouse.title").into()),
+            // (AID_INPUT_GAMEPAD.into(),  Box::new(InputGamepad::default()),  t!("action.input.gamepad.title").into()),
         ],
     )
 }
@@ -55,7 +59,7 @@ impl Action for InputKeyboard {
     }
 
     fn get_type(&self) -> String {
-        "InputKeyboard".into()
+        AID_INPUT_KEYBOARD.into()
     }
 
     fn edit_ui(
@@ -146,7 +150,7 @@ impl Action for InputMouse {
     }
 
     fn get_type(&self) -> String {
-        "InputMouse".into()
+        AID_INPUT_MOUSE.into()
     }
 
     fn edit_ui(

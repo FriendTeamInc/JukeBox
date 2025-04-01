@@ -8,7 +8,8 @@ use jukebox_util::peripheral::DeviceType;
 
 use crate::{
     actions::{
-        input::{InputKeyboard, InputMouse},
+        input::{InputKeyboard, InputMouse, AID_INPUT_KEYBOARD, AID_INPUT_MOUSE},
+        meta::AID_META_NO_ACTION,
         types::get_icon_bytes,
     },
     config::{ActionConfig, ActionIcon, DeviceConfig},
@@ -36,9 +37,9 @@ impl JukeBoxGui {
                 self.editing_action_type = r.action.get_type();
                 self.editing_action = r.action.clone();
             } else {
-                self.editing_action_icon = ActionIcon::default();
-                self.editing_action_type = "MetaNoAction".into();
+                self.editing_action_type = AID_META_NO_ACTION.into();
                 self.editing_action = self.action_map.enum_new(self.editing_action_type.clone());
+                self.editing_action_icon = ActionIcon::default();
             }
         };
     }
@@ -92,7 +93,7 @@ impl JukeBoxGui {
                 .and_then(|d| d.get(device_uid))
                 .and_then(|p| p.key_map.get(&self.editing_key))
                 .and_then(|a| Some(a.action.clone()))
-                .filter(|a| a.get_type() == "InputKeyboard" || a.get_type() == "InputMouse")
+                .filter(|a| a.get_type() == AID_INPUT_KEYBOARD || a.get_type() == AID_INPUT_MOUSE)
         } {
             action
         } else {

@@ -11,6 +11,8 @@ use crate::{config::JukeBoxConfig, input::InputKey};
 
 use super::types::Action;
 
+pub const AID_SOUNDBOARD_PLAY_SOUND: &str = "SoundboardPlaySound";
+
 const ICON_PLAY_SOUND: ImageSource =
     include_image!("../../../assets/action-icons/soundboard-play.bmp");
 
@@ -18,7 +20,7 @@ const ICON_PLAY_SOUND: ImageSource =
 pub fn soundboard_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
     (
         t!("action.soundboard.title", icon = phos::MUSIC_NOTES).into(),
-        vec![("SoundboardPlaySound".into(), Box::new(SoundboardPlaySound::default()), t!("action.soundboard.play_sound.title").into())],
+        vec![(AID_SOUNDBOARD_PLAY_SOUND.into(), Box::new(SoundboardPlaySound::default()), t!("action.soundboard.play_sound.title").into())],
     )
 }
 
@@ -51,7 +53,7 @@ impl Action for SoundboardPlaySound {
     }
 
     fn get_type(&self) -> String {
-        "SoundboardPlaySound".into()
+        AID_SOUNDBOARD_PLAY_SOUND.into()
     }
 
     fn edit_ui(

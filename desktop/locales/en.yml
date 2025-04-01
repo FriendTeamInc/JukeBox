@@ -144,21 +144,21 @@ action:
   
   system:
     title: "%{icon} System"
-    launch_app:
+    open_app:
       title: "Launch Application"
       help: "Launches a system application on press."
       choose_file: "Choose File"
       add_arguments: "Arguments:"
-    open_website:
+    open_web:
       title: "Open Website"
       help: "Opens a website on press."
       url: "URL:"
-    audio_input_control:
+    snd_in_ctrl:
       title: "Audio Input Control"
       help: "Adjust an Audio Input Device volume by specified amount on press."
       input_device: "Input Device:"
       volume_adjust: "Volume Adjust:"
-    audio_output_control:
+    snd_out_ctrl:
       title: "Audio Output Control"
       help: "Adjust an Audio Output Device volume by specified amount on press."
       output_device: "Output Device:"

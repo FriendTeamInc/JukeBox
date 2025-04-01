@@ -11,9 +11,14 @@ use crate::{config::JukeBoxConfig, input::InputKey};
 
 use super::types::Action;
 
-const ICON_LAUNCH_APPLICATION: ImageSource =
+pub const AID_SYSTEM_OPEN_APP: &str = "SystemOpenApp";
+pub const AID_SYSTEM_OPEN_WEB: &str = "SystemOpenWeb";
+pub const AID_SYSTEM_SND_IN_CTRL: &str = "SystemSndInCtrl";
+pub const AID_SYSTEM_SND_OUT_CTRL: &str = "SystemSndOutCtrl";
+
+const ICON_OPEN_APP: ImageSource =
     include_image!("../../../assets/action-icons/system-appopen.bmp");
-const ICON_OPEN_WEBSITE: ImageSource =
+const ICON_OPEN_WEB: ImageSource =
     include_image!("../../../assets/action-icons/system-webopen.bmp");
 const ICON_INPUT_CONTROL: ImageSource =
     include_image!("../../../assets/action-icons/system-inputcontrol.bmp");
@@ -25,22 +30,22 @@ pub fn system_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) 
     (
         t!("action.system.title", icon = phos::DESKTOP_TOWER).into(),
         vec![
-            ("SystemLaunchApplication".into(),  Box::new(SystemLaunchApplication::default()),  t!("action.system.launch_app.title").into()),
-            ("SystemOpenWebsite".into(),        Box::new(SystemOpenWebsite::default()),        t!("action.system.open_website.title").into()),
-            ("SystemAudioInputControl".into(),  Box::new(SystemAudioInputControl::default()),  t!("action.system.audio_input_control.title").into()),
-            ("SystemAudioOutputControl".into(), Box::new(SystemAudioOutputControl::default()), t!("action.system.audio_output_control.title").into()),
+            (AID_SYSTEM_OPEN_APP.into(),     Box::new(SystemOpenApp::default()),    t!("action.system.open_app.title").into()),
+            (AID_SYSTEM_OPEN_WEB.into(),     Box::new(SystemOpenWeb::default()),    t!("action.system.open_web.title").into()),
+            (AID_SYSTEM_SND_IN_CTRL.into(),  Box::new(SystemSndInCtrl::default()),  t!("action.system.snd_in_ctrl.title").into()),
+            (AID_SYSTEM_SND_OUT_CTRL.into(), Box::new(SystemSndOutCtrl::default()), t!("action.system.snd_out_ctrl.title").into()),
         ],
     )
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
-pub struct SystemLaunchApplication {
+pub struct SystemOpenApp {
     filepath: String,
     arguments: Vec<String>,
 }
 #[async_trait::async_trait]
 #[typetag::serde]
-impl Action for SystemLaunchApplication {
+impl Action for SystemOpenApp {
     async fn on_press(
         &self,
         _device_uid: &String,
@@ -69,7 +74,7 @@ impl Action for SystemLaunchApplication {
     }
 
     fn get_type(&self) -> String {
-        "SystemLaunchApplication".into()
+        AID_SYSTEM_OPEN_APP.into()
     }
 
     fn edit_ui(
@@ -80,7 +85,7 @@ impl Action for SystemLaunchApplication {
         _config: Arc<Mutex<JukeBoxConfig>>,
     ) {
         if ui
-            .button(t!("action.system.launch_app.choose_file"))
+            .button(t!("action.system.open_app.choose_file"))
             .clicked()
         {
             if let Some(f) = FileDialog::new().pick_file() {
@@ -89,7 +94,7 @@ impl Action for SystemLaunchApplication {
         }
         ui.text_edit_singleline(&mut self.filepath);
         ui.horizontal(|ui| {
-            ui.label(t!("action.system.launch_app.add_arguments"));
+            ui.label(t!("action.system.open_app.add_arguments"));
             if ui.button("+").clicked() {
                 self.arguments.push(String::new());
             }
@@ -110,21 +115,21 @@ impl Action for SystemLaunchApplication {
     }
 
     fn help(&self) -> String {
-        t!("action.system.launch_app.help").into()
+        t!("action.system.open_app.help").into()
     }
 
     fn icon_source(&self) -> ImageSource {
-        ICON_LAUNCH_APPLICATION
+        ICON_OPEN_APP
     }
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
-pub struct SystemOpenWebsite {
+pub struct SystemOpenWeb {
     url: String,
 }
 #[async_trait::async_trait]
 #[typetag::serde]
-impl Action for SystemOpenWebsite {
+impl Action for SystemOpenWeb {
     async fn on_press(
         &self,
         _device_uid: &String,
@@ -146,7 +151,7 @@ impl Action for SystemOpenWebsite {
     }
 
     fn get_type(&self) -> String {
-        "SystemOpenWebsite".into()
+        AID_SYSTEM_OPEN_WEB.into()
     }
 
     fn edit_ui(
@@ -156,27 +161,27 @@ impl Action for SystemOpenWebsite {
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
     ) {
-        ui.label(t!("action.system.open_website.url"));
+        ui.label(t!("action.system.open_web.url"));
         ui.text_edit_singleline(&mut self.url);
     }
 
     fn help(&self) -> String {
-        t!("action.system.open_website.help").into()
+        t!("action.system.open_web.help").into()
     }
 
     fn icon_source(&self) -> ImageSource {
-        ICON_OPEN_WEBSITE
+        ICON_OPEN_WEB
     }
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
-pub struct SystemAudioInputControl {
+pub struct SystemSndInCtrl {
     input_device: String,
     vol_adjust: i8,
 }
 #[async_trait::async_trait]
 #[typetag::serde]
-impl Action for SystemAudioInputControl {
+impl Action for SystemSndInCtrl {
     async fn on_press(
         &self,
         _device_uid: &String,
@@ -197,7 +202,7 @@ impl Action for SystemAudioInputControl {
     }
 
     fn get_type(&self) -> String {
-        "SystemAudioInputControl".into()
+        AID_SYSTEM_SND_IN_CTRL.into()
     }
 
     fn edit_ui(
@@ -207,7 +212,7 @@ impl Action for SystemAudioInputControl {
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
     ) {
-        ui.label(t!("action.system.audio_input_control.input_device"));
+        ui.label(t!("action.system.snd_in_ctrl.input_device"));
         ComboBox::from_id_salt("SystemAudioInputControlDeviceSelect")
             .selected_text(self.input_device.clone())
             .width(228.0)
@@ -215,12 +220,12 @@ impl Action for SystemAudioInputControl {
                 // TODO
             });
 
-        ui.label(t!("action.system.audio_input_control.volume_adjust"));
+        ui.label(t!("action.system.snd_in_ctrl.volume_adjust"));
         ui.add(Slider::new(&mut self.vol_adjust, -100..=100));
     }
 
     fn help(&self) -> String {
-        t!("action.system.audio_input_control.help").into()
+        t!("action.system.snd_in_ctrl.help").into()
     }
 
     fn icon_source(&self) -> ImageSource {
@@ -229,13 +234,13 @@ impl Action for SystemAudioInputControl {
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
-pub struct SystemAudioOutputControl {
+pub struct SystemSndOutCtrl {
     input_device: String,
     vol_adjust: i8,
 }
 #[async_trait::async_trait]
 #[typetag::serde]
-impl Action for SystemAudioOutputControl {
+impl Action for SystemSndOutCtrl {
     async fn on_press(
         &self,
         _device_uid: &String,
@@ -256,7 +261,7 @@ impl Action for SystemAudioOutputControl {
     }
 
     fn get_type(&self) -> String {
-        "SystemAudioOutputControl".into()
+        AID_SYSTEM_SND_OUT_CTRL.into()
     }
 
     fn edit_ui(
@@ -266,7 +271,7 @@ impl Action for SystemAudioOutputControl {
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
     ) {
-        ui.label(t!("action.system.audio_output_control.output_device"));
+        ui.label(t!("action.system.snd_out_ctrl.output_device"));
         ComboBox::from_id_salt("SystemAudioOutputControlDeviceSelect")
             .selected_text(self.input_device.clone())
             .width(228.0)
@@ -274,12 +279,12 @@ impl Action for SystemAudioOutputControl {
                 // TODO
             });
 
-        ui.label(t!("action.system.audio_output_control.volume_adjust"));
+        ui.label(t!("action.system.snd_out_ctrl.volume_adjust"));
         ui.add(Slider::new(&mut self.vol_adjust, -100..=100));
     }
 
     fn help(&self) -> String {
-        t!("action.system.audio_output_control.help").into()
+        t!("action.system.snd_out_ctrl.help").into()
     }
 
     fn icon_source(&self) -> ImageSource {

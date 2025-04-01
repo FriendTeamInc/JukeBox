@@ -19,6 +19,12 @@ use crate::{
 
 use super::types::Action;
 
+pub const AID_DISCORD_TOGGLE_MUTE: &str = "DiscordToggleMute";
+pub const AID_DISCORD_TOGGLE_DEAFEN: &str = "DiscordToggleDeafen";
+pub const AID_DISCORD_PUSH_TO_TALK: &str = "DiscordPushToTalk";
+pub const AID_DISCORD_PUSH_TO_MUTE: &str = "DiscordPushToMute";
+pub const AID_DISCORD_PUSH_TO_DEAFEN: &str = "DiscordPushToDeafen";
+
 const ICON_MUTE: ImageSource =
     include_image!("../../../assets/action-icons/discord-microphone-2.bmp");
 const ICON_DEAFEN: ImageSource =
@@ -41,11 +47,11 @@ pub fn discord_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>)
     (
         t!("action.discord.title", icon = phos::DISCORD_LOGO).into(),
         vec![
-            ("DiscordToggleMute".into(),   Box::new(DiscordToggleMute::default()),   t!("action.discord.toggle_mute.title").into()),
-            ("DiscordToggleDeafen".into(), Box::new(DiscordToggleDeafen::default()), t!("action.discord.toggle_deafen.title").into()),
-            ("DiscordPushToTalk".into(),   Box::new(DiscordPushToTalk::default()),   t!("action.discord.push_to_talk.title").into()),
-            ("DiscordPushToMute".into(),   Box::new(DiscordPushToMute::default()),   t!("action.discord.push_to_mute.title").into()),
-            ("DiscordPushToDeafen".into(), Box::new(DiscordPushToDeafen::default()), t!("action.discord.push_to_deafen.title").into()),
+            (AID_DISCORD_TOGGLE_MUTE.into(),    Box::new(DiscordToggleMute::default()),   t!("action.discord.toggle_mute.title").into()),
+            (AID_DISCORD_TOGGLE_DEAFEN.into(),  Box::new(DiscordToggleDeafen::default()), t!("action.discord.toggle_deafen.title").into()),
+            (AID_DISCORD_PUSH_TO_TALK.into(),   Box::new(DiscordPushToTalk::default()),   t!("action.discord.push_to_talk.title").into()),
+            (AID_DISCORD_PUSH_TO_MUTE.into(),   Box::new(DiscordPushToMute::default()),   t!("action.discord.push_to_mute.title").into()),
+            (AID_DISCORD_PUSH_TO_DEAFEN.into(), Box::new(DiscordPushToDeafen::default()), t!("action.discord.push_to_deafen.title").into()),
         ],
     )
 }
@@ -216,7 +222,7 @@ impl Action for DiscordToggleMute {
     }
 
     fn get_type(&self) -> String {
-        "DiscordToggleMute".into()
+        AID_DISCORD_TOGGLE_MUTE.into()
     }
 
     fn edit_ui(
@@ -285,7 +291,7 @@ impl Action for DiscordToggleDeafen {
     }
 
     fn get_type(&self) -> String {
-        "DiscordToggleDeafen".into()
+        AID_DISCORD_TOGGLE_DEAFEN.into()
     }
 
     fn edit_ui(
@@ -365,7 +371,7 @@ impl Action for DiscordPushToTalk {
     }
 
     fn get_type(&self) -> String {
-        "DiscordPushToTalk".into()
+        AID_DISCORD_PUSH_TO_TALK.into()
     }
 
     fn edit_ui(
@@ -445,7 +451,7 @@ impl Action for DiscordPushToMute {
     }
 
     fn get_type(&self) -> String {
-        "DiscordPushToMute".into()
+        AID_DISCORD_PUSH_TO_MUTE.into()
     }
 
     fn edit_ui(
@@ -527,7 +533,7 @@ impl Action for DiscordPushToDeafen {
     }
 
     fn get_type(&self) -> String {
-        "DiscordPushToDeafen".into()
+        AID_DISCORD_PUSH_TO_DEAFEN.into()
     }
 
     fn edit_ui(

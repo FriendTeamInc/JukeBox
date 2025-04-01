@@ -1,5 +1,4 @@
 use std::{
-    
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc, OnceLock,
@@ -27,7 +26,19 @@ use crate::{
 
 use super::types::Action;
 
-// TODO: finish icons
+pub const AID_OBS_STREAM: &str = "ObsStream";
+pub const AID_OBS_RECORD: &str = "ObsRecord";
+pub const AID_OBS_RECORD_PAUSE: &str = "ObsRecordPause";
+pub const AID_OBS_REPLAY_BUFFER: &str = "ObsReplayBuffer";
+pub const AID_OBS_REPLAY_BUFFER_SAVE: &str = "ObsReplayBufferSave";
+pub const AID_OBS_TOGGLE_SOURCE: &str = "ObsToggleSource";
+pub const AID_OBS_TOGGLE_MUTE: &str = "ObsToggleMute";
+pub const AID_OBS_SCENE_SWITCH: &str = "ObsSceneSwitch";
+pub const AID_OBS_PREVIEW_SWITCH: &str = "ObsPreviewSwitch";
+pub const AID_OBS_PREVIEW_PUSH: &str = "ObsPreviewPush";
+pub const AID_OBS_COLLECTION_SWITCH: &str = "ObsCollectionSwitch";
+pub const AID_OBS_CHAPTER_MARKER: &str = "ObsChapterMarker";
+
 const ICON_STREAM: ImageSource = include_image!("../../../assets/action-icons/obs-stream.bmp");
 const ICON_RECORD: ImageSource = include_image!("../../../assets/action-icons/obs-record.bmp");
 const ICON_PAUSE_RECORD: ImageSource =
@@ -77,20 +88,20 @@ pub fn obs_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
     (
         t!("action.obs.title", icon = phos::VINYL_RECORD).into(),
         vec![
-            ("ObsStream".into(),                Box::new(ObsStream::default()),                t!("action.obs.toggle_stream.title").into()),
-            ("ObsRecord".into(),                Box::new(ObsRecord::default()),                t!("action.obs.toggle_record.title").into()),
-            ("ObsPauseRecord".into(),           Box::new(ObsPauseRecord::default()),           t!("action.obs.pause_record.title").into()),
-            ("ObsReplayBuffer".into(),          Box::new(ObsReplayBuffer::default()),          t!("action.obs.toggle_replay_buffer.title").into()),
-            ("ObsSaveReplay".into(),            Box::new(ObsSaveReplay::default()),            t!("action.obs.save_replay_buffer.title").into()),
-            ("ObsSource".into(),                Box::new(ObsSource::default()),                t!("action.obs.toggle_source.title").into()),
-            ("ObsMute".into(),                  Box::new(ObsMute::default()),                  t!("action.obs.toggle_mute.title").into()),
-            ("ObsSceneSwitch".into(),           Box::new(ObsSceneSwitch::default()),           t!("action.obs.switch_scene.title").into()),
-            ("ObsPreviewSceneSwitch".into(),    Box::new(ObsPreviewSceneSwitch::default()),    t!("action.obs.switch_preview_scene.title").into()),
-            ("ObsPreviewScenePush".into(),      Box::new(ObsPreviewScenePush::default()),      t!("action.obs.push_preview_scene.title").into()),
-            ("ObsSceneCollectionSwitch".into(), Box::new(ObsSceneCollectionSwitch::default()), t!("action.obs.switch_scene_collection.title").into()),
+            (AID_OBS_STREAM.into(),             Box::new(ObsStream::default()),                t!("action.obs.toggle_stream.title").into()),
+            (AID_OBS_RECORD.into(),             Box::new(ObsRecord::default()),                t!("action.obs.toggle_record.title").into()),
+            (AID_OBS_RECORD_PAUSE.into(),       Box::new(ObsPauseRecord::default()),           t!("action.obs.pause_record.title").into()),
+            (AID_OBS_REPLAY_BUFFER.into(),      Box::new(ObsReplayBuffer::default()),          t!("action.obs.toggle_replay_buffer.title").into()),
+            (AID_OBS_REPLAY_BUFFER_SAVE.into(), Box::new(ObsSaveReplay::default()),            t!("action.obs.save_replay_buffer.title").into()),
+            (AID_OBS_TOGGLE_SOURCE.into(),      Box::new(ObsSource::default()),                t!("action.obs.toggle_source.title").into()),
+            (AID_OBS_TOGGLE_MUTE.into(),        Box::new(ObsMute::default()),                  t!("action.obs.toggle_mute.title").into()),
+            (AID_OBS_SCENE_SWITCH.into(),       Box::new(ObsSceneSwitch::default()),           t!("action.obs.switch_scene.title").into()),
+            (AID_OBS_PREVIEW_SWITCH.into(),     Box::new(ObsPreviewSceneSwitch::default()),    t!("action.obs.switch_preview_scene.title").into()),
+            (AID_OBS_PREVIEW_PUSH.into(),       Box::new(ObsPreviewScenePush::default()),      t!("action.obs.push_preview_scene.title").into()),
+            (AID_OBS_COLLECTION_SWITCH.into(),  Box::new(ObsSceneCollectionSwitch::default()), t!("action.obs.switch_scene_collection.title").into()),
             // ("ObsFilter".into(),                Box::new(ObsFilter::default()),                t!("action.obs.toggle_filter.title").into()),
             // ("ObsTransition".into(),            Box::new(ObsTransition::default()),            t!("action.obs.switch_transition.title").into()),
-            ("ObsChapterMarker".into(),         Box::new(ObsChapterMarker::default()),         t!("action.obs.add_chapter_marker.title").into()),
+            (AID_OBS_CHAPTER_MARKER.into(),     Box::new(ObsChapterMarker::default()),         t!("action.obs.add_chapter_marker.title").into()),
         ],
     )
 }
@@ -252,7 +263,7 @@ impl Action for ObsStream {
     }
 
     fn get_type(&self) -> String {
-        "ObsStream".into()
+        AID_OBS_STREAM.into()
     }
 
     fn edit_ui(
@@ -306,7 +317,7 @@ impl Action for ObsRecord {
     }
 
     fn get_type(&self) -> String {
-        "ObsRecord".into()
+        AID_OBS_RECORD.into()
     }
 
     fn edit_ui(
@@ -360,7 +371,7 @@ impl Action for ObsPauseRecord {
     }
 
     fn get_type(&self) -> String {
-        "ObsPauseRecord".into()
+        AID_OBS_RECORD_PAUSE.into()
     }
 
     fn edit_ui(
@@ -414,7 +425,7 @@ impl Action for ObsReplayBuffer {
     }
 
     fn get_type(&self) -> String {
-        "ObsReplayBuffer".into()
+        AID_OBS_REPLAY_BUFFER.into()
     }
 
     fn edit_ui(
@@ -468,7 +479,7 @@ impl Action for ObsSaveReplay {
     }
 
     fn get_type(&self) -> String {
-        "ObsSaveReplay".into()
+        AID_OBS_REPLAY_BUFFER_SAVE.into()
     }
 
     fn edit_ui(
@@ -544,7 +555,7 @@ impl Action for ObsSource {
     }
 
     fn get_type(&self) -> String {
-        "ObsSource".into()
+        AID_OBS_TOGGLE_SOURCE.into()
     }
 
     fn edit_ui(
@@ -698,7 +709,7 @@ impl Action for ObsMute {
     }
 
     fn get_type(&self) -> String {
-        "ObsMute".into()
+        AID_OBS_TOGGLE_MUTE.into()
     }
 
     fn edit_ui(
@@ -808,7 +819,7 @@ impl Action for ObsSceneSwitch {
     }
 
     fn get_type(&self) -> String {
-        "ObsSceneSwitch".into()
+        AID_OBS_SCENE_SWITCH.into()
     }
 
     fn edit_ui(
@@ -917,7 +928,7 @@ impl Action for ObsPreviewSceneSwitch {
     }
 
     fn get_type(&self) -> String {
-        "ObsPreviewSceneSwitch".into()
+        AID_OBS_PREVIEW_SWITCH.into()
     }
 
     fn edit_ui(
@@ -1017,7 +1028,7 @@ impl Action for ObsPreviewScenePush {
     }
 
     fn get_type(&self) -> String {
-        "ObsPreviewScenePush".into()
+        AID_OBS_PREVIEW_PUSH.into()
     }
 
     fn edit_ui(
@@ -1080,7 +1091,7 @@ impl Action for ObsSceneCollectionSwitch {
     }
 
     fn get_type(&self) -> String {
-        "ObsSceneCollectionSwitch".into()
+        AID_OBS_COLLECTION_SWITCH.into()
     }
 
     fn edit_ui(
@@ -1180,7 +1191,7 @@ impl Action for ObsChapterMarker {
     }
 
     fn get_type(&self) -> String {
-        "ObsChapterMarker".into()
+        AID_OBS_CHAPTER_MARKER.into()
     }
 
     fn edit_ui(
