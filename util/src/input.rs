@@ -227,6 +227,10 @@ impl KeyboardEvent {
             },
         ]
     }
+
+    pub const fn empty_event() -> Self {
+        Self { keys: [0; 6] }
+    }
 }
 
 pub struct MouseEvent {

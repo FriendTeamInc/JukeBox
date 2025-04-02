@@ -7,7 +7,7 @@ use std::{
 
 use anyhow::Result;
 use futures::future::join_all;
-use jukebox_util::{color::RgbProfile, peripheral::DeviceType};
+use jukebox_util::{color::RgbProfile, input::KeyboardEvent, peripheral::DeviceType};
 use tokio::sync::{
     mpsc::{UnboundedReceiver, UnboundedSender},
     Mutex,
@@ -51,16 +51,19 @@ async fn update_device_configs(
         for (k, a) in keys {
             let slot = k.slot();
             let action = a.action.as_any();
-            if let Some(kb) = action.downcast_ref::<InputKeyboard>() {
-                let _ = tx.send(SerialCommand::SetKeyboardInput(
+            let _ = if let Some(kb) = action.downcast_ref::<InputKeyboard>() {
+                tx.send(SerialCommand::SetKeyboardInput(
                     slot,
                     kb.get_keyboard_event(),
-                ));
+                ))
             } else if let Some(mouse) = action.downcast_ref::<InputMouse>() {
-                let _ = tx.send(SerialCommand::SetMouseInput(slot, mouse.get_mouse_event()));
+                tx.send(SerialCommand::SetMouseInput(slot, mouse.get_mouse_event()))
             } else {
-                // Do nothing
-            }
+                tx.send(SerialCommand::SetKeyboardInput(
+                    slot,
+                    KeyboardEvent::empty_event(),
+                ))
+            };
         }
 
         // TODO: set hardware inputs here

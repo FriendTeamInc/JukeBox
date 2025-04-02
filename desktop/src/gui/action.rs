@@ -4,11 +4,11 @@ use eframe::egui::{
     scroll_area::ScrollBarVisibility, vec2, Align, Button, CollapsingHeader, Grid, Image,
     ImageSource, Layout, RichText, ScrollArea, Ui,
 };
-use jukebox_util::peripheral::DeviceType;
+use jukebox_util::{input::KeyboardEvent, peripheral::DeviceType};
 
 use crate::{
     actions::{
-        input::{InputKeyboard, InputMouse, AID_INPUT_KEYBOARD, AID_INPUT_MOUSE},
+        input::{InputKeyboard, InputMouse},
         meta::AID_META_NO_ACTION,
         types::get_icon_bytes,
     },
@@ -93,7 +93,6 @@ impl JukeBoxGui {
                 .and_then(|d| d.get(device_uid))
                 .and_then(|p| p.key_map.get(&self.editing_key))
                 .and_then(|a| Some(a.action.clone()))
-                .filter(|a| a.get_type() == AID_INPUT_KEYBOARD || a.get_type() == AID_INPUT_MOUSE)
         } {
             action
         } else {
@@ -110,16 +109,19 @@ impl JukeBoxGui {
         {
             let txs = self.scmd_txs.blocking_lock();
             if let Some(tx) = txs.get(device_uid) {
-                if let Some(kb) = action.downcast_ref::<InputKeyboard>() {
-                    let _ = tx.send(SerialCommand::SetKeyboardInput(
+                let _ = if let Some(kb) = action.downcast_ref::<InputKeyboard>() {
+                    tx.send(SerialCommand::SetKeyboardInput(
                         slot,
                         kb.get_keyboard_event(),
-                    ));
+                    ))
                 } else if let Some(mouse) = action.downcast_ref::<InputMouse>() {
-                    let _ = tx.send(SerialCommand::SetMouseInput(slot, mouse.get_mouse_event()));
+                    tx.send(SerialCommand::SetMouseInput(slot, mouse.get_mouse_event()))
                 } else {
-                    panic!()
-                }
+                    tx.send(SerialCommand::SetKeyboardInput(
+                        slot,
+                        KeyboardEvent::empty_event(),
+                    ))
+                };
             }
         }
     }
