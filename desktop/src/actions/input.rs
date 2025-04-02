@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::{
+    collections::HashMap,
+    sync::{Arc, OnceLock},
+};
 
 use anyhow::Result;
 use eframe::egui::{include_image, ComboBox, ImageSource, Slider, Ui};
@@ -18,6 +21,8 @@ pub const AID_INPUT_MOUSE: &str = "InputMouse";
 const ICON_KEYBOARD: ImageSource =
     include_image!("../../../assets/action-icons/input-keyboard.bmp");
 const ICON_MOUSE: ImageSource = include_image!("../../../assets/action-icons/input-mouse.bmp");
+
+static KEY_MAP: OnceLock<HashMap<u8, &str>> = OnceLock::new();
 
 #[rustfmt::skip]
 pub fn input_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
@@ -71,24 +76,25 @@ impl Action for InputKeyboard {
     ) {
         ui.horizontal(|ui| {
             ui.label(t!("action.input.keyboard.add_keys"));
-            ui.add_enabled_ui(self.keys.len() <= 6, |ui| {
+            ui.add_enabled_ui(self.keys.len() < 6, |ui| {
                 if ui.button("+").clicked() {
-                    self.keys.push(0u8);
+                    self.keys.push(0x04);
                 }
             });
         });
         let mut delete = Vec::new();
+        let key_map = KEY_MAP.get_or_init(|| HashMap::from(KEYBOARD_SCAN_CODES));
         for (i, k) in self.keys.iter_mut().enumerate() {
             ui.horizontal(|ui| {
                 if ui.button(phos::TRASH).clicked() {
                     delete.push(i);
                 }
                 ComboBox::from_id_salt(format!("InputKeyboardBox_{}", i))
-                    .selected_text(format!("{:#04X}", k))
+                    .selected_text(format!("{:#04X} - \"{}\"", k, key_map.get(k).unwrap()))
                     .width(196.0)
                     .show_ui(ui, |ui| {
                         for sc in KEYBOARD_SCAN_CODES {
-                            ui.selectable_value(k, sc.1, format!("{:#04X} - \"{}\"", sc.1, sc.0));
+                            ui.selectable_value(k, sc.0, format!("{:#04X} - \"{}\"", sc.0, sc.1));
                         }
                     });
             });
