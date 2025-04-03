@@ -1,6 +1,5 @@
 use std::{process::Command, sync::Arc};
 
-use anyhow::Result;
 use eframe::egui::{include_image, ComboBox, ImageSource, Slider, Ui};
 use egui_phosphor::regular as phos;
 use rfd::FileDialog;
@@ -9,7 +8,7 @@ use tokio::{sync::Mutex, task::spawn_blocking};
 
 use crate::{config::JukeBoxConfig, input::InputKey};
 
-use super::types::Action;
+use super::types::{Action, ActionError};
 
 pub const AID_SYSTEM_OPEN_APP: &str = "SystemOpenApp";
 pub const AID_SYSTEM_OPEN_WEB: &str = "SystemOpenWeb";
@@ -51,7 +50,7 @@ impl Action for SystemOpenApp {
         _device_uid: &String,
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         let filepath = self.filepath.clone();
         let arguments = self.arguments.clone();
         let _ = spawn_blocking(move || {
@@ -69,7 +68,7 @@ impl Action for SystemOpenApp {
         _device_uid: &String,
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         Ok(())
     }
 
@@ -135,7 +134,7 @@ impl Action for SystemOpenWeb {
         _device_uid: &String,
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         let _ = open::that(self.url.clone());
         // TODO: error handling
         Ok(())
@@ -146,7 +145,7 @@ impl Action for SystemOpenWeb {
         _device_uid: &String,
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         Ok(())
     }
 
@@ -187,7 +186,7 @@ impl Action for SystemSndInCtrl {
         _device_uid: &String,
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         // TODO
         Ok(())
     }
@@ -197,7 +196,7 @@ impl Action for SystemSndInCtrl {
         _device_uid: &String,
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         Ok(())
     }
 
@@ -246,7 +245,7 @@ impl Action for SystemSndOutCtrl {
         _device_uid: &String,
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         // TODO
         Ok(())
     }
@@ -256,7 +255,7 @@ impl Action for SystemSndOutCtrl {
         _device_uid: &String,
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         Ok(())
     }
 

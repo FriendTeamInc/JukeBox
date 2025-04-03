@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use anyhow::Result;
 use eframe::egui::{include_image, ComboBox, ImageSource, Slider, Ui};
 use egui_phosphor::regular as phos;
 use rfd::FileDialog;
@@ -9,7 +8,7 @@ use tokio::sync::Mutex;
 
 use crate::{config::JukeBoxConfig, input::InputKey};
 
-use super::types::Action;
+use super::types::{Action, ActionError};
 
 pub const AID_SOUNDBOARD_PLAY_SOUND: &str = "SoundboardPlaySound";
 
@@ -38,7 +37,7 @@ impl Action for SoundboardPlaySound {
         _device_uid: &String,
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         // TODO
         Ok(())
     }
@@ -48,7 +47,7 @@ impl Action for SoundboardPlaySound {
         _device_uid: &String,
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         Ok(())
     }
 

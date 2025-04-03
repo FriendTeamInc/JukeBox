@@ -115,12 +115,15 @@ action:
       title: "Switch Profile"
       help: "Switches to specified profile on release."
       profile_select: "Profile:"
-      error_msg: "Can't switch to profile \"%{profile}\", no longer exists!"
+      err:
+        empty_profile: "Can't switch to profile, none specified!"
+        profile_not_found: "Can't switch to profile \"%{profile}\", does not exists!"
     copy_from_profile:
       title: "Copy from Profile"
       help: "Copies action on the same key from specified profile."
       profile_select: "Profile:"
-      error_profile_msg: "Can't copy from profile \"%{profile}\"!\n(profile \"%{profile}\", device \"%{uid}\", key %{key})"
+      err:
+        action_not_found: "Can't copy action from \"%{profile}\", does not exists!"
   
   input:
     title: "%{icon} Input"
@@ -179,21 +182,36 @@ action:
       help: "You need to connect your Discord Account before using this action!"
       button: "Connect to Discord Account"
       success: "Discord account connected!"
+    err:
+      connect: "Cannot connect to Discord client!"
+      authorize: "Failed to authorize with Discord!"
+      oauth_request: "Failed to get Discord OAuth access token!"
+      oauth_refresh: "Failed to refresh Discord OAuth access token!"
+      authenticate: "Failed to authenticate with Discord!"
+
     toggle_mute:
       title: "Toggle Mute"
       help: "Toggle mutes your microphone on Discord when pressed."
+      err: "Failed to set Discord mute state for Toggle Mute."
     toggle_deafen:
       title: "Toggle Deafen"
       help: "Toggle deafens your audio on Discord when pressed."
+      err: "Failed to set Discord deafen state for Toggle Deafen."
     push_to_talk:
       title: "Push to Talk"
       help: "Unmutes your microphone on Discord while held."
+      err_press: "Failed to set Discord mute state for Push To Talk (press)."
+      err_release: "Failed to set Discord mute state for Push To Talk (release)."
     push_to_mute:
       title: "Push to Mute"
       help: "Mutes your microphone on Discord while held."
+      err_press: "Failed to set Discord mute state for Push To Mute (press)."
+      err_release: "Failed to set Discord mute state for Push To Mute (release)."
     push_to_deafen:
       title: "Push to Deafen"
       help: "Deafens your audio on Discord while held."
+      err_press: "Failed to set Discord deafen state for Push To Deafen (press)."
+      err_release: "Failed to set Discord deafen state for Push To Deafen (release)."
   
   obs:
     title: "%{icon} OBS"
@@ -206,6 +224,9 @@ action:
       password: "Password:"
       success: "Connected to OBS!"
     
+    err:
+      client: "Failed to connect to OBS!"
+    
     options:
       loading: "Loading..."
       select_scene: "Select Scene:"
@@ -214,46 +235,70 @@ action:
     toggle_stream:
       title: "Toggle Stream"
       help: "Starts or stops OBS streaming."
+      err: "Failed to toggle OBS stream!"
     toggle_record:
       title: "Toggle Record"
       help: "Starts or stops OBS recording."
+      err: "Failed to toggle OBS record!"
     pause_record:
       title: "Pause Record"
       help: "Pauses OBS recording if currently recording."
+      err: "Failed to toggle OBS recording pause!"
     toggle_replay_buffer:
       title: "Toggle Replay Buffer"
       help: "Starts or stops the OBS replay buffer."
+      err: "Failed to toggle OBS replay buffer!"
     save_replay_buffer:
       title: "Save Replay Buffer"
       help: "Saves the OBS replay buffer if active."
-    save_screenshot:
-      title: "Save Screenshot"
-      help: "Saves a screenshot of the output scene."
+      err: "Failed to save OBS replay buffer!"
+    # save_screenshot:
+    #   title: "Save Screenshot"
+    #   help: "Saves a screenshot of the output scene."
     toggle_source:
       title: "Toggle Source"
       help: "Shows or hides a specified source."
+      err:
+        get_enabled: "Failed to get enabled state of scene \"%{scene}\" and source \"%{source}\"."
+        set_enabled: "Failed to set enabled state of scene \"%{scene}\" and source \"%{source}\"."
+        source_not_configured: "Source not configured!"
+        scene_not_configured: "Scene not configured!"
     toggle_mute:
       title: "Toggle Mute Audio Source"
       help: "Mutes or unmutes a specified audio source's sound."
+      err:
+        failure: "Failed to toggle mute input \"%{input}\"."
+        input_not_configured: "Input not configured!"
     switch_scene:
       title: "Switch to Scene"
       help: "Switches to a specified scene."
+      err:
+        failure: "Failed to set scene \"%{scene}\"."
+        scene_not_configured: "Scene not configured!"
     switch_preview_scene:
       title: "Switch to Preview Scene"
       help: "Switches to a specified scene for preview (when in Studio Mode)."
+      err:
+        failure: "Failed to set preview scene \"%{scene}\"."
+        scene_not_configured: "Preview scene not configured!"
     push_preview_scene:
       title: "Push Preview Scene"
       help: "Pushes your preview scene live (when in Studio Mode)."
+      err: "Failed to push preview scene."
     switch_scene_collection:
       title: "Switch to Scene Collection"
       help: "Switches to a specified scene collection."
-    toggle_filter:
-      title: "Toggle Filter"
-      help: "Shows or hides a specified filter on a source."
-    switch_transition:
-      title: "Switch Transition"
-      help: "Switches to a specified scene transition."
+      err:
+        failure: "Failed to set scene collection \"%{collection}\"."
+        collection_not_configured: "Scene Collection not configured!"
+    # toggle_filter:
+    #   title: "Toggle Filter"
+    #   help: "Shows or hides a specified filter on a source."
+    # switch_transition:
+    #   title: "Switch Transition"
+    #   help: "Switches to a specified scene transition."
     add_chapter_marker:
       title: "Add Chapter Marker"
       help: "Addes a chapter marker to an active recording."
+      err: "Failed to add chapter marker."
 

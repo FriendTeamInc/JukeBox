@@ -48,7 +48,7 @@ downcast-rs = "2.0"
 winresource = "0.1"
 
 [features]
-default = []
+default = ["discord"]
 discord = ["dep:discord-rich-presence"]
 
 [profile.release]

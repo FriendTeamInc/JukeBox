@@ -3,7 +3,6 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use anyhow::{bail, Result};
 use discord_rich_presence::{voice_settings::VoiceSettings, DiscordIpc, DiscordIpcClient};
 use eframe::egui::{include_image, vec2, Button, ImageSource, Ui};
 use egui_phosphor::regular as phos;
@@ -17,7 +16,7 @@ use crate::{
     REQWEST_CLIENT,
 };
 
-use super::types::Action;
+use super::types::{Action, ActionError};
 
 pub const AID_DISCORD_TOGGLE_MUTE: &str = "DiscordToggleMute";
 pub const AID_DISCORD_TOGGLE_DEAFEN: &str = "DiscordToggleDeafen";
@@ -60,7 +59,7 @@ async fn discord_access_token_request(
     code: &str,
     client_id: &str,
     client_secret: &str,
-) -> Result<DiscordOauthAccess> {
+) -> Result<DiscordOauthAccess, ()> {
     let params = HashMap::from([
         ("grant_type", "authorization_code"),
         ("code", code),
@@ -74,20 +73,17 @@ async fn discord_access_token_request(
         .post("https://discord.com/api/oauth2/token")
         .form(&params)
         .send()
-        .await?;
+        .await
+        .map_err(|_| ())?;
 
-    if let Ok(j) = r.json().await {
-        Ok(j)
-    } else {
-        bail!("failed to gain oauth access");
-    }
+    r.json().await.map_err(|_| ())
 }
 
 async fn discord_refresh_access_token(
     refresh_token: &str,
     client_id: &str,
     client_secret: &str,
-) -> Result<DiscordOauthAccess> {
+) -> Result<DiscordOauthAccess, ()> {
     let params = HashMap::from([
         ("grant_type", "refresh_token"),
         ("refresh_token", refresh_token),
@@ -100,29 +96,40 @@ async fn discord_refresh_access_token(
         .post("https://discord.com/api/oauth2/token")
         .form(&params)
         .send()
-        .await?;
+        .await
+        .map_err(|_| ())?;
 
-    if let Ok(j) = r.json().await {
-        Ok(j)
-    } else {
-        bail!("failed to refresh oauth access");
-    }
+    r.json().await.map_err(|_| ())
 }
 
-// TODO: better error handling
-async fn create_client(config: Arc<Mutex<JukeBoxConfig>>) -> Result<()> {
+async fn create_client(
+    device_uid: &String,
+    input_key: InputKey,
+    config: Arc<Mutex<JukeBoxConfig>>,
+) -> Result<(), ActionError> {
     let mut client = DiscordIpcClient::new(DISCORD_CLIENT_ID);
-    client.connect().expect("cannot connect to discord");
+    client
+        .connect()
+        .map_err(|_| ActionError::new(device_uid, input_key, t!("action.discord.err.connect")))?;
 
     let mut config = config.lock().await;
 
     if config.discord_oauth_access.is_none() {
         let code = client
             .authorize(&["rpc", "rpc.voice.read", "rpc.voice.write"])
-            .expect("failed to authorize wtih discord");
+            .map_err(|_| {
+                ActionError::new(device_uid, input_key, t!("action.discord.err.authorize"))
+            })?;
+
         let oauth = discord_access_token_request(&code, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET)
             .await
-            .expect("failed to get oauth access token");
+            .map_err(|_| {
+                ActionError::new(
+                    device_uid,
+                    input_key,
+                    t!("action.discord.err.oauth_request"),
+                )
+            })?;
 
         config.discord_oauth_access = Some(oauth);
         config.save();
@@ -134,7 +141,13 @@ async fn create_client(config: Arc<Mutex<JukeBoxConfig>>) -> Result<()> {
             DISCORD_CLIENT_SECRET,
         )
         .await
-        .expect("failed to refresh oauth access token");
+        .map_err(|_| {
+            ActionError::new(
+                device_uid,
+                input_key,
+                t!("action.discord.err.oauth_refresh"),
+            )
+        })?;
 
         config.discord_oauth_access = Some(oauth);
         config.save();
@@ -142,7 +155,9 @@ async fn create_client(config: Arc<Mutex<JukeBoxConfig>>) -> Result<()> {
 
     client
         .authenticate(&config.discord_oauth_access.clone().unwrap().access_token)
-        .expect("failed to authenticate with discord");
+        .map_err(|_| {
+            ActionError::new(device_uid, input_key, t!("action.discord.err.authenticate"))
+        })?;
 
     DISCORD_CLIENT
         .set(Mutex::new(client))
@@ -151,12 +166,17 @@ async fn create_client(config: Arc<Mutex<JukeBoxConfig>>) -> Result<()> {
     Ok(())
 }
 
-fn account_warning(ui: &mut Ui, config: Arc<Mutex<JukeBoxConfig>>) {
+fn account_warning(
+    ui: &mut Ui,
+    device_uid: &String,
+    input_key: InputKey,
+    config: Arc<Mutex<JukeBoxConfig>>,
+) {
     if DISCORD_CLIENT.get().is_none() {
         let has_oauth = config.blocking_lock().discord_oauth_access.is_some();
         if has_oauth {
             let _ = tokio::runtime::Handle::current()
-                .block_on(async move { create_client(config).await });
+                .block_on(async move { create_client(device_uid, input_key, config).await });
         } else {
             ui.vertical_centered(|ui| ui.label(t!("action.discord.warning.help")));
             ui.label("");
@@ -168,7 +188,7 @@ fn account_warning(ui: &mut Ui, config: Arc<Mutex<JukeBoxConfig>>) {
                 .clicked()
             {
                 let _ = tokio::runtime::Handle::current()
-                    .block_on(async move { create_client(config).await });
+                    .block_on(async move { create_client(device_uid, input_key, config).await });
             }
         }
     } else {
@@ -183,14 +203,15 @@ pub struct DiscordToggleMute {}
 impl Action for DiscordToggleMute {
     async fn on_press(
         &self,
-        _device_uid: &String,
-        _input_key: InputKey,
+        device_uid: &String,
+        input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c).await?;
+            create_client(device_uid, input_key, c).await?;
         }
+        let device_uid: String = device_uid.into();
         spawn_blocking(move || {
             let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
             let mut muted = DISCORD_MUTED
@@ -206,7 +227,9 @@ impl Action for DiscordToggleMute {
                         .mute(*muted),
                 )
                 .map(|_| Ok(()))
-                .map_err(anyhow::Error::from)
+                .map_err(|_| {
+                    ActionError::new(device_uid, input_key, t!("action.discord.toggle_mute.err"))
+                })
         })
         .await
         .unwrap()?
@@ -217,7 +240,7 @@ impl Action for DiscordToggleMute {
         _device_uid: &String,
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         Ok(())
     }
 
@@ -228,11 +251,11 @@ impl Action for DiscordToggleMute {
     fn edit_ui(
         &mut self,
         ui: &mut Ui,
-        _device_uid: &String,
-        _input_key: InputKey,
+        device_uid: &String,
+        input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) {
-        account_warning(ui, config);
+        account_warning(ui, device_uid, input_key, config)
     }
 
     fn help(&self) -> String {
@@ -251,14 +274,15 @@ pub struct DiscordToggleDeafen {}
 impl Action for DiscordToggleDeafen {
     async fn on_press(
         &self,
-        _device_uid: &String,
-        _input_key: InputKey,
+        device_uid: &String,
+        input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c).await?;
+            create_client(device_uid, input_key, c).await?;
         }
+        let device_uid: String = device_uid.into();
         spawn_blocking(move || {
             let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
             let mut deafened = DISCORD_DEAFENED
@@ -275,7 +299,13 @@ impl Action for DiscordToggleDeafen {
                         .deaf(*deafened),
                 )
                 .map(|_| Ok(()))
-                .map_err(anyhow::Error::from)
+                .map_err(|_| {
+                    ActionError::new(
+                        device_uid,
+                        input_key,
+                        t!("action.discord.toggle_deafen.err"),
+                    )
+                })
         })
         .await
         .unwrap()?
@@ -286,7 +316,7 @@ impl Action for DiscordToggleDeafen {
         _device_uid: &String,
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         Ok(())
     }
 
@@ -297,11 +327,11 @@ impl Action for DiscordToggleDeafen {
     fn edit_ui(
         &mut self,
         ui: &mut Ui,
-        _device_uid: &String,
-        _input_key: InputKey,
+        device_uid: &String,
+        input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) {
-        account_warning(ui, config);
+        account_warning(ui, device_uid, input_key, config)
     }
 
     fn help(&self) -> String {
@@ -320,14 +350,15 @@ pub struct DiscordPushToTalk {}
 impl Action for DiscordPushToTalk {
     async fn on_press(
         &self,
-        _device_uid: &String,
-        _input_key: InputKey,
+        device_uid: &String,
+        input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c).await?;
+            create_client(device_uid, input_key, c).await?;
         }
+        let device_uid: String = device_uid.into();
         spawn_blocking(move || {
             let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
 
@@ -338,7 +369,13 @@ impl Action for DiscordPushToTalk {
                         .mute(false),
                 )
                 .map(|_| Ok(()))
-                .map_err(anyhow::Error::from)
+                .map_err(|_| {
+                    ActionError::new(
+                        device_uid,
+                        input_key,
+                        t!("action.discord.push_to_talk.err_press"),
+                    )
+                })
         })
         .await
         .unwrap()?
@@ -346,14 +383,15 @@ impl Action for DiscordPushToTalk {
 
     async fn on_release(
         &self,
-        _device_uid: &String,
-        _input_key: InputKey,
+        device_uid: &String,
+        input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c).await?;
+            create_client(device_uid, input_key, c).await?;
         }
+        let device_uid: String = device_uid.into();
         spawn_blocking(move || {
             let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
 
@@ -364,7 +402,13 @@ impl Action for DiscordPushToTalk {
                         .mute(true),
                 )
                 .map(|_| Ok(()))
-                .map_err(anyhow::Error::from)
+                .map_err(|_| {
+                    ActionError::new(
+                        device_uid,
+                        input_key,
+                        t!("action.discord.push_to_talk.err_release"),
+                    )
+                })
         })
         .await
         .unwrap()?
@@ -377,11 +421,11 @@ impl Action for DiscordPushToTalk {
     fn edit_ui(
         &mut self,
         ui: &mut Ui,
-        _device_uid: &String,
-        _input_key: InputKey,
+        device_uid: &String,
+        input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) {
-        account_warning(ui, config);
+        account_warning(ui, device_uid, input_key, config)
     }
 
     fn help(&self) -> String {
@@ -400,14 +444,15 @@ pub struct DiscordPushToMute {}
 impl Action for DiscordPushToMute {
     async fn on_press(
         &self,
-        _device_uid: &String,
-        _input_key: InputKey,
+        device_uid: &String,
+        input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c).await?;
+            create_client(device_uid, input_key, c).await?;
         }
+        let device_uid: String = device_uid.into();
         spawn_blocking(move || {
             let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
 
@@ -418,7 +463,13 @@ impl Action for DiscordPushToMute {
                         .mute(true),
                 )
                 .map(|_| Ok(()))
-                .map_err(anyhow::Error::from)
+                .map_err(|_| {
+                    ActionError::new(
+                        device_uid,
+                        input_key,
+                        t!("action.discord.push_to_mute.err_press"),
+                    )
+                })
         })
         .await
         .unwrap()?
@@ -426,14 +477,15 @@ impl Action for DiscordPushToMute {
 
     async fn on_release(
         &self,
-        _device_uid: &String,
-        _input_key: InputKey,
+        device_uid: &String,
+        input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c).await?;
+            create_client(device_uid, input_key, c).await?;
         }
+        let device_uid: String = device_uid.into();
         spawn_blocking(move || {
             let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
 
@@ -444,7 +496,13 @@ impl Action for DiscordPushToMute {
                         .mute(false),
                 )
                 .map(|_| Ok(()))
-                .map_err(anyhow::Error::from)
+                .map_err(|_| {
+                    ActionError::new(
+                        device_uid,
+                        input_key,
+                        t!("action.discord.push_to_mute.err_release"),
+                    )
+                })
         })
         .await
         .unwrap()?
@@ -457,11 +515,11 @@ impl Action for DiscordPushToMute {
     fn edit_ui(
         &mut self,
         ui: &mut Ui,
-        _device_uid: &String,
-        _input_key: InputKey,
+        device_uid: &String,
+        input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) {
-        account_warning(ui, config);
+        account_warning(ui, device_uid, input_key, config)
     }
 
     fn help(&self) -> String {
@@ -480,14 +538,15 @@ pub struct DiscordPushToDeafen {}
 impl Action for DiscordPushToDeafen {
     async fn on_press(
         &self,
-        _device_uid: &String,
-        _input_key: InputKey,
+        device_uid: &String,
+        input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c).await?;
+            create_client(device_uid, input_key, c).await?;
         }
+        let device_uid: String = device_uid.into();
         spawn_blocking(move || {
             let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
 
@@ -499,7 +558,13 @@ impl Action for DiscordPushToDeafen {
                         .deaf(true),
                 )
                 .map(|_| Ok(()))
-                .map_err(anyhow::Error::from)
+                .map_err(|_| {
+                    ActionError::new(
+                        device_uid,
+                        input_key,
+                        t!("action.discord.push_to_deafen.err_press"),
+                    )
+                })
         })
         .await
         .unwrap()?
@@ -507,14 +572,15 @@ impl Action for DiscordPushToDeafen {
 
     async fn on_release(
         &self,
-        _device_uid: &String,
-        _input_key: InputKey,
+        device_uid: &String,
+        input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c).await?;
+            create_client(device_uid, input_key, c).await?;
         }
+        let device_uid: String = device_uid.into();
         spawn_blocking(move || {
             let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
 
@@ -526,7 +592,13 @@ impl Action for DiscordPushToDeafen {
                         .deaf(false),
                 )
                 .map(|_| Ok(()))
-                .map_err(anyhow::Error::from)
+                .map_err(|_| {
+                    ActionError::new(
+                        device_uid,
+                        input_key,
+                        t!("action.discord.push_to_deafen.err_release"),
+                    )
+                })
         })
         .await
         .unwrap()?
@@ -539,11 +611,11 @@ impl Action for DiscordPushToDeafen {
     fn edit_ui(
         &mut self,
         ui: &mut Ui,
-        _device_uid: &String,
-        _input_key: InputKey,
+        device_uid: &String,
+        input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) {
-        account_warning(ui, config);
+        account_warning(ui, device_uid, input_key, config)
     }
 
     fn help(&self) -> String {

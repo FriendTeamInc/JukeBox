@@ -1,8 +1,7 @@
 // Types of actions and their associations
 
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, fmt, sync::Arc};
 
-use anyhow::Result;
 use downcast_rs::{impl_downcast, Downcast, DowncastSend, DowncastSync};
 use dyn_clone::{clone_trait_object, DynClone};
 use eframe::egui::{
@@ -20,6 +19,27 @@ use crate::{
 #[cfg(feature = "discord")]
 use crate::actions::discord::*;
 
+#[derive(Debug, Clone)]
+pub struct ActionError {
+    pub device_uid: String,
+    pub input_key: InputKey,
+    pub msg: String,
+}
+impl ActionError {
+    pub fn new(device_uid: impl Into<String>, input_key: InputKey, msg: impl Into<String>) -> Self {
+        Self {
+            device_uid: device_uid.into(),
+            input_key: input_key,
+            msg: msg.into(),
+        }
+    }
+}
+impl fmt::Display for ActionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.msg)
+    }
+}
+
 #[async_trait::async_trait]
 #[typetag::serde(tag = "type")]
 pub trait Action: Sync + Send + DynClone + Downcast + DowncastSync + DowncastSend {
@@ -28,14 +48,14 @@ pub trait Action: Sync + Send + DynClone + Downcast + DowncastSync + DowncastSen
         device_uid: &String,
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()>;
+    ) -> Result<(), ActionError>;
 
     async fn on_release(
         &self,
         device_uid: &String,
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()>;
+    ) -> Result<(), ActionError>;
 
     fn get_type(&self) -> String;
 

@@ -3,7 +3,6 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use anyhow::Result;
 use eframe::egui::{include_image, ComboBox, ImageSource, Slider, Ui};
 use egui_phosphor::regular as phos;
 use jukebox_util::input::{KeyboardEvent, MouseEvent, KEYBOARD_SCAN_CODES};
@@ -12,7 +11,7 @@ use tokio::sync::Mutex;
 
 use crate::{config::JukeBoxConfig, input::InputKey};
 
-use super::types::Action;
+use super::types::{Action, ActionError};
 
 pub const AID_INPUT_KEYBOARD: &str = "InputKeyboard";
 pub const AID_INPUT_MOUSE: &str = "InputMouse";
@@ -48,7 +47,7 @@ impl Action for InputKeyboard {
         _device_uid: &String,
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         // TODO
         Ok(())
     }
@@ -58,7 +57,7 @@ impl Action for InputKeyboard {
         _device_uid: &String,
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         // TODO
         Ok(())
     }
@@ -140,7 +139,7 @@ impl Action for InputMouse {
         _device_uid: &String,
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         // TODO
         Ok(())
     }
@@ -150,7 +149,7 @@ impl Action for InputMouse {
         _device_uid: &String,
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         // TODO
         Ok(())
     }

@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use anyhow::{bail, Result};
 use eframe::egui::{include_image, ComboBox, ImageSource, Ui};
 use egui_phosphor::regular as phos;
 use serde::{Deserialize, Serialize};
@@ -8,7 +7,7 @@ use tokio::sync::Mutex;
 
 use crate::{config::JukeBoxConfig, input::InputKey};
 
-use super::types::Action;
+use super::types::{Action, ActionError};
 
 pub const AID_META_NO_ACTION: &str = "MetaNoAction";
 pub const AID_META_SWITCH_PROFILE: &str = "MetaSwitchProfile";
@@ -43,7 +42,7 @@ impl Action for MetaNoAction {
         device_uid: &String,
         input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         log::info!(
             "META NO ACTION: Device {} Pressed {:?} !",
             device_uid,
@@ -57,7 +56,7 @@ impl Action for MetaNoAction {
         device_uid: &String,
         input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         log::info!(
             "META NO ACTION: Device {} Released {:?} !",
             device_uid,
@@ -74,7 +73,7 @@ impl Action for MetaNoAction {
         &mut self,
         _ui: &mut Ui,
         _device_uid: &String,
-        _input_input_key: InputKey,
+        _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
     ) {
     }
@@ -98,28 +97,40 @@ impl Action for MetaSwitchProfile {
     async fn on_press(
         &self,
         _device_uid: &String,
-        _input_input_key: InputKey,
+        _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         Ok(())
     }
 
     async fn on_release(
         &self,
-        _device_uid: &String,
-        _input_input_key: InputKey,
+        device_uid: &String,
+        input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         let mut config = config.lock().await;
         if config.profiles.contains_key(&self.profile) {
             config.current_profile = self.profile.clone();
-            // TODO: send command to device to change hardware inputs and rgb profile
+            // TODO: send command to device to change hardware inputs?
             Ok(())
         } else {
-            bail!(t!(
-                "action.meta.switch_profile.error_msg",
-                profile = self.profile
-            ))
+            if self.profile.len() == 0 {
+                Err(ActionError::new(
+                    device_uid,
+                    input_key,
+                    t!("action.meta.switch_profile.err.empty_profile"),
+                ))
+            } else {
+                Err(ActionError::new(
+                    device_uid,
+                    input_key,
+                    t!(
+                        "action.meta.switch_profile.err.profile_not_found",
+                        profile = self.profile
+                    ),
+                ))
+            }
         }
     }
 
@@ -131,7 +142,7 @@ impl Action for MetaSwitchProfile {
         &mut self,
         ui: &mut Ui,
         _device_uid: &String,
-        _input_input_key: InputKey,
+        _input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) {
         ui.label(t!("action.meta.switch_profile.profile_select"));
@@ -173,7 +184,7 @@ impl Action for MetaCopyFromProfile {
         device_uid: &String,
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         let k = config
             .lock()
             .await
@@ -185,11 +196,13 @@ impl Action for MetaCopyFromProfile {
         if let Some(k) = k {
             k.action.on_press(device_uid, input_key, config).await
         } else {
-            bail!(t!(
-                "action.meta.copy_from_profile.error_profile_msg",
-                profile = self.profile,
-                uid = device_uid,
-                key = input_key
+            Err(ActionError::new(
+                device_uid,
+                input_key,
+                t!(
+                    "action.meta.copy_from_profile.err.action_not_found",
+                    profile = self.profile
+                ),
             ))
         }
     }
@@ -199,7 +212,7 @@ impl Action for MetaCopyFromProfile {
         device_uid: &String,
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<()> {
+    ) -> Result<(), ActionError> {
         let k = config
             .lock()
             .await
@@ -211,11 +224,13 @@ impl Action for MetaCopyFromProfile {
         if let Some(k) = k {
             k.action.on_release(device_uid, input_key, config).await
         } else {
-            bail!(t!(
-                "action.meta.copy_from_profile.error_profile_msg",
-                profile = self.profile,
-                uid = device_uid,
-                key = input_key
+            Err(ActionError::new(
+                device_uid,
+                input_key,
+                t!(
+                    "action.meta.copy_from_profile.err.action_not_found",
+                    profile = self.profile
+                ),
             ))
         }
     }

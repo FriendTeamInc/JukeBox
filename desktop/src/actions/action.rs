@@ -157,8 +157,11 @@ pub async fn action_task(
                         }
                     }
 
-                    for _res in join_all(futures).await {
-                        // TODO: error signaling
+                    for res in join_all(futures).await {
+                        match res {
+                            Ok(_) => {}
+                            Err(_) => todo!(),
+                        }
                     }
 
                     *prevkeys = keys;
