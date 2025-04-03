@@ -1,6 +1,6 @@
 // Graphical User Interface (pronounced like GIF)
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{atomic::AtomicBool, Arc};
 use std::time::{Duration, Instant};
 
@@ -22,6 +22,7 @@ use tokio::{
     },
 };
 
+use crate::actions::types::ActionError;
 use crate::actions::{
     action::action_task,
     meta::MetaNoAction,
@@ -82,6 +83,9 @@ pub struct JukeBoxGui {
     pub us_rx: UnboundedReceiver<UpdateStatus>,
 
     pub action_map: ActionMap,
+
+    pub action_errors: VecDeque<ActionError>,
+    ae_rx: UnboundedReceiver<ActionError>,
 }
 impl eframe::App for JukeBoxGui {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
@@ -149,13 +153,14 @@ impl JukeBoxGui {
         // serial thread spawns the channels and gives the sender to the gui thread through this
 
         let (us_tx, us_rx) = unbounded_channel::<UpdateStatus>(); // update thread sends update statuses to gui thread
+        let (ae_tx, ae_rx) = unbounded_channel::<ActionError>(); // action thread sends action errors to gui thread
 
         let serial_scmd_txs = scmd_txs.clone();
         let action_config = config.clone();
         let action_scmd_txs = scmd_txs.clone();
 
         spawn(async move { serial_task(brkr_serial, serial_scmd_txs, sg_tx, sr_tx).await });
-        spawn(async move { action_task(sr_rx, action_config, action_scmd_txs).await });
+        spawn(async move { action_task(sr_rx, action_config, action_scmd_txs, ae_tx).await });
 
         JukeBoxGui {
             splash_timer: Instant::now(),
@@ -193,8 +198,11 @@ impl JukeBoxGui {
             scmd_txs: scmd_txs,
             us_tx: us_tx,
             us_rx: us_rx,
+            ae_rx: ae_rx,
 
             action_map: ActionMap::new(),
+
+            action_errors: VecDeque::new(),
         }
     }
 
@@ -225,9 +233,51 @@ impl JukeBoxGui {
 
             self.draw_splash_text(c2);
         });
+
+        if self.action_errors.len() > 0 {
+            let action = self.action_errors.get(0).unwrap().clone();
+            Modal::new(Id::new("ActionErrorModal")).show(ui.ctx(), |ui| {
+                ui.set_width(400.0);
+
+                ui.heading(t!("help.action.modal_title"));
+
+                ui.add_space(10.0);
+
+                ui.label(action.msg);
+
+                ui.add_space(10.0);
+
+                ui.horizontal(|ui| {
+                    if ui.button(t!("help.action.modal_exit")).clicked() {
+                        self.action_errors.pop_front();
+                    }
+
+                    ui.add_space(10.0);
+
+                    ui.label(t!(
+                        "help.action.modal_input_key",
+                        input_key = action.input_key
+                    ));
+
+                    ui.add_space(10.0);
+
+                    // TODO: replace uid with device name in gui
+                    ui.label(t!(
+                        "help.action.modal_device_uid",
+                        device_uid = action.device_uid
+                    ));
+                });
+            });
+        }
     }
 
     fn handle_serial_events(&mut self) {
+        // recieve action error events
+        while let Ok(error) = self.ae_rx.try_recv() {
+            self.action_errors.push_back(error);
+        }
+
+        // recieve serial events
         while let Ok(event) = self.sg_rx.try_recv() {
             match event {
                 SerialEvent::Connected { device_info } => {

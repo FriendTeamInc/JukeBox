@@ -21,7 +21,7 @@ use crate::{
 
 use super::{
     input::{InputKeyboard, InputMouse},
-    types::get_icon_bytes,
+    types::{get_icon_bytes, ActionError},
 };
 
 async fn update_device_configs(
@@ -74,6 +74,7 @@ pub async fn action_task(
     mut s_evnt_rx: UnboundedReceiver<SerialEvent>,
     config: Arc<Mutex<JukeBoxConfig>>,
     scmd_txs: Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
+    ae_tx: UnboundedSender<ActionError>,
 ) -> Result<()> {
     let mut prevkeys: HashMap<String, Arc<Mutex<HashSet<InputKey>>>> = HashMap::new();
 
@@ -133,6 +134,7 @@ pub async fn action_task(
 
                 let config = config.clone();
                 let scmd_txs = scmd_txs.clone();
+                let ae_tx = ae_tx.clone();
 
                 tokio::spawn(async move {
                     let (_, current_profile, _, current_profile_name) =
@@ -160,7 +162,9 @@ pub async fn action_task(
                     for res in join_all(futures).await {
                         match res {
                             Ok(_) => {}
-                            Err(_) => todo!(),
+                            Err(e) => {
+                                let _ = ae_tx.send(e);
+                            }
                         }
                     }
 

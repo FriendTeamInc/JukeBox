@@ -130,7 +130,7 @@ impl JukeBoxGui {
                         }
                         let btn = ui
                             .add_sized([75.0, 75.0], b)
-                            .on_hover_text_at_pointer(a.help());
+                            .on_hover_text_at_pointer(format!("{}: {}", k, a.help()));
 
                         if btn.clicked() {
                             self.enter_action_editor(k.to_owned());
@@ -199,7 +199,7 @@ impl JukeBoxGui {
                         }
                         let btn = ui
                             .add_sized([100.0, 231.0], p)
-                            .on_hover_text_at_pointer(a.help());
+                            .on_hover_text_at_pointer(format!("{}: {}", b, a.help()));
 
                         if btn.clicked() {
                             self.enter_action_editor(b);
