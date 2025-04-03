@@ -245,7 +245,7 @@ impl JukeBoxGui {
 
                 ui.label(action.msg);
 
-                ui.add_space(10.0);
+                ui.add_space(15.0);
 
                 ui.horizontal(|ui| {
                     if ui.button(t!("help.action.modal_exit")).clicked() {
@@ -262,10 +262,12 @@ impl JukeBoxGui {
                     ui.add_space(10.0);
 
                     // TODO: replace uid with device name in gui
-                    ui.label(t!(
-                        "help.action.modal_device_uid",
-                        device_uid = action.device_uid
-                    ));
+                    let device = if let Some(d) = self.devices.get(&action.device_uid) {
+                        &d.1
+                    } else {
+                        &action.device_uid
+                    };
+                    ui.label(t!("help.action.modal_device", device = device));
                 });
             });
         }

@@ -49,9 +49,9 @@ help:
     glyph_icon: "Choose Glyph Icon"
 
     modal_title: "Action Error!"
-    modal_device_uid: "Device UID: %{device_uid}"
+    modal_device: "Device: %{device}"
     modal_input_key: "Input Key: %{input_key}"
-    modal_exit: " Ok "
+    modal_exit: "   Ok   "
 
 profile_name_new: "Profile %{idx}"
 
