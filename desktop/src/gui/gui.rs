@@ -1,11 +1,13 @@
 // Graphical User Interface (pronounced like GIF)
 
 use std::collections::{HashMap, HashSet, VecDeque};
+use std::sync::OnceLock;
 use std::sync::{atomic::AtomicBool, Arc};
 use std::time::{Duration, Instant};
 
 use eframe::egui::{
     vec2, Align, CentralPanel, Context, Id, Layout, Modal, RichText, Ui, ViewportBuilder,
+    ViewportCommand,
 };
 use eframe::Frame;
 use egui_extras::install_image_loaders;
@@ -21,6 +23,8 @@ use tokio::{
         Mutex,
     },
 };
+use tray_icon::menu::{Menu, MenuEvent, MenuId, MenuItem, PredefinedMenuItem};
+use tray_icon::{TrayIcon, TrayIconBuilder, TrayIconEvent};
 
 use crate::actions::types::ActionError;
 use crate::actions::{
@@ -33,6 +37,11 @@ use crate::input::InputKey;
 use crate::serial::{serial_task, SerialCommand, SerialEvent};
 use crate::splash::SPLASH_MESSAGES;
 use crate::update::UpdateStatus;
+
+const APP_ICON: &[u8] = include_bytes!("../../../assets/applogo.png");
+static CLOSE_WINDOW: OnceLock<Mutex<(bool, bool)>> = OnceLock::new();
+static SHOW_WINDOW_ID: OnceLock<Mutex<MenuId>> = OnceLock::new();
+static QUIT_WINDOW_ID: OnceLock<Mutex<MenuId>> = OnceLock::new();
 
 #[derive(PartialEq)]
 pub enum GuiTab {
@@ -88,11 +97,11 @@ pub struct JukeBoxGui {
     pub scmd_txs: Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
     pub us_tx: UnboundedSender<UpdateStatus>,
     pub us_rx: UnboundedReceiver<UpdateStatus>,
+    pub ae_rx: UnboundedReceiver<ActionError>,
 
     pub action_map: ActionMap,
 
     pub action_errors: VecDeque<ActionError>,
-    ae_rx: UnboundedReceiver<ActionError>,
 }
 impl eframe::App for JukeBoxGui {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
@@ -103,21 +112,39 @@ impl eframe::App for JukeBoxGui {
         // https://github.com/emilk/egui/issues/5113
         self.handle_serial_events();
 
-        if ctx.input(|i| i.viewport().close_requested()) {
-            // TODO: handle this as going to system tray
+        CentralPanel::default().show(ctx, |ui| self.ui(ui));
 
-            for (_k, tx) in self.scmd_txs.blocking_lock().iter() {
-                let _ = tx.send(SerialCommand::Disconnect);
-                // .expect(&format!("could not send disconnect signal to device {}", k));
+        let mut close_window = CLOSE_WINDOW.get().unwrap().blocking_lock();
+
+        while let Ok(_) = TrayIconEvent::receiver().try_recv() {}
+        let show_window_id = SHOW_WINDOW_ID.get().unwrap().blocking_lock();
+        let quit_window_id = QUIT_WINDOW_ID.get().unwrap().blocking_lock();
+        while let Ok(e) = MenuEvent::receiver().try_recv() {
+            if e.id == *show_window_id {
+                close_window.0 = false;
+            } else if e.id == *quit_window_id {
+                close_window.1 = true;
+                ctx.send_viewport_cmd(ViewportCommand::Close);
             }
-
-            self.thread_breaker
-                .store(true, std::sync::atomic::Ordering::Relaxed);
-
-            return;
         }
 
-        CentralPanel::default().show(ctx, |ui| self.ui(ui));
+        if ctx.input(|i| i.viewport().close_requested()) {
+            if close_window.1 {
+                for (_k, tx) in self.scmd_txs.blocking_lock().iter() {
+                    let _ = tx.send(SerialCommand::Disconnect);
+                    // .expect(&format!("could not send disconnect signal to device {}", k));
+                }
+
+                self.thread_breaker
+                    .store(true, std::sync::atomic::Ordering::Relaxed);
+                return;
+            } else {
+                ctx.send_viewport_cmd(ViewportCommand::CancelClose);
+                close_window.0 = true;
+            }
+        }
+
+        ctx.send_viewport_cmd(ViewportCommand::Visible(!close_window.0));
 
         // Call a new frame every frame, bypassing the limited updates.
         // NOTE: This is a bad idea, we should probably change this later
@@ -497,21 +524,33 @@ pub fn basic_gui() {
             .with_inner_size([960.0, 640.0])
             .with_maximize_button(false)
             .with_resizable(false)
-            .with_icon(
-                eframe::icon_data::from_png_bytes(
-                    &include_bytes!("../../../assets/applogo.png")[..],
-                )
-                .unwrap(),
-            ),
+            .with_icon(eframe::icon_data::from_png_bytes(&APP_ICON[..]).unwrap()),
         centered: true,
         ..Default::default()
     };
+
+    let _ = CLOSE_WINDOW.set(Mutex::new((false, false)));
+
+    #[cfg(target_os = "linux")]
+    std::thread::spawn(|| {
+        gtk::init().unwrap();
+        let _tray_icon = build_tray_icon();
+        gtk::main();
+    });
+
+    #[cfg(not(target_os = "linux"))]
+    let mut _tray_icon = std::rc::Rc::new(std::cell::RefCell::new(None));
+    #[cfg(not(target_os = "linux"))]
+    let tray_c = _tray_icon.clone();
 
     // TODO: error handle this
     let _ = eframe::run_native(
         "JukeBoxDesktop",
         native_options,
         Box::new(|cc| {
+            #[cfg(not(target_os = "linux"))]
+            tray_c.borrow_mut().replace(build_tray_icon());
+
             let ctx = &cc.egui_ctx;
             ctx.set_zoom_factor(2.0);
             let mut fonts = eframe::egui::FontDefinitions::default();
@@ -524,4 +563,38 @@ pub fn basic_gui() {
     );
 
     rt.shutdown_timeout(Duration::from_secs(1));
+}
+
+fn build_tray_icon() -> TrayIcon {
+    let icon = {
+        let image = image::load_from_memory(&APP_ICON[..])
+            .expect("failed to parse app icon for tray")
+            .into_rgba8();
+        let (w, h) = image.dimensions();
+        let rgba = image.into_raw();
+        tray_icon::Icon::from_rgba(rgba, w, h).expect("failed to load app icon for tray")
+    };
+
+    let tray_menu = Menu::new();
+    let show_i = MenuItem::new("Show", true, None);
+    let quit_i = MenuItem::new("Quit", true, None);
+
+    let _ = SHOW_WINDOW_ID.set(Mutex::new(show_i.id().clone()));
+    let _ = QUIT_WINDOW_ID.set(Mutex::new(quit_i.id().clone()));
+
+    let _ = tray_menu.append_items(&[
+        &PredefinedMenuItem::about(Some(&t!("window_title")), None),
+        &PredefinedMenuItem::separator(),
+        &show_i,
+        &PredefinedMenuItem::separator(),
+        &quit_i,
+    ]);
+
+    TrayIconBuilder::new()
+        .with_icon(icon)
+        .with_menu(Box::new(tray_menu))
+        .with_title(t!("window_title"))
+        .with_tooltip(t!("window_title"))
+        .build()
+        .unwrap()
 }

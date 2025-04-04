@@ -14,12 +14,13 @@ dirs = "6"
 
 eframe = "0.31"
 egui_extras = { version = "*", features = ["all_loaders"] }
-image = { version = "0.25", features = ["bmp"] }
+image = { version = "0.25", features = ["bmp", "png"] }
 egui-phosphor = "0.9"
 egui-theme-switch = "0.3"
 rfd = "0.15"
 open = "5.3"
 rust-i18n = "3"
+tray-icon = "0.20.0"
 
 rand = "0.9"
 
@@ -43,6 +44,7 @@ discord-rich-presence = { git = "https://github.com/NotQuiteApex/discord-rich-pr
 # rustls = "0.23"
 uuid = "1.16"
 downcast-rs = "2.0"
+gtk = "0.18.2"
 
 [build-dependencies]
 winresource = "0.1"
