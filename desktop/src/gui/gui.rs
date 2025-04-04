@@ -6,8 +6,8 @@ use std::sync::{atomic::AtomicBool, Arc};
 use std::time::{Duration, Instant};
 
 use eframe::egui::{
-    vec2, Align, CentralPanel, Context, Id, Layout, Modal, RichText, Ui, ViewportBuilder,
-    ViewportCommand,
+    vec2, Align, CentralPanel, Context, Id, Layout, Modal, RichText, Ui, UserAttentionType,
+    ViewportBuilder, ViewportCommand,
 };
 use eframe::Frame;
 use egui_extras::install_image_loaders;
@@ -110,7 +110,7 @@ impl eframe::App for JukeBoxGui {
 
         // TODO: move this to App::tick when available
         // https://github.com/emilk/egui/issues/5113
-        self.handle_serial_events();
+        self.handle_serial_events(ctx);
 
         CentralPanel::default().show(ctx, |ui| self.ui(ui));
 
@@ -313,10 +313,19 @@ impl JukeBoxGui {
         }
     }
 
-    fn handle_serial_events(&mut self) {
+    fn handle_serial_events(&mut self, ctx: &Context) {
         // recieve action error events
+        let mut bring_back_up = false;
         while let Ok(error) = self.ae_rx.try_recv() {
             self.action_errors.push_back(error);
+            bring_back_up = true;
+        }
+        if bring_back_up {
+            let mut close_window = CLOSE_WINDOW.get().unwrap().blocking_lock();
+            close_window.0 = false;
+            ctx.send_viewport_cmd(ViewportCommand::RequestUserAttention(
+                UserAttentionType::Informational,
+            ));
         }
 
         // recieve serial events
