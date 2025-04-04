@@ -60,6 +60,12 @@ pub struct DeviceConfig {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
+pub struct DeviceInfo {
+    pub device_type: DeviceType,
+    pub nickname: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct JukeBoxConfig {
     // Profile Name
     pub current_profile: String,
@@ -67,7 +73,7 @@ pub struct JukeBoxConfig {
     // Profile Name -> Device UID -> Device Config
 
     // Device UID -> (Device Type, Device Nickname)
-    pub devices: HashMap<String, (DeviceType, String)>,
+    pub devices: HashMap<String, DeviceInfo>,
 
     pub discord_oauth_access: Option<DiscordOauthAccess>,
     pub obs_access: Option<ObsAccess>,
@@ -123,9 +129,7 @@ impl JukeBoxConfig {
                     .unwrap()
                     .filter(|f| {
                         f.as_ref()
-                            .and_then(|f| {
-                                Ok(f.file_name().to_string_lossy().contains("config.json"))
-                            })
+                            .map(|f| f.file_name().to_string_lossy().contains("config.json"))
                             .unwrap_or(false)
                     })
                     .collect();

@@ -93,14 +93,13 @@ pub async fn action_task(
             .profiles
             .get(&c.current_profile)
             .and_then(|p| p.get(device_uid))
-            .and_then(|p| Some(p.clone()))
-            .and_then(|p| Some((p.key_map, p.rgb_profile)))
+            .map(|p| (p.key_map.clone(), p.rgb_profile.clone()))
             .unwrap_or((HashMap::new(), None));
 
         let device_type = c
             .devices
             .get(device_uid)
-            .and_then(|d| Some(d.0))
+            .map(|d| d.device_type)
             .unwrap()
             .clone();
 

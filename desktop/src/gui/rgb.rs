@@ -355,7 +355,7 @@ impl JukeBoxGui {
         if self
             .devices
             .get(device_uid)
-            .and_then(|d| Some(d.0))
+            .map(|d| d.device_info.device_type)
             .unwrap_or(DeviceType::Unknown)
             != DeviceType::KeyPad
         {
@@ -375,7 +375,7 @@ impl JukeBoxGui {
         if self
             .devices
             .get(device_uid)
-            .and_then(|d| Some(d.3))
+            .map(|d| d.connected)
             .unwrap_or(false)
         {
             let txs = self.scmd_txs.blocking_lock();

@@ -94,7 +94,9 @@ impl JukeBoxGui {
                         m.insert(
                             d.clone(),
                             DeviceConfig {
-                                key_map: self.action_map.default_action_config(t.0.into()),
+                                key_map: self
+                                    .action_map
+                                    .default_action_config(t.device_info.device_type.into()),
                                 rgb_profile: None,
                             },
                         );

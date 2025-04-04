@@ -629,12 +629,7 @@ impl Action for ObsSource {
         ui.label(t!("action.obs.options.select_scene"));
         let ir = ComboBox::from_id_salt("ObsSceneSelect")
             .width(200.0)
-            .selected_text(
-                self.scene
-                    .clone()
-                    .and_then(|s| Some(s.1))
-                    .unwrap_or("".into()),
-            )
+            .selected_text(self.scene.clone().map(|s| s.1).unwrap_or("".into()))
             .show_ui(ui, |ui| {
                 let scenes = OBS_SCENES.get().unwrap().blocking_lock().clone();
                 if let Some(scenes) = scenes {
@@ -674,12 +669,7 @@ impl Action for ObsSource {
             .add_enabled_ui(self.scene.is_some(), |ui| {
                 ComboBox::from_id_salt("ObsSourceSelect")
                     .width(200.0)
-                    .selected_text(
-                        self.source
-                            .clone()
-                            .and_then(|s| Some(s.1))
-                            .unwrap_or("".into()),
-                    )
+                    .selected_text(self.source.clone().map(|s| s.1).unwrap_or("".into()))
                     .show_ui(ui, |ui| {
                         let sources = OBS_SOURCES.get().unwrap().blocking_lock().clone();
                         if let Some(sources) = sources {
@@ -793,12 +783,7 @@ impl Action for ObsMute {
         ui.label(t!("action.obs.options.select_scene"));
         let ir = ComboBox::from_id_salt("ObsInputSelect")
             .width(200.0)
-            .selected_text(
-                self.input
-                    .clone()
-                    .and_then(|s| Some(s.1))
-                    .unwrap_or("".into()),
-            )
+            .selected_text(self.input.clone().map(|s| s.1).unwrap_or("".into()))
             .show_ui(ui, |ui| {
                 let inputs = OBS_INPUTS.get().unwrap().blocking_lock().clone();
                 if let Some(inputs) = inputs {
@@ -910,12 +895,7 @@ impl Action for ObsSceneSwitch {
         ui.label(t!("action.obs.options.select_scene"));
         let ir = ComboBox::from_id_salt("ObsSceneSelect")
             .width(200.0)
-            .selected_text(
-                self.scene
-                    .clone()
-                    .and_then(|s| Some(s.1))
-                    .unwrap_or("".into()),
-            )
+            .selected_text(self.scene.clone().map(|s| s.1).unwrap_or("".into()))
             .show_ui(ui, |ui| {
                 let scenes = OBS_SCENES.get().unwrap().blocking_lock().clone();
                 if let Some(scenes) = scenes {
@@ -1029,12 +1009,7 @@ impl Action for ObsPreviewSceneSwitch {
         ui.label(t!("action.obs.options.select_scene"));
         let ir = ComboBox::from_id_salt("ObsSceneSelect")
             .width(200.0)
-            .selected_text(
-                self.scene
-                    .clone()
-                    .and_then(|s| Some(s.1))
-                    .unwrap_or("".into()),
-            )
+            .selected_text(self.scene.clone().map(|s| s.1).unwrap_or("".into()))
             .show_ui(ui, |ui| {
                 let scenes = OBS_SCENES.get().unwrap().blocking_lock().clone();
                 if let Some(scenes) = scenes {

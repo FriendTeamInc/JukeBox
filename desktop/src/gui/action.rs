@@ -48,7 +48,7 @@ impl JukeBoxGui {
         if self
             .devices
             .get(device_uid)
-            .and_then(|d| Some(d.0))
+            .map(|d| d.device_info.device_type)
             .unwrap_or(DeviceType::Unknown)
             != DeviceType::KeyPad
         {
@@ -62,7 +62,7 @@ impl JukeBoxGui {
                 .get(&c.current_profile)
                 .and_then(|d| d.get(device_uid))
                 .and_then(|p| p.key_map.get(&self.editing_key))
-                .and_then(|a| Some(a.action.icon_source()))
+                .map(|a| a.action.icon_source())
         } {
             get_icon_bytes(icon)
         } else {
@@ -74,7 +74,7 @@ impl JukeBoxGui {
         if self
             .devices
             .get(device_uid)
-            .and_then(|d| Some(d.3))
+            .map(|d| d.connected)
             .unwrap_or(false)
         {
             let txs = self.scmd_txs.blocking_lock();
@@ -92,7 +92,7 @@ impl JukeBoxGui {
                 .get(&c.current_profile)
                 .and_then(|d| d.get(device_uid))
                 .and_then(|p| p.key_map.get(&self.editing_key))
-                .and_then(|a| Some(a.action.clone()))
+                .map(|a| a.action.clone())
         } {
             action
         } else {
@@ -104,7 +104,7 @@ impl JukeBoxGui {
         if self
             .devices
             .get(device_uid)
-            .and_then(|d| Some(d.3))
+            .map(|d| d.connected)
             .unwrap_or(false)
         {
             let txs = self.scmd_txs.blocking_lock();

@@ -28,7 +28,7 @@ use crate::actions::{
     meta::MetaNoAction,
     types::{Action, ActionMap},
 };
-use crate::config::{ActionIcon, DeviceConfig, JukeBoxConfig};
+use crate::config::{ActionIcon, DeviceConfig, DeviceInfo, JukeBoxConfig};
 use crate::input::InputKey;
 use crate::serial::{serial_task, SerialCommand, SerialEvent};
 use crate::splash::SPLASH_MESSAGES;
@@ -44,6 +44,13 @@ pub enum GuiTab {
     Updating,
 }
 
+pub struct DeviceInfoExt {
+    pub device_info: DeviceInfo,
+    pub firmware_version: String,
+    pub connected: bool,
+    pub device_inputs: HashSet<InputKey>,
+}
+
 pub struct JukeBoxGui {
     pub splash_timer: Instant,
     pub splash_index: usize,
@@ -52,7 +59,7 @@ pub struct JukeBoxGui {
 
     pub current_device: String,
     // Device UID -> (DeviceType, Device Nickname, Firmware Version, Connected?, Device Inputs)
-    pub devices: HashMap<String, (DeviceType, String, String, bool, HashSet<InputKey>)>,
+    pub devices: HashMap<String, DeviceInfoExt>,
 
     pub config: Arc<Mutex<JukeBoxConfig>>,
     pub config_enable_splash: bool,
@@ -122,18 +129,25 @@ impl JukeBoxGui {
     fn new() -> Self {
         let config = JukeBoxConfig::load();
         config.save(); // Immediately save, in case the config was the loaded default
-        let devices: HashMap<String, (DeviceType, String, String, bool, HashSet<InputKey>)> =
-            config
-                .devices
-                .clone()
-                .iter()
-                .map(|(k, v)| {
-                    (
-                        k.clone(),
-                        (v.0, v.1.clone(), "?".into(), false, HashSet::new()),
-                    )
-                })
-                .collect();
+        let devices: HashMap<String, DeviceInfoExt> = config
+            .devices
+            .clone()
+            .iter()
+            .map(|(k, v)| {
+                (
+                    k.clone(),
+                    DeviceInfoExt {
+                        device_info: DeviceInfo {
+                            device_type: v.device_type,
+                            nickname: v.nickname.clone(),
+                        },
+                        firmware_version: "?".into(),
+                        connected: false,
+                        device_inputs: HashSet::new(),
+                    },
+                )
+            })
+            .collect();
         let current_device = devices.keys().next().unwrap_or(&String::new()).into();
         let config_enable_splash = config.enable_splash;
         let config_always_save_on_exit = config.always_save_on_exit;
@@ -261,9 +275,8 @@ impl JukeBoxGui {
 
                     ui.add_space(10.0);
 
-                    // TODO: replace uid with device name in gui
                     let device = if let Some(d) = self.devices.get(&action.device_uid) {
-                        &d.1
+                        &d.device_info.nickname
                     } else {
                         &action.device_uid
                     };
@@ -304,7 +317,10 @@ impl JukeBoxGui {
                         if !conf.devices.contains_key(&device_uid) {
                             conf.devices.insert(
                                 device_uid.clone(),
-                                (device_type.into(), device_name.clone()),
+                                DeviceInfo {
+                                    device_type: device_type.into(),
+                                    nickname: device_name.clone(),
+                                },
                             );
                             for (_, v) in conf.profiles.iter_mut() {
                                 if !v.contains_key(&device_uid) {
@@ -323,35 +339,39 @@ impl JukeBoxGui {
                         conf.save();
                     }
 
-                    if self.current_device.is_empty() || self.devices.iter().all(|(_, d)| !d.3) {
+                    if self.current_device.is_empty()
+                        || self.devices.iter().all(|(_, d)| !d.connected)
+                    {
                         self.current_device = device_uid.clone();
                     }
 
                     if self.devices.contains_key(&device_uid) {
                         let v = self.devices.get_mut(&device_uid).unwrap();
-                        v.0 = device_type.into();
-                        // v.1 = device_name;
-                        v.2 = firmware_version;
-                        v.3 = true;
-                        v.4.clear();
+                        v.device_info.device_type = device_type.into();
+                        // v.device_info.nickname = device_name;
+                        v.firmware_version = firmware_version;
+                        v.connected = true;
+                        v.device_inputs.clear();
                     } else {
                         self.devices.insert(
                             device_uid.clone(),
-                            (
-                                device_type.into(),
-                                device_name,
-                                firmware_version,
-                                true,
-                                HashSet::new(),
-                            ),
+                            DeviceInfoExt {
+                                device_info: DeviceInfo {
+                                    device_type: device_type.into(),
+                                    nickname: device_name,
+                                },
+                                firmware_version: firmware_version,
+                                connected: true,
+                                device_inputs: HashSet::new(),
+                            },
                         );
                     }
                 }
                 SerialEvent::LostConnection { device_uid } => {
                     if self.devices.contains_key(&device_uid) {
                         let v = self.devices.get_mut(&device_uid).unwrap();
-                        v.3 = false;
-                        v.4.clear();
+                        v.connected = false;
+                        v.device_inputs.clear();
                     }
                     let mut scmd_txs = self.scmd_txs.blocking_lock();
                     scmd_txs.remove(&device_uid);
@@ -359,8 +379,8 @@ impl JukeBoxGui {
                 SerialEvent::Disconnected { device_uid } => {
                     if self.devices.contains_key(&device_uid) {
                         let v = self.devices.get_mut(&device_uid).unwrap();
-                        v.3 = false;
-                        v.4.clear();
+                        v.connected = false;
+                        v.device_inputs.clear();
                     }
                     let mut scmd_txs = self.scmd_txs.blocking_lock();
                     scmd_txs.remove(&device_uid);
@@ -368,7 +388,7 @@ impl JukeBoxGui {
                 SerialEvent::GetInputKeys { device_uid, keys } => {
                     if self.devices.contains_key(&device_uid) {
                         let v = self.devices.get_mut(&device_uid).unwrap();
-                        v.4 = keys;
+                        v.device_inputs = keys;
                     }
                 }
             }

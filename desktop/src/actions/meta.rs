@@ -192,7 +192,7 @@ impl Action for MetaCopyFromProfile {
             .get(&self.profile)
             .and_then(|p| p.get(device_uid))
             .and_then(|d| d.key_map.get(&input_key))
-            .and_then(|k| Some(k.clone()));
+            .map(|k| k.clone());
         if let Some(k) = k {
             k.action.on_press(device_uid, input_key, config).await
         } else {
@@ -220,7 +220,7 @@ impl Action for MetaCopyFromProfile {
             .get(&self.profile)
             .and_then(|p| p.get(device_uid))
             .and_then(|d| d.key_map.get(&input_key))
-            .and_then(|k| Some(k.clone()));
+            .map(|k| k.clone());
         if let Some(k) = k {
             k.action.on_release(device_uid, input_key, config).await
         } else {

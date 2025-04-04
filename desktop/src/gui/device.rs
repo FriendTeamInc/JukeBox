@@ -25,7 +25,7 @@ impl JukeBoxGui {
         }
 
         let device_type = if let Some(b) = devices.get(current_device) {
-            b.0
+            b.device_info.device_type
         } else {
             DeviceType::Unknown
         };
@@ -99,11 +99,7 @@ impl JukeBoxGui {
 
                 for k in keys.iter() {
                     for k in k.iter() {
-                        let ac = c
-                            .key_map
-                            .get(&k)
-                            .and_then(|c| Some(c.clone()))
-                            .unwrap_or_default();
+                        let ac = c.key_map.get(&k).map(|c| c.clone()).unwrap_or_default();
                         let a = ac.action;
                         let i = ac.icon;
 
@@ -121,7 +117,7 @@ impl JukeBoxGui {
                         };
 
                         let inputs = if let Some(s) = self.devices.get(&self.current_device) {
-                            s.4.clone()
+                            s.device_inputs.clone()
                         } else {
                             HashSet::new()
                         };
@@ -155,7 +151,7 @@ impl JukeBoxGui {
             ui.allocate_ui([324.0, 231.0].into(), |ui| {
                 ui.columns_const(|[c1, c2, c3]| {
                     let inputs = if let Some(s) = self.devices.get(&self.current_device) {
-                        s.4.clone()
+                        s.device_inputs.clone()
                     } else {
                         HashSet::new()
                     };
@@ -173,11 +169,7 @@ impl JukeBoxGui {
                     };
 
                     let mut i = |ui: &mut Ui, b| {
-                        let ac = c
-                            .key_map
-                            .get(&b)
-                            .and_then(|c| Some(c.clone()))
-                            .unwrap_or_default();
+                        let ac = c.key_map.get(&b).map(|c| c.clone()).unwrap_or_default();
                         let a = ac.action;
                         let i = ac.icon;
 
@@ -222,12 +214,12 @@ impl JukeBoxGui {
             ui.with_layout(Layout::bottom_up(Align::Center), |ui| {
                 let i = self.devices.get(&self.current_device).unwrap();
                 ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
-                    let s = match i.3 {
+                    let s = match i.connected {
                         true => RichText::new(phos::PLUGS_CONNECTED)
                             .color(Color32::from_rgb(63, 192, 63)),
                         false => RichText::new(phos::PLUGS).color(Color32::from_rgb(192, 63, 63)),
                     };
-                    ui.add_enabled_ui(i.3, |ui| {
+                    ui.add_enabled_ui(i.connected, |ui| {
                         if ui
                             .button(s)
                             .on_hover_text_at_pointer(t!("help.device.identify"))
@@ -258,7 +250,7 @@ impl JukeBoxGui {
                 });
                 ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
                     ui.label(
-                        RichText::new(format!("Firmware: {}", i.2))
+                        RichText::new(format!("Firmware: {}", i.firmware_version))
                             .monospace()
                             .size(5.0),
                     );
@@ -311,15 +303,15 @@ impl JukeBoxGui {
                     let contains = self
                         .devices
                         .iter()
-                        .any(|(_, d)| d.1 == self.device_name_entry);
+                        .any(|(_, d)| d.device_info.nickname == self.device_name_entry);
 
                     if !contains {
                         let d = self.devices.get_mut(&self.current_device).expect("");
-                        d.1 = self.device_name_entry.clone();
+                        d.device_info.nickname = self.device_name_entry.clone();
 
                         let mut conf = self.config.blocking_lock();
                         let c = conf.devices.get_mut(&self.current_device).expect("");
-                        c.1 = self.device_name_entry.clone();
+                        c.nickname = self.device_name_entry.clone();
                         conf.save();
                     }
                 }
@@ -328,13 +320,18 @@ impl JukeBoxGui {
                 }
             } else {
                 let current_name = if !self.current_device.is_empty() {
-                    &self.devices.get(&self.current_device).unwrap().1
+                    &self
+                        .devices
+                        .get(&self.current_device)
+                        .unwrap()
+                        .device_info
+                        .nickname
                 } else {
                     &String::new()
                 };
                 ui.add_enabled_ui(self.devices.iter().count() != 0, |ui| {
                     let mut devices = self.devices.iter().map(|v| v.clone()).collect::<Vec<_>>();
-                    devices.sort_by(|a, b| a.1 .1.cmp(&b.1 .1));
+                    devices.sort_by(|a, b| a.1.device_info.nickname.cmp(&b.1.device_info.nickname));
 
                     ComboBox::from_id_salt("DeviceSelect")
                         .selected_text(current_name.clone())
@@ -342,7 +339,10 @@ impl JukeBoxGui {
                         .truncate()
                         .show_ui(ui, |ui| {
                             for (k, v) in &devices {
-                                let u = ui.selectable_label(v.1 == *current_name, v.1.clone());
+                                let u = ui.selectable_label(
+                                    v.device_info.nickname == *current_name,
+                                    v.device_info.nickname.clone(),
+                                );
                                 if u.clicked() {
                                     self.current_device = k.to_string();
                                 }
@@ -363,8 +363,14 @@ impl JukeBoxGui {
                     .on_hover_text_at_pointer(t!("help.device.edit_name"));
                 if edit_btn.clicked() {
                     self.device_renaming = true;
-                    self.device_name_entry
-                        .replace_with(&self.devices.get(&self.current_device).unwrap().1);
+                    self.device_name_entry.replace_with(
+                        &self
+                            .devices
+                            .get(&self.current_device)
+                            .unwrap()
+                            .device_info
+                            .nickname,
+                    );
                 }
 
                 let delete_btn = ui
