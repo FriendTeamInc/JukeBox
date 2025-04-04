@@ -44,7 +44,7 @@ async fn update_device_configs(
 
         // set icons on screen
         for (k, a) in &keys {
-            let bytes = get_icon_bytes(a.action.icon_source());
+            let bytes = get_icon_bytes(a);
             let _ = tx.send(SerialCommand::SetScrIcon(k.slot(), bytes));
         }
 

@@ -48,7 +48,7 @@ impl Action for InputKeyboard {
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(), ActionError> {
-        // TODO
+        // TODO: trigger on test input from gui?
         Ok(())
     }
 
@@ -58,7 +58,7 @@ impl Action for InputKeyboard {
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(), ActionError> {
-        // TODO
+        // TODO: trigger on test input from gui?
         Ok(())
     }
 
@@ -140,7 +140,7 @@ impl Action for InputMouse {
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(), ActionError> {
-        // TODO
+        // TODO: trigger on test input from gui?
         Ok(())
     }
 
@@ -150,7 +150,7 @@ impl Action for InputMouse {
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(), ActionError> {
-        // TODO
+        // TODO: trigger on test input from gui?
         Ok(())
     }
 

@@ -44,6 +44,7 @@ discord-rich-presence = { git = "https://github.com/NotQuiteApex/discord-rich-pr
 # rustls = "0.23"
 uuid = "1.16"
 downcast-rs = "2.0"
+sha1_smol = "1.0.1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = { version = "0.18.2" }

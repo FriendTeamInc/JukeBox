@@ -45,8 +45,14 @@ help:
 
   action:
     test_input: "Test Action"
-    image_icon: "Choose Image Icon"
-    glyph_icon: "Choose Glyph Icon"
+    image_icon: "Choose Custom Icon"
+    reset_icon: "Reset Icon"
+
+    err:
+      not_an_image: "Chosen file is not an image."
+      wrong_resolution: "Image has incorrect resolution. Must be 32 x 32."
+      mkdir_fail: "Failed to create icon cache directory."
+      write_fail: "Failed to write icon to icon cache directory."
 
     modal_title: "Action Error!"
     modal_device: "Device: %{device}"

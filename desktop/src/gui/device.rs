@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use eframe::egui::{
     vec2, Align, Button, Color32, ComboBox, Direction, Grid, Image, ImageSource, Layout, RichText,
-    TextBuffer, TextEdit, Ui,
+    TextBuffer, TextEdit, TextureFilter, TextureOptions, TextureWrapMode, Ui,
 };
 use egui_phosphor::regular as phos;
 use jukebox_util::color::RgbProfile;
@@ -105,7 +105,14 @@ impl JukeBoxGui {
 
                         let mut b = match i {
                             ActionIcon::ImageIcon(s) => {
-                                let i = Image::new(ImageSource::Uri(s.into()))
+                                let p = String::new() + "file://" + &s;
+                                let i = Image::new(ImageSource::Uri(p.into()))
+                                    .texture_options(TextureOptions {
+                                        magnification: TextureFilter::Nearest,
+                                        minification: TextureFilter::Nearest,
+                                        wrap_mode: TextureWrapMode::ClampToEdge,
+                                        mipmap_mode: None,
+                                    })
                                     .corner_radius(2.0)
                                     .max_size(vec2(64.0, 64.0));
                                 Button::image(i)
@@ -175,7 +182,14 @@ impl JukeBoxGui {
 
                         let mut p = match i {
                             ActionIcon::ImageIcon(s) => {
-                                let i = Image::new(ImageSource::Uri(s.into()))
+                                let p = String::new() + "file://" + &s;
+                                let i = Image::new(ImageSource::Uri(p.into()))
+                                    .texture_options(TextureOptions {
+                                        magnification: TextureFilter::Nearest,
+                                        minification: TextureFilter::Nearest,
+                                        wrap_mode: TextureWrapMode::ClampToEdge,
+                                        mipmap_mode: None,
+                                    })
                                     .corner_radius(2.0)
                                     .max_size(vec2(64.0, 64.0));
                                 Button::image(i)

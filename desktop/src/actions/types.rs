@@ -74,7 +74,7 @@ pub trait Action: Sync + Send + DynClone + Downcast + DowncastSync + DowncastSen
     fn icon(&self) -> Image {
         Image::new(self.icon_source())
             .texture_options(TextureOptions {
-                magnification: TextureFilter::Nearest, // TODO: change to nearest
+                magnification: TextureFilter::Nearest,
                 minification: TextureFilter::Nearest,
                 wrap_mode: TextureWrapMode::ClampToEdge,
                 mipmap_mode: None,
@@ -174,13 +174,20 @@ impl ActionMap {
     }
 }
 
-pub fn get_icon_bytes(icon_source: ImageSource) -> [u8; 32 * 32 * 2] {
-    let b = match icon_source {
-        ImageSource::Uri(_) => panic!(),
-        ImageSource::Texture(_) => panic!(),
-        ImageSource::Bytes { uri: _, bytes } => match bytes {
-            Bytes::Static(items) => items,
-            Bytes::Shared(items) => &items.clone(),
+pub fn get_icon_bytes(action_config: &ActionConfig) -> [u8; 32 * 32 * 2] {
+    let b = match &action_config.icon {
+        ActionIcon::ImageIcon(i) => {
+            // TODO: use fallback in cases where we can't read icon?
+            // TODO: cache read data in memory so we're not constantly reading the same data
+            std::fs::read(i).expect("failed to read icon data")
+        }
+        ActionIcon::DefaultActionIcon => match action_config.action.icon_source() {
+            ImageSource::Uri(_) => panic!(),
+            ImageSource::Texture(_) => panic!(),
+            ImageSource::Bytes { uri: _, bytes } => match bytes {
+                Bytes::Static(items) => items.to_vec(),
+                Bytes::Shared(items) => items.to_vec(),
+            },
         },
     };
 

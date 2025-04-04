@@ -27,7 +27,7 @@ pub struct ObsAccess {
     pub password: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub enum ActionIcon {
     ImageIcon(String),
     DefaultActionIcon,
@@ -101,6 +101,12 @@ impl JukeBoxConfig {
         let mut p = dirs::config_dir().expect("failed to find config directory");
         p.push("JukeBoxDesktop");
         create_dir_all(&p).expect("failed to create config directory");
+        p
+    }
+
+    pub fn get_icon_dir() -> PathBuf {
+        let mut p = Self::get_dir();
+        p.push("icons");
         p
     }
 
