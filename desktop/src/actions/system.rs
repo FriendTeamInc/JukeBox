@@ -35,11 +35,108 @@ enum AudioCommand {
 }
 
 #[cfg(target_os = "linux")]
-use pactl::controllers::{DeviceControl, SinkController, SourceController};
+use pactl::controllers::{types::DeviceInfo, DeviceControl, SinkController, SourceController};
+#[cfg(target_os = "windows")]
+use windows::Win32::{
+    Devices::FunctionDiscovery::*,
+    Media::{
+        Audio::{Endpoints::IAudioEndpointVolume, *},
+        KernelStreaming::GUID_NULL,
+    },
+    System::{Com::*, Variant::VT_EMPTY},
+};
 
 static SYSTEM_AUDIO_CMD_TX: OnceLock<UnboundedSender<AudioCommand>> = OnceLock::new();
 static SYSTEM_SOURCES: OnceLock<Mutex<Option<Vec<String>>>> = OnceLock::new();
 static SYSTEM_SINKS: OnceLock<Mutex<Option<Vec<String>>>> = OnceLock::new();
+
+#[cfg(target_os = "linux")]
+fn get_devices(devices: Vec<DeviceInfo>) -> Vec<String> {
+    let mut d = Vec::new();
+
+    for device in devices {
+        d.push(device.description.unwrap());
+    }
+
+    d
+}
+
+#[cfg(target_os = "windows")]
+fn get_devices(dir: EDataFlow) -> Vec<String> {
+    unsafe {
+        let device_enumerator: IMMDeviceEnumerator =
+            CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).unwrap();
+
+        device_enumerator
+            .EnumAudioEndpoints(dir, DEVICE_STATE_ACTIVE)
+            .unwrap()
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn get_device_names(dir: EDataFlow) -> Vec<String> {
+    unsafe {
+        let devices = get_devices(dir);
+
+        let mut output = Vec::new();
+        let count = devices.GetCount().unwrap();
+        for i in 0..count {
+            let item = devices.Item(i).unwrap();
+
+            let properties = item.OpenPropertyStore(STGM_READ).unwrap();
+            let friendly_name = properties.GetValue(&PKEY_Device_FriendlyName).unwrap();
+            assert_ne!(friendly_name.vt(), VT_EMPTY);
+            let name = friendly_name
+                .Anonymous
+                .Anonymous
+                .Anonymous
+                .pwszVal
+                .to_string()
+                .unwrap();
+
+            // let endpoint: IAudioEndpointVolume = item.Activate(CLSCTX_ALL, None)?;
+
+            output.push(name);
+        }
+
+        output
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn adjust_device_volume(dir: EDataFlow, device_name: String, adjust: i8) {
+    unsafe {
+        let devices = get_devices(dir);
+
+        let count = devices.GetCount().unwrap();
+        for i in 0..count {
+            let item = devices.Item(i).unwrap();
+
+            let properties = item.OpenPropertyStore(STGM_READ).unwrap();
+            let friendly_name = properties.GetValue(&PKEY_Device_FriendlyName).unwrap();
+            assert_ne!(friendly_name.vt(), VT_EMPTY);
+            let name = friendly_name
+                .Anonymous
+                .Anonymous
+                .Anonymous
+                .pwszVal
+                .to_string()
+                .unwrap();
+
+            if name == device_name {
+                let endpoint: IAudioEndpointVolume = item.Activate(CLSCTX_ALL, None).unwrap();
+
+                let current_volume = endpoint.GetMasterVolumeLevelScalar().unwrap();
+                let new_volume = current_volume + (adjust as f32) / 100.0;
+                endpoint
+                    .SetMasterVolumeLevelScalar(new_volume, GUID_NULL)
+                    .unwrap();
+
+                break;
+            }
+        }
+    }
+}
 
 fn system_audio_control_loop(mut cmd_rx: UnboundedReceiver<AudioCommand>) {
     #[cfg(target_os = "linux")]
@@ -51,51 +148,37 @@ fn system_audio_control_loop(mut cmd_rx: UnboundedReceiver<AudioCommand>) {
     };
 
     #[cfg(target_os = "windows")]
-    todo!();
+    unsafe {
+        let _ = CoInitializeEx(None, COINIT_SPEED_OVER_MEMORY);
+    }
 
     while let Some(cmd) = cmd_rx.blocking_recv() {
         match cmd {
             AudioCommand::GetInputDevices => {
                 #[cfg(target_os = "linux")]
-                {
-                    let mut devices = Vec::new();
-
-                    let sources = source_controller
+                let devices = get_devices(
+                    source_controller
                         .list_devices()
-                        .expect("failed to get list of source devices");
-
-                    for s in sources {
-                        devices.push(s.description.unwrap_or_default());
-                    }
-
-                    let mut system_sources = SYSTEM_SOURCES.get().unwrap().blocking_lock();
-                    *system_sources = Some(devices);
-                }
+                        .expect("failed to get list of source devices"),
+                );
                 #[cfg(target_os = "windows")]
-                {
-                    todo!()
-                }
+                let devices = get_device_names(eCapture);
+
+                let mut system_sources = SYSTEM_SOURCES.get().unwrap().blocking_lock();
+                *system_sources = Some(devices);
             }
             AudioCommand::GetOutputDevices => {
                 #[cfg(target_os = "linux")]
-                {
-                    let mut devices = Vec::new();
-
-                    let sinks = sink_controller
+                let devices = get_devices(
+                    sink_controller
                         .list_devices()
-                        .expect("failed to get list of sink devices");
-
-                    for s in sinks {
-                        devices.push(s.description.unwrap_or_default());
-                    }
-
-                    let mut system_sinks = SYSTEM_SINKS.get().unwrap().blocking_lock();
-                    *system_sinks = Some(devices);
-                }
+                        .expect("failed to get list of sink devices"),
+                );
                 #[cfg(target_os = "windows")]
-                {
-                    todo!()
-                }
+                let devices = get_device_names(eRender);
+
+                let mut system_sinks = SYSTEM_SINKS.get().unwrap().blocking_lock();
+                *system_sinks = Some(devices);
             }
             AudioCommand::AdjustInputDevice(source, adjust) => {
                 #[cfg(target_os = "linux")]
@@ -108,25 +191,20 @@ fn system_audio_control_loop(mut cmd_rx: UnboundedReceiver<AudioCommand>) {
                         if s.description.unwrap_or_default() == *source {
                             let vol = (adjust as f64) / 100.0;
                             if vol > 0.0 {
-                                source_controller.increase_device_volume_by_percent(
-                                    s.index,
-                                    (adjust as f64) / 100.0,
-                                );
+                                source_controller.increase_device_volume_by_percent(s.index, vol);
                             } else if vol < 0.0 {
-                                source_controller.decrease_device_volume_by_percent(
-                                    s.index,
-                                    -(adjust as f64) / 100.0,
-                                );
+                                source_controller.decrease_device_volume_by_percent(s.index, -vol);
                             }
+                            break;
                         }
                     }
                 }
                 #[cfg(target_os = "windows")]
                 {
-                    todo!()
+                    adjust_device_volume(eCapture, source, adjust);
                 }
             }
-            AudioCommand::AdjustOutputDevice(source, adjust) => {
+            AudioCommand::AdjustOutputDevice(sink, adjust) => {
                 #[cfg(target_os = "linux")]
                 {
                     let sinks = sink_controller
@@ -134,25 +212,20 @@ fn system_audio_control_loop(mut cmd_rx: UnboundedReceiver<AudioCommand>) {
                         .expect("failed to get list of sink devices");
 
                     for s in sinks {
-                        if s.description.unwrap_or_default() == *source {
+                        if s.description.unwrap_or_default() == *sink {
                             let vol = (adjust as f64) / 100.0;
                             if vol > 0.0 {
-                                sink_controller.increase_device_volume_by_percent(
-                                    s.index,
-                                    (adjust as f64) / 100.0,
-                                );
+                                sink_controller.increase_device_volume_by_percent(s.index, vol);
                             } else if vol < 0.0 {
-                                sink_controller.decrease_device_volume_by_percent(
-                                    s.index,
-                                    -(adjust as f64) / 100.0,
-                                );
+                                sink_controller.decrease_device_volume_by_percent(s.index, -vol);
                             }
+                            break;
                         }
                     }
                 }
                 #[cfg(target_os = "windows")]
                 {
-                    todo!()
+                    adjust_device_volume(eRender, sink, adjust);
                 }
             }
         }
