@@ -1,6 +1,10 @@
 // Types of actions and their associations
 
-use std::{collections::HashMap, fmt, sync::Arc};
+use std::{
+    collections::HashMap,
+    fmt,
+    sync::{Arc, OnceLock},
+};
 
 use downcast_rs::{impl_downcast, Downcast, DowncastSend, DowncastSync};
 use dyn_clone::{clone_trait_object, DynClone};
@@ -18,6 +22,8 @@ use crate::{
 
 #[cfg(feature = "discord")]
 use crate::actions::discord::*;
+
+static ICON_CACHE: OnceLock<Mutex<HashMap<String, Vec<u8>>>> = OnceLock::new();
 
 #[derive(Debug, Clone)]
 pub struct ActionError {
@@ -177,9 +183,19 @@ impl ActionMap {
 pub fn get_icon_bytes(action_config: &ActionConfig) -> [u8; 32 * 32 * 2] {
     let b = match &action_config.icon {
         ActionIcon::ImageIcon(i) => {
-            // TODO: use fallback in cases where we can't read icon?
-            // TODO: cache read data in memory so we're not constantly reading the same data
-            std::fs::read(i).expect("failed to read icon data")
+            let mut icon_cache = ICON_CACHE
+                .get_or_init(|| Mutex::new(HashMap::new()))
+                .blocking_lock();
+
+            if !icon_cache.contains_key(i) {
+                // TODO: use fallback in cases where we can't read icon?
+                icon_cache.insert(
+                    i.into(),
+                    std::fs::read(i).expect("failed to read icon data"),
+                );
+            }
+
+            icon_cache.get(i).unwrap().clone()
         }
         ActionIcon::DefaultActionIcon => match action_config.action.icon_source() {
             ImageSource::Uri(_) => panic!(),

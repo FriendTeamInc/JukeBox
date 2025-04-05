@@ -65,8 +65,6 @@ async fn update_device_configs(
                 ))
             };
         }
-
-        // TODO: set hardware inputs here
     }
 }
 

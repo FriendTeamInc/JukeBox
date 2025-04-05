@@ -368,14 +368,15 @@ impl JukeBoxGui {
         let mut p = JukeBoxConfig::get_icon_dir();
         p.push(s);
 
-        // TODO: check if file exists before writing
-        std::fs::write(p.clone(), data).map_err(|_| {
-            ActionError::new(
-                self.current_device.clone(),
-                self.editing_key,
-                t!("help.action.err.write_fail"),
-            )
-        })?;
+        if std::fs::metadata(p.clone()).is_err() {
+            std::fs::write(p.clone(), data).map_err(|_| {
+                ActionError::new(
+                    self.current_device.clone(),
+                    self.editing_key,
+                    t!("help.action.err.write_fail"),
+                )
+            })?;
+        }
 
         Ok(p)
     }
