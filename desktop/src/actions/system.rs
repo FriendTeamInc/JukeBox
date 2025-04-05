@@ -88,6 +88,38 @@ fn list_sources() -> Vec<String> {
     }
 }
 
+fn adjust_source(source: String, adjust: i8) {
+    #[cfg(target_os = "linux")]
+    {
+        #[allow(static_mut_refs)]
+        let mut source_controller = unsafe { SOURCE_CONTROLLER.blocking_lock() };
+        if source_controller.is_none() {
+            *source_controller =
+                Some(SourceController::create().expect("failed to create source controller"));
+        }
+
+        if let Some(handler) = source_controller.as_mut() {
+            let sources = handler
+                .list_devices()
+                .expect("failed to get list of source devices");
+
+            for s in sources {
+                if s.description.unwrap_or_default() == *source {
+                    let vol = (adjust as f64) / 100.0;
+                    if vol > 0.0 {
+                        handler.increase_device_volume_by_percent(s.index, (adjust as f64) / 100.0);
+                    } else if vol < 0.0 {
+                        handler
+                            .decrease_device_volume_by_percent(s.index, -(adjust as f64) / 100.0);
+                    }
+                }
+            }
+        }
+    }
+    #[cfg(target_os = "windows")]
+    {}
+}
+
 fn list_sinks() -> Vec<String> {
     #[cfg(target_os = "linux")]
     {
@@ -115,6 +147,38 @@ fn list_sinks() -> Vec<String> {
     {
         Vec::new()
     }
+}
+
+fn adjust_sink(source: String, adjust: i8) {
+    #[cfg(target_os = "linux")]
+    {
+        #[allow(static_mut_refs)]
+        let mut sink_controller = unsafe { SINK_CONTROLLER.blocking_lock() };
+        if sink_controller.is_none() {
+            *sink_controller =
+                Some(SinkController::create().expect("failed to create sink controller"));
+        }
+
+        if let Some(handler) = sink_controller.as_mut() {
+            let sinks = handler
+                .list_devices()
+                .expect("failed to get list of sink devices");
+
+            for s in sinks {
+                if s.description.unwrap_or_default() == *source {
+                    let vol = (adjust as f64) / 100.0;
+                    if vol > 0.0 {
+                        handler.increase_device_volume_by_percent(s.index, (adjust as f64) / 100.0);
+                    } else if vol < 0.0 {
+                        handler
+                            .decrease_device_volume_by_percent(s.index, -(adjust as f64) / 100.0);
+                    }
+                }
+            }
+        }
+    }
+    #[cfg(target_os = "windows")]
+    {}
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
@@ -267,7 +331,13 @@ impl Action for SystemSndInCtrl {
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(), ActionError> {
-        // TODO
+        // TODO: error handling
+        if let Some(input_device) = self.input_device.clone() {
+            let adjust = self.vol_adjust;
+            spawn_blocking(move || {
+                adjust_source(input_device, adjust);
+            });
+        }
         Ok(())
     }
 
@@ -352,7 +422,13 @@ impl Action for SystemSndOutCtrl {
         _input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(), ActionError> {
-        // TODO
+        // TODO: error handling
+        if let Some(output_device) = self.output_device.clone() {
+            let adjust = self.vol_adjust;
+            spawn_blocking(move || {
+                adjust_sink(output_device, adjust);
+            });
+        }
         Ok(())
     }
 
