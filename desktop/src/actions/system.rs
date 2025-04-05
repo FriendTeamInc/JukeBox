@@ -62,7 +62,7 @@ fn get_devices(devices: Vec<DeviceInfo>) -> Vec<String> {
 }
 
 #[cfg(target_os = "windows")]
-fn get_devices(dir: EDataFlow) -> Vec<String> {
+fn get_devices(dir: EDataFlow) -> IMMDeviceCollection {
     unsafe {
         let device_enumerator: IMMDeviceEnumerator =
             CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL).unwrap();
