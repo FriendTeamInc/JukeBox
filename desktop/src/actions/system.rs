@@ -129,7 +129,7 @@ fn adjust_device_volume(dir: EDataFlow, device_name: String, adjust: i8) {
                 let current_volume = endpoint.GetMasterVolumeLevelScalar().unwrap();
                 let new_volume = current_volume + (adjust as f32) / 100.0;
                 endpoint
-                    .SetMasterVolumeLevelScalar(new_volume, GUID_NULL)
+                    .SetMasterVolumeLevelScalar(new_volume, &GUID_NULL)
                     .unwrap();
 
                 break;
