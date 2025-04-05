@@ -44,6 +44,15 @@ static SYSTEM_GET_SINKS: OnceLock<AtomicBool> = OnceLock::new();
 
 #[rustfmt::skip]
 pub fn system_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
+    #[cfg(target_os = "linux")]
+    #[allow(static_mut_refs)]
+    {
+        let mut source_controller = unsafe { SOURCE_CONTROLLER.blocking_lock() };
+        *source_controller = Some(SourceController::create().expect("failed to create source controller"));
+        let mut sink_controller = unsafe { SINK_CONTROLLER.blocking_lock() };
+        *sink_controller = Some(SinkController::create().expect("failed to create sink controller"));
+    }
+
     SYSTEM_GET_SOURCES.get_or_init(|| true.into());
     SYSTEM_SOURCES.get_or_init(|| Mutex::new(None));
     SYSTEM_GET_SINKS.get_or_init(|| true.into());
@@ -63,15 +72,10 @@ pub fn system_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) 
 fn list_sources() -> Vec<String> {
     #[cfg(target_os = "linux")]
     {
-        #[allow(static_mut_refs)]
-        let mut source_controller = unsafe { SOURCE_CONTROLLER.blocking_lock() };
-        if source_controller.is_none() {
-            *source_controller =
-                Some(SourceController::create().expect("failed to create source controller"));
-        }
-
         let mut devices = Vec::new();
-        if let Some(handler) = source_controller.as_mut() {
+
+        #[allow(static_mut_refs)]
+        if let Some(handler) = unsafe { SOURCE_CONTROLLER.blocking_lock().as_mut() } {
             let sinks = handler
                 .list_devices()
                 .expect("failed to get list of source devices");
@@ -93,13 +97,7 @@ fn adjust_source(source: String, adjust: i8) {
     #[cfg(target_os = "linux")]
     {
         #[allow(static_mut_refs)]
-        let mut source_controller = unsafe { SOURCE_CONTROLLER.blocking_lock() };
-        if source_controller.is_none() {
-            *source_controller =
-                Some(SourceController::create().expect("failed to create source controller"));
-        }
-
-        if let Some(handler) = source_controller.as_mut() {
+        if let Some(handler) = unsafe { SOURCE_CONTROLLER.blocking_lock().as_mut() } {
             let sources = handler
                 .list_devices()
                 .expect("failed to get list of source devices");
@@ -126,15 +124,10 @@ fn adjust_source(source: String, adjust: i8) {
 fn list_sinks() -> Vec<String> {
     #[cfg(target_os = "linux")]
     {
-        #[allow(static_mut_refs)]
-        let mut sink_controller = unsafe { SINK_CONTROLLER.blocking_lock() };
-        if sink_controller.is_none() {
-            *sink_controller =
-                Some(SinkController::create().expect("failed to create sink controller"));
-        }
-
         let mut devices = Vec::new();
-        if let Some(handler) = sink_controller.as_mut() {
+
+        #[allow(static_mut_refs)]
+        if let Some(handler) = unsafe { SINK_CONTROLLER.blocking_lock().as_mut() } {
             let sinks = handler
                 .list_devices()
                 .expect("failed to get list of sink devices");
@@ -156,13 +149,7 @@ fn adjust_sink(source: String, adjust: i8) {
     #[cfg(target_os = "linux")]
     {
         #[allow(static_mut_refs)]
-        let mut sink_controller = unsafe { SINK_CONTROLLER.blocking_lock() };
-        if sink_controller.is_none() {
-            *sink_controller =
-                Some(SinkController::create().expect("failed to create sink controller"));
-        }
-
-        if let Some(handler) = sink_controller.as_mut() {
+        if let Some(handler) = unsafe { SINK_CONTROLLER.blocking_lock().as_mut() } {
             let sinks = handler
                 .list_devices()
                 .expect("failed to get list of sink devices");
