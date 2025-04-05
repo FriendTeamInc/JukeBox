@@ -6,6 +6,7 @@ use eframe::egui::{include_image, ComboBox, ImageSource, Slider, TextWrapMode, U
 use egui_phosphor::regular as phos;
 use rfd::FileDialog;
 use serde::{Deserialize, Serialize};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::{sync::Mutex, task::spawn_blocking};
 
 use crate::{config::JukeBoxConfig, input::InputKey};
@@ -26,37 +27,154 @@ const ICON_INPUT_CONTROL: ImageSource =
 const ICON_OUTPUT_CONTROL: ImageSource =
     include_image!("../../../assets/action-icons/system-outputcontrol.bmp");
 
-#[cfg(target_os = "linux")]
-use pactl::controllers::DeviceControl;
-#[cfg(target_os = "linux")]
-use pactl::controllers::SinkController;
-#[cfg(target_os = "linux")]
-use pactl::controllers::SourceController;
-#[cfg(target_os = "linux")]
-static mut SOURCE_CONTROLLER: Mutex<Option<SourceController>> = Mutex::const_new(None);
-#[cfg(target_os = "linux")]
-static mut SINK_CONTROLLER: Mutex<Option<SinkController>> = Mutex::const_new(None);
+enum AudioCommand {
+    GetInputDevices,
+    GetOutputDevices,
+    AdjustInputDevice(String, i8),
+    AdjustOutputDevice(String, i8),
+}
 
+#[cfg(target_os = "linux")]
+use pactl::controllers::{DeviceControl, SinkController, SourceController};
+
+static SYSTEM_AUDIO_CMD_TX: OnceLock<UnboundedSender<AudioCommand>> = OnceLock::new();
 static SYSTEM_SOURCES: OnceLock<Mutex<Option<Vec<String>>>> = OnceLock::new();
 static SYSTEM_GET_SOURCES: OnceLock<AtomicBool> = OnceLock::new();
 static SYSTEM_SINKS: OnceLock<Mutex<Option<Vec<String>>>> = OnceLock::new();
 static SYSTEM_GET_SINKS: OnceLock<AtomicBool> = OnceLock::new();
 
+fn system_audio_control_loop(mut cmd_rx: UnboundedReceiver<AudioCommand>) {
+    #[cfg(target_os = "linux")]
+    let (mut source_controller, mut sink_controller) = {
+        (
+            SourceController::create().expect("failed to create source controller"),
+            SinkController::create().expect("failed to create sink controller"),
+        )
+    };
+
+    #[cfg(target_os = "windows")]
+    todo!();
+
+    while let Some(cmd) = cmd_rx.blocking_recv() {
+        match cmd {
+            AudioCommand::GetInputDevices => {
+                #[cfg(target_os = "linux")]
+                {
+                    let mut devices = Vec::new();
+
+                    let sources = source_controller
+                        .list_devices()
+                        .expect("failed to get list of source devices");
+
+                    for s in sources {
+                        devices.push(s.description.unwrap_or_default());
+                    }
+
+                    let mut system_sources = SYSTEM_SOURCES.get().unwrap().blocking_lock();
+                    *system_sources = Some(devices);
+                }
+                #[cfg(target_os = "windows")]
+                {
+                    todo!()
+                }
+            }
+            AudioCommand::GetOutputDevices => {
+                #[cfg(target_os = "linux")]
+                {
+                    let mut devices = Vec::new();
+
+                    let sinks = sink_controller
+                        .list_devices()
+                        .expect("failed to get list of sink devices");
+
+                    for s in sinks {
+                        devices.push(s.description.unwrap_or_default());
+                    }
+
+                    let mut system_sinks = SYSTEM_SINKS.get().unwrap().blocking_lock();
+                    *system_sinks = Some(devices);
+                }
+                #[cfg(target_os = "windows")]
+                {
+                    todo!()
+                }
+            }
+            AudioCommand::AdjustInputDevice(source, adjust) => {
+                #[cfg(target_os = "linux")]
+                {
+                    let sources = source_controller
+                        .list_devices()
+                        .expect("failed to get list of source devices");
+
+                    for s in sources {
+                        if s.description.unwrap_or_default() == *source {
+                            let vol = (adjust as f64) / 100.0;
+                            if vol > 0.0 {
+                                source_controller.increase_device_volume_by_percent(
+                                    s.index,
+                                    (adjust as f64) / 100.0,
+                                );
+                            } else if vol < 0.0 {
+                                source_controller.decrease_device_volume_by_percent(
+                                    s.index,
+                                    -(adjust as f64) / 100.0,
+                                );
+                            }
+                        }
+                    }
+                }
+                #[cfg(target_os = "windows")]
+                {
+                    todo!()
+                }
+            }
+            AudioCommand::AdjustOutputDevice(source, adjust) => {
+                #[cfg(target_os = "linux")]
+                {
+                    let sinks = sink_controller
+                        .list_devices()
+                        .expect("failed to get list of sink devices");
+
+                    for s in sinks {
+                        if s.description.unwrap_or_default() == *source {
+                            let vol = (adjust as f64) / 100.0;
+                            if vol > 0.0 {
+                                sink_controller.increase_device_volume_by_percent(
+                                    s.index,
+                                    (adjust as f64) / 100.0,
+                                );
+                            } else if vol < 0.0 {
+                                sink_controller.decrease_device_volume_by_percent(
+                                    s.index,
+                                    -(adjust as f64) / 100.0,
+                                );
+                            }
+                        }
+                    }
+                }
+                #[cfg(target_os = "windows")]
+                {
+                    todo!()
+                }
+            }
+        }
+    }
+}
+
 #[rustfmt::skip]
 pub fn system_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
-    #[cfg(target_os = "linux")]
-    #[allow(static_mut_refs)]
-    {
-        let mut source_controller = unsafe { SOURCE_CONTROLLER.blocking_lock() };
-        *source_controller = Some(SourceController::create().expect("failed to create source controller"));
-        let mut sink_controller = unsafe { SINK_CONTROLLER.blocking_lock() };
-        *sink_controller = Some(SinkController::create().expect("failed to create sink controller"));
-    }
-
+    let (cmd_tx, cmd_rx) = unbounded_channel();
+    SYSTEM_AUDIO_CMD_TX.get_or_init(|| cmd_tx);
     SYSTEM_GET_SOURCES.get_or_init(|| true.into());
     SYSTEM_SOURCES.get_or_init(|| Mutex::new(None));
     SYSTEM_GET_SINKS.get_or_init(|| true.into());
     SYSTEM_SINKS.get_or_init(|| Mutex::new(None));
+
+    tokio::spawn(async move {
+        spawn_blocking(move || {
+            system_audio_control_loop(cmd_rx);
+        });
+    });
 
     (
         t!("action.system.title", icon = phos::DESKTOP_TOWER).into(),
@@ -67,110 +185,6 @@ pub fn system_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) 
             (AID_SYSTEM_SND_OUT_CTRL.into(), Box::new(SystemSndOutCtrl::default()), t!("action.system.snd_out_ctrl.title").into()),
         ],
     )
-}
-
-fn list_sources() -> Vec<String> {
-    #[cfg(target_os = "linux")]
-    {
-        let mut devices = Vec::new();
-
-        #[allow(static_mut_refs)]
-        if let Some(handler) = unsafe { SOURCE_CONTROLLER.blocking_lock().as_mut() } {
-            let sinks = handler
-                .list_devices()
-                .expect("failed to get list of source devices");
-
-            for s in sinks {
-                devices.push(s.description.unwrap_or_default());
-            }
-        }
-
-        devices
-    }
-    #[cfg(target_os = "windows")]
-    {
-        todo!()
-    }
-}
-
-fn adjust_source(source: String, adjust: i8) {
-    #[cfg(target_os = "linux")]
-    {
-        #[allow(static_mut_refs)]
-        if let Some(handler) = unsafe { SOURCE_CONTROLLER.blocking_lock().as_mut() } {
-            let sources = handler
-                .list_devices()
-                .expect("failed to get list of source devices");
-
-            for s in sources {
-                if s.description.unwrap_or_default() == *source {
-                    let vol = (adjust as f64) / 100.0;
-                    if vol > 0.0 {
-                        handler.increase_device_volume_by_percent(s.index, (adjust as f64) / 100.0);
-                    } else if vol < 0.0 {
-                        handler
-                            .decrease_device_volume_by_percent(s.index, -(adjust as f64) / 100.0);
-                    }
-                }
-            }
-        }
-    }
-    #[cfg(target_os = "windows")]
-    {
-        todo!()
-    }
-}
-
-fn list_sinks() -> Vec<String> {
-    #[cfg(target_os = "linux")]
-    {
-        let mut devices = Vec::new();
-
-        #[allow(static_mut_refs)]
-        if let Some(handler) = unsafe { SINK_CONTROLLER.blocking_lock().as_mut() } {
-            let sinks = handler
-                .list_devices()
-                .expect("failed to get list of sink devices");
-
-            for s in sinks {
-                devices.push(s.description.unwrap_or_default());
-            }
-        }
-
-        devices
-    }
-    #[cfg(target_os = "windows")]
-    {
-        todo!()
-    }
-}
-
-fn adjust_sink(source: String, adjust: i8) {
-    #[cfg(target_os = "linux")]
-    {
-        #[allow(static_mut_refs)]
-        if let Some(handler) = unsafe { SINK_CONTROLLER.blocking_lock().as_mut() } {
-            let sinks = handler
-                .list_devices()
-                .expect("failed to get list of sink devices");
-
-            for s in sinks {
-                if s.description.unwrap_or_default() == *source {
-                    let vol = (adjust as f64) / 100.0;
-                    if vol > 0.0 {
-                        handler.increase_device_volume_by_percent(s.index, (adjust as f64) / 100.0);
-                    } else if vol < 0.0 {
-                        handler
-                            .decrease_device_volume_by_percent(s.index, -(adjust as f64) / 100.0);
-                    }
-                }
-            }
-        }
-    }
-    #[cfg(target_os = "windows")]
-    {
-        todo!()
-    }
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
@@ -326,9 +340,10 @@ impl Action for SystemSndInCtrl {
         // TODO: error handling
         if let Some(input_device) = self.input_device.clone() {
             let adjust = self.vol_adjust;
-            spawn_blocking(move || {
-                adjust_source(input_device, adjust);
-            });
+            let _ = SYSTEM_AUDIO_CMD_TX
+                .get()
+                .unwrap()
+                .send(AudioCommand::AdjustInputDevice(input_device, adjust));
         }
         Ok(())
     }
@@ -376,11 +391,10 @@ impl Action for SystemSndInCtrl {
         if ComboBox::is_open(ui.ctx(), ir.response.id) {
             if SYSTEM_GET_SOURCES.get().unwrap().load(Ordering::Relaxed) {
                 *SYSTEM_SOURCES.get().unwrap().blocking_lock() = None;
-                tokio::spawn(async move {
-                    spawn_blocking(move || {
-                        *SYSTEM_SOURCES.get().unwrap().blocking_lock() = Some(list_sources());
-                    });
-                });
+                let _ = SYSTEM_AUDIO_CMD_TX
+                    .get()
+                    .unwrap()
+                    .send(AudioCommand::GetInputDevices);
             }
             let _ = SYSTEM_GET_SOURCES.set(false.into());
         } else {
@@ -417,9 +431,10 @@ impl Action for SystemSndOutCtrl {
         // TODO: error handling
         if let Some(output_device) = self.output_device.clone() {
             let adjust = self.vol_adjust;
-            spawn_blocking(move || {
-                adjust_sink(output_device, adjust);
-            });
+            let _ = SYSTEM_AUDIO_CMD_TX
+                .get()
+                .unwrap()
+                .send(AudioCommand::AdjustOutputDevice(output_device, adjust));
         }
         Ok(())
     }
@@ -467,11 +482,10 @@ impl Action for SystemSndOutCtrl {
         if ComboBox::is_open(ui.ctx(), ir.response.id) {
             if SYSTEM_GET_SINKS.get().unwrap().load(Ordering::Relaxed) {
                 *SYSTEM_SINKS.get().unwrap().blocking_lock() = None;
-                tokio::spawn(async move {
-                    spawn_blocking(move || {
-                        *SYSTEM_SINKS.get().unwrap().blocking_lock() = Some(list_sinks());
-                    });
-                });
+                let _ = SYSTEM_AUDIO_CMD_TX
+                    .get()
+                    .unwrap()
+                    .send(AudioCommand::GetOutputDevices);
             }
             let _ = SYSTEM_GET_SINKS.set(false.into());
         } else {

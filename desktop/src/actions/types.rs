@@ -98,6 +98,9 @@ pub struct ActionMap {
 }
 impl ActionMap {
     pub fn new() -> Self {
+        // this function is only safe to call once!
+        // TODO: we should probably fix that...
+
         let l = vec![
             meta_action_list(),
             input_action_list(),
