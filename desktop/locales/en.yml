@@ -172,11 +172,13 @@ action:
       help: "Adjust an Audio Input Device volume by specified amount on press."
       input_device: "Input Device:"
       volume_adjust: "Volume Adjust:"
+      loading: "Loading Input Devices..."
     snd_out_ctrl:
       title: "Audio Output Control"
       help: "Adjust an Audio Output Device volume by specified amount on press."
       output_device: "Output Device:"
       volume_adjust: "Volume Adjust:"
+      loading: "Loading Output Devices..."
   
   soundboard:
     title: "%{icon} Soundboard"

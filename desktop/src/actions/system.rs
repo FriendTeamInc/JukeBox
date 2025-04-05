@@ -85,7 +85,7 @@ fn list_sources() -> Vec<String> {
     }
     #[cfg(target_os = "windows")]
     {
-        Vec::new()
+        todo!()
     }
 }
 
@@ -118,7 +118,9 @@ fn adjust_source(source: String, adjust: i8) {
         }
     }
     #[cfg(target_os = "windows")]
-    {}
+    {
+        todo!()
+    }
 }
 
 fn list_sinks() -> Vec<String> {
@@ -146,7 +148,7 @@ fn list_sinks() -> Vec<String> {
     }
     #[cfg(target_os = "windows")]
     {
-        Vec::new()
+        todo!()
     }
 }
 
@@ -179,7 +181,9 @@ fn adjust_sink(source: String, adjust: i8) {
         }
     }
     #[cfg(target_os = "windows")]
-    {}
+    {
+        todo!()
+    }
 }
 
 #[derive(Default, Serialize, Deserialize, Clone)]
