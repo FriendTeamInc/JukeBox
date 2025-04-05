@@ -47,7 +47,8 @@ downcast-rs = "2.0"
 sha1_smol = "1.0.1"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-gtk = { version = "0.18.2" }
+gtk = "0.18.2"
+pactl = { git = "https://github.com/NotQuiteApex/pactl-rs" }
 
 [build-dependencies]
 winresource = "0.1"

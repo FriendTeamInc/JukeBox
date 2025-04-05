@@ -631,8 +631,8 @@ impl Action for ObsSource {
             .width(200.0)
             .selected_text(self.scene.clone().map(|s| s.1).unwrap_or("".into()))
             .show_ui(ui, |ui| {
-                let scenes = OBS_SCENES.get().unwrap().blocking_lock().clone();
-                if let Some(scenes) = scenes {
+                let scenes = OBS_SCENES.get().unwrap().blocking_lock();
+                if let Some(scenes) = &*scenes {
                     for scene in scenes {
                         let selected = if let Some(selected_scene) = &self.scene {
                             selected_scene.0 == scene.id.uuid
@@ -641,7 +641,7 @@ impl Action for ObsSource {
                         };
                         let l = ui.selectable_label(selected, scene.id.name.clone());
                         if l.clicked() {
-                            self.scene = Some((scene.id.uuid, scene.id.name));
+                            self.scene = Some((scene.id.uuid, scene.id.name.clone()));
                             self.source = None;
                         }
                     }
@@ -671,8 +671,8 @@ impl Action for ObsSource {
                     .width(200.0)
                     .selected_text(self.source.clone().map(|s| s.1).unwrap_or("".into()))
                     .show_ui(ui, |ui| {
-                        let sources = OBS_SOURCES.get().unwrap().blocking_lock().clone();
-                        if let Some(sources) = sources {
+                        let sources = OBS_SOURCES.get().unwrap().blocking_lock();
+                        if let Some(sources) = &*sources {
                             for source in sources {
                                 let selected = if let Some(selected_source) = &self.source {
                                     selected_source.0 == source.id
@@ -681,7 +681,7 @@ impl Action for ObsSource {
                                 };
                                 let l = ui.selectable_label(selected, source.source_name.clone());
                                 if l.clicked() {
-                                    self.source = Some((source.id, source.source_name));
+                                    self.source = Some((source.id, source.source_name.clone()));
                                 }
                             }
                         } else {
@@ -785,8 +785,8 @@ impl Action for ObsMute {
             .width(200.0)
             .selected_text(self.input.clone().map(|s| s.1).unwrap_or("".into()))
             .show_ui(ui, |ui| {
-                let inputs = OBS_INPUTS.get().unwrap().blocking_lock().clone();
-                if let Some(inputs) = inputs {
+                let inputs = OBS_INPUTS.get().unwrap().blocking_lock();
+                if let Some(inputs) = &*inputs {
                     for input in inputs {
                         let selected = if let Some(selected_input) = &self.input {
                             selected_input.0 == input.id.uuid
@@ -795,7 +795,7 @@ impl Action for ObsMute {
                         };
                         let l = ui.selectable_label(selected, input.id.name.clone());
                         if l.clicked() {
-                            self.input = Some((input.id.uuid, input.id.name));
+                            self.input = Some((input.id.uuid, input.id.name.clone()));
                         }
                     }
                 } else {
@@ -897,8 +897,8 @@ impl Action for ObsSceneSwitch {
             .width(200.0)
             .selected_text(self.scene.clone().map(|s| s.1).unwrap_or("".into()))
             .show_ui(ui, |ui| {
-                let scenes = OBS_SCENES.get().unwrap().blocking_lock().clone();
-                if let Some(scenes) = scenes {
+                let scenes = OBS_SCENES.get().unwrap().blocking_lock();
+                if let Some(scenes) = &*scenes {
                     for scene in scenes {
                         let selected = if let Some(selected_scene) = &self.scene {
                             selected_scene.0 == scene.id.uuid
@@ -907,7 +907,7 @@ impl Action for ObsSceneSwitch {
                         };
                         let l = ui.selectable_label(selected, scene.id.name.clone());
                         if l.clicked() {
-                            self.scene = Some((scene.id.uuid, scene.id.name));
+                            self.scene = Some((scene.id.uuid, scene.id.name.clone()));
                         }
                     }
                 } else {
@@ -1011,8 +1011,8 @@ impl Action for ObsPreviewSceneSwitch {
             .width(200.0)
             .selected_text(self.scene.clone().map(|s| s.1).unwrap_or("".into()))
             .show_ui(ui, |ui| {
-                let scenes = OBS_SCENES.get().unwrap().blocking_lock().clone();
-                if let Some(scenes) = scenes {
+                let scenes = OBS_SCENES.get().unwrap().blocking_lock();
+                if let Some(scenes) = &*scenes {
                     for scene in scenes {
                         let selected = if let Some(selected_scene) = &self.scene {
                             selected_scene.0 == scene.id.uuid
@@ -1021,7 +1021,7 @@ impl Action for ObsPreviewSceneSwitch {
                         };
                         let l = ui.selectable_label(selected, scene.id.name.clone());
                         if l.clicked() {
-                            self.scene = Some((scene.id.uuid, scene.id.name));
+                            self.scene = Some((scene.id.uuid, scene.id.name.clone()));
                         }
                     }
                 } else {
@@ -1185,17 +1185,17 @@ impl Action for ObsSceneCollectionSwitch {
             .width(200.0)
             .selected_text(self.scene_collection.clone().unwrap_or("".into()))
             .show_ui(ui, |ui| {
-                let collections = OBS_SCENE_COLLECTIONS.get().unwrap().blocking_lock().clone();
-                if let Some(collections) = collections {
+                let collections = OBS_SCENE_COLLECTIONS.get().unwrap().blocking_lock();
+                if let Some(collections) = &*collections {
                     for collection in collections {
                         let selected = if let Some(selected_collection) = &self.scene_collection {
-                            *selected_collection == collection
+                            *selected_collection == *collection
                         } else {
                             false
                         };
                         let l = ui.selectable_label(selected, collection.clone());
                         if l.clicked() {
-                            self.scene_collection = Some(collection);
+                            self.scene_collection = Some(collection.clone());
                         }
                     }
                 } else {
