@@ -4,7 +4,6 @@ use std::{process::Command, sync::Arc};
 
 use eframe::egui::{include_image, ComboBox, ImageSource, Slider, TextWrapMode, Ui};
 use egui_phosphor::regular as phos;
-use pactl::controllers::DeviceControl;
 use rfd::FileDialog;
 use serde::{Deserialize, Serialize};
 use tokio::{sync::Mutex, task::spawn_blocking};
@@ -27,6 +26,8 @@ const ICON_INPUT_CONTROL: ImageSource =
 const ICON_OUTPUT_CONTROL: ImageSource =
     include_image!("../../../assets/action-icons/system-outputcontrol.bmp");
 
+#[cfg(target_os = "linux")]
+use pactl::controllers::DeviceControl;
 #[cfg(target_os = "linux")]
 use pactl::controllers::SinkController;
 #[cfg(target_os = "linux")]
