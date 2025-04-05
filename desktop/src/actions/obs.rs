@@ -1,8 +1,5 @@
 use std::{
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc, OnceLock,
-    },
+    sync::{atomic::AtomicBool, Arc, OnceLock},
     time::Duration,
 };
 
@@ -21,6 +18,7 @@ use uuid::Uuid;
 use crate::{
     config::{JukeBoxConfig, ObsAccess},
     input::InputKey,
+    single_fire,
 };
 
 use super::types::{Action, ActionError};
@@ -649,20 +647,16 @@ impl Action for ObsSource {
                     ui.label(t!("action.obs.options.loading"));
                 }
             });
-        if ComboBox::is_open(ui.ctx(), ir.response.id) {
-            if OBS_GET_SCENES.get().unwrap().load(Ordering::Relaxed) {
-                *OBS_SCENES.get().unwrap().blocking_lock() = None;
-                tokio::spawn(async {
-                    let client = OBS_CLIENT.get().unwrap().lock().await;
-                    if let Ok(scene_list) = client.scenes().list().await {
-                        *OBS_SCENES.get().unwrap().lock().await = Some(scene_list.scenes);
-                    }
-                });
-            }
-            let _ = OBS_GET_SCENES.set(false.into());
-        } else {
-            let _ = OBS_GET_SCENES.set(true.into());
-        }
+
+        single_fire!(ComboBox::is_open(ui.ctx(), ir.response.id), {
+            *OBS_SCENES.get().unwrap().blocking_lock() = None;
+            tokio::spawn(async {
+                let client = OBS_CLIENT.get().unwrap().lock().await;
+                if let Ok(scene_list) = client.scenes().list().await {
+                    *OBS_SCENES.get().unwrap().lock().await = Some(scene_list.scenes);
+                }
+            });
+        });
 
         ui.label(t!("action.obs.options.select_source"));
         let ir = ui
@@ -690,21 +684,17 @@ impl Action for ObsSource {
                     })
             })
             .inner;
-        if ComboBox::is_open(ui.ctx(), ir.response.id) {
-            if OBS_GET_SOURCES.get().unwrap().load(Ordering::Relaxed) {
-                *OBS_SOURCES.get().unwrap().blocking_lock() = None;
-                let scene_id = SceneId::Uuid(self.scene.clone().unwrap().0);
-                tokio::spawn(async move {
-                    let client = OBS_CLIENT.get().unwrap().lock().await;
-                    if let Ok(items) = client.scene_items().list(scene_id).await {
-                        *OBS_SOURCES.get().unwrap().lock().await = Some(items);
-                    }
-                });
-            }
-            let _ = OBS_GET_SOURCES.set(false.into());
-        } else {
-            let _ = OBS_GET_SOURCES.set(true.into());
-        }
+
+        single_fire!(ComboBox::is_open(ui.ctx(), ir.response.id), {
+            *OBS_SOURCES.get().unwrap().blocking_lock() = None;
+            let scene_id = SceneId::Uuid(self.scene.clone().unwrap().0);
+            tokio::spawn(async move {
+                let client = OBS_CLIENT.get().unwrap().lock().await;
+                if let Ok(items) = client.scene_items().list(scene_id).await {
+                    *OBS_SOURCES.get().unwrap().lock().await = Some(items);
+                }
+            });
+        });
     }
 
     fn help(&self) -> String {
@@ -802,21 +792,17 @@ impl Action for ObsMute {
                     ui.label(t!("action.obs.options.loading"));
                 }
             });
-        if ComboBox::is_open(ui.ctx(), ir.response.id) {
-            if OBS_GET_INPUTS.get().unwrap().load(Ordering::Relaxed) {
-                *OBS_INPUTS.get().unwrap().blocking_lock() = None;
-                tokio::spawn(async {
-                    let client = OBS_CLIENT.get().unwrap().lock().await;
-                    if let Ok(input_list) = client.inputs().list(None).await {
-                        // TODO: filter out non-audio sources
-                        *OBS_INPUTS.get().unwrap().lock().await = Some(input_list);
-                    }
-                });
-            }
-            let _ = OBS_GET_INPUTS.set(false.into());
-        } else {
-            let _ = OBS_GET_INPUTS.set(true.into());
-        }
+
+        single_fire!(ComboBox::is_open(ui.ctx(), ir.response.id), {
+            *OBS_INPUTS.get().unwrap().blocking_lock() = None;
+            tokio::spawn(async {
+                let client = OBS_CLIENT.get().unwrap().lock().await;
+                if let Ok(input_list) = client.inputs().list(None).await {
+                    // TODO: filter out non-audio sources
+                    *OBS_INPUTS.get().unwrap().lock().await = Some(input_list);
+                }
+            });
+        });
     }
 
     fn help(&self) -> String {
@@ -914,20 +900,16 @@ impl Action for ObsSceneSwitch {
                     ui.label(t!("action.obs.options.loading"));
                 }
             });
-        if ComboBox::is_open(ui.ctx(), ir.response.id) {
-            if OBS_GET_SCENES.get().unwrap().load(Ordering::Relaxed) {
-                *OBS_SCENES.get().unwrap().blocking_lock() = None;
-                tokio::spawn(async {
-                    let client = OBS_CLIENT.get().unwrap().lock().await;
-                    if let Ok(scene_list) = client.scenes().list().await {
-                        *OBS_SCENES.get().unwrap().lock().await = Some(scene_list.scenes);
-                    }
-                });
-            }
-            let _ = OBS_GET_SCENES.set(false.into());
-        } else {
-            let _ = OBS_GET_SCENES.set(true.into());
-        }
+
+        single_fire!(ComboBox::is_open(ui.ctx(), ir.response.id), {
+            *OBS_SCENES.get().unwrap().blocking_lock() = None;
+            tokio::spawn(async {
+                let client = OBS_CLIENT.get().unwrap().lock().await;
+                if let Ok(scene_list) = client.scenes().list().await {
+                    *OBS_SCENES.get().unwrap().lock().await = Some(scene_list.scenes);
+                }
+            });
+        });
     }
 
     fn help(&self) -> String {
@@ -1028,20 +1010,16 @@ impl Action for ObsPreviewSceneSwitch {
                     ui.label(t!("action.obs.options.loading"));
                 }
             });
-        if ComboBox::is_open(ui.ctx(), ir.response.id) {
-            if OBS_GET_SCENES.get().unwrap().load(Ordering::Relaxed) {
-                *OBS_SCENES.get().unwrap().blocking_lock() = None;
-                tokio::spawn(async {
-                    let client = OBS_CLIENT.get().unwrap().lock().await;
-                    if let Ok(scene_list) = client.scenes().list().await {
-                        *OBS_SCENES.get().unwrap().lock().await = Some(scene_list.scenes);
-                    }
-                });
-            }
-            let _ = OBS_GET_SCENES.set(false.into());
-        } else {
-            let _ = OBS_GET_SCENES.set(true.into());
-        }
+
+        single_fire!(ComboBox::is_open(ui.ctx(), ir.response.id), {
+            *OBS_SCENES.get().unwrap().blocking_lock() = None;
+            tokio::spawn(async {
+                let client = OBS_CLIENT.get().unwrap().lock().await;
+                if let Ok(scene_list) = client.scenes().list().await {
+                    *OBS_SCENES.get().unwrap().lock().await = Some(scene_list.scenes);
+                }
+            });
+        });
     }
 
     fn help(&self) -> String {
@@ -1202,25 +1180,17 @@ impl Action for ObsSceneCollectionSwitch {
                     ui.label(t!("action.obs.options.loading"));
                 }
             });
-        if ComboBox::is_open(ui.ctx(), ir.response.id) {
-            if OBS_GET_SCENE_COLLECTIONS
-                .get()
-                .unwrap()
-                .load(Ordering::Relaxed)
-            {
-                *OBS_SCENE_COLLECTIONS.get().unwrap().blocking_lock() = None;
-                tokio::spawn(async {
-                    let client = OBS_CLIENT.get().unwrap().lock().await;
-                    if let Ok(collection_list) = client.scene_collections().list().await {
-                        *OBS_SCENE_COLLECTIONS.get().unwrap().lock().await =
-                            Some(collection_list.collections);
-                    }
-                });
-            }
-            let _ = OBS_GET_SCENE_COLLECTIONS.set(false.into());
-        } else {
-            let _ = OBS_GET_SCENE_COLLECTIONS.set(true.into());
-        }
+
+        single_fire!(ComboBox::is_open(ui.ctx(), ir.response.id), {
+            *OBS_SCENE_COLLECTIONS.get().unwrap().blocking_lock() = None;
+            tokio::spawn(async {
+                let client = OBS_CLIENT.get().unwrap().lock().await;
+                if let Ok(collection_list) = client.scene_collections().list().await {
+                    *OBS_SCENE_COLLECTIONS.get().unwrap().lock().await =
+                        Some(collection_list.collections);
+                }
+            });
+        });
     }
 
     fn help(&self) -> String {

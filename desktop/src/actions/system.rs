@@ -1,4 +1,3 @@
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
 use std::{process::Command, sync::Arc};
 
@@ -9,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::{sync::Mutex, task::spawn_blocking};
 
+use crate::single_fire;
 use crate::{config::JukeBoxConfig, input::InputKey};
 
 use super::types::{Action, ActionError};
@@ -39,9 +39,7 @@ use pactl::controllers::{DeviceControl, SinkController, SourceController};
 
 static SYSTEM_AUDIO_CMD_TX: OnceLock<UnboundedSender<AudioCommand>> = OnceLock::new();
 static SYSTEM_SOURCES: OnceLock<Mutex<Option<Vec<String>>>> = OnceLock::new();
-static SYSTEM_GET_SOURCES: OnceLock<AtomicBool> = OnceLock::new();
 static SYSTEM_SINKS: OnceLock<Mutex<Option<Vec<String>>>> = OnceLock::new();
-static SYSTEM_GET_SINKS: OnceLock<AtomicBool> = OnceLock::new();
 
 fn system_audio_control_loop(mut cmd_rx: UnboundedReceiver<AudioCommand>) {
     #[cfg(target_os = "linux")]
@@ -165,9 +163,7 @@ fn system_audio_control_loop(mut cmd_rx: UnboundedReceiver<AudioCommand>) {
 pub fn system_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
     let (cmd_tx, cmd_rx) = unbounded_channel();
     SYSTEM_AUDIO_CMD_TX.get_or_init(|| cmd_tx);
-    SYSTEM_GET_SOURCES.get_or_init(|| true.into());
     SYSTEM_SOURCES.get_or_init(|| Mutex::new(None));
-    SYSTEM_GET_SINKS.get_or_init(|| true.into());
     SYSTEM_SINKS.get_or_init(|| Mutex::new(None));
 
     tokio::spawn(async move {
@@ -388,18 +384,13 @@ impl Action for SystemSndInCtrl {
                 }
             });
 
-        if ComboBox::is_open(ui.ctx(), ir.response.id) {
-            if SYSTEM_GET_SOURCES.get().unwrap().load(Ordering::Relaxed) {
-                *SYSTEM_SOURCES.get().unwrap().blocking_lock() = None;
-                let _ = SYSTEM_AUDIO_CMD_TX
-                    .get()
-                    .unwrap()
-                    .send(AudioCommand::GetInputDevices);
-            }
-            let _ = SYSTEM_GET_SOURCES.set(false.into());
-        } else {
-            let _ = SYSTEM_GET_SOURCES.set(true.into());
-        }
+        single_fire!(ComboBox::is_open(ui.ctx(), ir.response.id), {
+            *SYSTEM_SOURCES.get().unwrap().blocking_lock() = None;
+            let _ = SYSTEM_AUDIO_CMD_TX
+                .get()
+                .unwrap()
+                .send(AudioCommand::GetInputDevices);
+        });
 
         ui.label(t!("action.system.snd_in_ctrl.volume_adjust"));
         ui.add(Slider::new(&mut self.vol_adjust, -100..=100));
@@ -479,18 +470,13 @@ impl Action for SystemSndOutCtrl {
                 }
             });
 
-        if ComboBox::is_open(ui.ctx(), ir.response.id) {
-            if SYSTEM_GET_SINKS.get().unwrap().load(Ordering::Relaxed) {
-                *SYSTEM_SINKS.get().unwrap().blocking_lock() = None;
-                let _ = SYSTEM_AUDIO_CMD_TX
-                    .get()
-                    .unwrap()
-                    .send(AudioCommand::GetOutputDevices);
-            }
-            let _ = SYSTEM_GET_SINKS.set(false.into());
-        } else {
-            let _ = SYSTEM_GET_SINKS.set(true.into());
-        }
+        single_fire!(ComboBox::is_open(ui.ctx(), ir.response.id), {
+            *SYSTEM_SINKS.get().unwrap().blocking_lock() = None;
+            let _ = SYSTEM_AUDIO_CMD_TX
+                .get()
+                .unwrap()
+                .send(AudioCommand::GetOutputDevices);
+        });
 
         ui.label(t!("action.system.snd_out_ctrl.volume_adjust"));
         ui.add(Slider::new(&mut self.vol_adjust, -100..=100));

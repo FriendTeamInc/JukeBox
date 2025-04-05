@@ -221,3 +221,23 @@ pub fn get_icon_bytes(action_config: &ActionConfig) -> [u8; 32 * 32 * 2] {
 
     bytes
 }
+
+#[macro_export]
+macro_rules! single_fire {
+    ($eval:expr, $call:expr) => {{
+        static LATCH: std::sync::OnceLock<std::sync::atomic::AtomicBool> =
+            std::sync::OnceLock::new();
+        let expr = $eval;
+        if expr {
+            if LATCH
+                .get_or_init(|| false.into())
+                .load(std::sync::atomic::Ordering::Relaxed)
+            {
+                $call
+            }
+            let _ = LATCH.set(false.into());
+        } else {
+            let _ = LATCH.set(true.into());
+        }
+    }};
+}
