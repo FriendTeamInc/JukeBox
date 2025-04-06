@@ -186,8 +186,21 @@ action:
       title: "Play Sound"
       help: "Plays a sound file to an output audio device on press."
       choose_file: "Choose File"
-      output_device: "Output Device:"
       volume: "Volume:"
+      play_method:
+        title: "Play Method:"
+        play_stop: "Play / Stop"
+        play_overlap: "Play / Overlap"
+        play_restart: "Play / Restart"
+        loop_stop: "Loop / Stop"
+      fade_method:
+        title: "Fade Method:"
+        no_fade: "No Fade"
+        fade_in: "Fade In"
+        fade_out: "Fade Out"
+        fade_in_and_out: "Fade In and Out"
+      fade_time: "Fade Time (Seconds):"
+      output_device: "Output Device:"
   
   discord:
     title: "%{icon} Discord"
