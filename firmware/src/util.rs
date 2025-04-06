@@ -3,8 +3,9 @@ use core::{
     i8,
 };
 
+use embedded_graphics::{pixelcolor::Bgr565, prelude::RgbColor};
 use jukebox_util::{
-    color::RgbProfile,
+    color::{rgb565_to_rgb888, RgbProfile},
     input::{KeyboardEvent, MouseEvent},
     peripheral::{Connection, JBInputs, KeyInputs, KnobInputs, PedalInputs},
 };
@@ -51,7 +52,7 @@ type UpdateTrigger = Mutex<2, bool>;
 type IdentifyTrigger = Mutex<3, bool>;
 type RgbControls = Mutex<4, (bool, RgbProfile)>; // (changed, settings)
 type ConnectionStatus = Mutex<5, Connection>;
-type Icons = Mutex<6, [(bool, [u16; 32 * 32]); 12]>;
+type Icons = Mutex<6, [(bool, [Bgr565; 32 * 32]); 12]>;
 type KeyboardEvents = Mutex<7, [KeyboardEvent; 12]>;
 type MouseEvents = Mutex<8, [MouseEvent; 12]>;
 
@@ -60,7 +61,7 @@ pub static PERIPHERAL_INPUTS: PeripheralInputs = Mutex::new(inputs_default());
 pub static UPDATE_TRIGGER: UpdateTrigger = Mutex::new(false);
 pub static IDENTIFY_TRIGGER: IdentifyTrigger = Mutex::new(false);
 pub static RGB_CONTROLS: RgbControls = Mutex::new((false, RgbProfile::default_device_profile()));
-pub static ICONS: Icons = Mutex::new([(false, [0; 32 * 32]); 12]);
+pub static ICONS: Icons = Mutex::new([(false, [Bgr565::BLACK; 32 * 32]); 12]);
 pub static KEYBOARD_EVENTS: KeyboardEvents = Mutex::new(KeyboardEvent::default_events());
 pub static MOUSE_EVENTS: MouseEvents = Mutex::new(MouseEvent::default_events());
 
@@ -79,7 +80,8 @@ pub fn reset_icons() {
                 let mut x = 0;
                 while x < 32 {
                     // TODO: use dma to swap out the icons
-                    icons[i].1[32 * y + x] = !DEFAULT_ICONS[i][32 * y + x];
+                    let (r, g, b) = rgb565_to_rgb888(!DEFAULT_ICONS[i][32 * y + x]);
+                    icons[i].1[32 * y + x] = Bgr565::new(r, g, b);
                     x += 1;
                 }
                 y += 1;

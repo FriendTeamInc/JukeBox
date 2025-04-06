@@ -3,6 +3,7 @@
 use core::u32;
 
 use cortex_m::prelude::_embedded_hal_timer_CountDown;
+use embedded_graphics::{pixelcolor::Bgr565, prelude::IntoStorage};
 use embedded_hal::digital::v2::OutputPin as _;
 use rp2040_hal::{
     fugit::{ExtU64, MicrosDurationU64},
@@ -188,12 +189,12 @@ where
         self.set_dc_cs(false, false);
     }
 
-    pub fn push_framebuffer(&mut self, fb: &[u16]) {
+    pub fn push_framebuffer(&mut self, fb: &[Bgr565]) {
         self.start_pixels();
         for y in (0..SCR_H).rev() {
             for x in 0..SCR_W {
                 let w = unsafe { fb.get_unchecked(y * SCR_W + x) };
-                self.write(*w);
+                self.write(w.into_storage());
             }
         }
     }

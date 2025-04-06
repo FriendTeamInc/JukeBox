@@ -6,6 +6,8 @@
 use defmt::*;
 
 use embedded_dma::Word;
+use embedded_graphics::{pixelcolor::Bgr565, prelude::Point};
+use embedded_graphics_framebuf::FrameBuf;
 use embedded_hal::timer::CountDown as _;
 use rp2040_hal::{
     dma::{Channel, CH0},
@@ -26,7 +28,12 @@ const REFRESH_RATE: u32 = 33;
 pub const SCR_W: usize = 240;
 pub const SCR_H: usize = 320;
 const BG_COLOR: u16 = 0x1082;
-static mut FBDATA: [u16; SCR_W * SCR_H] = [BG_COLOR; SCR_W * SCR_H];
+const BG_COLOR_EG: Bgr565 = Bgr565::new(
+    (BG_COLOR >> 11) as u8,
+    (BG_COLOR >> 5 & 0b111111) as u8,
+    (BG_COLOR & 0b11111) as u8,
+);
+static mut FBDATA: [Bgr565; SCR_W * SCR_H] = [BG_COLOR_EG; SCR_W * SCR_H];
 static CLEAR_VAL: RepeatReadTarget<u16> = RepeatReadTarget(BG_COLOR);
 #[derive(Clone, Copy)]
 struct RepeatReadTarget<W: Word>(W);
@@ -51,6 +58,9 @@ unsafe impl<W: Word> rp2040_hal::dma::ReadTarget for RepeatReadTarget<W> {
 
 pub struct ScreenMod {
     st: St7789<PIO1, SM1, Pin<DynPinId, FunctionPio1, PullDown>>,
+
+    fb: FrameBuf<Bgr565, &'static mut [Bgr565; SCR_W * SCR_H]>,
+
     dma_ch0: Channel<CH0>,
     timer: CountDown,
 
@@ -68,6 +78,10 @@ impl ScreenMod {
 
         ScreenMod {
             st,
+
+            #[allow(static_mut_refs)] // This is probably bad. LOL.
+            fb: FrameBuf::new(unsafe { &mut FBDATA }, SCR_W, SCR_H),
+
             dma_ch0,
             timer,
 
@@ -80,17 +94,15 @@ impl ScreenMod {
         self.st.backlight_off();
     }
 
-    const fn put_pixel(&mut self, color: u16, x: usize, y: usize) {
+    fn put_pixel(&mut self, color: Bgr565, x: usize, y: usize) {
         if x >= SCR_W || y >= SCR_H {
             return;
         }
-        // doing unchecked access did not meaningfully improve performance
-        unsafe {
-            FBDATA[y * SCR_W + x] = color;
-        }
+
+        self.fb.set_color_at(Point::new(x as i32, y as i32), color);
     }
 
-    fn rectangle(&mut self, color: u16, x: usize, y: usize, w: usize, h: usize) {
+    fn rectangle(&mut self, color: Bgr565, x: usize, y: usize, w: usize, h: usize) {
         for h in 0..h {
             for w in 0..w {
                 self.put_pixel(color, x + w, y + h);
@@ -98,7 +110,7 @@ impl ScreenMod {
         }
     }
 
-    fn rounded_rect(&mut self, color: u16, x: usize, y: usize, s: usize, r: usize) {
+    fn rounded_rect(&mut self, color: Bgr565, x: usize, y: usize, s: usize, r: usize) {
         self.rectangle(color, x, y, 2 * r, 2 * r);
         self.rectangle(color, x, y, 4 * r, 1 * r);
         self.rectangle(color, x, y, 1 * r, 4 * r);
@@ -128,7 +140,7 @@ impl ScreenMod {
         );
     }
 
-    fn draw_icon(&mut self, icon: &[u16], key: u8, x: usize, y: usize) {
+    fn draw_icon(&mut self, icon: &[Bgr565], key: u8, x: usize, y: usize) {
         // icon drawing
         let mut h = 0;
         while h < 32 {
@@ -143,9 +155,9 @@ impl ScreenMod {
 
         // rounded corners
         if key > 0 {
-            self.rounded_rect(BG_COLOR, x, y, 64, key as usize);
+            self.rounded_rect(BG_COLOR_EG, x, y, 64, key as usize);
         } else {
-            self.rounded_rect(BG_COLOR, x, y, 64, 1);
+            self.rounded_rect(BG_COLOR_EG, x, y, 64, 1);
         }
     }
 

@@ -17,23 +17,25 @@ rp2040-boot2 = "0.3"
 rp2040-flash = "0.6"
 cortex-m = "0.7"
 cortex-m-rt = "0.7"
-embedded-hal = "0.2.7"
-defmt = "0.3"
-defmt-rtt = "0.4"
-panic-probe = { version = "0.3", features = ["print-defmt"] }
+embedded-hal = "0.2"
+defmt = "1"
+defmt-rtt = "1"
+panic-probe = { version = "1", features = ["print-defmt"] }
 usb-device = "0.3"
 usbd-human-interface-device = { version = "0.5" }
 usbd-serial = "0.2"
 ringbuffer = { version = "0.15", default-features = false }
-pio = "0.2.1"
-ws2812-pio = "0.9.0"
-smart-leds = "0.4.0"
+pio = "0.2"
+ws2812-pio = "0.9"
+smart-leds = "0.4"
 smart-leds-trait = "0.3"
-mutually_exclusive_features = "0.1.0"
-embedded-dma = "0.2.0"
+mutually_exclusive_features = "0.1"
+embedded-dma = "0.2"
+embedded-graphics = { version = "0.8", features = ["fixed_point"] }
+embedded-graphics-framebuf = "0.5"
 
 [features]
-default = []
+default = ["keypad"]
 keypad = []
 knobpad = []
 pedalpad = []

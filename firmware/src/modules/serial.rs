@@ -3,9 +3,10 @@
 #[allow(unused_imports)]
 use defmt::*;
 
+use embedded_graphics::pixelcolor::Bgr565;
 use embedded_hal::timer::{Cancel as _, CountDown as _};
 use jukebox_util::{
-    color::RgbProfile,
+    color::{rgb565_to_rgb888, RgbProfile},
     input::{KeyboardEvent, MouseEvent},
     peripheral::{
         Connection, JBInputs, IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT,
@@ -278,8 +279,11 @@ impl SerialMod {
                         let scr_icon = &mut icons[slot as usize];
                         let mut i = 0;
                         while i < 32 * 32 {
-                            scr_icon.1[i] =
-                                ((new_icon[i * 2 + 1] as u16) << 8) | (new_icon[i * 2] as u16);
+                            let (r, g, b) = rgb565_to_rgb888(
+                                ((new_icon[i * 2 + 1] as u16) << 8) | (new_icon[i * 2] as u16),
+                            );
+                            let c = Bgr565::new(r, g, b);
+                            scr_icon.1[i] = c;
                             i += 1;
                         }
                         scr_icon.0 = true;
