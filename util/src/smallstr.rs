@@ -1,7 +1,6 @@
 use core::ptr::addr_of;
 
 #[derive(Debug, Clone, PartialEq)]
-// #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct SmallStr<const N: usize> {
     str: [u8; N],
@@ -30,5 +29,29 @@ impl<const N: usize> SmallStr<N> {
 
     pub fn to_str(&self) -> &str {
         unsafe { core::str::from_utf8(&*addr_of!(self.str[..self.size as usize])).unwrap() }
+    }
+
+    pub fn encode(self) -> [u8; N] {
+        assert!(N >= (self.size + 1) as usize);
+
+        let mut data = [0u8; N];
+
+        data[0] = self.size;
+        data[1..(self.size as usize) + 1].copy_from_slice(&self.str);
+
+        data
+    }
+
+    pub fn decode(data: &[u8]) -> Self {
+        assert!(N >= data.len());
+
+        let mut str = [0u8; N];
+        let size = data[0];
+
+        for i in 0..size as usize {
+            str[i] = data[i + 1];
+        }
+
+        Self { str, size }
     }
 }

@@ -17,18 +17,16 @@ use jukebox_util::{
         RSP_LINK_DELIMITER, RSP_LINK_HEADER, RSP_UNKNOWN,
     },
     rgb::RgbProfile,
+    screen::ProfileName,
+    smallstr::SmallStr,
 };
 use ringbuffer::{ConstGenericRingBuffer, RingBuffer};
 use rp2040_hal::{fugit::ExtU32, timer::CountDown, usb::UsbBus};
 use usbd_serial::SerialPort;
 
-use crate::{
-    reset_icons,
-    util::{
-        reset_peripherals, CONNECTION_STATUS, DEFAULT_INPUTS, DEFAULT_RGB_PROFILE, ICONS,
-        IDENTIFY_TRIGGER, KEYBOARD_EVENTS, MOUSE_EVENTS, PERIPHERAL_INPUTS, RGB_CONTROLS,
-        UPDATE_TRIGGER,
-    },
+use crate::util::{
+    reset_peripherals, CONNECTION_STATUS, DEFAULT_INPUTS, ICONS, IDENTIFY_TRIGGER, KEYBOARD_EVENTS,
+    MOUSE_EVENTS, PERIPHERAL_INPUTS, PROFILE_NAME, RGB_CONTROLS, UPDATE_TRIGGER,
 };
 
 const BUFFER_SIZE: usize = 4096;
@@ -120,12 +118,7 @@ impl SerialMod {
     ) {
         if self.state == Connection::Connected && self.keepalive_timer.wait().is_ok() {
             warn!("Keepalive triggered, disconnecting.");
-            CONNECTION_STATUS.with_mut_lock(|c| *c = Connection::NotConnected(false));
-            RGB_CONTROLS.with_mut_lock(|c| {
-                c.0 = true;
-                c.1 = DEFAULT_RGB_PROFILE;
-            });
-            reset_icons();
+            reset_peripherals(false);
             self.state = Connection::NotConnected(false);
         }
 
@@ -268,10 +261,6 @@ impl SerialMod {
 
                     true
                 }
-                Command::SetScrMode => {
-                    // TODO:
-                    unknown()
-                }
                 Command::SetScrIcon => {
                     let slot = data[0];
                     let new_icon = &data[1..32 * 32 * 2 + 1];
@@ -288,6 +277,23 @@ impl SerialMod {
                             i += 1;
                         }
                         scr_icon.0 = true;
+                    });
+
+                    Self::send(serial, b"001");
+                    Self::send(serial, &[RSP_ACK]);
+
+                    true
+                }
+                Command::SetScrMode => {
+                    // TODO:
+                    unknown()
+                }
+                Command::SetProfileName => {
+                    let new_profile_name: ProfileName = SmallStr::decode(&data);
+
+                    PROFILE_NAME.with_mut_lock(|p| {
+                        p.0 = true;
+                        p.1 = new_profile_name;
                     });
 
                     Self::send(serial, b"001");

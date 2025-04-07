@@ -3,25 +3,28 @@
 pub const MAX_PACKET_SIZE: usize = 4095;
 
 pub const CMD_GREET: u8 = b'\x05';
-pub const CMD_GET_INPUT_KEYS: u8 = b'\x30';
-pub const CMD_SET_KEYBOARD_INPUT: u8 = b'\x31';
-pub const CMD_SET_MOUSE_INPUT: u8 = b'\x32';
-pub const CMD_SET_GAMEPAD_INPUT: u8 = b'\x33';
-pub const CMD_SET_RGB_MODE: u8 = b'\x34';
-pub const CMD_SET_SCR_MODE: u8 = b'\x35';
-pub const CMD_SET_SCR_ICON: u8 = b'\x36';
-pub const CMD_IDENTIFY: u8 = b'\x37';
-pub const CMD_UPDATE: u8 = b'\x38';
-pub const CMD_DISCONNECT: u8 = b'\x39';
+
+pub const CMD_GET_INPUT_KEYS: u8 = b'\x41';
+pub const CMD_SET_KEYBOARD_INPUT: u8 = b'\x42';
+pub const CMD_SET_MOUSE_INPUT: u8 = b'\x43';
+pub const CMD_SET_GAMEPAD_INPUT: u8 = b'\x44';
+pub const CMD_SET_RGB_MODE: u8 = b'\x45';
+pub const CMD_SET_SCR_MODE: u8 = b'\x46';
+pub const CMD_SET_SCR_ICON: u8 = b'\x47';
+pub const CMD_SET_PROFILE_NAME: u8 = b'\x48';
+pub const CMD_IDENTIFY: u8 = b'\x49';
+
+pub const CMD_UPDATE: u8 = b'\x0F';
+pub const CMD_DISCONNECT: u8 = b'\x10';
 pub const CMD_NEGATIVE_ACK: u8 = b'\x15';
 pub const CMD_UNKNOWN: u8 = b'?';
 
-pub const RSP_LINK_HEADER: u8 = b'L';
-pub const RSP_LINK_DELIMITER: u8 = b',';
+pub const RSP_LINK_HEADER: u8 = b'\x01';
+pub const RSP_LINK_DELIMITER: u8 = b'\x02';
 
-pub const RSP_ACK: u8 = b'A';
-pub const RSP_INPUT_HEADER: u8 = b'I';
-pub const RSP_RGB_HEADER: u8 = b'C';
+pub const RSP_ACK: u8 = b'\x06';
+pub const RSP_INPUT_HEADER: u8 = b'!';
+// pub const RSP_RGB_HEADER: u8 = b'*';
 pub const RSP_UNKNOWN: u8 = b'?';
 pub const RSP_DISCONNECTED: u8 = b'\x04';
 
@@ -38,6 +41,7 @@ pub enum Command {
     SetRgbMode,
     SetScrIcon,
     SetScrMode,
+    SetProfileName,
     Identify,
     Update,
     Disconnect,
@@ -55,6 +59,7 @@ impl Command {
             CMD_SET_RGB_MODE => Self::SetRgbMode,
             CMD_SET_SCR_ICON => Self::SetScrIcon,
             CMD_SET_SCR_MODE => Self::SetScrMode,
+            CMD_SET_PROFILE_NAME => Self::SetProfileName,
             CMD_IDENTIFY => Self::Identify,
             CMD_UPDATE => Self::Update,
             CMD_DISCONNECT => Self::Disconnect,

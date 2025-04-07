@@ -65,7 +65,7 @@ type ScreenControls = Mutex<11, (bool, ScreenProfile)>;
 pub const DEFAULT_INPUTS: JBInputs = inputs_default();
 pub const DEFAULT_KEYBOARD_EVENTS: [KeyboardEvent; 12] = KeyboardEvent::default_events();
 pub const DEFAULT_MOUSE_EVENTS: [MouseEvent; 12] = MouseEvent::default_events();
-pub const DEFAULT_PROFILE_NAME: SmallStr<{ 18 * 4 }> = SmallStr::default();
+pub const DEFAULT_PROFILE_NAME: ProfileName = SmallStr::default();
 pub const DEFAULT_RGB_PROFILE: RgbProfile = RgbProfile::default_device_profile();
 pub const DEFAULT_SCREEN_PROFILE: ScreenProfile = ScreenProfile::default_profile();
 pub const DEFAULT_SYSTEM_STATS: SystemStats = SystemStats::default();
@@ -114,18 +114,6 @@ pub fn reset_icons() {
     });
 }
 
-pub fn reset_keyboard_events() {
-    KEYBOARD_EVENTS.with_mut_lock(|e| {
-        *e = DEFAULT_KEYBOARD_EVENTS;
-    });
-}
-
-pub fn reset_mouse_events() {
-    MOUSE_EVENTS.with_mut_lock(|e| {
-        *e = DEFAULT_MOUSE_EVENTS;
-    });
-}
-
 pub const fn inputs_default() -> JBInputs {
     if cfg!(feature = "keypad") {
         JBInputs::KeyPad(KeyInputs::default())
@@ -140,13 +128,29 @@ pub const fn inputs_default() -> JBInputs {
 
 pub fn reset_peripherals(s: bool) {
     CONNECTION_STATUS.with_mut_lock(|c| *c = Connection::NotConnected(s));
+    PROFILE_NAME.with_mut_lock(|p| {
+        p.0 = true;
+        p.1 = DEFAULT_PROFILE_NAME;
+    });
     RGB_CONTROLS.with_mut_lock(|c| {
         c.0 = true;
         c.1 = DEFAULT_RGB_PROFILE;
     });
+    SCREEN_CONTROLS.with_mut_lock(|s| {
+        s.0 = true;
+        s.1 = DEFAULT_SCREEN_PROFILE;
+    });
+    SCREEN_SYSTEM_STATS.with_mut_lock(|s| {
+        s.0 = true;
+        s.1 = DEFAULT_SYSTEM_STATS;
+    });
+    KEYBOARD_EVENTS.with_mut_lock(|e| {
+        *e = DEFAULT_KEYBOARD_EVENTS;
+    });
+    MOUSE_EVENTS.with_mut_lock(|e| {
+        *e = DEFAULT_MOUSE_EVENTS;
+    });
     reset_icons();
-    reset_keyboard_events();
-    reset_mouse_events();
 }
 
 pub fn get_keyboard_events() -> [Keyboard; 12 * 6] {
