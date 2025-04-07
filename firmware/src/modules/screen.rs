@@ -5,10 +5,15 @@
 #[allow(unused_imports)]
 use defmt::*;
 
-use embedded_dma::Word;
-use embedded_graphics::{pixelcolor::Bgr565, prelude::Point};
+// use embedded_dma::Word;
+use embedded_graphics::{
+    pixelcolor::{Bgr565, Gray4},
+    prelude::*,
+    text::{Alignment, Baseline, TextStyle, TextStyleBuilder},
+};
 use embedded_graphics_framebuf::FrameBuf;
 use embedded_hal::timer::CountDown as _;
+use mplusfonts::{mplus, BitmapFont};
 use rp2040_hal::{
     dma::{Channel, CH0},
     fugit::ExtU32,
@@ -25,36 +30,59 @@ use crate::{
 };
 
 const REFRESH_RATE: u32 = 33;
-pub const SCR_W: usize = 240;
-pub const SCR_H: usize = 320;
-const BG_COLOR: u16 = 0x1082;
-const BG_COLOR_EG: Bgr565 = Bgr565::new(
-    (BG_COLOR >> 11) as u8,
-    (BG_COLOR >> 5 & 0b111111) as u8,
-    (BG_COLOR & 0b11111) as u8,
-);
+pub const SCR_W: usize = 320;
+pub const SCR_H: usize = 240;
+const BG_COLOR_EG: Bgr565 = Bgr565::BLACK;
 static mut FBDATA: [Bgr565; SCR_W * SCR_H] = [BG_COLOR_EG; SCR_W * SCR_H];
-static CLEAR_VAL: RepeatReadTarget<u16> = RepeatReadTarget(BG_COLOR);
-#[derive(Clone, Copy)]
-struct RepeatReadTarget<W: Word>(W);
-unsafe impl<W: Word> embedded_dma::ReadTarget for RepeatReadTarget<W> {
-    type Word = W;
-}
-unsafe impl<W: Word> rp2040_hal::dma::ReadTarget for RepeatReadTarget<W> {
-    type ReceivedWord = W;
+// static CLEAR_VAL: RepeatReadTarget<u16> = RepeatReadTarget(BG_COLOR);
+// #[derive(Clone, Copy)]
+// struct RepeatReadTarget<W: Word>(W);
+// unsafe impl<W: Word> embedded_dma::ReadTarget for RepeatReadTarget<W> {
+//     type Word = W;
+// }
+// unsafe impl<W: Word> rp2040_hal::dma::ReadTarget for RepeatReadTarget<W> {
+//     type ReceivedWord = W;
 
-    fn rx_treq() -> Option<u8> {
-        None
-    }
+//     fn rx_treq() -> Option<u8> {
+//         None
+//     }
 
-    fn rx_address_count(&self) -> (u32, u32) {
-        (self as *const Self as u32, u32::MAX)
-    }
+//     fn rx_address_count(&self) -> (u32, u32) {
+//         (self as *const Self as u32, u32::MAX)
+//     }
 
-    fn rx_increment(&self) -> bool {
-        false
-    }
-}
+//     fn rx_increment(&self) -> bool {
+//         false
+//     }
+// }
+
+static FONT1: BitmapFont<'static, Gray4, 1> = mplus!(
+    code(100),
+    500,
+    16,
+    false,
+    1,
+    4,
+    '0'..='9',
+    'A'..='Z',
+    'a'..'z',
+    [" ", "-", ".", "%", "°", "/", ":"]
+);
+static FONT2: BitmapFont<'static, Gray4, 1> =
+    mplus!(code(100), 500, 32, false, 1, 4, '0'..='9', [".", " "]);
+
+const LEFT_TEXT_STYLE: TextStyle = TextStyleBuilder::new()
+    .alignment(Alignment::Left)
+    .baseline(Baseline::Middle)
+    .build();
+const CENTER_TEXT_STYLE: TextStyle = TextStyleBuilder::new()
+    .alignment(Alignment::Center)
+    .baseline(Baseline::Middle)
+    .build();
+const RIGHT_TEXT_STYLE: TextStyle = TextStyleBuilder::new()
+    .alignment(Alignment::Right)
+    .baseline(Baseline::Middle)
+    .build();
 
 pub struct ScreenMod {
     st: St7789<PIO1, SM1, Pin<DynPinId, FunctionPio1, PullDown>>,
@@ -146,7 +174,7 @@ impl ScreenMod {
         while h < 32 {
             let mut w = 0;
             while w < 32 {
-                let c = icon[32 * h + w];
+                let c = icon[32 * (31 - w) + (31 - h)];
                 self.rectangle(c, 64 - h * 2 + x - 2, w * 2 + y, 2, 2);
                 w += 1;
             }
@@ -173,6 +201,7 @@ impl ScreenMod {
         }
 
         let _elapse_clear_fb = time_func(t, || {
+            // TODO: clear framebuffer with background color every time the screen profile changes
             // // using multiple channels did not meaningfully improve performance.
             // self.dma_ch0 = {
             //     let (dma_ch0, _, _) =
@@ -196,8 +225,8 @@ impl ScreenMod {
                         self.draw_icon(
                             &i[idx].1,
                             self.keys_status[idx],
-                            4 + (64 + 6) * y,
                             23 + (64 + 6) * x,
+                            4 + (64 + 6) * y,
                         );
 
                         i[idx].0 = false;
@@ -208,7 +237,7 @@ impl ScreenMod {
 
         let _elapse_push_fb = time_func(t, || {
             #[allow(static_mut_refs)]
-            self.st.push_framebuffer(unsafe { &FBDATA });
+            self.st.push_framebuffer(unsafe { &FBDATA }, SCR_W, SCR_H);
             self.st.backlight_on();
         });
 

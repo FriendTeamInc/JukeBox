@@ -12,8 +12,6 @@ use rp2040_hal::{
     timer::CountDown,
 };
 
-use crate::modules::screen::{SCR_H, SCR_W};
-
 // pub const SCR_W: usize = 240;
 // pub const SCR_H: usize = 320;
 // static mut FB: [[u16; SCR_W]; SCR_H] = [[0x0000u16; SCR_W]; SCR_H];
@@ -110,15 +108,15 @@ where
         self.backlight_pin.set_low().unwrap();
     }
 
-    pub fn init(&mut self) {
+    pub fn init(&mut self, w: u16, h: u16) {
         // init sequence
         // 16bit startup sequence
         self.write_cmd(&[0x0001]); // Software reset
         self.write_cmd(&[0x0011]); // Exit sleep mode
         self.write_cmd(&[0x003A, 0x5500]); // Set color mode to 16 bit
-        self.write_cmd(&[0x0036, 0x0000]); // Set MADCTL: row then column, refresh is bottom to top ????
-        self.write_cmd(&[0x002A, 0x0000, SCR_W as u16]); // CASET: column addresses
-        self.write_cmd(&[0x002B, 0x0000, SCR_H as u16]); // RASET: row addresses
+        self.write_cmd(&[0b00110110, 0x0000]); // Set MADCTL: bottom to top, left to right, refresh is bottom to top
+        self.write_cmd(&[0x002A, 0x0000, h]); // CASET: column addresses
+        self.write_cmd(&[0x002B, 0x0000, w]); // RASET: row addresses
         self.write_cmd(&[0x0021]); // Inversion on (supposedly a hack?)
         self.write_cmd(&[0x0013]); // Normal display on
         self.write_cmd(&[0x0029]); // Main screen turn on
@@ -189,11 +187,11 @@ where
         self.set_dc_cs(false, false);
     }
 
-    pub fn push_framebuffer(&mut self, fb: &[Bgr565]) {
+    pub fn push_framebuffer(&mut self, fb: &[Bgr565], w: usize, h: usize) {
         self.start_pixels();
-        for y in (0..SCR_H).rev() {
-            for x in 0..SCR_W {
-                let w = unsafe { fb.get_unchecked(y * SCR_W + x) };
+        for x in (0..w).rev() {
+            for y in 0..h {
+                let w = unsafe { fb.get_unchecked(y * w + x) };
                 self.write(w.into_storage());
             }
         }

@@ -33,6 +33,7 @@ mutually_exclusive_features = "0.1"
 embedded-dma = "0.2"
 embedded-graphics = { version = "0.8", features = ["fixed_point"] }
 embedded-graphics-framebuf = "0.5"
+mplusfonts = "0.1.3"
 
 [features]
 default = ["keypad"]

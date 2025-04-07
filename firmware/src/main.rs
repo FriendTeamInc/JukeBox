@@ -36,7 +36,10 @@ mod modules {
     pub mod serial;
 }
 
-use modules::*;
+use modules::{
+    screen::{SCR_H, SCR_W},
+    *,
+};
 
 use embedded_hal::timer::CountDown as _;
 use panic_probe as _;
@@ -201,7 +204,7 @@ fn main() -> ! {
                     screen_pins.5,
                     timer.count_down(),
                 );
-                st.init();
+                st.init(SCR_W as u16, SCR_H as u16);
                 screen::ScreenMod::new(st, dma.ch0, timer.count_down())
             };
 
