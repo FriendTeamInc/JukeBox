@@ -279,13 +279,13 @@ impl ScreenMod {
                 background_color: _,
                 profile_name_color: _,
             } => {
-                ICONS.with_mut_lock(|i| {
-                    for y in 0..3 {
-                        for x in 0..4 {
+                for y in 0..3 {
+                    for x in 0..4 {
+                        ICONS.with_mut_lock(|i| {
                             let idx = y * 4 + x;
 
                             if self.keys_status[idx] == self.keys_previous_frame[idx] && !i[idx].0 {
-                                continue;
+                                return;
                             }
 
                             self.draw_icon(
@@ -297,9 +297,9 @@ impl ScreenMod {
                             );
 
                             i[idx].0 = false;
-                        }
+                        });
                     }
-                });
+                }
             }
             ScreenProfile::DisplayStats {
                 brightness: _,
@@ -383,6 +383,9 @@ impl ScreenMod {
                 };
 
                 self.draw_pre_tick();
+
+                self.keys_previous_frame = [2; 12];
+                self.draw_post_tick();
             }
 
             return self;

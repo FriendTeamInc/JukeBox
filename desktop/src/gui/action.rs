@@ -56,7 +56,82 @@ impl JukeBoxGui {
         };
     }
 
-    fn set_device_action_icon(&mut self, device_uid: &String) {
+    pub fn set_device_action_icons(&mut self, device_uid: &String) {
+        if self
+            .devices
+            .get(device_uid)
+            .map(|d| d.device_info.device_type)
+            .unwrap_or(DeviceType::Unknown)
+            != DeviceType::KeyPad
+            || !self
+                .devices
+                .get(device_uid)
+                .map(|d| d.connected)
+                .unwrap_or(false)
+        {
+            return;
+        }
+
+        let c = self.config.blocking_lock().clone();
+        let p = c.profiles.clone();
+        let p = p.get(&c.current_profile).and_then(|d| d.get(device_uid));
+
+        if let Some(p) = p {
+            for (k, a) in &p.key_map {
+                let txs = self.scmd_txs.blocking_lock();
+                if let Some(tx) = txs.get(device_uid) {
+                    let slot = k.slot();
+                    let icon = get_icon_bytes(&a);
+                    let _ = tx.send(SerialCommand::SetScrIcon(slot, icon));
+                }
+            }
+        }
+    }
+
+    pub fn set_device_hardware_input(&mut self, device_uid: &String) {
+        if self
+            .devices
+            .get(device_uid)
+            .map(|d| d.device_info.device_type)
+            .unwrap_or(DeviceType::Unknown)
+            != DeviceType::KeyPad
+            || !self
+                .devices
+                .get(device_uid)
+                .map(|d| d.connected)
+                .unwrap_or(false)
+        {
+            return;
+        }
+
+        let c = self.config.blocking_lock().clone();
+        let p = c.profiles.clone();
+        let p = p.get(&c.current_profile).and_then(|d| d.get(device_uid));
+
+        if let Some(p) = p {
+            for (k, a) in &p.key_map {
+                let txs = self.scmd_txs.blocking_lock();
+                if let Some(tx) = txs.get(device_uid) {
+                    let slot = k.slot();
+                    let _ = if let Some(kb) = a.action.downcast_ref::<InputKeyboard>() {
+                        tx.send(SerialCommand::SetKeyboardInput(
+                            slot,
+                            kb.get_keyboard_event(),
+                        ))
+                    } else if let Some(mouse) = a.action.downcast_ref::<InputMouse>() {
+                        tx.send(SerialCommand::SetMouseInput(slot, mouse.get_mouse_event()))
+                    } else {
+                        tx.send(SerialCommand::SetKeyboardInput(
+                            slot,
+                            KeyboardEvent::empty_event(),
+                        ))
+                    };
+                }
+            }
+        }
+    }
+
+    fn set_device_edited_action_icon(&mut self, device_uid: &String) {
         if self
             .devices
             .get(device_uid)
@@ -95,7 +170,7 @@ impl JukeBoxGui {
         }
     }
 
-    fn set_device_hardware_input(&mut self, device_uid: &String) {
+    fn set_device_edited_hardware_input(&mut self, device_uid: &String) {
         let action = if let Some(action) = {
             let c = self.config.blocking_lock().clone();
             c.profiles
@@ -172,9 +247,9 @@ impl JukeBoxGui {
             c.save();
         }
 
-        self.set_device_action_icon(&self.current_device.clone());
+        self.set_device_edited_action_icon(&self.current_device.clone());
 
-        self.set_device_hardware_input(&self.current_device.clone());
+        self.set_device_edited_hardware_input(&self.current_device.clone());
     }
 
     pub fn draw_edit_action(&mut self, ui: &mut Ui) {

@@ -30,6 +30,7 @@ async fn update_device_configs(
     device_type: DeviceType,
     keys: HashMap<InputKey, ActionConfig>,
     rgb_profile: RgbProfile,
+    profile_name: String,
 ) {
     let txs = scmd_txs.lock().await;
     let tx = if let Some(tx) = txs.get(device_uid) {
@@ -39,6 +40,9 @@ async fn update_device_configs(
     };
 
     if device_type == DeviceType::KeyPad {
+        // send profile name
+        let _ = tx.send(SerialCommand::SetProfileName(profile_name));
+
         // send rgb profile
         let _ = tx.send(SerialCommand::SetRgbMode(rgb_profile));
 
@@ -47,24 +51,24 @@ async fn update_device_configs(
             let bytes = get_icon_bytes(a);
             let _ = tx.send(SerialCommand::SetScrIcon(k.slot(), bytes));
         }
+    }
 
-        for (k, a) in keys {
-            let slot = k.slot();
-            let action = a.action.as_any();
-            let _ = if let Some(kb) = action.downcast_ref::<InputKeyboard>() {
-                tx.send(SerialCommand::SetKeyboardInput(
-                    slot,
-                    kb.get_keyboard_event(),
-                ))
-            } else if let Some(mouse) = action.downcast_ref::<InputMouse>() {
-                tx.send(SerialCommand::SetMouseInput(slot, mouse.get_mouse_event()))
-            } else {
-                tx.send(SerialCommand::SetKeyboardInput(
-                    slot,
-                    KeyboardEvent::empty_event(),
-                ))
-            };
-        }
+    for (k, a) in keys {
+        let slot = k.slot();
+        let action = a.action.as_any();
+        let _ = if let Some(kb) = action.downcast_ref::<InputKeyboard>() {
+            tx.send(SerialCommand::SetKeyboardInput(
+                slot,
+                kb.get_keyboard_event(),
+            ))
+        } else if let Some(mouse) = action.downcast_ref::<InputMouse>() {
+            tx.send(SerialCommand::SetMouseInput(slot, mouse.get_mouse_event()))
+        } else {
+            tx.send(SerialCommand::SetKeyboardInput(
+                slot,
+                KeyboardEvent::empty_event(),
+            ))
+        };
     }
 }
 
@@ -112,7 +116,7 @@ pub async fn action_task(
                 clear_set(&mut prevkeys, device_uid).await;
 
                 // TODO: set hardware inputs here
-                let (device_type, keys, rgb_profile, _) =
+                let (device_type, keys, rgb_profile, profile_name) =
                     get_profile_info(&config, device_uid).await;
                 update_device_configs(
                     scmd_txs.clone(),
@@ -120,6 +124,7 @@ pub async fn action_task(
                     device_type,
                     keys,
                     rgb_profile.unwrap_or(RgbProfile::default_gui_profile()),
+                    profile_name,
                 )
                 .await;
             }
@@ -177,6 +182,7 @@ pub async fn action_task(
                             device_type,
                             new_keys,
                             new_rgb_profile.unwrap_or(RgbProfile::default_gui_profile()),
+                            new_profile_name,
                         )
                         .await;
                     }

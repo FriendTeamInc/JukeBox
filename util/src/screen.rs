@@ -1,6 +1,8 @@
 use crate::smallstr::SmallStr;
 
-pub type ProfileName = SmallStr<{ 18 * 4 + 1 }>;
+pub const PROFILE_NAME_CODE_POINT_LEN: usize = 18;
+pub const PROFILE_NAME_CHAR_LEN: usize = PROFILE_NAME_CODE_POINT_LEN * 4;
+pub type ProfileName = SmallStr<{ PROFILE_NAME_CHAR_LEN + 1 }>;
 
 pub const SCREEN_PROFILE_OFF: u8 = 0;
 pub const SCREEN_PROFILE_DISPLAY_KEYS: u8 = 1;

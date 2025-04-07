@@ -37,14 +37,12 @@ impl<const N: usize> SmallStr<N> {
         let mut data = [0u8; N];
 
         data[0] = self.size;
-        data[1..(self.size as usize) + 1].copy_from_slice(&self.str);
+        data[1..(self.size as usize) + 1].copy_from_slice(&self.str[..self.size as usize]);
 
         data
     }
 
     pub fn decode(data: &[u8]) -> Self {
-        assert!(N >= data.len());
-
         let mut str = [0u8; N];
         let size = data[0];
 

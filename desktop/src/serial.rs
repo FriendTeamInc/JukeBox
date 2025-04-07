@@ -2,6 +2,7 @@
 
 use crate::input::InputKey;
 
+use std::cmp::min;
 use std::collections::{HashMap, HashSet};
 use std::io::Read;
 use std::sync::atomic::AtomicBool;
@@ -9,6 +10,8 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, bail, Context, Result};
+use jukebox_util::protocol::CMD_SET_PROFILE_NAME;
+use jukebox_util::screen::{ProfileName, PROFILE_NAME_CHAR_LEN};
 use jukebox_util::{
     input::{KeyboardEvent, MouseEvent},
     peripheral::{
@@ -47,8 +50,9 @@ pub enum SerialCommand {
     SetMouseInput(u8, MouseEvent),
     // SetGamepadInput(u8, [u8; 6]),
     SetRgbMode(RgbProfile),
-    SetScrMode,
     SetScrIcon(u8, [u8; 32 * 32 * 2]),
+    SetScrMode,
+    SetProfileName(String),
     Update,
     Disconnect,
 }
@@ -322,6 +326,16 @@ async fn transmit_set_scr_icon(
     send_expect(f, &cmd, &[RSP_ACK]).await
 }
 
+async fn transmit_set_profile_name(f: &mut Serial, profile_name: String) -> Result<()> {
+    let profile_name =
+        ProfileName::from_str(&profile_name[..min(profile_name.len(), PROFILE_NAME_CHAR_LEN)]);
+
+    let mut cmd = vec![CMD_SET_PROFILE_NAME];
+    cmd.extend_from_slice(&profile_name.encode());
+
+    send_expect(f, &cmd, &[RSP_ACK]).await
+}
+
 async fn transmit_identify_signal(f: &mut Serial) -> Result<()> {
     send_expect(f, &[CMD_IDENTIFY], &[RSP_ACK]).await
 }
@@ -399,11 +413,14 @@ pub async fn serial_loop(
                 SerialCommand::SetRgbMode(rgb_profile) => {
                     transmit_set_rgb(f, rgb_profile).await?;
                 }
+                SerialCommand::SetScrIcon(slot, icon_data) => {
+                    transmit_set_scr_icon(f, slot, icon_data).await?;
+                }
                 SerialCommand::SetScrMode => {
                     todo!()
                 }
-                SerialCommand::SetScrIcon(slot, icon_data) => {
-                    transmit_set_scr_icon(f, slot, icon_data).await?;
+                SerialCommand::SetProfileName(profile_name) => {
+                    transmit_set_profile_name(f, profile_name).await?;
                 }
                 SerialCommand::Update => {
                     transmit_update_signal(f).await?;

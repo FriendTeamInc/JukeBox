@@ -2,8 +2,13 @@ use std::collections::HashMap;
 
 use eframe::egui::{ComboBox, RichText, TextBuffer, TextEdit, Ui};
 use egui_phosphor::regular as phos;
+use jukebox_util::peripheral::DeviceType;
 
-use crate::config::DeviceConfig;
+use crate::{
+    actions::meta::{AID_META_COPY_FROM_PROFILE, AID_META_SWITCH_PROFILE},
+    config::DeviceConfig,
+    serial::SerialCommand,
+};
 
 use super::gui::{GuiTab, JukeBoxGui};
 
@@ -18,46 +23,64 @@ impl JukeBoxGui {
                 if edit.lost_focus() && self.profile_name_entry.len() > 0 {
                     self.profile_renaming = false;
 
-                    let mut conf = self.config.blocking_lock();
+                    let contains = self
+                        .config
+                        .blocking_lock()
+                        .profiles
+                        .contains_key(&self.profile_name_entry);
 
-                    if !conf.profiles.contains_key(&self.profile_name_entry) {
-                        let p = conf.current_profile.clone();
-                        let c = conf.profiles.remove(&p).expect("");
-                        conf.profiles.insert(self.profile_name_entry.clone(), c);
-                        conf.current_profile.replace_with(&self.profile_name_entry);
+                    if !contains {
+                        {
+                            let mut conf = self.config.blocking_lock();
 
-                        // TODO: edit configs to reference new profile instead of wiping it
-                        for (_, p) in conf.profiles.iter_mut() {
-                            for (_, d) in p.iter_mut() {
-                                for (_, k) in d.key_map.iter_mut() {
-                                    match k.action.get_type().as_ref() {
-                                        "MetaSwitchProfile" => {
-                                            k.action = self
-                                                .action_map
-                                                .enum_new("MetaSwitchProfile".into());
+                            // TODO: make sure name is only 18 utf8 code points long
+
+                            let p = conf.current_profile.clone();
+                            let c = conf.profiles.remove(&p).expect("");
+                            conf.profiles.insert(self.profile_name_entry.clone(), c);
+                            conf.current_profile.replace_with(&self.profile_name_entry);
+
+                            // TODO: edit configs to reference new profile instead of wiping it
+                            for (_, p) in conf.profiles.iter_mut() {
+                                for (_, d) in p.iter_mut() {
+                                    for (_, k) in d.key_map.iter_mut() {
+                                        match k.action.get_type().as_ref() {
+                                            AID_META_SWITCH_PROFILE => {
+                                                k.action = self
+                                                    .action_map
+                                                    .enum_new(AID_META_SWITCH_PROFILE.into());
+                                            }
+                                            AID_META_COPY_FROM_PROFILE => {
+                                                k.action = self
+                                                    .action_map
+                                                    .enum_new(AID_META_COPY_FROM_PROFILE.into());
+                                            }
+                                            _ => {}
                                         }
-                                        "MetaCopyFromProfile" => {
-                                            k.action = self
-                                                .action_map
-                                                .enum_new("MetaCopyFromProfile".into());
-                                        }
-                                        _ => {}
                                     }
                                 }
                             }
+
+                            conf.save();
                         }
 
-                        conf.save();
+                        let device = self.current_device.clone();
+                        self.set_device_profile_name(&device);
                     }
                 }
                 if !edit.has_focus() {
                     edit.request_focus();
                 }
             } else {
-                let mut conf = self.config.blocking_lock();
-                let mut profiles = conf.profiles.keys().cloned().collect::<Vec<_>>();
-                profiles.sort_by(|a, b| a.cmp(b));
-                let current = conf.current_profile.clone();
+                let (profiles, current) = {
+                    let conf = self.config.blocking_lock();
+
+                    let mut profiles: Vec<_> = conf.profiles.keys().cloned().collect();
+                    profiles.sort_by(|a, b| a.cmp(b));
+                    let current = conf.current_profile.clone();
+
+                    (profiles, current)
+                };
                 ComboBox::from_id_salt("ProfileSelect")
                     .selected_text(current.clone())
                     .width(150.0)
@@ -65,8 +88,14 @@ impl JukeBoxGui {
                         for k in &profiles {
                             let u = ui.selectable_label(*k == current, &*k.clone());
                             if u.clicked() {
-                                conf.current_profile = k.into();
-                                conf.save();
+                                {
+                                    let mut conf = self.config.blocking_lock();
+                                    conf.current_profile = k.into();
+                                    conf.save();
+                                }
+
+                                let device = self.current_device.clone();
+                                self.set_device_profile(&device);
                             }
                         }
                     })
@@ -114,8 +143,7 @@ impl JukeBoxGui {
                     self.profile_name_entry.replace_with(&conf.current_profile);
                 }
 
-                let mut conf = self.config.blocking_lock();
-                if conf.profiles.keys().len() <= 1 {
+                if self.config.blocking_lock().profiles.keys().len() <= 1 {
                     ui.disable();
                 }
                 let delete_btn = ui
@@ -125,31 +153,75 @@ impl JukeBoxGui {
                     // TODO: make red
                 }
                 if delete_btn.double_clicked() {
-                    let p = conf.current_profile.clone();
-                    conf.profiles.remove(&p);
-                    conf.current_profile = conf.profiles.keys().next().unwrap().clone();
+                    {
+                        let mut conf = self.config.blocking_lock();
+                        let p = conf.current_profile.clone();
+                        conf.profiles.remove(&p);
+                        conf.current_profile = conf.profiles.keys().next().unwrap().clone();
 
-                    for (_, p) in conf.profiles.iter_mut() {
-                        for (_, d) in p.iter_mut() {
-                            for (_, k) in d.key_map.iter_mut() {
-                                match k.action.get_type().as_ref() {
-                                    "MetaSwitchProfile" => {
-                                        k.action =
-                                            self.action_map.enum_new("MetaSwitchProfile".into());
+                        for (_, p) in conf.profiles.iter_mut() {
+                            for (_, d) in p.iter_mut() {
+                                for (_, k) in d.key_map.iter_mut() {
+                                    // TODO: only reset configs that reference the old profile
+                                    match k.action.get_type().as_ref() {
+                                        AID_META_SWITCH_PROFILE => {
+                                            k.action = self
+                                                .action_map
+                                                .enum_new(AID_META_SWITCH_PROFILE.into());
+                                        }
+                                        AID_META_COPY_FROM_PROFILE => {
+                                            k.action = self
+                                                .action_map
+                                                .enum_new(AID_META_COPY_FROM_PROFILE.into());
+                                        }
+                                        _ => {}
                                     }
-                                    "MetaCopyFromProfile" => {
-                                        k.action =
-                                            self.action_map.enum_new("MetaCopyFromProfile".into());
-                                    }
-                                    _ => {}
                                 }
                             }
                         }
+
+                        conf.save();
                     }
 
-                    conf.save();
+                    let devices: Vec<_> = self.devices.keys().cloned().collect();
+                    for k in devices {
+                        self.set_device_profile(&k);
+                    }
                 }
             });
         });
+    }
+
+    pub fn set_device_profile(&mut self, device_uid: &String) {
+        self.set_device_rgb(device_uid);
+        // self.set_device_screen(device_uid);
+        self.set_device_action_icons(device_uid);
+        self.set_device_hardware_input(device_uid);
+        self.set_device_profile_name(device_uid);
+    }
+
+    pub fn set_device_profile_name(&mut self, device_uid: &String) {
+        if self
+            .devices
+            .get(device_uid)
+            .map(|d| d.device_info.device_type)
+            .unwrap_or(DeviceType::Unknown)
+            != DeviceType::KeyPad
+        {
+            return;
+        }
+
+        if self
+            .devices
+            .get(device_uid)
+            .map(|d| d.connected)
+            .unwrap_or(false)
+        {
+            let c = self.config.blocking_lock();
+            let txs = self.scmd_txs.blocking_lock();
+            if let Some(tx) = txs.get(device_uid) {
+                let _ = tx.send(SerialCommand::SetProfileName(c.current_profile.clone()));
+            }
+        }
     }
 }
