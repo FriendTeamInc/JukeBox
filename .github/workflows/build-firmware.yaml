@@ -28,11 +28,11 @@ jobs:
           name: jb_firmware_keypad
           path: firmware/target/thumbv6m-none-eabi/debug/jukebox_firmware
           retention-days: 90
-      - name: "Build debug binary with Cargo (Pedalpad)"
-        run: cd firmware/ && cargo build -F "pedalpad"
-      - name: "Upload debug binary artifact (Pedalpad)"
-        uses: actions/upload-artifact@v4
-        with:
-          name: jb_firmware_pedalpad
-          path: firmware/target/thumbv6m-none-eabi/debug/jukebox_firmware
-          retention-days: 90
+      # - name: "Build debug binary with Cargo (Pedalpad)"
+      #   run: cd firmware/ && cargo build -F "pedalpad"
+      # - name: "Upload debug binary artifact (Pedalpad)"
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: jb_firmware_pedalpad
+      #     path: firmware/target/thumbv6m-none-eabi/debug/jukebox_firmware
+      #     retention-days: 90
