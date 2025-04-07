@@ -222,15 +222,11 @@ impl ScreenMod {
 
         self.keys_previous_frame = self.keys_status;
         for k in self.keys_status.iter_mut() {
-            sub_if_not_zero(k);
+            if *k > 0 {
+                *k -= 1;
+            }
         }
 
         self
-    }
-}
-
-fn sub_if_not_zero(w: &mut u8) {
-    if *w > 0 {
-        *w -= 1;
     }
 }

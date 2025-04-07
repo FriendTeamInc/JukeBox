@@ -5,9 +5,10 @@ use core::{
 
 use embedded_graphics::{pixelcolor::Bgr565, prelude::RgbColor};
 use jukebox_util::{
-    color::{rgb565_to_rgb888, RgbProfile},
+    color::rgb565_to_rgb888,
     input::{KeyboardEvent, MouseEvent},
     peripheral::{Connection, JBInputs, KeyInputs, KnobInputs, PedalInputs},
+    rgb::RgbProfile,
 };
 use rp2040_hal::{fugit::Duration, Timer};
 use usbd_human_interface_device::{device::mouse::WheelMouseReport, page::Keyboard};

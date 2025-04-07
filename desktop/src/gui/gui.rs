@@ -12,8 +12,8 @@ use eframe::egui::{
 use eframe::Frame;
 use egui_extras::install_image_loaders;
 use egui_phosphor::regular as phos;
-use jukebox_util::color::RgbProfile;
 use jukebox_util::peripheral::DeviceType;
+use jukebox_util::rgb::RgbProfile;
 use rand::prelude::*;
 use tokio::{
     runtime::Runtime,

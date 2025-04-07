@@ -6,7 +6,7 @@ use defmt::*;
 use embedded_graphics::pixelcolor::Bgr565;
 use embedded_hal::timer::{Cancel as _, CountDown as _};
 use jukebox_util::{
-    color::{rgb565_to_rgb888, RgbProfile},
+    color::rgb565_to_rgb888,
     input::{KeyboardEvent, MouseEvent},
     peripheral::{
         Connection, JBInputs, IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT,
@@ -16,6 +16,7 @@ use jukebox_util::{
         decode_packet_size, Command, MAX_PACKET_SIZE, RSP_ACK, RSP_DISCONNECTED, RSP_INPUT_HEADER,
         RSP_LINK_DELIMITER, RSP_LINK_HEADER, RSP_UNKNOWN,
     },
+    rgb::RgbProfile,
 };
 use ringbuffer::{ConstGenericRingBuffer, RingBuffer};
 use rp2040_hal::{fugit::ExtU32, timer::CountDown, usb::UsbBus};
@@ -282,7 +283,7 @@ impl SerialMod {
                             let (r, g, b) = rgb565_to_rgb888(
                                 ((new_icon[i * 2 + 1] as u16) << 8) | (new_icon[i * 2] as u16),
                             );
-                            let c = Bgr565::new(r, g, b);
+                            let c = Bgr565::new(b, g, r);
                             scr_icon.1[i] = c;
                             i += 1;
                         }

@@ -4,7 +4,7 @@ use eframe::egui::{
     color_picker::show_color_at, vec2, Align, Color32, ComboBox, Layout, Response, ScrollArea,
     Sense, Slider, StrokeKind, TextEdit, Ui, Vec2,
 };
-use jukebox_util::{color::RgbProfile, peripheral::DeviceType};
+use jukebox_util::{peripheral::DeviceType, rgb::RgbProfile};
 
 use crate::serial::SerialCommand;
 

@@ -5,8 +5,8 @@ use eframe::egui::{
     TextBuffer, TextEdit, TextureFilter, TextureOptions, TextureWrapMode, Ui,
 };
 use egui_phosphor::regular as phos;
-use jukebox_util::color::RgbProfile;
 use jukebox_util::peripheral::DeviceType;
+use jukebox_util::rgb::RgbProfile;
 
 use crate::serial::SerialCommand;
 use crate::update::UpdateStatus;

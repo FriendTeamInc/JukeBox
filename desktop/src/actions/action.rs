@@ -7,7 +7,7 @@ use std::{
 
 use anyhow::Result;
 use futures::future::join_all;
-use jukebox_util::{color::RgbProfile, input::KeyboardEvent, peripheral::DeviceType};
+use jukebox_util::{input::KeyboardEvent, peripheral::DeviceType, rgb::RgbProfile};
 use tokio::sync::{
     mpsc::{UnboundedReceiver, UnboundedSender},
     Mutex,

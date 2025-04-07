@@ -9,26 +9,27 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, bail, Context, Result};
-use jukebox_util::color::RgbProfile;
-use jukebox_util::input::{KeyboardEvent, MouseEvent};
-use jukebox_util::peripheral::{
-    KeyInputs, KnobInputs, PedalInputs, IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT,
-    IDENT_UNKNOWN_INPUT,
-};
-use jukebox_util::protocol::{
-    decode_packet_size, encode_packet_size, CMD_DISCONNECT, CMD_GET_INPUT_KEYS, CMD_GREET,
-    CMD_IDENTIFY, CMD_NEGATIVE_ACK, CMD_SET_KEYBOARD_INPUT, CMD_SET_MOUSE_INPUT, CMD_SET_RGB_MODE,
-    CMD_SET_SCR_ICON, CMD_UPDATE, RSP_ACK, RSP_DISCONNECTED, RSP_INPUT_HEADER, RSP_LINK_DELIMITER,
-    RSP_LINK_HEADER, RSP_UNKNOWN,
+use jukebox_util::{
+    input::{KeyboardEvent, MouseEvent},
+    peripheral::{
+        KeyInputs, KnobInputs, PedalInputs, IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT,
+        IDENT_UNKNOWN_INPUT,
+    },
+    protocol::{
+        decode_packet_size, encode_packet_size, CMD_DISCONNECT, CMD_GET_INPUT_KEYS, CMD_GREET,
+        CMD_IDENTIFY, CMD_NEGATIVE_ACK, CMD_SET_KEYBOARD_INPUT, CMD_SET_MOUSE_INPUT,
+        CMD_SET_RGB_MODE, CMD_SET_SCR_ICON, CMD_UPDATE, RSP_ACK, RSP_DISCONNECTED,
+        RSP_INPUT_HEADER, RSP_LINK_DELIMITER, RSP_LINK_HEADER, RSP_UNKNOWN,
+    },
+    rgb::RgbProfile,
 };
 use serialport::SerialPort;
-use tokio::task::block_in_place;
 use tokio::{
     sync::{
         mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
         Mutex,
     },
-    task::spawn_blocking,
+    task::{block_in_place, spawn_blocking},
     time::sleep,
 };
 

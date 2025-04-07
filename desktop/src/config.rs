@@ -6,7 +6,7 @@ use std::{
     path::PathBuf,
 };
 
-use jukebox_util::{color::RgbProfile, peripheral::DeviceType};
+use jukebox_util::{peripheral::DeviceType, rgb::RgbProfile};
 use serde::{Deserialize, Serialize};
 
 use crate::{

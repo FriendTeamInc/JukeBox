@@ -3,7 +3,7 @@
 #![allow(dead_code)]
 
 use embedded_hal::timer::CountDown as _;
-use jukebox_util::color::RgbProfile;
+use jukebox_util::rgb::RgbProfile;
 use rp2040_hal::{
     fugit::ExtU32,
     gpio::{DynPinId, FunctionPio0, Pin, PullDown},
