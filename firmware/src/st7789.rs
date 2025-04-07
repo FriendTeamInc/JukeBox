@@ -1,16 +1,16 @@
 #![allow(dead_code)]
 
-use core::u32;
-
 use cortex_m::prelude::_embedded_hal_timer_CountDown;
-use embedded_graphics::{pixelcolor::Bgr565, prelude::IntoStorage};
 use embedded_hal::digital::v2::OutputPin as _;
 use rp2040_hal::{
+    dma::{single_buffer, Channel, HalfWord, CH0},
     fugit::{ExtU64, MicrosDurationU64},
     gpio::{AnyPin, DynPinId, FunctionSioOutput, Pin, PullDown},
     pio::{PIOBuilder, PIOExt, StateMachineIndex, Tx, UninitStateMachine, PIO},
     timer::CountDown,
 };
+
+use crate::modules::screen::{SCR_H, SCR_W};
 
 // pub const SCR_W: usize = 240;
 // pub const SCR_H: usize = 320;
@@ -23,7 +23,7 @@ where
     SM: StateMachineIndex,
     P: PIOExt,
 {
-    tx: Tx<(P, SM)>,
+    tx: Tx<(P, SM), HalfWord>,
     _data_pin: I,
     _clock_pin: I,
     backlight_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
@@ -89,7 +89,7 @@ where
         sm.start();
 
         Self {
-            tx: tx,
+            tx: tx.transfer_size(HalfWord),
             _data_pin: data_pin.into(),
             _clock_pin: clock_pin.into(),
             backlight_pin: backlight_pin,
@@ -114,7 +114,7 @@ where
         self.write_cmd(&[0x0001]); // Software reset
         self.write_cmd(&[0x0011]); // Exit sleep mode
         self.write_cmd(&[0x003A, 0x5500]); // Set color mode to 16 bit
-        self.write_cmd(&[0b00110110, 0x0000]); // Set MADCTL: bottom to top, left to right, refresh is bottom to top
+        self.write_cmd(&[0b111101_10, 0x0000]); // Set MADCTL: bottom to top, left to right, refresh is bottom to top
         self.write_cmd(&[0x002A, 0x0000, h]); // CASET: column addresses
         self.write_cmd(&[0x002B, 0x0000, w]); // RASET: row addresses
         self.write_cmd(&[0x0021]); // Inversion on (supposedly a hack?)
@@ -138,8 +138,7 @@ where
     }
 
     fn write(&mut self, word: u16) {
-        let w = (word as u32) << 16;
-        while !self.tx.write(w) {
+        while !self.tx.write_u16_replicated(word) {
             cortex_m::asm::nop();
         }
     }
@@ -187,13 +186,22 @@ where
         self.set_dc_cs(false, false);
     }
 
-    pub fn push_framebuffer(&mut self, fb: &[Bgr565], w: usize, h: usize) {
+    pub fn push_framebuffer(
+        mut self,
+        dma_ch0: Channel<CH0>,
+        fb: &'static [u16; SCR_W * SCR_H],
+    ) -> (Self, Channel<CH0>) {
         self.start_pixels();
-        for x in (0..w).rev() {
-            for y in 0..h {
-                let w = unsafe { fb.get_unchecked(y * w + x) };
-                self.write(w.into_storage());
-            }
-        }
+
+        let (dma_ch0, tx) = {
+            let (dma_ch0, _, tx) = single_buffer::Config::new(dma_ch0, fb, self.tx)
+                .start()
+                .wait();
+            (dma_ch0, tx)
+        };
+
+        self.tx = tx;
+
+        (self, dma_ch0)
     }
 }

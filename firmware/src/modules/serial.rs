@@ -23,11 +23,11 @@ use rp2040_hal::{fugit::ExtU32, timer::CountDown, usb::UsbBus};
 use usbd_serial::SerialPort;
 
 use crate::{
-    modules::rgb::DEFAULT_RGB,
     reset_icons,
     util::{
-        inputs_default, reset_peripherals, CONNECTION_STATUS, ICONS, IDENTIFY_TRIGGER,
-        KEYBOARD_EVENTS, MOUSE_EVENTS, PERIPHERAL_INPUTS, RGB_CONTROLS, UPDATE_TRIGGER,
+        reset_peripherals, CONNECTION_STATUS, DEFAULT_INPUTS, DEFAULT_RGB_PROFILE, ICONS,
+        IDENTIFY_TRIGGER, KEYBOARD_EVENTS, MOUSE_EVENTS, PERIPHERAL_INPUTS, RGB_CONTROLS,
+        UPDATE_TRIGGER,
     },
 };
 
@@ -123,7 +123,7 @@ impl SerialMod {
             CONNECTION_STATUS.with_mut_lock(|c| *c = Connection::NotConnected(false));
             RGB_CONTROLS.with_mut_lock(|c| {
                 c.0 = true;
-                c.1 = DEFAULT_RGB;
+                c.1 = DEFAULT_RGB_PROFILE;
             });
             reset_icons();
             self.state = Connection::NotConnected(false);
@@ -196,7 +196,7 @@ impl SerialMod {
                 Command::GetInputKeys => {
                     // copy peripherals and inputs out
                     let inputs = {
-                        let mut inputs = inputs_default();
+                        let mut inputs = DEFAULT_INPUTS;
                         PERIPHERAL_INPUTS.with_lock(|i| {
                             inputs = *i;
                         });

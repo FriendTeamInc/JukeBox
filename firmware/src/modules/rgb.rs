@@ -15,12 +15,10 @@ use smart_leds::brightness;
 use smart_leds_trait::{SmartLedsWrite, RGB8};
 use ws2812_pio::Ws2812;
 
-use crate::util::RGB_CONTROLS;
+use crate::util::{DEFAULT_RGB_PROFILE, RGB_CONTROLS};
 
 const RGB_LEN: usize = 12;
 const FRAME_TIME: u32 = 33;
-
-pub const DEFAULT_RGB: RgbProfile = RgbProfile::default_device_profile();
 
 pub struct RgbMod {
     ws: Ws2812<PIO0, SM0, CountDown, Pin<DynPinId, FunctionPio0, PullDown>>,
@@ -40,7 +38,7 @@ impl RgbMod {
             ws: ws,
             buffer: [(0, 0, 0).into(); RGB_LEN],
             timer: count_down,
-            rgb_mode: DEFAULT_RGB,
+            rgb_mode: DEFAULT_RGB_PROFILE,
         }
     }
 

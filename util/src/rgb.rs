@@ -239,8 +239,7 @@ impl RgbProfile {
     }
 
     pub fn decode(data: &[u8]) -> Self {
-        let t = data[0];
-        match t {
+        match data[0] {
             RGB_PROFILE_OFF => Self::Off,
             RGB_PROFILE_STATIC_SOLID => Self::StaticSolid {
                 brightness: data[1],

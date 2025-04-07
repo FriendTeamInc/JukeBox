@@ -1,3 +1,7 @@
+use crate::smallstr::SmallStr;
+
+pub type ProfileName = SmallStr<{ 18 * 4 }>;
+
 pub const SCREEN_PROFILE_OFF: u8 = 0;
 pub const SCREEN_PROFILE_DISPLAY_KEYS: u8 = 1;
 pub const SCREEN_PROFILE_DISPLAY_STATS: u8 = 2;
@@ -51,6 +55,38 @@ impl ScreenProfile {
         }
     }
 
+    pub fn background_color(&self) -> u16 {
+        match self {
+            Self::Off => 0,
+            Self::DisplayKeys {
+                brightness: _,
+                background_color,
+                profile_name_color: _,
+            } => *background_color,
+            Self::DisplayStats {
+                brightness: _,
+                background_color,
+                profile_name_color: _,
+            } => *background_color,
+        }
+    }
+
+    pub fn profile_name_color(&self) -> u16 {
+        match self {
+            Self::Off => 0,
+            Self::DisplayKeys {
+                brightness: _,
+                background_color: _,
+                profile_name_color,
+            } => *profile_name_color,
+            Self::DisplayStats {
+                brightness: _,
+                background_color: _,
+                profile_name_color,
+            } => *profile_name_color,
+        }
+    }
+
     pub fn encode(self) -> [u8; 100] {
         let mut data = [0u8; 100];
         data[0] = self.get_type();
@@ -81,5 +117,30 @@ impl ScreenProfile {
         }
 
         data
+    }
+
+    pub fn decode(data: &[u8]) -> Self {
+        match data[0] {
+            SCREEN_PROFILE_OFF => Self::Off,
+            SCREEN_PROFILE_DISPLAY_KEYS => Self::DisplayKeys {
+                brightness: data[1],
+                background_color: ((data[2] as u16) << 8) | (data[3] as u16),
+                profile_name_color: ((data[4] as u16) << 8) | (data[5] as u16),
+            },
+            SCREEN_PROFILE_DISPLAY_STATS => Self::DisplayStats {
+                brightness: data[1],
+                background_color: ((data[2] as u16) << 8) | (data[3] as u16),
+                profile_name_color: ((data[4] as u16) << 8) | (data[5] as u16),
+            },
+            _ => panic!(),
+        }
+    }
+
+    pub const fn default_profile() -> Self {
+        Self::DisplayKeys {
+            brightness: 255,
+            background_color: 0x4208,
+            profile_name_color: 0xFFFF,
+        }
     }
 }

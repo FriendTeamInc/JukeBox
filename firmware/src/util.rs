@@ -9,11 +9,13 @@ use jukebox_util::{
     input::{KeyboardEvent, MouseEvent},
     peripheral::{Connection, JBInputs, KeyInputs, KnobInputs, PedalInputs},
     rgb::RgbProfile,
+    screen::{ProfileName, ScreenProfile},
+    smallstr::SmallStr,
+    stats::SystemStats,
 };
-use rp2040_hal::{fugit::Duration, Timer};
 use usbd_human_interface_device::{device::mouse::WheelMouseReport, page::Keyboard};
 
-use crate::{modules::rgb::DEFAULT_RGB, mutex::Mutex};
+use crate::mutex::Mutex;
 
 macro_rules! load_bmp {
     ($path:literal) => {{
@@ -56,20 +58,39 @@ type ConnectionStatus = Mutex<5, Connection>;
 type Icons = Mutex<6, [(bool, [Bgr565; 32 * 32]); 12]>;
 type KeyboardEvents = Mutex<7, [KeyboardEvent; 12]>;
 type MouseEvents = Mutex<8, [MouseEvent; 12]>;
+type ProfileNameControl = Mutex<9, (bool, ProfileName)>;
+type ScreenSystemStats = Mutex<10, (bool, SystemStats)>;
+type ScreenControls = Mutex<11, (bool, ScreenProfile)>;
+
+pub const DEFAULT_INPUTS: JBInputs = inputs_default();
+pub const DEFAULT_KEYBOARD_EVENTS: [KeyboardEvent; 12] = KeyboardEvent::default_events();
+pub const DEFAULT_MOUSE_EVENTS: [MouseEvent; 12] = MouseEvent::default_events();
+pub const DEFAULT_PROFILE_NAME: SmallStr<{ 18 * 4 }> = SmallStr::default();
+pub const DEFAULT_RGB_PROFILE: RgbProfile = RgbProfile::default_device_profile();
+pub const DEFAULT_SCREEN_PROFILE: ScreenProfile = ScreenProfile::default_profile();
+pub const DEFAULT_SYSTEM_STATS: SystemStats = SystemStats::default();
 
 pub static CONNECTION_STATUS: ConnectionStatus = Mutex::new(Connection::NotConnected(true));
-pub static PERIPHERAL_INPUTS: PeripheralInputs = Mutex::new(inputs_default());
+pub static PERIPHERAL_INPUTS: PeripheralInputs = Mutex::new(DEFAULT_INPUTS);
 pub static UPDATE_TRIGGER: UpdateTrigger = Mutex::new(false);
 pub static IDENTIFY_TRIGGER: IdentifyTrigger = Mutex::new(false);
-pub static RGB_CONTROLS: RgbControls = Mutex::new((false, RgbProfile::default_device_profile()));
+pub static RGB_CONTROLS: RgbControls = Mutex::new((false, DEFAULT_RGB_PROFILE));
 pub static ICONS: Icons = Mutex::new([(false, [Bgr565::BLACK; 32 * 32]); 12]);
-pub static KEYBOARD_EVENTS: KeyboardEvents = Mutex::new(KeyboardEvent::default_events());
-pub static MOUSE_EVENTS: MouseEvents = Mutex::new(MouseEvent::default_events());
+pub static KEYBOARD_EVENTS: KeyboardEvents = Mutex::new(DEFAULT_KEYBOARD_EVENTS);
+pub static MOUSE_EVENTS: MouseEvents = Mutex::new(DEFAULT_MOUSE_EVENTS);
+pub static PROFILE_NAME: ProfileNameControl = Mutex::new((true, DEFAULT_PROFILE_NAME));
+pub static SCREEN_SYSTEM_STATS: ScreenSystemStats = Mutex::new((false, DEFAULT_SYSTEM_STATS));
+pub static SCREEN_CONTROLS: ScreenControls = Mutex::new((false, DEFAULT_SCREEN_PROFILE));
 
-pub fn time_func(t: &Timer, mut f: impl FnMut() -> ()) -> Duration<u64, 1, 1000000> {
-    let s = t.get_counter();
-    f();
-    t.get_counter() - s
+#[macro_export]
+macro_rules! time_func {
+    ($t:ident, $expr:expr) => {{
+        let s = $t.get_counter();
+        {
+            $expr
+        };
+        $t.get_counter() - s
+    }};
 }
 
 pub fn reset_icons() {
@@ -95,13 +116,13 @@ pub fn reset_icons() {
 
 pub fn reset_keyboard_events() {
     KEYBOARD_EVENTS.with_mut_lock(|e| {
-        *e = KeyboardEvent::default_events();
+        *e = DEFAULT_KEYBOARD_EVENTS;
     });
 }
 
 pub fn reset_mouse_events() {
     MOUSE_EVENTS.with_mut_lock(|e| {
-        *e = MouseEvent::default_events();
+        *e = DEFAULT_MOUSE_EVENTS;
     });
 }
 
@@ -121,7 +142,7 @@ pub fn reset_peripherals(s: bool) {
     CONNECTION_STATUS.with_mut_lock(|c| *c = Connection::NotConnected(s));
     RGB_CONTROLS.with_mut_lock(|c| {
         c.0 = true;
-        c.1 = DEFAULT_RGB;
+        c.1 = DEFAULT_RGB_PROFILE;
     });
     reset_icons();
     reset_keyboard_events();
