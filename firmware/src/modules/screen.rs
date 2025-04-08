@@ -14,7 +14,10 @@ use embedded_graphics::{
 };
 use embedded_graphics_framebuf::{backends::FrameBufferBackend, FrameBuf};
 use embedded_hal::timer::CountDown as _;
-use jukebox_util::screen::{ProfileName, ScreenProfile};
+use jukebox_util::{
+    screen::{ProfileName, ScreenProfile},
+    stats::SystemStats,
+};
 use mplusfonts::{mplus, style::BitmapFontStyleBuilder, BitmapFont};
 use rp2040_hal::{
     dma::{single_buffer, Channel, CH0},
@@ -28,7 +31,10 @@ use rp2040_hal::{
 
 use crate::{
     st7789::St7789,
-    util::{DEFAULT_PROFILE_NAME, DEFAULT_SCREEN_PROFILE, ICONS, PROFILE_NAME, SCREEN_CONTROLS},
+    util::{
+        DEFAULT_PROFILE_NAME, DEFAULT_SCREEN_PROFILE, DEFAULT_SYSTEM_STATS, ICONS, PROFILE_NAME,
+        SCREEN_CONTROLS, SCREEN_SYSTEM_STATS,
+    },
 };
 
 const REFRESH_RATE: u32 = 50;
@@ -116,6 +122,7 @@ pub struct ScreenMod {
 
     profile_name: ProfileName,
     screen_profile: ScreenProfile,
+    system_stats: SystemStats,
 
     dma_ch0: Channel<CH0>,
     timer: CountDown,
@@ -140,6 +147,7 @@ impl ScreenMod {
 
             profile_name: DEFAULT_PROFILE_NAME,
             screen_profile: DEFAULT_SCREEN_PROFILE,
+            system_stats: DEFAULT_SYSTEM_STATS,
 
             dma_ch0,
             timer,
@@ -226,6 +234,18 @@ impl ScreenMod {
     }
 
     fn draw_pre_tick(&mut self) {
+        // TODO: brightness control? via pwm?
+
+        let c: Bgr565 = {
+            let c: RawU16 = self.screen_profile.profile_name_color().into();
+            c.into()
+        };
+
+        let bgc: Bgr565 = {
+            let c: RawU16 = self.screen_profile.background_color().into();
+            c.into()
+        };
+
         match self.screen_profile {
             ScreenProfile::Off => {
                 self.st.backlight_off();
@@ -235,18 +255,6 @@ impl ScreenMod {
                 background_color: _,
                 profile_name_color: _,
             } => {
-                // TODO: brightness control? via pwm?
-
-                let c: Bgr565 = {
-                    let c: RawU16 = self.screen_profile.profile_name_color().into();
-                    c.into()
-                };
-
-                let bgc: Bgr565 = {
-                    let c: RawU16 = self.screen_profile.background_color().into();
-                    c.into()
-                };
-
                 let font1_style = BitmapFontStyleBuilder::new()
                     .text_color(c)
                     .background_color(bgc)
@@ -266,7 +274,199 @@ impl ScreenMod {
                 background_color: _,
                 profile_name_color: _,
             } => {
-                core::todo!();
+                let font1_style = BitmapFontStyleBuilder::new()
+                    .text_color(c)
+                    .background_color(bgc)
+                    .font(&FONT1)
+                    .build();
+
+                let font2_style = BitmapFontStyleBuilder::new()
+                    .text_color(c)
+                    .background_color(bgc)
+                    .font(&FONT2)
+                    .build();
+
+                // Left side
+                {
+                    // Memory Total
+                    let _ = Text::with_text_style(
+                        self.system_stats.memory_total.to_str(),
+                        Point::new(24, 167 + 60),
+                        font1_style.clone(),
+                        LEFT_TEXT_STYLE,
+                    )
+                    .draw(&mut self.fb);
+                    let _ = Text::with_text_style(
+                        self.system_stats.memory_unit.to_str(),
+                        Point::new(66, 167 + 60),
+                        font1_style.clone(),
+                        LEFT_TEXT_STYLE,
+                    )
+                    .draw(&mut self.fb);
+                    let _ = Text::with_text_style(
+                        " /",
+                        Point::new(4, 167 + 60),
+                        font1_style.clone(),
+                        LEFT_TEXT_STYLE,
+                    )
+                    .draw(&mut self.fb);
+
+                    // Memory Used
+                    let _ = Text::with_text_style(
+                        self.system_stats.memory_used.to_str(),
+                        Point::new(4, 142 + 60),
+                        font2_style.clone(),
+                        LEFT_TEXT_STYLE,
+                    )
+                    .draw(&mut self.fb);
+
+                    let _ = Text::with_text_style(
+                        "RAM:",
+                        Point::new(45, 167 + 10),
+                        font1_style.clone(),
+                        CENTER_TEXT_STYLE,
+                    )
+                    .draw(&mut self.fb);
+
+                    // CPU Temperature
+                    let _ = Text::with_text_style(
+                        self.system_stats.cpu_temperature.to_str(),
+                        Point::new(26, 82),
+                        font2_style.clone(),
+                        LEFT_TEXT_STYLE,
+                    )
+                    .draw(&mut self.fb);
+                    let _ = Text::with_text_style(
+                        "°C",
+                        Point::new(108, 86),
+                        font1_style.clone(),
+                        LEFT_TEXT_STYLE,
+                    )
+                    .draw(&mut self.fb);
+
+                    // CPU Usage
+                    let _ = Text::with_text_style(
+                        self.system_stats.cpu_usage.to_str(),
+                        Point::new(26, 42),
+                        font2_style.clone(),
+                        LEFT_TEXT_STYLE,
+                    )
+                    .draw(&mut self.fb);
+                    let _ = Text::with_text_style(
+                        "%",
+                        Point::new(108, 46),
+                        font1_style.clone(),
+                        LEFT_TEXT_STYLE,
+                    )
+                    .draw(&mut self.fb);
+
+                    // CPU name
+                    // TODO: color appropriately
+                    let _ = Text::with_text_style(
+                        self.system_stats.cpu_name.to_str(),
+                        Point::new(3, 10),
+                        font1_style.clone(),
+                        LEFT_TEXT_STYLE,
+                    )
+                    .draw(&mut self.fb);
+                }
+
+                // Right side
+                {
+                    // VRAM Total
+                    let _ = Text::with_text_style(
+                        self.system_stats.vram_total.to_str(),
+                        Point::new(230 + 24, 167 + 60),
+                        font1_style.clone(),
+                        LEFT_TEXT_STYLE,
+                    )
+                    .draw(&mut self.fb);
+                    let _ = Text::with_text_style(
+                        self.system_stats.vram_unit.to_str(),
+                        Point::new(230 + 66, 167 + 60),
+                        font1_style.clone(),
+                        LEFT_TEXT_STYLE,
+                    )
+                    .draw(&mut self.fb);
+                    let _ = Text::with_text_style(
+                        " /",
+                        Point::new(230 + 4, 167 + 60),
+                        font1_style.clone(),
+                        LEFT_TEXT_STYLE,
+                    )
+                    .draw(&mut self.fb);
+
+                    // VRAM Used
+                    let _ = Text::with_text_style(
+                        self.system_stats.vram_used.to_str(),
+                        Point::new(230 + 4, 142 + 60),
+                        font2_style.clone(),
+                        LEFT_TEXT_STYLE,
+                    )
+                    .draw(&mut self.fb);
+
+                    let _ = Text::with_text_style(
+                        "VRAM:",
+                        Point::new(230 + 45, 167 + 10),
+                        font1_style.clone(),
+                        CENTER_TEXT_STYLE,
+                    )
+                    .draw(&mut self.fb);
+
+                    // GPU Temperature
+                    let _ = Text::with_text_style(
+                        self.system_stats.gpu_temperature.to_str(),
+                        Point::new(160 + 26, 82),
+                        font2_style.clone(),
+                        LEFT_TEXT_STYLE,
+                    )
+                    .draw(&mut self.fb);
+                    let _ = Text::with_text_style(
+                        "°C",
+                        Point::new(160 + 108, 86),
+                        font1_style.clone(),
+                        LEFT_TEXT_STYLE,
+                    )
+                    .draw(&mut self.fb);
+
+                    // GPU Usage
+                    let _ = Text::with_text_style(
+                        self.system_stats.gpu_usage.to_str(),
+                        Point::new(160 + 26, 42),
+                        font2_style.clone(),
+                        LEFT_TEXT_STYLE,
+                    )
+                    .draw(&mut self.fb);
+                    let _ = Text::with_text_style(
+                        "%",
+                        Point::new(160 + 108, 46),
+                        font1_style.clone(),
+                        LEFT_TEXT_STYLE,
+                    )
+                    .draw(&mut self.fb);
+
+                    // GPU name
+                    // TODO: color appropriately
+                    let _ = Text::with_text_style(
+                        self.system_stats.gpu_name.to_str(),
+                        Point::new(320 - 2 - 2, 10),
+                        font1_style.clone(),
+                        RIGHT_TEXT_STYLE,
+                    )
+                    .draw(&mut self.fb);
+                }
+
+                // Profile name
+                let _ = Text::with_text_style(
+                    self.profile_name.to_str(),
+                    Point::new(160 - 1, 116),
+                    font1_style.clone(),
+                    TextStyleBuilder::new()
+                        .alignment(Alignment::Center)
+                        .baseline(Baseline::Middle)
+                        .build(),
+                )
+                .draw(&mut self.fb);
             }
         }
     }
@@ -327,8 +527,6 @@ impl ScreenMod {
                         }
                     }
                 });
-
-                core::todo!();
             }
         }
     }
@@ -339,13 +537,6 @@ impl ScreenMod {
                 self.keys_status[i] = 4;
             }
         }
-
-        // let font2_style =
-        // BitmapFontStyleBuilder::new()
-        //     .text_color(Bgr565::WHITE)
-        //     .background_color(BG_COLOR_EG)
-        //     .font(&FONT2)
-        //     .build();
 
         let mut changed = false;
         PROFILE_NAME.with_mut_lock(|p| {
@@ -359,6 +550,13 @@ impl ScreenMod {
             if p.0 {
                 changed = true;
                 self.screen_profile = p.1.clone();
+            }
+            p.0 = false;
+        });
+        SCREEN_SYSTEM_STATS.with_mut_lock(|p| {
+            if p.0 {
+                changed = true;
+                self.system_stats = p.1.clone();
             }
             p.0 = false;
         });

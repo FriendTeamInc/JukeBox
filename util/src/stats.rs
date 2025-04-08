@@ -5,21 +5,21 @@ use crate::smallstr::SmallStr;
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct SystemStats {
-    cpu_name: SmallStr<{ 20 + 1 }>,
-    cpu_usage: SmallStr<{ 5 + 1 }>,
-    cpu_temperature: SmallStr<{ 5 + 1 }>,
+    pub cpu_name: SmallStr<{ 20 + 1 }>,
+    pub cpu_usage: SmallStr<{ 5 + 1 }>,
+    pub cpu_temperature: SmallStr<{ 5 + 1 }>,
 
-    memory_used: SmallStr<{ 5 + 1 }>,
-    memory_total: SmallStr<{ 5 + 1 }>,
-    memory_unit: SmallStr<{ 2 + 1 }>,
+    pub memory_used: SmallStr<{ 5 + 1 }>,
+    pub memory_total: SmallStr<{ 5 + 1 }>,
+    pub memory_unit: SmallStr<{ 2 + 1 }>,
 
-    gpu_name: SmallStr<{ 20 + 1 }>,
-    gpu_usage: SmallStr<{ 5 + 1 }>,
-    gpu_temperature: SmallStr<{ 5 + 1 }>,
+    pub gpu_name: SmallStr<{ 20 + 1 }>,
+    pub gpu_usage: SmallStr<{ 5 + 1 }>,
+    pub gpu_temperature: SmallStr<{ 5 + 1 }>,
 
-    vram_used: SmallStr<{ 5 + 1 }>,
-    vram_total: SmallStr<{ 5 + 1 }>,
-    vram_unit: SmallStr<{ 2 + 1 }>,
+    pub vram_used: SmallStr<{ 5 + 1 }>,
+    pub vram_total: SmallStr<{ 5 + 1 }>,
+    pub vram_unit: SmallStr<{ 2 + 1 }>,
 }
 impl SystemStats {
     pub const fn default() -> Self {
