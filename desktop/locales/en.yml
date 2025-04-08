@@ -43,6 +43,12 @@ help:
     none: "Please connect a device."
     unknown: "Unknown device registered."
 
+  rgb:
+    select: "RGB Profile Select"
+
+  screen:
+    select: "Screen Profile Select"
+
   action:
     test_input: "Test Action"
     image_icon: "Choose Custom Icon"
@@ -81,7 +87,8 @@ update:
     end: "Done!"
 
 rgb:
-  brightness: "Brightness:"
+  title: "RGB Mode:"
+  brightness: "LED Brightness:"
   saturation: "Saturation:"
   value: "Value:"
 
@@ -115,6 +122,26 @@ rgb:
       speed: "Speed:"
       speed_x: "Speed X:"
       speed_y: "Speed Y:"
+
+screen:
+  title: "Screen Settings:"
+  brightness: "Screen Brightness:"
+
+  profile:
+    off:
+      title: "Off"
+      description: "Disables the screen."
+    display_keys:
+      title: "Display Keys"
+      description: "Displays the action icons and profile name on screen."
+      select_background_color: "Background Color:"
+      select_profile_name_color: "Profile Name Color:"
+    display_stats:
+      title: "Display Stats"
+      description: "Displays your computer's stats on screen."
+      select_background_color: "Background Color:"
+      select_profile_name_color: "Profile Name Color:"
+
 
 action:
   meta:

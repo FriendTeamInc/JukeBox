@@ -11,7 +11,7 @@ use crate::serial::SerialCommand;
 use super::gui::JukeBoxGui;
 
 impl JukeBoxGui {
-    fn calculate_color_from_hex_string(s: String) -> Option<(u8, u8, u8)> {
+    fn calculate_rgb888_from_hex_string(s: String) -> Option<(u8, u8, u8)> {
         let s = s.trim().trim_start_matches('#');
         if s.len() != 6 {
             None
@@ -23,8 +23,8 @@ impl JukeBoxGui {
         }
     }
 
-    fn draw_color_editor(ui: &mut Ui, color: &mut (u8, u8, u8)) {
-        let mut hex = format!("{:02X}{:02X}{:02X}", color.0, color.1, color.2);
+    fn draw_rgb888_editor(ui: &mut Ui, color: &mut (u8, u8, u8)) {
+        let mut hex = format!("#{:02X}{:02X}{:02X}", color.0, color.1, color.2);
 
         ui.horizontal(|ui| {
             ui.with_layout(Layout::top_down(Align::Min), |ui| {
@@ -34,7 +34,7 @@ impl JukeBoxGui {
             });
 
             ui.with_layout(Layout::top_down(Align::Min), |ui| {
-                Self::draw_color_preview(
+                Self::draw_rgb888_preview(
                     ui,
                     Color32::from_rgb(color.0, color.1, color.2),
                     vec2(52.0, 38.0),
@@ -42,7 +42,7 @@ impl JukeBoxGui {
 
                 let r = ui.add(TextEdit::singleline(&mut hex).desired_width(45.0));
                 if r.changed() {
-                    if let Some((r, g, b)) = Self::calculate_color_from_hex_string(hex) {
+                    if let Some((r, g, b)) = Self::calculate_rgb888_from_hex_string(hex) {
                         color.0 = r;
                         color.1 = g;
                         color.2 = b;
@@ -52,7 +52,7 @@ impl JukeBoxGui {
         });
     }
 
-    fn draw_color_preview(ui: &mut Ui, color: Color32, size: Vec2) -> Response {
+    fn draw_rgb888_preview(ui: &mut Ui, color: Color32, size: Vec2) -> Response {
         let (rect, response) = ui.allocate_exact_size(size, Sense::empty());
 
         if ui.is_rect_visible(rect) {
@@ -76,7 +76,7 @@ impl JukeBoxGui {
     }
 
     pub fn draw_edit_rgb(&mut self, ui: &mut Ui) {
-        ui.label("RGB Mode:");
+        ui.label(t!("rgb.title"));
         let rgb_defaults = [
             (
                 RgbProfile::Off,
@@ -164,15 +164,16 @@ impl JukeBoxGui {
             .truncate()
             .show_ui(ui, |ui| {
                 for (i, t, _) in &rgb_defaults {
-                    let u =
-                        ui.selectable_label(self.editing_rgb.get_type() == i.get_type(), t.clone());
-                    if u.clicked() {
+                    if ui
+                        .selectable_label(self.editing_rgb.get_type() == i.get_type(), t.clone())
+                        .clicked()
+                    {
                         self.editing_rgb = i.clone();
                     }
                 }
             })
             .response
-            .on_hover_text_at_pointer(t!("help.device.select"));
+            .on_hover_text_at_pointer(t!("help.rgb.select"));
 
         ui.label(rgb_defaults[self.editing_rgb.get_type() as usize].2.clone());
         ui.label("");
@@ -191,7 +192,7 @@ impl JukeBoxGui {
                             ui.add(Slider::new(&mut brightness, 0..=100));
 
                             ui.label(t!("rgb.profile.static_solid.select_color"));
-                            Self::draw_color_editor(ui, &mut color);
+                            Self::draw_rgb888_editor(ui, &mut color);
 
                             self.editing_rgb = RgbProfile::StaticSolid { brightness, color };
                         }
@@ -207,7 +208,7 @@ impl JukeBoxGui {
                             ui.label("");
                             for (i, c) in colors.iter_mut().enumerate() {
                                 ui.label(format!("{}.", i + 1));
-                                Self::draw_color_editor(ui, c);
+                                Self::draw_rgb888_editor(ui, c);
                                 ui.label("");
                             }
 
@@ -271,8 +272,6 @@ impl JukeBoxGui {
                             ui.label(t!("rgb.value"));
                             ui.add(Slider::new(&mut value, 0..=100));
 
-                            // TODO: add preview?
-
                             self.editing_rgb = RgbProfile::RainbowSolid {
                                 brightness,
                                 speed,
@@ -306,8 +305,6 @@ impl JukeBoxGui {
                             ui.label(t!("rgb.value"));
                             ui.add(Slider::new(&mut value, 0..=100));
 
-                            // TODO: add preview?
-
                             self.editing_rgb = RgbProfile::RainbowWave {
                                 brightness,
                                 speed,
@@ -328,7 +325,7 @@ impl JukeBoxGui {
                     .as_micros()
                     % 1_000_000_000;
                 let buf = self.editing_rgb.calculate_matrix(t as u64);
-                let _brtns = self.editing_rgb.brightness(); // TODO
+                // let _brtns = self.editing_rgb.brightness(); // TODO
                 ui.vertical(|ui| {
                     ui.allocate_exact_size(vec2(0.0, 10.0), Sense::empty());
                     for y in 0..3 {
@@ -336,7 +333,7 @@ impl JukeBoxGui {
                             ui.allocate_exact_size(vec2(3.0, 45.0), Sense::empty());
                             for x in 0..4 {
                                 let c = buf[x + y * 4];
-                                Self::draw_color_preview(
+                                Self::draw_rgb888_preview(
                                     ui,
                                     Color32::from_rgb(c.0, c.1, c.2),
                                     vec2(40.0, 40.0),

@@ -14,6 +14,7 @@ use egui_extras::install_image_loaders;
 use egui_phosphor::regular as phos;
 use jukebox_util::peripheral::DeviceType;
 use jukebox_util::rgb::RgbProfile;
+use jukebox_util::screen::ScreenProfile;
 use rand::prelude::*;
 use tokio::{
     runtime::Runtime,
@@ -86,6 +87,8 @@ pub struct JukeBoxGui {
     pub editing_action: Box<dyn Action>,
 
     pub editing_rgb: RgbProfile,
+
+    pub editing_screen: ScreenProfile,
 
     pub exit_save_modal: bool,
 
@@ -227,7 +230,9 @@ impl JukeBoxGui {
             editing_action_type: "MetaNoAction".into(),
             editing_action: Box::new(MetaNoAction::default()),
 
-            editing_rgb: RgbProfile::Off,
+            editing_rgb: RgbProfile::default_gui_profile(),
+
+            editing_screen: ScreenProfile::default_profile(),
 
             exit_save_modal: false,
 
@@ -261,7 +266,7 @@ impl JukeBoxGui {
             GuiTab::Settings => self.draw_settings_page(ui),
             GuiTab::EditingAction => self.draw_edit_action(ui),
             GuiTab::EditingRGB => self.draw_edit_rgb(ui),
-            GuiTab::EditingScreen => todo!(),
+            GuiTab::EditingScreen => self.draw_edit_screen(ui),
             GuiTab::Updating => self.draw_update_page(ui),
         });
 
@@ -339,7 +344,7 @@ impl JukeBoxGui {
 
                     let short_uid = device_uid[..4].to_string();
 
-                    // TODO: double check that the device is fine to use
+                    // TODO: double check that the device name is fine to use
                     let device_name: String = match Into::<DeviceType>::into(device_type) {
                         DeviceType::Unknown => t!("device_name.unknown", uid = device_uid.clone()),
                         DeviceType::KeyPad => t!("device_name.keypad", uid = short_uid),
@@ -358,6 +363,17 @@ impl JukeBoxGui {
                                     nickname: device_name.clone(),
                                 },
                             );
+
+                            let device_type = Into::<DeviceType>::into(device_type);
+                            let rgb_profile = match device_type {
+                                DeviceType::KeyPad => Some(RgbProfile::default_gui_profile()),
+                                _ => None,
+                            };
+                            let screen_profile = match device_type {
+                                DeviceType::KeyPad => Some(ScreenProfile::default_profile()),
+                                _ => None,
+                            };
+
                             for (_, v) in conf.profiles.iter_mut() {
                                 if !v.contains_key(&device_uid) {
                                     v.insert(
@@ -366,7 +382,8 @@ impl JukeBoxGui {
                                             key_map: self
                                                 .action_map
                                                 .default_action_config(device_type.into()),
-                                            rgb_profile: None,
+                                            rgb_profile: rgb_profile.clone(),
+                                            screen_profile: screen_profile.clone(),
                                         },
                                     );
                                 }
@@ -455,7 +472,7 @@ impl JukeBoxGui {
                             match self.gui_tab {
                                 GuiTab::EditingAction => self.save_action_and_exit(),
                                 GuiTab::EditingRGB => self.save_rgb_and_exit(),
-                                // GuiTab::EditingScreen => self.save_screen_and_exit(),
+                                GuiTab::EditingScreen => self.save_screen_and_exit(),
                                 _ => self.gui_tab = GuiTab::Device,
                             }
                         } else {

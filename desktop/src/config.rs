@@ -6,7 +6,7 @@ use std::{
     path::PathBuf,
 };
 
-use jukebox_util::{peripheral::DeviceType, rgb::RgbProfile};
+use jukebox_util::{peripheral::DeviceType, rgb::RgbProfile, screen::ScreenProfile};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -56,7 +56,7 @@ impl Default for ActionConfig {
 pub struct DeviceConfig {
     pub key_map: HashMap<InputKey, ActionConfig>,
     pub rgb_profile: Option<RgbProfile>,
-    // pub screen_profile: Option<ScreenProfile>,
+    pub screen_profile: Option<ScreenProfile>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

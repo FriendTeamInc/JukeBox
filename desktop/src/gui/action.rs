@@ -1,4 +1,4 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::path::PathBuf;
 
 use eframe::egui::{
     scroll_area::ScrollBarVisibility, vec2, Align, Button, CollapsingHeader, Grid, Image,
@@ -16,7 +16,7 @@ use crate::{
         meta::AID_META_NO_ACTION,
         types::{get_icon_bytes, ActionError},
     },
-    config::{ActionConfig, ActionIcon, DeviceConfig, JukeBoxConfig},
+    config::{ActionConfig, ActionIcon, JukeBoxConfig},
     input::InputKey,
     serial::SerialCommand,
 };
@@ -219,31 +219,14 @@ impl JukeBoxGui {
             let mut c = self.config.blocking_lock();
             let current_profile = c.current_profile.clone();
             let profile = c.profiles.get_mut(&current_profile).unwrap();
-            if let Some(d) = profile.get_mut(&self.current_device) {
-                d.key_map.insert(
-                    self.editing_key.clone(),
-                    ActionConfig {
-                        action: self.editing_action.clone(),
-                        icon: self.editing_action_icon.clone(),
-                    },
-                );
-            } else {
-                let mut d = HashMap::new();
-                d.insert(
-                    self.editing_key.clone(),
-                    ActionConfig {
-                        action: self.editing_action.clone(),
-                        icon: self.editing_action_icon.clone(),
-                    },
-                );
-                profile.insert(
-                    self.current_device.clone(),
-                    DeviceConfig {
-                        key_map: d,
-                        rgb_profile: None,
-                    },
-                );
-            }
+            let d = profile.get_mut(&self.current_device).unwrap();
+            d.key_map.insert(
+                self.editing_key.clone(),
+                ActionConfig {
+                    action: self.editing_action.clone(),
+                    icon: self.editing_action_icon.clone(),
+                },
+            );
             c.save();
         }
 

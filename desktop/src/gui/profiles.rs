@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use eframe::egui::{ComboBox, RichText, TextBuffer, TextEdit, Ui};
 use egui_phosphor::regular as phos;
-use jukebox_util::peripheral::DeviceType;
+use jukebox_util::{peripheral::DeviceType, rgb::RgbProfile, screen::ScreenProfile};
 
 use crate::{
     actions::meta::{AID_META_COPY_FROM_PROFILE, AID_META_SWITCH_PROFILE},
@@ -120,13 +120,24 @@ impl JukeBoxGui {
                     };
                     let mut m = HashMap::new();
                     for (d, t) in &self.devices {
+                        let device_type = t.device_info.device_type;
+                        let rgb_profile = match device_type {
+                            DeviceType::KeyPad => Some(RgbProfile::default_gui_profile()),
+                            _ => None,
+                        };
+                        let screen_profile = match device_type {
+                            DeviceType::KeyPad => Some(ScreenProfile::default_profile()),
+                            _ => None,
+                        };
+
                         m.insert(
                             d.clone(),
                             DeviceConfig {
                                 key_map: self
                                     .action_map
                                     .default_action_config(t.device_info.device_type.into()),
-                                rgb_profile: None,
+                                rgb_profile: rgb_profile.clone(),
+                                screen_profile: screen_profile.clone(),
                             },
                         );
                     }
@@ -194,7 +205,7 @@ impl JukeBoxGui {
 
     pub fn set_device_profile(&mut self, device_uid: &String) {
         self.set_device_rgb(device_uid);
-        // self.set_device_screen(device_uid);
+        self.set_device_screen(device_uid);
         self.set_device_action_icons(device_uid);
         self.set_device_hardware_input(device_uid);
         self.set_device_profile_name(device_uid);

@@ -7,6 +7,7 @@ use eframe::egui::{
 use egui_phosphor::regular as phos;
 use jukebox_util::peripheral::DeviceType;
 use jukebox_util::rgb::RgbProfile;
+use jukebox_util::screen::ScreenProfile;
 
 use crate::serial::SerialCommand;
 use crate::update::UpdateStatus;
@@ -298,6 +299,14 @@ impl JukeBoxGui {
                         .on_hover_text_at_pointer(t!("help.device.screen"))
                         .clicked()
                     {
+                        self.editing_screen = {
+                            let c = self.config.blocking_lock();
+                            c.profiles
+                                .get(&c.current_profile)
+                                .and_then(|p| p.get(&self.current_device))
+                                .and_then(|d| d.screen_profile.clone())
+                                .unwrap_or(ScreenProfile::default_profile())
+                        };
                         self.gui_tab = GuiTab::EditingScreen;
                     }
                 });

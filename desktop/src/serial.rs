@@ -10,8 +10,8 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, bail, Context, Result};
-use jukebox_util::protocol::CMD_SET_PROFILE_NAME;
-use jukebox_util::screen::{ProfileName, PROFILE_NAME_CHAR_LEN};
+use jukebox_util::protocol::{CMD_SET_PROFILE_NAME, CMD_SET_SCR_MODE};
+use jukebox_util::screen::{ProfileName, ScreenProfile, PROFILE_NAME_CHAR_LEN};
 use jukebox_util::{
     input::{KeyboardEvent, MouseEvent},
     peripheral::{
@@ -51,7 +51,7 @@ pub enum SerialCommand {
     // SetGamepadInput(u8, [u8; 6]),
     SetRgbMode(RgbProfile),
     SetScrIcon(u8, [u8; 32 * 32 * 2]),
-    SetScrMode,
+    SetScrMode(ScreenProfile),
     SetProfileName(String),
     Update,
     Disconnect,
@@ -308,7 +308,7 @@ async fn transmit_set_mouse_input(f: &mut Serial, slot: u8, event: MouseEvent) -
     send_expect(f, &cmd, &[RSP_ACK]).await
 }
 
-async fn transmit_set_rgb(f: &mut Serial, rgb_profile: RgbProfile) -> Result<()> {
+async fn transmit_set_rgb_mode(f: &mut Serial, rgb_profile: RgbProfile) -> Result<()> {
     let mut cmd = vec![CMD_SET_RGB_MODE];
     cmd.extend_from_slice(&rgb_profile.encode());
 
@@ -322,6 +322,13 @@ async fn transmit_set_scr_icon(
 ) -> Result<()> {
     let mut cmd = vec![CMD_SET_SCR_ICON, slot];
     cmd.extend_from_slice(&icon_data);
+
+    send_expect(f, &cmd, &[RSP_ACK]).await
+}
+
+async fn transmit_set_screen_mode(f: &mut Serial, screen_profile: ScreenProfile) -> Result<()> {
+    let mut cmd = vec![CMD_SET_SCR_MODE];
+    cmd.extend_from_slice(&screen_profile.encode());
 
     send_expect(f, &cmd, &[RSP_ACK]).await
 }
@@ -411,13 +418,13 @@ pub async fn serial_loop(
                     transmit_set_mouse_input(f, slot, mouse_event).await?;
                 }
                 SerialCommand::SetRgbMode(rgb_profile) => {
-                    transmit_set_rgb(f, rgb_profile).await?;
+                    transmit_set_rgb_mode(f, rgb_profile).await?;
                 }
                 SerialCommand::SetScrIcon(slot, icon_data) => {
                     transmit_set_scr_icon(f, slot, icon_data).await?;
                 }
-                SerialCommand::SetScrMode => {
-                    todo!()
+                SerialCommand::SetScrMode(screen_profile) => {
+                    transmit_set_screen_mode(f, screen_profile).await?;
                 }
                 SerialCommand::SetProfileName(profile_name) => {
                     transmit_set_profile_name(f, profile_name).await?;
