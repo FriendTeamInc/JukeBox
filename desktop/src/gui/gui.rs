@@ -16,6 +16,7 @@ use jukebox_util::peripheral::DeviceType;
 use jukebox_util::rgb::RgbProfile;
 use jukebox_util::screen::ScreenProfile;
 use rand::prelude::*;
+use tokio::task::spawn_blocking;
 use tokio::{
     runtime::Runtime,
     spawn,
@@ -37,6 +38,7 @@ use crate::config::{ActionIcon, DeviceConfig, DeviceInfo, JukeBoxConfig};
 use crate::input::InputKey;
 use crate::serial::{serial_task, SerialCommand, SerialEvent};
 use crate::splash::SPLASH_MESSAGES;
+use crate::system::system_task;
 use crate::update::UpdateStatus;
 
 const APP_ICON: &[u8] = include_bytes!("../../../assets/applogo.png");
@@ -205,6 +207,7 @@ impl JukeBoxGui {
 
         spawn(async move { serial_task(brkr_serial, serial_scmd_txs, sg_tx, sr_tx).await });
         spawn(async move { action_task(sr_rx, action_config, action_scmd_txs, ae_tx).await });
+        spawn(async move { spawn_blocking(|| system_task()) });
 
         JukeBoxGui {
             splash_timer: Instant::now(),

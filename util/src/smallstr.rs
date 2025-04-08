@@ -3,8 +3,8 @@ use core::ptr::addr_of;
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct SmallStr<const N: usize> {
-    str: [u8; N],
-    size: u8,
+    pub str: [u8; N],
+    pub size: u8,
 }
 impl<const N: usize> SmallStr<N> {
     pub const fn default() -> Self {

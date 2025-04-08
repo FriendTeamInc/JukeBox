@@ -1,4 +1,5 @@
-// Serial communication
+// Serial communication to JukeBox devices
+// The main task launches new tasks for each device connected
 
 use crate::input::InputKey;
 

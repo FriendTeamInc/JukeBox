@@ -12,23 +12,13 @@ mod gui;
 mod input;
 mod serial;
 mod splash;
+mod system;
 mod update;
 
-use std::sync::OnceLock;
-
-use anyhow::Result;
-use reqwest::Client;
-
 #[allow(dead_code)]
-static REQWEST_CLIENT: OnceLock<Client> = OnceLock::new();
+static REQWEST_CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
 
-fn main() -> Result<()> {
-    // TODO: add CPU and Memory monitoring support through sysinfo crate
-    // TODO: add GPU monitoring support to Rust version through:
-    // - nvml-wrapper crate (NVIDIA)
-    // - rocm_smi_lib crate (AMD)
-    // - Intel Graphics Control Library through Rust wrappers
-
+fn main() -> anyhow::Result<()> {
     env_logger::init();
 
     // For OBS websocket TLS support, currently unused.
@@ -36,6 +26,7 @@ fn main() -> Result<()> {
     //     .install_default()
     //     .expect("failed to install rustls crypto provider");
 
+    // GUI launches all the necessary threads when started
     gui::gui::basic_gui();
 
     Ok(())
