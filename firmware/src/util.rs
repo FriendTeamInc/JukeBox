@@ -5,7 +5,7 @@ use core::{
 
 use embedded_graphics::{pixelcolor::Bgr565, prelude::RgbColor};
 use jukebox_util::{
-    color::rgb565_to_rgb888,
+    color::split_to_rgb565,
     input::{KeyboardEvent, MouseEvent},
     peripheral::{Connection, JBInputs, KeyInputs, KnobInputs, PedalInputs},
     rgb::RgbProfile,
@@ -102,7 +102,7 @@ pub fn reset_icons() {
                 let mut x = 0;
                 while x < 32 {
                     // TODO: use dma to swap out the icons
-                    let (r, g, b) = rgb565_to_rgb888(!DEFAULT_ICONS[i][32 * y + x]);
+                    let (r, g, b) = split_to_rgb565(!DEFAULT_ICONS[i][32 * y + x]);
                     icons[i].1[32 * y + x] = Bgr565::new(r, g, b);
                     x += 1;
                 }

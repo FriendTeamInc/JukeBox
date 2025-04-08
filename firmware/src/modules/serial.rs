@@ -6,7 +6,7 @@ use defmt::*;
 use embedded_graphics::pixelcolor::Bgr565;
 use embedded_hal::timer::{Cancel as _, CountDown as _};
 use jukebox_util::{
-    color::rgb565_to_rgb888,
+    color::split_to_rgb565,
     input::{KeyboardEvent, MouseEvent},
     peripheral::{
         Connection, JBInputs, IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT,
@@ -17,7 +17,7 @@ use jukebox_util::{
         RSP_LINK_DELIMITER, RSP_LINK_HEADER, RSP_UNKNOWN,
     },
     rgb::RgbProfile,
-    screen::ProfileName,
+    screen::{ProfileName, ScreenProfile},
     smallstr::SmallStr,
 };
 use ringbuffer::{ConstGenericRingBuffer, RingBuffer};
@@ -26,7 +26,7 @@ use usbd_serial::SerialPort;
 
 use crate::util::{
     reset_peripherals, CONNECTION_STATUS, DEFAULT_INPUTS, ICONS, IDENTIFY_TRIGGER, KEYBOARD_EVENTS,
-    MOUSE_EVENTS, PERIPHERAL_INPUTS, PROFILE_NAME, RGB_CONTROLS, UPDATE_TRIGGER,
+    MOUSE_EVENTS, PERIPHERAL_INPUTS, PROFILE_NAME, RGB_CONTROLS, SCREEN_CONTROLS, UPDATE_TRIGGER,
 };
 
 const BUFFER_SIZE: usize = 4096;
@@ -269,7 +269,7 @@ impl SerialMod {
                         let scr_icon = &mut icons[slot as usize];
                         let mut i = 0;
                         while i < 32 * 32 {
-                            let (r, g, b) = rgb565_to_rgb888(
+                            let (r, g, b) = split_to_rgb565(
                                 ((new_icon[i * 2 + 1] as u16) << 8) | (new_icon[i * 2] as u16),
                             );
                             let c = Bgr565::new(b, g, r);
@@ -285,8 +285,17 @@ impl SerialMod {
                     true
                 }
                 Command::SetScrMode => {
-                    // TODO:
-                    unknown()
+                    let profile = ScreenProfile::decode(&data);
+
+                    SCREEN_CONTROLS.with_mut_lock(|s| {
+                        s.0 = true;
+                        s.1 = profile;
+                    });
+
+                    Self::send(serial, b"001");
+                    Self::send(serial, &[RSP_ACK]);
+
+                    true
                 }
                 Command::SetProfileName => {
                     let new_profile_name: ProfileName = SmallStr::decode(&data);

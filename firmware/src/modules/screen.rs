@@ -405,15 +405,6 @@ impl ScreenMod {
             _ => self.st.backlight_on(),
         }
 
-        // info!(
-        //     "times:\nclear-fb={}us\ndraw-profile-name={}\ndraw-icons={}us\npush-fb={}us\ntotal={}",
-        //     _elapse_clear_fb.to_micros(),
-        //     _elapse_draw_profile_name.to_micros(),
-        //     _elapse_draw_icons.to_micros(),
-        //     _elapse_push_fb.to_micros(),
-        //     (_elapse_clear_fb + _elapse_draw_profile_name + _elapse_draw_icons + _elapse_push_fb).to_micros()
-        // );
-
         self.keys_previous_frame = self.keys_status;
         for k in self.keys_status.iter_mut() {
             if *k > 0 {

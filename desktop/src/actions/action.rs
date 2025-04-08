@@ -7,7 +7,9 @@ use std::{
 
 use anyhow::Result;
 use futures::future::join_all;
-use jukebox_util::{input::KeyboardEvent, peripheral::DeviceType, rgb::RgbProfile};
+use jukebox_util::{
+    input::KeyboardEvent, peripheral::DeviceType, rgb::RgbProfile, screen::ScreenProfile,
+};
 use tokio::sync::{
     mpsc::{UnboundedReceiver, UnboundedSender},
     Mutex,
@@ -29,8 +31,9 @@ async fn update_device_configs(
     device_uid: &String,
     device_type: DeviceType,
     keys: HashMap<InputKey, ActionConfig>,
-    rgb_profile: RgbProfile,
     profile_name: String,
+    rgb_profile: RgbProfile,
+    screen_profile: ScreenProfile,
 ) {
     let txs = scmd_txs.lock().await;
     let tx = if let Some(tx) = txs.get(device_uid) {
@@ -45,6 +48,9 @@ async fn update_device_configs(
 
         // send rgb profile
         let _ = tx.send(SerialCommand::SetRgbMode(rgb_profile));
+
+        // send screen profile
+        let _ = tx.send(SerialCommand::SetScrMode(screen_profile));
 
         // set icons on screen
         for (k, a) in &keys {
@@ -91,12 +97,18 @@ pub async fn action_task(
     let get_profile_info = async |config: &Arc<Mutex<JukeBoxConfig>>, device_uid: &String| {
         let c = config.lock().await; // Lock drops immediately
 
-        let (profile, rgb) = c
+        let (profile, rgb, scr) = c
             .profiles
             .get(&c.current_profile)
             .and_then(|p| p.get(device_uid))
-            .map(|p| (p.key_map.clone(), p.rgb_profile.clone()))
-            .unwrap_or((HashMap::new(), None));
+            .map(|p| {
+                (
+                    p.key_map.clone(),
+                    p.rgb_profile.clone(),
+                    p.screen_profile.clone(),
+                )
+            })
+            .unwrap_or((HashMap::new(), None, None));
 
         let device_type = c
             .devices
@@ -105,7 +117,7 @@ pub async fn action_task(
             .unwrap()
             .clone();
 
-        (device_type, profile, rgb, c.current_profile.clone()) // TODO: add hardware input info
+        (device_type, profile, c.current_profile.clone(), rgb, scr) // TODO: add hardware input info
     };
 
     while let Some(evnt) = s_evnt_rx.recv().await {
@@ -116,15 +128,16 @@ pub async fn action_task(
                 clear_set(&mut prevkeys, device_uid).await;
 
                 // TODO: set hardware inputs here
-                let (device_type, keys, rgb_profile, profile_name) =
+                let (device_type, keys, profile_name, rgb_profile, screen_profile) =
                     get_profile_info(&config, device_uid).await;
                 update_device_configs(
                     scmd_txs.clone(),
                     device_uid,
                     device_type,
                     keys,
-                    rgb_profile.unwrap_or(RgbProfile::default_gui_profile()),
                     profile_name,
+                    rgb_profile.unwrap_or(RgbProfile::default_gui_profile()),
+                    screen_profile.unwrap_or(ScreenProfile::default_profile()),
                 )
                 .await;
             }
@@ -139,7 +152,7 @@ pub async fn action_task(
                 let ae_tx = ae_tx.clone();
 
                 tokio::spawn(async move {
-                    let (_, current_profile, _, current_profile_name) =
+                    let (_, current_profile, current_profile_name, _, _) =
                         get_profile_info(&config, &device_uid).await;
 
                     let mut prevkeys = prevkeys.lock().await;
@@ -172,8 +185,13 @@ pub async fn action_task(
 
                     *prevkeys = keys;
 
-                    let (device_type, new_keys, new_rgb_profile, new_profile_name) =
-                        get_profile_info(&config, &device_uid).await;
+                    let (
+                        device_type,
+                        new_keys,
+                        new_profile_name,
+                        new_rgb_profile,
+                        new_screen_profile,
+                    ) = get_profile_info(&config, &device_uid).await;
 
                     if current_profile_name != new_profile_name {
                         update_device_configs(
@@ -181,8 +199,9 @@ pub async fn action_task(
                             &device_uid,
                             device_type,
                             new_keys,
-                            new_rgb_profile.unwrap_or(RgbProfile::default_gui_profile()),
                             new_profile_name,
+                            new_rgb_profile.unwrap_or(RgbProfile::default_gui_profile()),
+                            new_screen_profile.unwrap_or(ScreenProfile::default_profile()),
                         )
                         .await;
                     }

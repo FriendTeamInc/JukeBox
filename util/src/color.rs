@@ -32,9 +32,20 @@ pub const fn rgb888_to_rgb565(r: u8, g: u8, b: u8) -> u16 {
     r | g | b
 }
 
-pub const fn rgb565_to_rgb888(c: u16) -> (u8, u8, u8) {
+pub const fn combine_to_rgb565(r: u8, g: u8, b: u8) -> u16 {
+    ((r as u16) << 11) | ((g as u16) << 5) | ((b as u16) << 0)
+}
+
+pub const fn split_to_rgb565(c: u16) -> (u8, u8, u8) {
     let r = ((c & 0b11111_000000_00000) >> 11) as u8;
     let g = ((c & 0b00000_111111_00000) >> 5) as u8;
     let b = ((c & 0b00000_000000_11111) >> 0) as u8;
+    (r, g, b)
+}
+
+pub const fn map_565_to_888(c: (u8, u8, u8)) -> (u8, u8, u8) {
+    let r = ((c.0 as f64) / 31.0 * 255.0) as u8;
+    let g = ((c.1 as f64) / 63.0 * 255.0) as u8;
+    let b = ((c.2 as f64) / 31.0 * 255.0) as u8;
     (r, g, b)
 }
