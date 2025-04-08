@@ -339,13 +339,13 @@ impl JukeBoxGui {
                 SerialEvent::Connected { device_info } => {
                     // TODO: We shouldn't really keep this in the gui thread.
                     let device_uid = device_info.device_uid;
-                    let device_type = device_info.input_identifier;
+                    let device_type: DeviceType = device_info.input_identifier.into();
                     let firmware_version = device_info.firmware_version;
 
                     let short_uid = device_uid[..4].to_string();
 
                     // TODO: double check that the device name is fine to use
-                    let device_name: String = match Into::<DeviceType>::into(device_type) {
+                    let device_name: String = match device_type {
                         DeviceType::Unknown => t!("device_name.unknown", uid = device_uid.clone()),
                         DeviceType::KeyPad => t!("device_name.keypad", uid = short_uid),
                         DeviceType::KnobPad => t!("device_name.knobpad", uid = short_uid),
@@ -359,12 +359,11 @@ impl JukeBoxGui {
                             conf.devices.insert(
                                 device_uid.clone(),
                                 DeviceInfo {
-                                    device_type: device_type.into(),
+                                    device_type: device_type,
                                     nickname: device_name.clone(),
                                 },
                             );
 
-                            let device_type = Into::<DeviceType>::into(device_type);
                             let rgb_profile = match device_type {
                                 DeviceType::KeyPad => Some(RgbProfile::default_gui_profile()),
                                 _ => None,
@@ -448,42 +447,45 @@ impl JukeBoxGui {
         }
     }
 
+    fn save_edit(&mut self) {
+        match self.gui_tab {
+            GuiTab::EditingAction => self.save_action_and_exit(),
+            GuiTab::EditingRGB => self.save_rgb_and_exit(),
+            GuiTab::EditingScreen => self.save_screen_and_exit(),
+            _ => (),
+        }
+    }
+
     fn draw_back_button(&mut self, ui: &mut Ui) {
         // back button
-        ui.add_enabled_ui(
-            self.gui_tab != GuiTab::Device
-                && (self.update_status == UpdateStatus::Start
-                    || self.update_status == UpdateStatus::End),
-            |ui| {
-                let saveable = match self.gui_tab {
-                    GuiTab::EditingAction | GuiTab::EditingRGB | GuiTab::EditingScreen => true,
-                    _ => false,
-                };
-                if ui
-                    .button(RichText::new(phos::ARROW_BEND_UP_LEFT))
-                    .on_hover_text_at_pointer(match saveable {
-                        true => t!("help.back.save_button"),
-                        false => t!("help.back.button"),
-                    })
-                    .clicked()
-                {
-                    if saveable {
-                        if self.config_always_save_on_exit {
-                            match self.gui_tab {
-                                GuiTab::EditingAction => self.save_action_and_exit(),
-                                GuiTab::EditingRGB => self.save_rgb_and_exit(),
-                                GuiTab::EditingScreen => self.save_screen_and_exit(),
-                                _ => self.gui_tab = GuiTab::Device,
-                            }
-                        } else {
-                            self.exit_save_modal = true;
-                        }
-                    } else {
+        let enabled = self.gui_tab != GuiTab::Device
+            && (self.update_status == UpdateStatus::Start
+                || self.update_status == UpdateStatus::End);
+        ui.add_enabled_ui(enabled, |ui| {
+            let saveable = match self.gui_tab {
+                GuiTab::EditingAction | GuiTab::EditingRGB | GuiTab::EditingScreen => true,
+                _ => false,
+            };
+            if ui
+                .button(RichText::new(phos::ARROW_BEND_UP_LEFT))
+                .on_hover_text_at_pointer(match saveable {
+                    true => t!("help.back.save_button"),
+                    false => t!("help.back.button"),
+                })
+                .clicked()
+            {
+                if saveable {
+                    if self.config_always_save_on_exit {
+                        self.save_edit();
                         self.gui_tab = GuiTab::Device;
+                    } else {
+                        self.exit_save_modal = true;
                     }
+                } else {
+                    self.gui_tab = GuiTab::Device;
                 }
-            },
-        );
+            }
+        });
 
         if self.exit_save_modal {
             Modal::new(Id::new("ExitSaveModal")).show(ui.ctx(), |ui| {
@@ -495,12 +497,7 @@ impl JukeBoxGui {
                 ui.horizontal(|ui| {
                     if ui.button(t!("help.back.modal_save")).clicked() {
                         self.exit_save_modal = false;
-                        match self.gui_tab {
-                            GuiTab::EditingAction => self.save_action_and_exit(),
-                            GuiTab::EditingRGB => self.save_rgb_and_exit(),
-                            GuiTab::EditingScreen => self.save_screen_and_exit(),
-                            _ => (),
-                        }
+                        self.save_edit();
                         self.gui_tab = GuiTab::Device;
                     }
                     if ui.button(t!("help.back.modal_exit")).clicked() {
