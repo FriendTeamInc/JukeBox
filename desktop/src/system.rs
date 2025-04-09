@@ -8,6 +8,8 @@ use std::{collections::VecDeque, sync::Arc, thread::sleep};
 
 use anyhow::Result;
 use jukebox_util::{smallstr::SmallStr, stats::SystemStats};
+use nvml_wrapper::{enum_wrappers::device::TemperatureSensor, Nvml};
+use rocm_smi_lib::RocmSmi;
 use sysinfo::{MemoryRefreshKind, System, MINIMUM_CPU_UPDATE_INTERVAL};
 use tokio::sync::Mutex;
 
@@ -71,7 +73,7 @@ impl StatReport {
         (memory_used, memory_total, "GB".into())
     }
 
-    pub fn to_system_stats(self, cpu_info: (String, String)) -> SystemStats {
+    pub fn to_system_stats(self, cpu_info: (String, String), gpu_info: String) -> SystemStats {
         let mut cpu_name = match cpu_info.0.as_str() {
             "GenuineIntel" => {
                 // TODO
@@ -93,15 +95,15 @@ impl StatReport {
                     .replace("Ryzen 5", "R5")
                     .replace("Ryzen 7", "R7")
                     .replace("Ryzen 9", "R9")
-                    .replace("1-Core", "")
-                    .replace("2-Core", "")
-                    .replace("4-Core", "")
-                    .replace("6-Core", "")
-                    .replace("8-Core", "")
-                    .replace("12-Core", "")
-                    .replace("16-Core", "")
-                    .replace("24-Core", "")
-                    .replace("32-Core", "")
+                    .replace("1-Core ", "")
+                    .replace("2-Core ", "")
+                    .replace("4-Core ", "")
+                    .replace("6-Core ", "")
+                    .replace("8-Core ", "")
+                    .replace("12-Core ", "")
+                    .replace("16-Core ", "")
+                    .replace("24-Core ", "")
+                    .replace("32-Core ", "")
                     .replace("Processor", "")
                     .trim()
                     .to_string()
@@ -115,7 +117,7 @@ impl StatReport {
         let (memory_used, memory_total, memory_unit) =
             Self::format_memory(self.memory_used, self.memory_total);
 
-        let gpu_name = "".to_string();
+        let gpu_name = gpu_info.replace("GeForce", "").trim().to_string();
         let gpu_usage = format!("{: >5.1}", self.gpu_usage);
         let gpu_temperature = format!("{: >5.1}", self.gpu_temperature);
         let (vram_used, vram_total, vram_unit) =
@@ -140,6 +142,12 @@ impl StatReport {
 
 pub fn system_task(system_stats: Arc<Mutex<SystemStats>>) -> Result<()> {
     let mut sys = System::new();
+
+    let nvml = Nvml::init();
+    let mut rocm = RocmSmi::init();
+
+    log::debug!("nvml: {:?}", nvml);
+    log::debug!("rocm: {:?}", rocm);
 
     let mut cpu_info: Option<(String, String)> = None;
     let mut stat_reports: VecDeque<StatReport> = VecDeque::new();
@@ -170,23 +178,69 @@ pub fn system_task(system_stats: Arc<Mutex<SystemStats>>) -> Result<()> {
         let memory_used = sys.used_memory();
         let memory_total = sys.total_memory();
 
-        // push report, we take an average of the past 10 to put in the mutex
+        // Get GPU Info
+        let mut gpu_info = String::from("Unknown GPU");
+        let mut gpu_usage = 0.0f32;
+        let mut gpu_temperature = 0.0f32;
+        let mut vram_used = 0u64;
+        let mut vram_total = 0u64;
+
+        if let Ok(n) = &nvml {
+            if let Ok(d) = n.device_by_index(0) {
+                if let Ok(name) = d.name() {
+                    gpu_info = name;
+                }
+                if let Ok(rates) = d.utilization_rates() {
+                    gpu_usage = rates.gpu as f32;
+                }
+                if let Ok(temp) = d.temperature(TemperatureSensor::Gpu) {
+                    gpu_temperature = temp as f32;
+                }
+                if let Ok(memory) = d.memory_info() {
+                    vram_used = memory.used;
+                    vram_total = memory.total;
+                }
+            }
+        } else if let Ok(r) = &mut rocm {
+            if let Ok(name) = r.get_device_identifiers(0) {
+                gpu_info = name.name.unwrap();
+            }
+            if let Ok(busy) = r.get_device_busy_percent(0) {
+                gpu_usage = busy as f32;
+            }
+            // TODO:
+            // certain enums not public yet due to error
+            // if let Ok(temp) = r.get_device_temperature_metric(
+            //     0,
+            //     rocm_smi_lib::RsmiTemperatureSensor::RsmiTempTypeJunction,
+            //     rocm_smi_lib::RsmiTemperatureMetric::RsmiTempCurrent,
+            // ) {
+            //     gpu_temperature = temp as f32;
+            // }
+            if let Ok(memory) = r.get_device_memory_data(0) {
+                vram_used = memory.vram_used;
+                vram_total = memory.vram_total;
+            }
+        }
+
+        // push report, we take an average of the past few samples to put in the mutex
         stat_reports.push_back(StatReport {
-            cpu_usage: cpu_usage,
+            cpu_usage,
             cpu_temperature: 0.0,
-            memory_used: memory_used,
-            memory_total: memory_total,
-            gpu_usage: 0.0,
-            gpu_temperature: 0.0,
-            vram_used: 0,
-            vram_total: 0,
+            memory_used,
+            memory_total,
+
+            gpu_usage,
+            gpu_temperature,
+            vram_used,
+            vram_total,
         });
-        if stat_reports.len() > 10 {
+        if stat_reports.len() > 20 {
             let _ = stat_reports.pop_front();
         }
 
-        *system_stats.blocking_lock() =
-            StatReport::avg(stat_reports.clone()).to_system_stats(cpu_info.clone().unwrap());
+        *system_stats.blocking_lock() = StatReport::avg(stat_reports.clone())
+            .to_system_stats(cpu_info.clone().unwrap(), gpu_info);
 
         sleep(MINIMUM_CPU_UPDATE_INTERVAL);
     }
