@@ -73,6 +73,7 @@ impl SystemStats {
     pub fn decode(data: &[u8]) -> Self {
         let mut s = Self::default();
 
+        // TODO: this sucks
         s.cpu_name = SmallStr::decode(&data[..21]);
         s.cpu_usage = SmallStr::decode(&data[21..27]);
         s.cpu_temperature = SmallStr::decode(&data[27..33]);

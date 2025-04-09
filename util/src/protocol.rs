@@ -73,6 +73,7 @@ impl Command {
 }
 
 fn decode_size_digit(w: u8) -> usize {
+    // todo: switch to results instead of panics
     match w {
         b'0' => 0x0,
         b'1' => 0x1,
@@ -101,6 +102,7 @@ fn decode_size_digit(w: u8) -> usize {
 }
 
 fn encode_size_digit(w: usize) -> u8 {
+    // todo: switch to results instead of panics
     match w {
         0x0 => b'0',
         0x1 => b'1',
@@ -123,6 +125,7 @@ fn encode_size_digit(w: usize) -> u8 {
 }
 
 pub fn decode_packet_size(w1: u8, w2: u8, w3: u8) -> usize {
+    // todo: switch to results instead of panics
     decode_size_digit(w1) * 16 * 16 + decode_size_digit(w2) * 16 + decode_size_digit(w3)
 }
 

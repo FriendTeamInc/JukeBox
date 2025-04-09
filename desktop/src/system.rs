@@ -170,7 +170,7 @@ pub fn system_task(system_stats: Arc<Mutex<SystemStats>>) -> Result<()> {
         let memory_used = sys.used_memory();
         let memory_total = sys.total_memory();
 
-        // push report, we take an average of the past 5 to put in the mutex
+        // push report, we take an average of the past 10 to put in the mutex
         stat_reports.push_back(StatReport {
             cpu_usage: cpu_usage,
             cpu_temperature: 0.0,

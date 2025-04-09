@@ -15,6 +15,7 @@ impl<const N: usize> SmallStr<N> {
     }
 
     pub fn from_str(s: &str) -> Self {
+        // todo: switch to results instead of asserts
         assert!(s.len() <= N);
 
         let mut str = [0u8; N];
@@ -32,6 +33,7 @@ impl<const N: usize> SmallStr<N> {
     }
 
     pub fn encode(self) -> [u8; N] {
+        // todo: switch to results instead of asserts
         assert!(N > self.size as usize);
 
         let mut data = [0u8; N];
