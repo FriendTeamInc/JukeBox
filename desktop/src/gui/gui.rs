@@ -15,6 +15,7 @@ use egui_phosphor::regular as phos;
 use jukebox_util::peripheral::DeviceType;
 use jukebox_util::rgb::RgbProfile;
 use jukebox_util::screen::ScreenProfile;
+use jukebox_util::stats::SystemStats;
 use rand::prelude::*;
 use tokio::task::spawn_blocking;
 use tokio::{
@@ -205,9 +206,14 @@ impl JukeBoxGui {
         let action_config = config.clone();
         let action_scmd_txs = scmd_txs.clone();
 
-        spawn(async move { serial_task(brkr_serial, serial_scmd_txs, sg_tx, sr_tx).await });
+        let system_stats: Arc<Mutex<SystemStats>> = Arc::new(Mutex::new(SystemStats::default()));
+        let serial_ss = system_stats.clone();
+
+        spawn(
+            async move { serial_task(brkr_serial, serial_scmd_txs, sg_tx, sr_tx, serial_ss).await },
+        );
         spawn(async move { action_task(sr_rx, action_config, action_scmd_txs, ae_tx).await });
-        spawn(async move { spawn_blocking(|| system_task()) });
+        spawn(async move { spawn_blocking(|| system_task(system_stats)) });
 
         JukeBoxGui {
             splash_timer: Instant::now(),

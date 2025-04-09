@@ -32,7 +32,7 @@ impl<const N: usize> SmallStr<N> {
     }
 
     pub fn encode(self) -> [u8; N] {
-        assert!(N >= (self.size + 1) as usize);
+        assert!(N > self.size as usize);
 
         let mut data = [0u8; N];
 
@@ -51,5 +51,9 @@ impl<const N: usize> SmallStr<N> {
         }
 
         Self { str, size }
+    }
+
+    pub const fn inner_size(&self) -> usize {
+        N
     }
 }

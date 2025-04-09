@@ -19,6 +19,7 @@ use jukebox_util::{
     rgb::RgbProfile,
     screen::{ProfileName, ScreenProfile},
     smallstr::SmallStr,
+    stats::SystemStats,
 };
 use ringbuffer::{ConstGenericRingBuffer, RingBuffer};
 use rp2040_hal::{fugit::ExtU32, timer::CountDown, usb::UsbBus};
@@ -26,7 +27,8 @@ use usbd_serial::SerialPort;
 
 use crate::util::{
     reset_peripherals, CONNECTION_STATUS, DEFAULT_INPUTS, ICONS, IDENTIFY_TRIGGER, KEYBOARD_EVENTS,
-    MOUSE_EVENTS, PERIPHERAL_INPUTS, PROFILE_NAME, RGB_CONTROLS, SCREEN_CONTROLS, UPDATE_TRIGGER,
+    MOUSE_EVENTS, PERIPHERAL_INPUTS, PROFILE_NAME, RGB_CONTROLS, SCREEN_CONTROLS,
+    SCREEN_SYSTEM_STATS, UPDATE_TRIGGER,
 };
 
 const BUFFER_SIZE: usize = 4096;
@@ -290,6 +292,19 @@ impl SerialMod {
                     SCREEN_CONTROLS.with_mut_lock(|s| {
                         s.0 = true;
                         s.1 = profile;
+                    });
+
+                    Self::send(serial, b"001");
+                    Self::send(serial, &[RSP_ACK]);
+
+                    true
+                }
+                Command::SetSystemStats => {
+                    let stats = SystemStats::decode(&data);
+
+                    SCREEN_SYSTEM_STATS.with_mut_lock(|s| {
+                        s.0 = true;
+                        s.1 = stats;
                     });
 
                     Self::send(serial, b"001");

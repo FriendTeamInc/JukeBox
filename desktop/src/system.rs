@@ -4,11 +4,12 @@
 // - rocm_smi_lib crate (AMD)
 // - Intel Graphics Control Library through Rust wrappers
 
-use std::{collections::VecDeque, thread::sleep};
+use std::{collections::VecDeque, sync::Arc, thread::sleep};
 
 use anyhow::Result;
 use jukebox_util::{smallstr::SmallStr, stats::SystemStats};
 use sysinfo::{MemoryRefreshKind, System, MINIMUM_CPU_UPDATE_INTERVAL};
+use tokio::sync::Mutex;
 
 #[derive(Debug, Clone, Copy)]
 struct StatReport {
@@ -120,20 +121,6 @@ impl StatReport {
         let (vram_used, vram_total, vram_unit) =
             Self::format_memory(self.vram_used, self.vram_total);
 
-        log::info!("--------------------");
-        log::info!("cpu_name: {:?}", cpu_name);
-        log::info!("cpu_usage: {:?}", cpu_usage);
-        log::info!("cpu_temperature: {:?}", cpu_temperature);
-        log::info!("memory_used: {:?}", memory_used);
-        log::info!("memory_total: {:?}", memory_total);
-        log::info!("memory_unit: {:?}", memory_unit);
-        log::info!("gpu_name: {:?}", gpu_name);
-        log::info!("gpu_usage: {:?}", gpu_usage);
-        log::info!("gpu_temperature: {:?}", gpu_temperature);
-        log::info!("vram_used: {:?}", vram_used);
-        log::info!("vram_total: {:?}", vram_total);
-        log::info!("vram_unit: {:?}", vram_unit);
-
         SystemStats {
             cpu_name: SmallStr::from_str(&cpu_name),
             cpu_usage: SmallStr::from_str(&cpu_usage),
@@ -151,7 +138,7 @@ impl StatReport {
     }
 }
 
-pub fn system_task() -> Result<()> {
+pub fn system_task(system_stats: Arc<Mutex<SystemStats>>) -> Result<()> {
     let mut sys = System::new();
 
     let mut cpu_info: Option<(String, String)> = None;
@@ -194,12 +181,12 @@ pub fn system_task() -> Result<()> {
             vram_used: 0,
             vram_total: 0,
         });
-        if stat_reports.len() > 5 {
+        if stat_reports.len() > 10 {
             let _ = stat_reports.pop_front();
         }
 
-        // TODO: update system info mutex that serial thread can pull from
-        let avg = StatReport::avg(stat_reports.clone()).to_system_stats(cpu_info.clone().unwrap());
+        *system_stats.blocking_lock() =
+            StatReport::avg(stat_reports.clone()).to_system_stats(cpu_info.clone().unwrap());
 
         sleep(MINIMUM_CPU_UPDATE_INTERVAL);
     }

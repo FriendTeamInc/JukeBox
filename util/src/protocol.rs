@@ -12,8 +12,9 @@ pub const CMD_SET_RGB_MODE: u8 = b'\x45';
 pub const CMD_SET_SCR_MODE: u8 = b'\x46';
 pub const CMD_SET_SCR_ICON: u8 = b'\x47';
 pub const CMD_SET_PROFILE_NAME: u8 = b'\x48';
-pub const CMD_IDENTIFY: u8 = b'\x49';
+pub const CMD_SET_SYSTEM_STATS: u8 = b'\x4A';
 
+pub const CMD_IDENTIFY: u8 = b'\x07';
 pub const CMD_UPDATE: u8 = b'\x0F';
 pub const CMD_DISCONNECT: u8 = b'\x10';
 pub const CMD_NEGATIVE_ACK: u8 = b'\x15';
@@ -42,6 +43,7 @@ pub enum Command {
     SetScrIcon,
     SetScrMode,
     SetProfileName,
+    SetSystemStats,
     Identify,
     Update,
     Disconnect,
@@ -60,6 +62,7 @@ impl Command {
             CMD_SET_SCR_ICON => Self::SetScrIcon,
             CMD_SET_SCR_MODE => Self::SetScrMode,
             CMD_SET_PROFILE_NAME => Self::SetProfileName,
+            CMD_SET_SYSTEM_STATS => Self::SetSystemStats,
             CMD_IDENTIFY => Self::Identify,
             CMD_UPDATE => Self::Update,
             CMD_DISCONNECT => Self::Disconnect,

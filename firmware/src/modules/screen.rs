@@ -561,31 +561,31 @@ impl ScreenMod {
             p.0 = false;
         });
 
+        if changed {
+            // using multiple channels did not meaningfully improve performance.
+            // use dma to clear framebuffer
+            self.dma_ch0 = {
+                let (dma_ch0, _, _) = single_buffer::Config::new(
+                    self.dma_ch0,
+                    RepeatReadTarget(self.screen_profile.background_color()),
+                    #[allow(static_mut_refs)]
+                    unsafe {
+                        &mut FBDATA
+                    },
+                )
+                .start()
+                .wait();
+                dma_ch0
+            };
+
+            self.draw_pre_tick();
+
+            self.keys_previous_frame = [2; 12];
+            self.draw_post_tick();
+        }
+
         // if timer ticks, we need to push frame
         if !self.timer.wait().is_ok() {
-            if changed {
-                // using multiple channels did not meaningfully improve performance.
-                // use dma to clear framebuffer
-                self.dma_ch0 = {
-                    let (dma_ch0, _, _) = single_buffer::Config::new(
-                        self.dma_ch0,
-                        RepeatReadTarget(self.screen_profile.background_color()),
-                        #[allow(static_mut_refs)]
-                        unsafe {
-                            &mut FBDATA
-                        },
-                    )
-                    .start()
-                    .wait();
-                    dma_ch0
-                };
-
-                self.draw_pre_tick();
-
-                self.keys_previous_frame = [2; 12];
-                self.draw_post_tick();
-            }
-
             return self;
         }
 

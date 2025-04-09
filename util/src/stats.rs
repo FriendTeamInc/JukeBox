@@ -41,4 +41,51 @@ impl SystemStats {
             vram_unit: SmallStr::default(),
         }
     }
+
+    pub fn encode(self) -> [u8; 100] {
+        let mut data = [0u8; 100];
+
+        let d = [
+            &self.cpu_name.encode()[..],
+            &self.cpu_usage.encode()[..],
+            &self.cpu_temperature.encode()[..],
+            &self.memory_used.encode()[..],
+            &self.memory_total.encode()[..],
+            &self.memory_unit.encode()[..],
+            &self.gpu_name.encode()[..],
+            &self.gpu_usage.encode()[..],
+            &self.gpu_temperature.encode()[..],
+            &self.vram_used.encode()[..],
+            &self.vram_total.encode()[..],
+            &self.vram_unit.encode()[..],
+        ];
+
+        let mut size = 0usize;
+        for d in d {
+            let len = d.len();
+            data[size..size + len].copy_from_slice(d);
+            size += len;
+        }
+
+        data
+    }
+
+    pub fn decode(data: &[u8]) -> Self {
+        let mut s = Self::default();
+
+        s.cpu_name = SmallStr::decode(&data[..21]);
+        s.cpu_usage = SmallStr::decode(&data[21..27]);
+        s.cpu_temperature = SmallStr::decode(&data[27..33]);
+        s.memory_used = SmallStr::decode(&data[33..39]);
+        s.memory_total = SmallStr::decode(&data[39..45]);
+        s.memory_unit = SmallStr::decode(&data[45..48]);
+        s.gpu_name = SmallStr::decode(&data[48..69]);
+        s.gpu_usage = SmallStr::decode(&data[69..75]);
+        s.gpu_temperature = SmallStr::decode(&data[75..81]);
+        s.vram_used = SmallStr::decode(&data[81..87]);
+        s.vram_total = SmallStr::decode(&data[87..93]);
+        s.vram_unit = SmallStr::decode(&data[93..]);
+
+        s
+    }
 }

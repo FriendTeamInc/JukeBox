@@ -11,8 +11,9 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, bail, Context, Result};
-use jukebox_util::protocol::{CMD_SET_PROFILE_NAME, CMD_SET_SCR_MODE};
+use jukebox_util::protocol::{CMD_SET_PROFILE_NAME, CMD_SET_SCR_MODE, CMD_SET_SYSTEM_STATS};
 use jukebox_util::screen::{ProfileName, ScreenProfile, PROFILE_NAME_CHAR_LEN};
+use jukebox_util::stats::SystemStats;
 use jukebox_util::{
     input::{KeyboardEvent, MouseEvent},
     peripheral::{
@@ -344,6 +345,13 @@ async fn transmit_set_profile_name(f: &mut Serial, profile_name: String) -> Resu
     send_expect(f, &cmd, &[RSP_ACK]).await
 }
 
+async fn transmit_set_system_stats(f: &mut Serial, system_stats: SystemStats) -> Result<()> {
+    let mut cmd = vec![CMD_SET_SYSTEM_STATS];
+    cmd.extend_from_slice(&system_stats.encode());
+
+    send_expect(f, &cmd, &[RSP_ACK]).await
+}
+
 async fn transmit_identify_signal(f: &mut Serial) -> Result<()> {
     send_expect(f, &[CMD_IDENTIFY], &[RSP_ACK]).await
 }
@@ -391,7 +399,10 @@ pub async fn serial_loop(
     sr_tx: UnboundedSender<SerialEvent>,
     device_uid: String,
     mut s_cmd_rx: UnboundedReceiver<SerialCommand>,
+    system_stats: Arc<Mutex<SystemStats>>,
 ) -> Result<()> {
+    let mut tick = Instant::now().checked_add(Duration::from_secs(1)).unwrap();
+
     'forv: loop {
         let keys = transmit_get_input_keys(f).await?;
         sr_tx
@@ -407,6 +418,13 @@ pub async fn serial_loop(
             })
             .context("failed to send input info to gui")?;
 
+        // TODO: only send system stats when device has a screen
+        if Instant::now() >= tick {
+            tick = Instant::now().checked_add(Duration::from_secs(1)).unwrap();
+            let stats = system_stats.lock().await.clone();
+            transmit_set_system_stats(f, stats).await?;
+        }
+
         while let Ok(cmd) = s_cmd_rx.try_recv() {
             match cmd {
                 SerialCommand::Identify => {
@@ -419,15 +437,19 @@ pub async fn serial_loop(
                     transmit_set_mouse_input(f, slot, mouse_event).await?;
                 }
                 SerialCommand::SetRgbMode(rgb_profile) => {
+                    // TODO: only send when device has rgb
                     transmit_set_rgb_mode(f, rgb_profile).await?;
                 }
                 SerialCommand::SetScrIcon(slot, icon_data) => {
+                    // TODO: only send when device has a screen
                     transmit_set_scr_icon(f, slot, icon_data).await?;
                 }
                 SerialCommand::SetScrMode(screen_profile) => {
+                    // TODO: only send when device has a screen
                     transmit_set_screen_mode(f, screen_profile).await?;
                 }
                 SerialCommand::SetProfileName(profile_name) => {
+                    // TODO: only send when device has a screen
                     transmit_set_profile_name(f, profile_name).await?;
                 }
                 SerialCommand::Update => {
@@ -474,6 +496,7 @@ pub async fn serial_task(
     scmd_txs: Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
     sg_tx: UnboundedSender<SerialEvent>,
     sr_tx: UnboundedSender<SerialEvent>,
+    system_stats: Arc<Mutex<SystemStats>>,
 ) -> Result<()> {
     let connected_uids = Arc::new(Mutex::new(HashSet::new()));
 
@@ -497,29 +520,25 @@ pub async fn serial_task(
         let device_info = greet_host(&mut f).await?;
         let device_uid = device_info.device_uid.clone();
         // TODO: check that firmware version is ok
-        let sg_tx2 = sg_tx.clone();
-        let sr_tx2 = sr_tx.clone();
+        let sg_tx = sg_tx.clone();
+        let sr_tx = sr_tx.clone();
 
         let (s_cmd_tx, s_cmd_rx) = unbounded_channel::<SerialCommand>();
 
         scmd_txs.lock().await.insert(device_uid.clone(), s_cmd_tx);
         connected_uids.lock().await.insert(device_uid.clone());
 
-        let connected_uids2 = connected_uids.clone();
-        let scmd_txs2 = scmd_txs.clone();
+        let connected_uids = connected_uids.clone();
+        let scmd_txs = scmd_txs.clone();
+        let system_stats = system_stats.clone();
 
         tokio::spawn(async move {
-            let connected_uids = connected_uids2;
-            let scmd_txs = scmd_txs2;
-
-            let _ = sg_tx2
-                .clone()
+            let _ = sg_tx
                 .send(SerialEvent::Connected {
                     device_info: device_info.clone(),
                 })
                 .context("failed to send device info to gui");
-            let _ = sr_tx2
-                .clone()
+            let _ = sr_tx
                 .send(SerialEvent::Connected {
                     device_info: device_info.clone(),
                 })
@@ -527,16 +546,17 @@ pub async fn serial_task(
 
             match serial_loop(
                 &mut f,
-                sg_tx2.clone(),
-                sr_tx2.clone(),
+                sg_tx.clone(),
+                sr_tx.clone(),
                 device_uid.clone(),
                 s_cmd_rx,
+                system_stats,
             )
             .await
             {
                 Err(e) => {
                     log::warn!("Serial device {} error: {:#}", device_uid, e);
-                    if let Err(e) = sg_tx2.send(SerialEvent::LostConnection {
+                    if let Err(e) = sg_tx.send(SerialEvent::LostConnection {
                         device_uid: device_uid.clone(),
                     }) {
                         log::warn!(
@@ -545,7 +565,7 @@ pub async fn serial_task(
                             e
                         );
                     }
-                    if let Err(e) = sr_tx2.send(SerialEvent::LostConnection {
+                    if let Err(e) = sr_tx.send(SerialEvent::LostConnection {
                         device_uid: device_uid.clone(),
                     }) {
                         log::warn!(
