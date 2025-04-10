@@ -4,11 +4,15 @@ use std::{collections::VecDeque, sync::Arc, thread::sleep};
 
 use anyhow::Result;
 use jukebox_util::{smallstr::SmallStr, stats::SystemStats};
-use nvml_wrapper::{enum_wrappers::device::TemperatureSensor, Nvml};
-use rocm_smi_lib::{RocmSmi, RsmiTemperatureMetric, RsmiTemperatureType};
 use sysinfo::{MemoryRefreshKind, System, MINIMUM_CPU_UPDATE_INTERVAL};
 use tokio::sync::Mutex;
 
+#[cfg(feature = "gpu")]
+use nvml_wrapper::{enum_wrappers::device::TemperatureSensor, Nvml};
+#[cfg(feature = "gpu")]
+use rocm_smi_lib::{RocmSmi, RsmiTemperatureMetric, RsmiTemperatureType};
+
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
 enum GpuPreference {
     Nvidia,
@@ -149,32 +153,36 @@ impl StatReport {
 pub fn system_task(system_stats: Arc<Mutex<SystemStats>>) -> Result<()> {
     let mut sys = System::new();
 
-    let nvml = Nvml::init();
-    let mut rocm = RocmSmi::init();
-
     // heuristic to figure out which gpu stats to get
     // we can reasonably assume a user won't have both (probably) and the same count (hopefully)
     // if they do, then they probably don't have any discrete gpu installed (for sanity's sake)
-    let gpu_preference = match (&nvml, rocm.as_mut()) {
-        (Ok(n), Ok(a)) => {
-            if let Ok(nvidia_count) = n.device_count() {
-                let amd_count = a.get_device_count();
-                if amd_count == nvidia_count {
-                    GpuPreference::None
-                } else if amd_count > nvidia_count {
-                    GpuPreference::Amd
+    #[cfg(feature = "gpu")]
+    let (gpu_preference, nvml, mut rocm) = {
+        let nvml = Nvml::init();
+        let mut rocm = RocmSmi::init();
+        let gpu_preference = match (&nvml, rocm.as_mut()) {
+            (Ok(n), Ok(a)) => {
+                if let Ok(nvidia_count) = n.device_count() {
+                    let amd_count = a.get_device_count();
+                    if amd_count == nvidia_count {
+                        GpuPreference::None
+                    } else if amd_count > nvidia_count {
+                        GpuPreference::Amd
+                    } else {
+                        GpuPreference::Nvidia
+                    }
                 } else {
-                    GpuPreference::Nvidia
+                    GpuPreference::Amd
                 }
-            } else {
-                GpuPreference::Amd
             }
-        }
-        (Ok(_), Err(_)) => GpuPreference::Nvidia,
-        (Err(_), Ok(_)) => GpuPreference::Amd,
-        (Err(_), Err(_)) => GpuPreference::None,
+            (Ok(_), Err(_)) => GpuPreference::Nvidia,
+            (Err(_), Ok(_)) => GpuPreference::Amd,
+            (Err(_), Err(_)) => GpuPreference::None,
+        };
+        log::info!("gpu preference: {:?}", gpu_preference);
+
+        (gpu_preference, nvml, rocm)
     };
-    log::info!("gpu preference: {:?}", gpu_preference);
 
     let mut cpu_info: Option<String> = None;
     let mut stat_reports: VecDeque<StatReport> = VecDeque::new();
@@ -211,12 +219,11 @@ pub fn system_task(system_stats: Arc<Mutex<SystemStats>>) -> Result<()> {
         let memory_total = sys.total_memory();
 
         // Get GPU Info
-        let mut gpu_info = String::from("Unknown GPU");
-        let mut gpu_usage = 0.0f32;
-        let mut gpu_temperature = 0.0f32;
-        let mut vram_used = 0u64;
-        let mut vram_total = 0u64;
+        #[allow(unused_mut)]
+        let (mut gpu_info, mut gpu_usage, mut gpu_temperature, mut vram_used, mut vram_total) =
+            (String::from("Unknown GPU"), 0.0f32, 0.0f32, 0u64, 0u64);
 
+        #[cfg(feature = "gpu")]
         match gpu_preference {
             GpuPreference::Nvidia => {
                 if let Ok(n) = &nvml {

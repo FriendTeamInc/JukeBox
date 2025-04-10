@@ -4,7 +4,7 @@ extern crate winresource;
 
 fn main() {
     // TODO: not great for long term, fix later
-    if cfg!(target_family = "unix") {
+    if cfg!(feature = "gpu") && cfg!(target_family = "unix") {
         println!(r"cargo:rustc-link-search=/opt/rocm/lib");
     }
 

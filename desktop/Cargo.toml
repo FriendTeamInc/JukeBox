@@ -47,12 +47,8 @@ downcast-rs = "2.0"
 sha1_smol = "1.0"
 
 sysinfo = { version = "0.34", features = ["multithread"] }
-rocm_smi_lib = { version = "0.3.0-rc.1", features = ["device"] }
-nvml-wrapper = "0.10"
-
-# TODO: temporary while rocm_smi_lib 0.3 is in rc
-[patch.crates-io]
-rocm_smi_lib_sys = { git = "https://github.com/PTFOPlayer/rocm_smi_lib_sys.git" }
+rocm_smi_lib = { version = "0.3.0", features = ["device"], optional = true }
+nvml-wrapper = { version = "0.10", optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"
@@ -75,6 +71,7 @@ winresource = "0.1"
 [features]
 default = []
 discord = ["dep:discord-rich-presence"]
+gpu = ["dep:nvml-wrapper", "dep:rocm_smi_lib"]
 
 [profile.release]
 strip = true
