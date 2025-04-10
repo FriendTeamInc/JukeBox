@@ -3,6 +3,11 @@
 extern crate winresource;
 
 fn main() {
+    // TODO: not great for long term, fix later
+    if cfg!(target_family = "unix") {
+        println!(r"cargo:rustc-link-search=/opt/rocm/lib");
+    }
+
     if cfg!(target_family = "windows") {
         // add icon
         let mut res = winresource::WindowsResource::new();
