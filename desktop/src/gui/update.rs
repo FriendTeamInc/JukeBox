@@ -2,8 +2,8 @@ use eframe::egui::{vec2, Button, ProgressBar, RichText, Ui};
 use rfd::FileDialog;
 use tokio::spawn;
 
+use crate::firmware_update::{firmware_update_task, FirmwareUpdateStatus};
 use crate::serial::SerialCommand;
-use crate::update::{update_task, UpdateStatus};
 
 use super::gui::JukeBoxGui;
 
@@ -20,7 +20,7 @@ impl JukeBoxGui {
         let us_tx2 = self.us_tx.clone();
         let device_uid = self.current_device.clone();
         spawn(async move {
-            update_task(device_uid, fw_path, us_tx2).await;
+            firmware_update_task(device_uid, fw_path, us_tx2).await;
         });
     }
 
@@ -39,7 +39,7 @@ impl JukeBoxGui {
 
                 ui.allocate_space(vec2(149.0, 0.0));
 
-                if self.update_status != UpdateStatus::Start {
+                if self.update_status != FirmwareUpdateStatus::Start {
                     ui.disable();
                 }
 
@@ -65,12 +65,16 @@ impl JukeBoxGui {
                 while let Ok(p) = self.us_rx.try_recv() {
                     self.update_status = p;
                     match p {
-                        UpdateStatus::Start => self.update_progress = 0.0,
-                        UpdateStatus::Connecting => self.update_progress = 0.05,
-                        UpdateStatus::PreparingFirmware => self.update_progress = 0.1,
-                        UpdateStatus::ErasingOldFirmware(n) => self.update_progress = 0.1 + 0.3 * n,
-                        UpdateStatus::WritingNewFirmware(n) => self.update_progress = 0.4 + 0.6 * n,
-                        UpdateStatus::End => self.update_progress = 1.0,
+                        FirmwareUpdateStatus::Start => self.update_progress = 0.0,
+                        FirmwareUpdateStatus::Connecting => self.update_progress = 0.05,
+                        FirmwareUpdateStatus::PreparingFirmware => self.update_progress = 0.1,
+                        FirmwareUpdateStatus::ErasingOldFirmware(n) => {
+                            self.update_progress = 0.1 + 0.3 * n
+                        }
+                        FirmwareUpdateStatus::WritingNewFirmware(n) => {
+                            self.update_progress = 0.4 + 0.6 * n
+                        }
+                        FirmwareUpdateStatus::End => self.update_progress = 1.0,
                     }
                 }
 
@@ -83,12 +87,12 @@ impl JukeBoxGui {
             });
             ui.allocate_space(vec2(0.0, 10.0));
             ui.label(match self.update_status {
-                UpdateStatus::Start => t!("update.status.start"),
-                UpdateStatus::Connecting => t!("update.status.connecting"),
-                UpdateStatus::PreparingFirmware => t!("update.status.preparing"),
-                UpdateStatus::ErasingOldFirmware(_) => t!("update.status.erasing"),
-                UpdateStatus::WritingNewFirmware(_) => t!("update.status.writing"),
-                UpdateStatus::End => t!("update.status.end"),
+                FirmwareUpdateStatus::Start => t!("update.status.start"),
+                FirmwareUpdateStatus::Connecting => t!("update.status.connecting"),
+                FirmwareUpdateStatus::PreparingFirmware => t!("update.status.preparing"),
+                FirmwareUpdateStatus::ErasingOldFirmware(_) => t!("update.status.erasing"),
+                FirmwareUpdateStatus::WritingNewFirmware(_) => t!("update.status.writing"),
+                FirmwareUpdateStatus::End => t!("update.status.end"),
             });
         });
         ui.allocate_space(ui.available_size_before_wrap());

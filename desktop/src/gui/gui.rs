@@ -36,11 +36,12 @@ use crate::actions::{
     types::{Action, ActionMap},
 };
 use crate::config::{ActionIcon, DeviceConfig, DeviceInfo, JukeBoxConfig};
+use crate::firmware_update::FirmwareUpdateStatus;
 use crate::input::InputKey;
 use crate::serial::{serial_task, SerialCommand, SerialEvent};
+use crate::software_update::software_update_task;
 use crate::splash::SPLASH_MESSAGES;
 use crate::system::system_task;
-use crate::update::UpdateStatus;
 
 const APP_ICON: &[u8] = include_bytes!("../../../assets/applogo.png");
 static CLOSE_WINDOW: OnceLock<Mutex<(bool, bool)>> = OnceLock::new();
@@ -96,14 +97,17 @@ pub struct JukeBoxGui {
     pub exit_save_modal: bool,
 
     pub update_progress: f32,
-    pub update_status: UpdateStatus,
+    pub update_status: FirmwareUpdateStatus,
 
     pub thread_breaker: Arc<AtomicBool>,
     pub sg_rx: UnboundedReceiver<SerialEvent>,
     pub scmd_txs: Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
-    pub us_tx: UnboundedSender<UpdateStatus>,
-    pub us_rx: UnboundedReceiver<UpdateStatus>,
+    pub us_tx: UnboundedSender<FirmwareUpdateStatus>,
+    pub us_rx: UnboundedReceiver<FirmwareUpdateStatus>,
     pub ae_rx: UnboundedReceiver<ActionError>,
+
+    pub gu_rx: UnboundedReceiver<()>,
+    pub update_available: bool,
 
     pub action_map: ActionMap,
 
@@ -199,8 +203,9 @@ impl JukeBoxGui {
         // gui thread sends events to serial threads (specific Device ID -> Device specific Serial Thread)
         // serial thread spawns the channels and gives the sender to the gui thread through this
 
-        let (us_tx, us_rx) = unbounded_channel::<UpdateStatus>(); // update thread sends update statuses to gui thread
+        let (us_tx, us_rx) = unbounded_channel::<FirmwareUpdateStatus>(); // update thread sends update statuses to gui thread
         let (ae_tx, ae_rx) = unbounded_channel::<ActionError>(); // action thread sends action errors to gui thread
+        let (gu_tx, gu_rx) = unbounded_channel::<()>(); // software update thread sends update available signal to gui thread
 
         let serial_scmd_txs = scmd_txs.clone();
         let action_config = config.clone();
@@ -214,6 +219,7 @@ impl JukeBoxGui {
         );
         spawn(async move { action_task(sr_rx, action_config, action_scmd_txs, ae_tx).await });
         spawn(async move { spawn_blocking(|| system_task(system_stats)) });
+        spawn(async move { software_update_task(gu_tx).await });
 
         JukeBoxGui {
             splash_timer: Instant::now(),
@@ -246,7 +252,7 @@ impl JukeBoxGui {
             exit_save_modal: false,
 
             update_progress: 0.0,
-            update_status: UpdateStatus::Start,
+            update_status: FirmwareUpdateStatus::Start,
 
             thread_breaker: thread_breaker,
             sg_rx: sg_rx,
@@ -254,6 +260,9 @@ impl JukeBoxGui {
             us_tx: us_tx,
             us_rx: us_rx,
             ae_rx: ae_rx,
+
+            gu_rx: gu_rx,
+            update_available: false,
 
             action_map: ActionMap::new(),
 
@@ -328,6 +337,12 @@ impl JukeBoxGui {
     }
 
     fn handle_serial_events(&mut self, ctx: &Context) {
+        // recieve update available events
+        while let Ok(_) = self.gu_rx.try_recv() {
+            self.update_available = true;
+            // TODO: use this to display a modal for updating?
+        }
+
         // recieve action error events
         let mut bring_back_up = false;
         while let Ok(error) = self.ae_rx.try_recv() {
@@ -468,8 +483,8 @@ impl JukeBoxGui {
     fn draw_back_button(&mut self, ui: &mut Ui) {
         // back button
         let enabled = self.gui_tab != GuiTab::Device
-            && (self.update_status == UpdateStatus::Start
-                || self.update_status == UpdateStatus::End);
+            && (self.update_status == FirmwareUpdateStatus::Start
+                || self.update_status == FirmwareUpdateStatus::End);
         ui.add_enabled_ui(enabled, |ui| {
             let saveable = match self.gui_tab {
                 GuiTab::EditingAction | GuiTab::EditingRGB | GuiTab::EditingScreen => true,

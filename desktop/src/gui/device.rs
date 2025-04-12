@@ -9,8 +9,8 @@ use jukebox_util::peripheral::DeviceType;
 use jukebox_util::rgb::RgbProfile;
 use jukebox_util::screen::ScreenProfile;
 
+use crate::firmware_update::FirmwareUpdateStatus;
 use crate::serial::SerialCommand;
-use crate::update::UpdateStatus;
 use crate::{config::ActionIcon, input::InputKey};
 
 use super::gui::{GuiTab, JukeBoxGui};
@@ -252,7 +252,7 @@ impl JukeBoxGui {
                         {
                             self.gui_tab = GuiTab::Updating;
                             self.update_progress = 0.0;
-                            self.update_status = UpdateStatus::Start;
+                            self.update_status = FirmwareUpdateStatus::Start;
                         }
                     });
                 });

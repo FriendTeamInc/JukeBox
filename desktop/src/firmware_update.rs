@@ -10,7 +10,7 @@ use tokio::sync::mpsc::UnboundedSender;
 use uf2_decode::convert_from_uf2;
 
 #[derive(Clone, Copy, PartialEq)]
-pub enum UpdateStatus {
+pub enum FirmwareUpdateStatus {
     Start,
     Connecting,
     PreparingFirmware,
@@ -42,11 +42,11 @@ fn uf2_pages(bytes: Vec<u8>) -> Vec<Vec<u8>> {
 fn update_device(
     ctx: Context,
     fw_path: String,
-    status: UnboundedSender<UpdateStatus>,
+    status: UnboundedSender<FirmwareUpdateStatus>,
 ) -> Result<()> {
     // TODO: add context()'s
 
-    status.send(UpdateStatus::Connecting)?;
+    status.send(FirmwareUpdateStatus::Connecting)?;
 
     let mut conn = None;
 
@@ -73,12 +73,12 @@ fn update_device(
     conn.access_exclusive_eject()?;
     conn.exit_xip()?;
 
-    status.send(UpdateStatus::PreparingFirmware)?;
+    status.send(FirmwareUpdateStatus::PreparingFirmware)?;
 
     let fw = std::fs::read(fw_path)?;
     let fw_pages = uf2_pages(fw);
 
-    status.send(UpdateStatus::ErasingOldFirmware(0.0))?;
+    status.send(FirmwareUpdateStatus::ErasingOldFirmware(0.0))?;
 
     // erase space on flash
     let page_count = fw_pages.len();
@@ -87,13 +87,13 @@ fn update_device(
         if (addr % SECTOR_SIZE) == 0 {
             conn.flash_erase(addr, SECTOR_SIZE)?;
 
-            status.send(UpdateStatus::ErasingOldFirmware(
+            status.send(FirmwareUpdateStatus::ErasingOldFirmware(
                 (i as f32) / (page_count as f32),
             ))?;
         }
     }
 
-    status.send(UpdateStatus::WritingNewFirmware(0.0))?;
+    status.send(FirmwareUpdateStatus::WritingNewFirmware(0.0))?;
 
     for (i, page) in fw_pages.iter().enumerate() {
         let addr = (i as u32) * PAGE_SIZE + FLASH_START;
@@ -107,22 +107,22 @@ fn update_device(
         let matching = page.iter().zip(&read).all(|(&a, &b)| a == b);
         assert!(matching, "page does not match flash"); // TODO: change to Err()
 
-        status.send(UpdateStatus::WritingNewFirmware(
+        status.send(FirmwareUpdateStatus::WritingNewFirmware(
             (i as f32) / (page_count as f32),
         ))?;
     }
 
-    status.send(UpdateStatus::End)?;
+    status.send(FirmwareUpdateStatus::End)?;
 
     conn.reboot(0x0, STACK_POINTER_RP2040, 500)?;
 
     Ok(())
 }
 
-pub async fn update_task(
+pub async fn firmware_update_task(
     device_uid: String,
     fw_path: String,
-    update_status: UnboundedSender<UpdateStatus>,
+    update_status: UnboundedSender<FirmwareUpdateStatus>,
 ) {
     let ctx = Context::new().expect("failed to get USB context");
 

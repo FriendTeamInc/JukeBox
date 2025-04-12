@@ -2948,6 +2948,7 @@ dependencies = [
  "rocm_smi_lib",
  "rusb",
  "rust-i18n",
+ "semver",
  "serde",
  "serde_json",
  "serialport",

@@ -6,14 +6,13 @@ use std::{
 use discord_rich_presence::{voice_settings::VoiceSettings, DiscordIpc, DiscordIpcClient};
 use eframe::egui::{include_image, vec2, Button, ImageSource, Ui};
 use egui_phosphor::regular as phos;
-use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tokio::{sync::Mutex, task::spawn_blocking};
 
 use crate::{
     config::{DiscordOauthAccess, JukeBoxConfig},
+    get_reqwest_client,
     input::InputKey,
-    REQWEST_CLIENT,
 };
 
 use super::types::{Action, ActionError};
@@ -68,8 +67,7 @@ async fn discord_access_token_request(
         ("client_secret", client_secret),
     ]);
 
-    let r = REQWEST_CLIENT
-        .get_or_init(|| Client::new())
+    let r = get_reqwest_client()
         .post("https://discord.com/api/oauth2/token")
         .form(&params)
         .send()
@@ -91,8 +89,7 @@ async fn discord_refresh_access_token(
         ("client_secret", client_secret),
     ]);
 
-    let r = REQWEST_CLIENT
-        .get_or_init(|| Client::new())
+    let r = get_reqwest_client()
         .post("https://discord.com/api/oauth2/token")
         .form(&params)
         .send()
