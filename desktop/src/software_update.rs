@@ -110,7 +110,7 @@ pub async fn software_update_task(update_available_signal: UnboundedSender<Versi
     let this_version = Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
 
     loop {
-        match get_release("FriendTeamInc", "VodBot", "latest").await {
+        match get_release("FriendTeamInc", "JukeBox", "latest").await {
             Ok(release) => {
                 let new_version = release.tag_name.replace("v", "");
                 let new_version = Version::parse(&new_version).unwrap();

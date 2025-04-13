@@ -1,4 +1,4 @@
-use eframe::egui::{vec2, Button, ProgressBar, RichText, Ui};
+use eframe::egui::{vec2, Button, Color32, ProgressBar, RichText, Ui};
 use rfd::FileDialog;
 use tokio::spawn;
 
@@ -26,11 +26,23 @@ impl JukeBoxGui {
 
     pub fn draw_update_page(&mut self, ui: &mut Ui) {
         ui.vertical_centered(|ui| {
-            ui.allocate_space(vec2(0.0, 10.0));
+            ui.allocate_space(vec2(0.0, 5.0));
             ui.heading(t!("update.title"));
+            ui.allocate_space(vec2(0.0, 3.0));
 
-            // TODO: add some basic info (firmware versions, "do not uplug or power off", etc)
-            ui.allocate_space(vec2(0.0, 75.0));
+            ui.label(t!(
+                "update.current_firmware_version",
+                version = self.current_version.to_string()
+            ));
+            ui.label(t!(
+                "update.new_firmware_version",
+                version = self.available_version.to_string()
+            ));
+
+            ui.allocate_space(vec2(0.0, 5.0));
+            ui.label(RichText::new(t!("update.warning")).color(Color32::DARK_RED)); // TODO
+
+            ui.allocate_space(vec2(0.0, 13.0));
 
             ui.horizontal(|ui| {
                 let dl_update =
@@ -57,9 +69,9 @@ impl JukeBoxGui {
                     }
                 }
             });
-            ui.allocate_space(vec2(0.0, 25.0));
+            ui.allocate_space(vec2(0.0, 10.0));
             ui.horizontal(|ui| {
-                ui.allocate_space(vec2(149.0, 0.0));
+                ui.allocate_space(vec2(149.0 - 12.5, 0.0));
 
                 while let Ok(p) = self.us_rx.try_recv() {
                     self.update_status = p;
@@ -79,12 +91,12 @@ impl JukeBoxGui {
 
                 let p = ProgressBar::new(self.update_progress)
                     // .animate(true)
-                    .desired_width(150.0)
+                    .desired_width(175.0)
                     .desired_height(30.0)
                     .show_percentage();
                 ui.add(p);
             });
-            ui.allocate_space(vec2(0.0, 10.0));
+            ui.allocate_space(vec2(0.0, 2.0));
             ui.label(match self.update_status {
                 FirmwareUpdateStatus::Start => t!("update.status.start"),
                 FirmwareUpdateStatus::Connecting => t!("update.status.connecting"),

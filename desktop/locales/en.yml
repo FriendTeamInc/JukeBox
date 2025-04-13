@@ -82,7 +82,10 @@ device_name:
   pedalpad: "JukeBox PedalPad %{uid}"
 
 update:
-  title: "Update Device"
+  title: "Update Device Firmware"
+  current_firmware_version: "Current Firmware Version: %{version}"
+  new_firmware_version: "New Firmware Version: %{version}"
+  warning: "WARNING!\nDo not unplug the deivce or\nclose the software during the update!"
   button: "Update"
   cfw_button: "CFW"
   filter_name: "UF2 Firmware"
