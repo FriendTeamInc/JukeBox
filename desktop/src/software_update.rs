@@ -16,6 +16,7 @@ enum GitHubError {
     FailedToParse,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
 struct ReleaseUser {
     pub login: String,
@@ -39,6 +40,7 @@ struct ReleaseUser {
     // pub site_admin: bool,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
 struct ReleaseAsset {
     // pub url: String,
@@ -56,6 +58,7 @@ struct ReleaseAsset {
     pub browser_download_url: String,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
 struct ReleaseInfo {
     // pub url: String,
@@ -107,7 +110,7 @@ pub async fn software_update_task(update_available_signal: UnboundedSender<Versi
     let this_version = Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
 
     loop {
-        match get_release("FriendTeamInc", "JukeBox", "latest").await {
+        match get_release("FriendTeamInc", "VodBot", "latest").await {
             Ok(release) => {
                 let new_version = release.tag_name.replace("v", "");
                 let new_version = Version::parse(&new_version).unwrap();

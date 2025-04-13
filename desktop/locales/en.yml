@@ -31,6 +31,7 @@ help:
     button: "Settings"
     splash: " - Enable splash text in bottom right."
     exit_on_save: " - Always save changes when exiting a menu."
+    ignore_update_notifications: " - Disable notifications of new updates."
 
   device:
     select: "Device Select"
@@ -43,6 +44,12 @@ help:
     screen: "Screen Control"
     none: "Please connect a device."
     unknown: "Unknown device registered."
+  
+  update:
+    modal_title: "Software Update Available!"
+    modal_remind_me_later: "Remind me later"
+    modal_ignore_updates: "Ignore updates"
+    modal_download_update: "Download Update"
 
   rgb:
     select: "RGB Profile Select"

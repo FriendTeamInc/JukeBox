@@ -48,7 +48,6 @@ impl JukeBoxGui {
                     // self.send_update_signal(???);
                 }
                 if ui.add(cfw_update).clicked() {
-                    // TODO: ask for file, verify its good, then use it to update the device
                     if let Some(f) = FileDialog::new()
                         .add_filter(t!("update.filter_name"), &["uf2"])
                         .set_directory("~")

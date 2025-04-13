@@ -79,6 +79,7 @@ pub struct JukeBoxGui {
     pub config: Arc<Mutex<JukeBoxConfig>>,
     pub config_enable_splash: bool,
     pub config_always_save_on_exit: bool,
+    pub config_ignore_update_notifications: bool,
 
     pub profile_renaming: bool,
     pub profile_name_entry: String,
@@ -110,6 +111,7 @@ pub struct JukeBoxGui {
     pub gu_rx: UnboundedReceiver<Version>,
     pub available_version: Version,
     pub current_version: Version,
+    pub dismissed_update_notif: bool,
 
     pub action_map: ActionMap,
 
@@ -190,6 +192,7 @@ impl JukeBoxGui {
         let current_device = devices.keys().next().unwrap_or(&String::new()).into();
         let config_enable_splash = config.enable_splash;
         let config_always_save_on_exit = config.always_save_on_exit;
+        let config_ignore_update_notifications = config.ignore_update_notifications;
         let config = Arc::new(Mutex::new(JukeBoxConfig::load()));
 
         // when gui exits, we use these to signal the other threads to stop
@@ -235,6 +238,7 @@ impl JukeBoxGui {
             config: config,
             config_enable_splash: config_enable_splash,
             config_always_save_on_exit: config_always_save_on_exit,
+            config_ignore_update_notifications: config_ignore_update_notifications,
 
             profile_renaming: false,
             profile_name_entry: String::new(),
@@ -266,6 +270,7 @@ impl JukeBoxGui {
             gu_rx: gu_rx,
             available_version: Version::parse(env!("CARGO_PKG_VERSION")).unwrap(),
             current_version: Version::parse(env!("CARGO_PKG_VERSION")).unwrap(),
+            dismissed_update_notif: true,
 
             action_map: ActionMap::new(),
 
@@ -337,17 +342,55 @@ impl JukeBoxGui {
                 });
             });
         }
+
+        if self.current_version != self.available_version && !self.dismissed_update_notif {
+            Modal::new(Id::new("UpdateAvailableModal")).show(ui.ctx(), |ui| {
+                ui.set_width(400.0);
+                ui.heading(t!("help.update.modal_title"));
+                ui.add_space(10.0);
+
+                // TODO: display github release info here
+                ui.label("TODO: display github release info here");
+
+                ui.add_space(15.0);
+
+                ui.horizontal(|ui| {
+                    if ui.button(t!("help.update.modal_remind_me_later")).clicked() {
+                        self.dismissed_update_notif = true;
+                    }
+
+                    if ui.button(t!("help.update.modal_ignore_updates")).clicked() {
+                        self.dismissed_update_notif = true;
+                        self.config_ignore_update_notifications = true;
+
+                        let mut conf = self.config.blocking_lock();
+                        conf.ignore_update_notifications = self.config_ignore_update_notifications;
+                        conf.save();
+                    }
+
+                    if ui.button(t!("help.update.modal_download_update")).clicked() {
+                        self.dismissed_update_notif = true;
+                        let _ =
+                            open::that("https://github.com/FriendTeamInc/JukeBox/releases/latest");
+                    }
+                })
+            });
+        }
     }
 
     fn handle_serial_events(&mut self, ctx: &Context) {
+        let mut bring_back_up = false;
+
         // recieve update available events
         while let Ok(new_version) = self.gu_rx.try_recv() {
             self.available_version = new_version;
-            // TODO: use this to display a modal for updating?
+            if !self.config_ignore_update_notifications {
+                self.dismissed_update_notif = false;
+                bring_back_up = true;
+            }
         }
 
         // recieve action error events
-        let mut bring_back_up = false;
         while let Ok(error) = self.ae_rx.try_recv() {
             self.action_errors.push_back(error);
             bring_back_up = true;

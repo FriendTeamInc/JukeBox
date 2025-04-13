@@ -68,6 +68,18 @@ impl JukeBoxGui {
             conf.save();
         }
 
+        if ui
+            .checkbox(
+                &mut self.config_ignore_update_notifications,
+                t!("help.settings.ignore_update_notifications"),
+            )
+            .changed()
+        {
+            let mut conf = self.config.blocking_lock();
+            conf.ignore_update_notifications = self.config_ignore_update_notifications;
+            conf.save();
+        }
+
         ui.with_layout(Layout::bottom_up(Align::RIGHT), |ui| {
             ui.columns_const(|[c1, c2]| {
                 c1.with_layout(Layout::left_to_right(Align::Max), |ui| {

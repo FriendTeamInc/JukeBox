@@ -114,7 +114,7 @@ pub async fn action_task(
             .devices
             .get(device_uid)
             .map(|d| d.device_type)
-            .unwrap()
+            .unwrap_or(DeviceType::Unknown)
             .clone();
 
         (device_type, profile, c.current_profile.clone(), rgb, scr) // TODO: add hardware input info
