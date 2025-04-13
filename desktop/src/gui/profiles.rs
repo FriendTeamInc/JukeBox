@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use eframe::egui::{ComboBox, RichText, TextBuffer, TextEdit, Ui};
+use eframe::egui::{Color32, ComboBox, RichText, TextBuffer, TextEdit, Ui};
 use egui_phosphor::regular as phos;
 use jukebox_util::{peripheral::DeviceType, rgb::RgbProfile, screen::ScreenProfile};
 
@@ -157,48 +157,50 @@ impl JukeBoxGui {
                 if self.config.blocking_lock().profiles.keys().len() <= 1 {
                     ui.disable();
                 }
-                let delete_btn = ui
-                    .button(RichText::new(phos::TRASH))
-                    .on_hover_text_at_pointer(t!("help.profile.delete"));
-                if delete_btn.clicked() {
-                    // TODO: make red
-                }
-                if delete_btn.double_clicked() {
-                    {
-                        let mut conf = self.config.blocking_lock();
-                        let p = conf.current_profile.clone();
-                        conf.profiles.remove(&p);
-                        conf.current_profile = conf.profiles.keys().next().unwrap().clone();
+                ui.scope(|ui| {
+                    ui.style_mut().visuals.widgets.hovered.weak_bg_fill = Color32::RED;
 
-                        for (_, p) in conf.profiles.iter_mut() {
-                            for (_, d) in p.iter_mut() {
-                                for (_, k) in d.key_map.iter_mut() {
-                                    // TODO: only reset configs that reference the old profile
-                                    match k.action.get_type().as_ref() {
-                                        AID_META_SWITCH_PROFILE => {
-                                            k.action = self
-                                                .action_map
-                                                .enum_new(AID_META_SWITCH_PROFILE.into());
+                    let delete_btn = ui
+                        .button(RichText::new(phos::TRASH))
+                        .on_hover_text_at_pointer(t!("help.profile.delete"));
+
+                    if delete_btn.double_clicked() {
+                        {
+                            let mut conf = self.config.blocking_lock();
+                            let p = conf.current_profile.clone();
+                            conf.profiles.remove(&p);
+                            conf.current_profile = conf.profiles.keys().next().unwrap().clone();
+
+                            for (_, p) in conf.profiles.iter_mut() {
+                                for (_, d) in p.iter_mut() {
+                                    for (_, k) in d.key_map.iter_mut() {
+                                        // TODO: only reset configs that reference the old profile
+                                        match k.action.get_type().as_ref() {
+                                            AID_META_SWITCH_PROFILE => {
+                                                k.action = self
+                                                    .action_map
+                                                    .enum_new(AID_META_SWITCH_PROFILE.into());
+                                            }
+                                            AID_META_COPY_FROM_PROFILE => {
+                                                k.action = self
+                                                    .action_map
+                                                    .enum_new(AID_META_COPY_FROM_PROFILE.into());
+                                            }
+                                            _ => {}
                                         }
-                                        AID_META_COPY_FROM_PROFILE => {
-                                            k.action = self
-                                                .action_map
-                                                .enum_new(AID_META_COPY_FROM_PROFILE.into());
-                                        }
-                                        _ => {}
                                     }
                                 }
                             }
+
+                            conf.save();
                         }
 
-                        conf.save();
+                        let devices: Vec<_> = self.devices.keys().cloned().collect();
+                        for k in devices {
+                            self.set_device_profile(&k);
+                        }
                     }
-
-                    let devices: Vec<_> = self.devices.keys().cloned().collect();
-                    for k in devices {
-                        self.set_device_profile(&k);
-                    }
-                }
+                });
             });
         });
     }

@@ -245,15 +245,28 @@ impl JukeBoxGui {
                             let _ = tx.send(SerialCommand::Identify);
                         }
 
-                        if ui
-                            .button(phos::DOWNLOAD)
-                            .on_hover_text_at_pointer(t!("help.device.update"))
-                            .clicked()
-                        {
-                            self.gui_tab = GuiTab::Updating;
-                            self.update_progress = 0.0;
-                            self.update_status = FirmwareUpdateStatus::Start;
-                        }
+                        ui.scope(|ui| {
+                            let mut btn = Button::new(phos::DOWNLOAD);
+                            let mut hint_text = t!("help.device.update");
+                            if let Some(version) = &self
+                                .devices
+                                .get(&self.current_device)
+                                .unwrap()
+                                .firmware_version
+                            {
+                                if *version < self.available_version {
+                                    btn = btn.fill(Color32::BLUE);
+                                    hint_text = t!("help.device.update_available");
+                                    // TODO: update on hover text to indicate update available
+                                }
+                            }
+
+                            if ui.add(btn).on_hover_text_at_pointer(hint_text).clicked() {
+                                self.gui_tab = GuiTab::Updating;
+                                self.update_progress = 0.0;
+                                self.update_status = FirmwareUpdateStatus::Start;
+                            }
+                        });
                     });
                 });
                 ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
@@ -265,9 +278,15 @@ impl JukeBoxGui {
                 });
                 ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
                     ui.label(
-                        RichText::new(format!("Firmware: {}", i.firmware_version))
-                            .monospace()
-                            .size(5.0),
+                        RichText::new(format!(
+                            "Firmware: {}",
+                            i.firmware_version
+                                .as_ref()
+                                .and_then(|v| Some(v.to_string()))
+                                .unwrap_or("?".into())
+                        ))
+                        .monospace()
+                        .size(5.0),
                     );
                 });
                 ui.allocate_space(ui.available_size_before_wrap());
@@ -396,27 +415,29 @@ impl JukeBoxGui {
                     );
                 }
 
-                let delete_btn = ui
-                    .button(RichText::new(phos::TRASH))
-                    .on_hover_text_at_pointer(t!("help.device.forget"));
-                if delete_btn.clicked() {
-                    // TODO: make red
-                }
-                if delete_btn.double_clicked() {
-                    let old_device = self.current_device.clone();
-                    self.devices.remove(&old_device);
-                    self.current_device =
-                        self.devices.keys().next().unwrap_or(&String::new()).into();
+                ui.scope(|ui| {
+                    ui.style_mut().visuals.widgets.hovered.weak_bg_fill = Color32::RED;
 
-                    let mut conf = self.config.blocking_lock();
-                    conf.devices.remove(&old_device);
-                    for (_, p) in conf.profiles.iter_mut() {
-                        p.remove_entry(&old_device);
+                    let delete_btn = ui
+                        .button(RichText::new(phos::TRASH))
+                        .on_hover_text_at_pointer(t!("help.device.forget"));
+
+                    if delete_btn.double_clicked() {
+                        let old_device = self.current_device.clone();
+                        self.devices.remove(&old_device);
+                        self.current_device =
+                            self.devices.keys().next().unwrap_or(&String::new()).into();
+
+                        let mut conf = self.config.blocking_lock();
+                        conf.devices.remove(&old_device);
+                        for (_, p) in conf.profiles.iter_mut() {
+                            p.remove_entry(&old_device);
+                        }
+                        conf.save();
+
+                        // we don't disconnect over serial because otherwise it would just immediately reconnect
                     }
-                    conf.save();
-
-                    // maybe disconnect device over serial?
-                }
+                });
             })
         });
     }

@@ -17,6 +17,7 @@ use jukebox_util::rgb::RgbProfile;
 use jukebox_util::screen::ScreenProfile;
 use jukebox_util::stats::SystemStats;
 use rand::prelude::*;
+use semver::Version;
 use tokio::task::spawn_blocking;
 use tokio::{
     runtime::Runtime,
@@ -60,7 +61,7 @@ pub enum GuiTab {
 
 pub struct DeviceInfoExt {
     pub device_info: DeviceInfo,
-    pub firmware_version: String,
+    pub firmware_version: Option<Version>,
     pub connected: bool,
     pub device_inputs: HashSet<InputKey>,
 }
@@ -106,8 +107,9 @@ pub struct JukeBoxGui {
     pub us_rx: UnboundedReceiver<FirmwareUpdateStatus>,
     pub ae_rx: UnboundedReceiver<ActionError>,
 
-    pub gu_rx: UnboundedReceiver<()>,
-    pub update_available: bool,
+    pub gu_rx: UnboundedReceiver<Version>,
+    pub available_version: Version,
+    pub current_version: Version,
 
     pub action_map: ActionMap,
 
@@ -178,7 +180,7 @@ impl JukeBoxGui {
                             device_type: v.device_type,
                             nickname: v.nickname.clone(),
                         },
-                        firmware_version: "?".into(),
+                        firmware_version: None,
                         connected: false,
                         device_inputs: HashSet::new(),
                     },
@@ -205,7 +207,7 @@ impl JukeBoxGui {
 
         let (us_tx, us_rx) = unbounded_channel::<FirmwareUpdateStatus>(); // update thread sends update statuses to gui thread
         let (ae_tx, ae_rx) = unbounded_channel::<ActionError>(); // action thread sends action errors to gui thread
-        let (gu_tx, gu_rx) = unbounded_channel::<()>(); // software update thread sends update available signal to gui thread
+        let (gu_tx, gu_rx) = unbounded_channel::<Version>(); // software update thread sends update available signal to gui thread
 
         let serial_scmd_txs = scmd_txs.clone();
         let action_config = config.clone();
@@ -262,7 +264,8 @@ impl JukeBoxGui {
             ae_rx: ae_rx,
 
             gu_rx: gu_rx,
-            update_available: false,
+            available_version: Version::parse(env!("CARGO_PKG_VERSION")).unwrap(),
+            current_version: Version::parse(env!("CARGO_PKG_VERSION")).unwrap(),
 
             action_map: ActionMap::new(),
 
@@ -338,8 +341,8 @@ impl JukeBoxGui {
 
     fn handle_serial_events(&mut self, ctx: &Context) {
         // recieve update available events
-        while let Ok(_) = self.gu_rx.try_recv() {
-            self.update_available = true;
+        while let Ok(new_version) = self.gu_rx.try_recv() {
+            self.available_version = new_version;
             // TODO: use this to display a modal for updating?
         }
 
@@ -425,7 +428,7 @@ impl JukeBoxGui {
                         let v = self.devices.get_mut(&device_uid).unwrap();
                         v.device_info.device_type = device_type.into();
                         // v.device_info.nickname = device_name;
-                        v.firmware_version = firmware_version;
+                        v.firmware_version = Some(Version::parse(&firmware_version).unwrap());
                         v.connected = true;
                         v.device_inputs.clear();
                     } else {
@@ -436,7 +439,7 @@ impl JukeBoxGui {
                                     device_type: device_type.into(),
                                     nickname: device_name,
                                 },
-                                firmware_version: firmware_version,
+                                firmware_version: Some(Version::parse(&firmware_version).unwrap()),
                                 connected: true,
                                 device_inputs: HashSet::new(),
                             },

@@ -38,6 +38,7 @@ help:
     forget: "Forget Device\n(double click)"
     identify: "Identify Device"
     update: "Update Device"
+    update_available: "Update Device\n(Update Available!)"
     rgb: "RGB Control"
     screen: "Screen Control"
     none: "Please connect a device."
