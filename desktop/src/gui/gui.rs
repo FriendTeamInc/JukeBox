@@ -6,10 +6,11 @@ use std::sync::{atomic::AtomicBool, Arc};
 use std::time::{Duration, Instant};
 
 use eframe::egui::{
-    vec2, Align, CentralPanel, Context, Id, Layout, Modal, RichText, Ui, UserAttentionType,
-    ViewportBuilder, ViewportCommand,
+    vec2, Align, CentralPanel, Context, Id, Layout, Modal, RichText, ScrollArea, Ui,
+    UserAttentionType, ViewportBuilder, ViewportCommand,
 };
 use eframe::Frame;
+use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 use egui_extras::install_image_loaders;
 use egui_phosphor::regular as phos;
 use jukebox_util::peripheral::DeviceType;
@@ -108,9 +109,11 @@ pub struct JukeBoxGui {
     pub us_rx: UnboundedReceiver<FirmwareUpdateStatus>,
     pub ae_rx: UnboundedReceiver<ActionError>,
 
-    pub gu_rx: UnboundedReceiver<Version>,
+    pub gu_rx: UnboundedReceiver<(Version, String)>,
     pub available_version: Version,
     pub current_version: Version,
+    pub version_notes: String,
+    pub commonmark_cache: CommonMarkCache,
     pub dismissed_update_notif: bool,
 
     pub action_map: ActionMap,
@@ -210,7 +213,7 @@ impl JukeBoxGui {
 
         let (us_tx, us_rx) = unbounded_channel::<FirmwareUpdateStatus>(); // update thread sends update statuses to gui thread
         let (ae_tx, ae_rx) = unbounded_channel::<ActionError>(); // action thread sends action errors to gui thread
-        let (gu_tx, gu_rx) = unbounded_channel::<Version>(); // software update thread sends update available signal to gui thread
+        let (gu_tx, gu_rx) = unbounded_channel::<(Version, String)>(); // software update thread sends update available signal to gui thread
 
         let serial_scmd_txs = scmd_txs.clone();
         let action_config = config.clone();
@@ -270,6 +273,8 @@ impl JukeBoxGui {
             gu_rx: gu_rx,
             available_version: Version::parse(env!("CARGO_PKG_VERSION")).unwrap(),
             current_version: Version::parse(env!("CARGO_PKG_VERSION")).unwrap(),
+            version_notes: String::new(),
+            commonmark_cache: CommonMarkCache::default(),
             dismissed_update_notif: true,
 
             action_map: ActionMap::new(),
@@ -346,11 +351,18 @@ impl JukeBoxGui {
         if self.current_version != self.available_version && !self.dismissed_update_notif {
             Modal::new(Id::new("UpdateAvailableModal")).show(ui.ctx(), |ui| {
                 ui.set_width(400.0);
+                ui.set_height(200.0);
                 ui.heading(t!("help.update.modal_title"));
                 ui.add_space(10.0);
 
                 // TODO: display github release info here
-                ui.label("TODO: display github release info here");
+                ScrollArea::vertical().max_height(150.0).show(ui, |ui| {
+                    CommonMarkViewer::new().show(
+                        ui,
+                        &mut self.commonmark_cache,
+                        &self.version_notes,
+                    );
+                });
 
                 ui.add_space(15.0);
 
@@ -382,8 +394,9 @@ impl JukeBoxGui {
         let mut bring_back_up = false;
 
         // recieve update available events
-        while let Ok(new_version) = self.gu_rx.try_recv() {
+        while let Ok((new_version, version_notes)) = self.gu_rx.try_recv() {
             self.available_version = new_version;
+            self.version_notes = version_notes;
             if !self.config_ignore_update_notifications {
                 self.dismissed_update_notif = false;
                 bring_back_up = true;

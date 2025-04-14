@@ -106,7 +106,9 @@ async fn get_release(
     }
 }
 
-pub async fn software_update_task(update_available_signal: UnboundedSender<Version>) -> Result<()> {
+pub async fn software_update_task(
+    update_available_signal: UnboundedSender<(Version, String)>,
+) -> Result<()> {
     let this_version = Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
 
     loop {
@@ -116,7 +118,7 @@ pub async fn software_update_task(update_available_signal: UnboundedSender<Versi
                 let new_version = Version::parse(&new_version).unwrap();
                 if new_version > this_version {
                     log::info!("new version available! {}", new_version);
-                    let _ = update_available_signal.send(new_version);
+                    let _ = update_available_signal.send((new_version, release.body));
                 }
             }
             Err(e) => {
