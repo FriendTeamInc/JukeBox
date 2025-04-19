@@ -167,8 +167,10 @@ module case_top() {
                         // Cutout interior
                         translate([ctW, ctW, 0]) cube([csSCRW, csSCRH, ctH]);
                         // Screen cutout
-                        translate([ctW + 2, ctW + 2, ctH]) cube([csSCRW - 3.5, csSCRH - 4, 1]);
+                        translate([ctW + 2-1, ctW + 2, ctH]) cube([csSCRW - 3.5+1.5, csSCRH - 4+1, 1]);
                     }
+                    // reset button cutout
+                    translate([cS-12, cS-25, ctH]) cylinder(h=1, d=5);
                 }
             }
 
