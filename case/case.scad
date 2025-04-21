@@ -24,9 +24,9 @@ cmN = 3.3;
 // Face count on rounded objects
 $fn=32;
 // Case connector hole size
-ioHS = 11;
+ioHS = 10;
 // Case connector hole offset
-ioHO = cS-cmO-7;
+ioHO = cS-cmO-8;
 // Case connector hole buffer
 ioHB = 0.125;
 
@@ -167,10 +167,12 @@ module case_top() {
                         // Cutout interior
                         translate([ctW, ctW, 0]) cube([csSCRW, csSCRH, ctH]);
                         // Screen cutout
-                        translate([ctW + 2-1, ctW + 2, ctH]) cube([csSCRW - 3.5+1.5, csSCRH - 4+1, 1]);
+                        translate([ctW + 2-1, ctW + 1, ctH]) cube([csSCRW - 3.5+1.5, csSCRH - 4+1+1, 1]);
                     }
                     // reset button cutout
-                    translate([cS-12, cS-25, ctH]) cylinder(h=1, d=5);
+                    translate([cS-11, cS-25, ctH]) cylinder(h=1, d=6);
+                    // identify led cutout
+                    translate([cS-18, cS-9, ctH]) cylinder(h=1, d=2);
                 }
             }
 
@@ -321,10 +323,10 @@ difference() {
         // translate([0, ioHO-ioHS, clH]) cube([3, ioHS, 10]);
 
         // Debug pad side
-        ioHS2 = 23-3;
-        ioHO2 = cS-cmO-2.5-1.5;
-        translate([cS-2.5, ioHO2-ioHS2, clH]) cube([2.5, ioHS2, 3.8]);
-        translate([cS-12, ioHO2-ioHS2, clH]) cube([12, ioHS2, 3]);
+        // ioHS2 = 23-3;
+        // ioHO2 = cS-cmO-2.5-1.5;
+        // translate([cS-2.5, ioHO2-ioHS2, clH]) cube([2.5, ioHS2, 3.8]);
+        // translate([cS-12, ioHO2-ioHS2, clH]) cube([12, ioHS2, 3]);
     }
 }
 if (gen_leg) color([1, 0, 0]) case_leg();
