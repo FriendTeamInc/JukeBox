@@ -122,7 +122,7 @@ pub async fn software_update_task(
                 }
             }
             Err(e) => {
-                log::warn!("software_update: {:?}", e)
+                log::warn!("software update error: {:?}", e)
             }
         }
 
