@@ -353,9 +353,12 @@ impl JukeBoxGui {
                 ui.set_width(400.0);
                 ui.set_height(200.0);
                 ui.heading(t!("help.update.modal_title"));
+                ui.label(format!(
+                    "v{} -> v{}",
+                    self.current_version, self.available_version
+                ));
                 ui.add_space(10.0);
 
-                // TODO: display github release info here
                 ScrollArea::vertical().max_height(150.0).show(ui, |ui| {
                     CommonMarkViewer::new().show(
                         ui,
