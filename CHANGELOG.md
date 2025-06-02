@@ -1,3 +1,6 @@
+# v0.1.2 - Allow Updating Firmware (June 1, 2025)
+- Desktop application can now download and apply new firmware.
+
 # v0.1.1 - Minor Update Notif Fix (June 1, 2025)
 - Change the Update Notification in the desktop application to show the current and new version.
 - Update desktop app dependencies.

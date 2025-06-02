@@ -41,7 +41,7 @@ fn uf2_pages(bytes: Vec<u8>) -> Vec<Vec<u8>> {
 // TODO: change to async
 fn update_device(
     ctx: Context,
-    fw_path: String,
+    fw: Vec<u8>,
     status: UnboundedSender<FirmwareUpdateStatus>,
 ) -> Result<()> {
     // TODO: add context()'s
@@ -75,7 +75,6 @@ fn update_device(
 
     status.send(FirmwareUpdateStatus::PreparingFirmware)?;
 
-    let fw = std::fs::read(fw_path)?;
     let fw_pages = uf2_pages(fw);
 
     status.send(FirmwareUpdateStatus::ErasingOldFirmware(0.0))?;
@@ -121,12 +120,12 @@ fn update_device(
 
 pub async fn firmware_update_task(
     device_uid: String,
-    fw_path: String,
+    fw: Vec<u8>,
     update_status: UnboundedSender<FirmwareUpdateStatus>,
 ) {
     let ctx = Context::new().expect("failed to get USB context");
 
-    match update_device(ctx, fw_path, update_status) {
+    match update_device(ctx, fw, update_status) {
         Ok(_) => {}
         Err(e) => {
             log::error!("Failed to update device \"{}\": {}", device_uid, e)

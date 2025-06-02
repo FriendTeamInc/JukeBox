@@ -10,7 +10,7 @@ use tokio::{sync::mpsc::UnboundedSender, time::sleep};
 use crate::get_reqwest_client;
 
 #[derive(Debug, Clone)]
-enum GitHubError {
+pub enum GitHubError {
     UnknownError,
     NotFound,
     FailedToParse,
@@ -18,7 +18,7 @@ enum GitHubError {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
-struct ReleaseUser {
+pub struct ReleaseUser {
     pub login: String,
     pub id: u64,
     // pub node_id: String,
@@ -42,7 +42,7 @@ struct ReleaseUser {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
-struct ReleaseAsset {
+pub struct ReleaseAsset {
     // pub url: String,
     pub id: u64,
     // pub node_id: String,
@@ -60,7 +60,7 @@ struct ReleaseAsset {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Deserialize)]
-struct ReleaseInfo {
+pub struct ReleaseInfo {
     // pub url: String,
     // pub assets_url: String,
     // pub upload_url: String,
@@ -81,7 +81,7 @@ struct ReleaseInfo {
     pub body: String,
 }
 
-async fn get_release(
+pub async fn get_github_release(
     owner: impl ToString,
     repository: impl ToString,
     release: impl ToString,
@@ -112,7 +112,7 @@ pub async fn software_update_task(
     let this_version = Version::parse(env!("CARGO_PKG_VERSION")).unwrap();
 
     loop {
-        match get_release("FriendTeamInc", "JukeBox", "latest").await {
+        match get_github_release("FriendTeamInc", "JukeBox", "latest").await {
             Ok(release) => {
                 let new_version = release.tag_name.replace("v", "");
                 let new_version = Version::parse(&new_version).unwrap();

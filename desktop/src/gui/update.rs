@@ -3,12 +3,32 @@ use rfd::FileDialog;
 use tokio::spawn;
 
 use crate::firmware_update::{firmware_update_task, FirmwareUpdateStatus};
+use crate::get_reqwest_client;
 use crate::serial::SerialCommand;
+use crate::software_update::get_github_release;
 
 use super::gui::JukeBoxGui;
 
 impl JukeBoxGui {
-    fn send_update_signal(&mut self, fw_path: String) {
+    fn send_custom_firmware_update_signal(&mut self, fw_path: String) {
+        {
+            let scmd_txs = self.scmd_txs.blocking_lock();
+            if let Some(tx) = scmd_txs.get(&self.current_device) {
+                tx.send(SerialCommand::Update)
+                    .expect("failed to send update command");
+            }
+        }
+
+        let fw = std::fs::read(fw_path).unwrap();
+
+        let us_tx2 = self.us_tx.clone();
+        let device_uid = self.current_device.clone();
+        spawn(async move {
+            firmware_update_task(device_uid, fw, us_tx2).await;
+        });
+    }
+
+    fn send_update_signal(&mut self) {
         {
             let scmd_txs = self.scmd_txs.blocking_lock();
             if let Some(tx) = scmd_txs.get(&self.current_device) {
@@ -20,7 +40,36 @@ impl JukeBoxGui {
         let us_tx2 = self.us_tx.clone();
         let device_uid = self.current_device.clone();
         spawn(async move {
-            firmware_update_task(device_uid, fw_path, us_tx2).await;
+            let fw = match get_github_release("FriendTeamInc", "JukeBox", "latest").await {
+                Ok(release) => {
+                    // TODO: maybe signal in gui that a firmware is being downloaded and if any errors occur?
+                    let fw_asset = release
+                        .assets
+                        .iter()
+                        .filter(|a| a.name == "jukebox_firmware.uf2")
+                        .next()
+                        .unwrap()
+                        .clone();
+                    Some(
+                        get_reqwest_client()
+                            .get(fw_asset.browser_download_url)
+                            .send()
+                            .await
+                            .unwrap()
+                            .bytes()
+                            .await
+                            .unwrap()
+                            .to_vec(),
+                    )
+                }
+                Err(e) => {
+                    log::warn!("firmware update release error: {:?}", e);
+                    None
+                }
+            }
+            .unwrap();
+
+            firmware_update_task(device_uid, fw, us_tx2).await;
         });
     }
 
@@ -30,9 +79,14 @@ impl JukeBoxGui {
             ui.heading(t!("update.title"));
             ui.allocate_space(vec2(0.0, 3.0));
 
+            let version = self
+                .devices
+                .get(&self.current_device)
+                .and_then(|d| d.firmware_version.clone())
+                .and_then(|v| Some(v.to_string()));
             ui.label(t!(
                 "update.current_firmware_version",
-                version = self.current_version.to_string()
+                version = version.unwrap_or_default()
             ));
             ui.label(t!(
                 "update.new_firmware_version",
@@ -56,8 +110,7 @@ impl JukeBoxGui {
                 }
 
                 if ui.add(dl_update).clicked() {
-                    // TODO: download update from GitHub
-                    // self.send_update_signal(???);
+                    self.send_update_signal();
                 }
                 if ui.add(cfw_update).clicked() {
                     if let Some(f) = FileDialog::new()
@@ -65,7 +118,7 @@ impl JukeBoxGui {
                         .set_directory("~")
                         .pick_file()
                     {
-                        self.send_update_signal(f.to_string_lossy().into());
+                        self.send_custom_firmware_update_signal(f.to_string_lossy().into());
                     }
                 }
             });
