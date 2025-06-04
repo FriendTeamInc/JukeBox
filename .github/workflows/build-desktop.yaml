@@ -45,5 +45,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: jb-desktop-windows
-          path: desktop/target/x86_64-pc-windows-gnu/release/jukebox_desktop.exe
+          path: desktop/target/x86_64-pc-windows-gnu/release/jukebox_desktop_windows.exe
           retention-days: 90
