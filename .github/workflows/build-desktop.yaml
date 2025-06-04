@@ -20,12 +20,12 @@ jobs:
       - name: "Update Rust"
         uses: dtolnay/rust-toolchain@stable
       - name: "Build desktop (Linux)"
-        run: cd desktop/ && cargo build --release
+        run: cd desktop/ && cargo build --release && mv desktop/target/release/jukebox_desktop desktop/target/release/jukebox_desktop_linux
       - name: "Upload artifact (Linux)"
         uses: actions/upload-artifact@v4
         with:
           name: jb-desktop-linux
-          path: desktop/target/release/jukebox_desktop
+          path: desktop/target/release/jukebox_desktop_linux
           retention-days: 90
 
   build-desktop-windows:
@@ -40,7 +40,7 @@ jobs:
       - name: "Install cross-rs"
         run: cargo binstall cross
       - name: "Build desktop (Windows)"
-        run: cd desktop/ && cross build --target x86_64-pc-windows-gnu --release
+        run: cd desktop/ && cross build --target x86_64-pc-windows-gnu --release && mv desktop/target/x86_64-pc-windows-gnu/release/jukebox_desktop.exe desktop/target/x86_64-pc-windows-gnu/release/jukebox_desktop_windows.exe
       - name: "Upload artifact (Windows)"
         uses: actions/upload-artifact@v4
         with:
