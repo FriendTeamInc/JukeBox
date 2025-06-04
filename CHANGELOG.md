@@ -1,4 +1,4 @@
-# v0.1.3 - Removing Some Unfinished Work (June 1, 2025)
+# v0.1.3 - Removing Some Unfinished Work (June 3, 2025)
 - Fix crash when GPU name is too long.
 - Rename Profile Name Color to Text Color in screen configuration.
 - Finish brightness in screen configuration.
