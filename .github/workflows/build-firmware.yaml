@@ -29,7 +29,7 @@ jobs:
       - name: "Install elf2uf2-rs"
         run: cargo install elf2uf2-rs
       - name: "Build debug binary with Cargo (Keypad)"
-        run: cd firmware/ && cargo build -F "keypad" && elf2uf2-rs firmware/target/thumbv6m-none-eabi/debug/jukebox_firmware firmware/target/thumbv6m-none-eabi/debug/jukebox_firmware.uf2
+        run: cd firmware/ && cargo build -F "keypad" && elf2uf2-rs target/thumbv6m-none-eabi/debug/jukebox_firmware target/thumbv6m-none-eabi/debug/jukebox_firmware.uf2
       - name: "Upload debug binary artifact (Keypad)"
         uses: actions/upload-artifact@v4
         with:
