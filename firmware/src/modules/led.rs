@@ -23,20 +23,20 @@ fn pingpong(x: i64) -> u16 {
 }
 
 pub struct LedMod {
-    led_pin: Channel<Slice<Pwm4, FreeRunning>, B>,
+    led_pwm: Channel<Slice<Pwm4, FreeRunning>, B>,
     blink_goal: Option<u64>,
 }
 
 impl LedMod {
-    pub fn new(led_pin: Channel<Slice<Pwm4, FreeRunning>, B>) -> Self {
+    pub fn new(led_pwm: Channel<Slice<Pwm4, FreeRunning>, B>) -> Self {
         LedMod {
-            led_pin: led_pin,
+            led_pwm,
             blink_goal: None,
         }
     }
 
     pub fn clear(&mut self) {
-        self.led_pin.set_duty(0);
+        self.led_pwm.set_duty(0);
     }
 
     pub fn update(&mut self, t: Instant) {
@@ -62,7 +62,7 @@ impl LedMod {
                 self.blink_goal = None;
                 return;
             }
-            self.led_pin.set_duty(pingpong(t as i64));
+            self.led_pwm.set_duty(pingpong(t as i64));
         } else {
             self.clear();
         }

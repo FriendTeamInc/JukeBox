@@ -2,11 +2,13 @@
 
 use cortex_m::prelude::_embedded_hal_timer_CountDown;
 use embedded_hal::digital::v2::OutputPin as _;
+use embedded_hal::PwmPin;
 use rp2040_hal::{
-    dma::{single_buffer, Channel, HalfWord, CH0},
+    dma::{single_buffer, Channel as DmaChannel, HalfWord, CH0},
     fugit::{ExtU64, MicrosDurationU64},
     gpio::{AnyPin, DynPinId, FunctionSioOutput, Pin, PullDown},
     pio::{PIOBuilder, PIOExt, StateMachineIndex, Tx, UninitStateMachine, PIO},
+    pwm::{Channel as PwmChannel, FreeRunning, Pwm0, Slice, A},
     timer::CountDown,
 };
 
@@ -26,7 +28,7 @@ where
     tx: Tx<(P, SM), HalfWord>,
     _data_pin: I,
     _clock_pin: I,
-    backlight_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
+    backlight_pwm: PwmChannel<Slice<Pwm0, FreeRunning>, A>,
     dc_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
     cs_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
     _rst_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
@@ -47,10 +49,9 @@ where
         mut cs_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
         mut dc_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
         mut rst_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
-        mut backlight_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
+        backlight_pwm: PwmChannel<Slice<Pwm0, FreeRunning>, A>,
         timer: CountDown,
     ) -> Self {
-        backlight_pin.set_low().unwrap();
         dc_pin.set_low().unwrap();
         cs_pin.set_high().unwrap();
         rst_pin.set_high().unwrap();
@@ -92,20 +93,17 @@ where
             tx: tx.transfer_size(HalfWord),
             _data_pin: data_pin.into(),
             _clock_pin: clock_pin.into(),
-            backlight_pin: backlight_pin,
-            dc_pin: dc_pin,
-            cs_pin: cs_pin,
+            backlight_pwm,
+            dc_pin,
+            cs_pin,
             _rst_pin: rst_pin,
-            timer: timer,
+            timer,
         }
     }
 
-    pub fn backlight_on(&mut self) {
-        self.backlight_pin.set_high().unwrap();
-    }
-
-    pub fn backlight_off(&mut self) {
-        self.backlight_pin.set_low().unwrap();
+    pub fn set_backlight(&mut self, duty: u8) {
+        // self.backlight_pwm.set_high().unwrap();
+        self.backlight_pwm.set_duty((duty as u16) * 655);
     }
 
     pub fn init(&mut self, w: u16, h: u16) {
@@ -188,9 +186,9 @@ where
 
     pub fn push_framebuffer(
         mut self,
-        dma_ch0: Channel<CH0>,
+        dma_ch0: DmaChannel<CH0>,
         fb: &'static [u16; SCR_W * SCR_H],
-    ) -> (Self, Channel<CH0>) {
+    ) -> (Self, DmaChannel<CH0>) {
         self.start_pixels();
 
         let (dma_ch0, tx) = {

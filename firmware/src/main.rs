@@ -164,6 +164,7 @@ fn main() -> ! {
                 &mut pac.RESETS,
             );
             let dma = pac.DMA.split(&mut pac.RESETS);
+            let pwm_slices = Slices::new(pac.PWM, &mut pac.RESETS);
 
             // set up GPIO and modules
             #[cfg(feature = "keypad")]
@@ -190,9 +191,17 @@ fn main() -> ! {
                     pins.gpio19.into_function().into_dyn_pin().into_pull_type(), // cs
                     pins.gpio18.into_function().into_dyn_pin().into_pull_type(), // dc
                     pins.gpio17.into_function().into_dyn_pin().into_pull_type(), // rst
-                    pins.gpio16.into_function().into_dyn_pin().into_pull_type(), // backlight
+                                                                                 // pins.gpio16.into_function().into_dyn_pin().into_pull_type(), // backlight
                 );
                 let (mut pio1, _, sm1, _, _) = pac.PIO1.split(&mut pac.RESETS);
+                let bl = {
+                    let mut pwm = pwm_slices.pwm0;
+                    pwm.set_ph_correct();
+                    pwm.enable();
+                    let mut channel = pwm.channel_a;
+                    channel.output_to(pins.gpio16);
+                    channel
+                };
                 let mut st = st7789::St7789::new(
                     &mut pio1,
                     sm1,
@@ -201,7 +210,7 @@ fn main() -> ! {
                     screen_pins.2,
                     screen_pins.3,
                     screen_pins.4,
-                    screen_pins.5,
+                    bl,
                     timer.count_down(),
                 );
                 st.init(SCR_W as u16, SCR_H as u16);
@@ -234,7 +243,6 @@ fn main() -> ! {
             };
 
             let mut led_mod = {
-                let pwm_slices = Slices::new(pac.PWM, &mut pac.RESETS);
                 let mut pwm = pwm_slices.pwm4;
                 pwm.set_ph_correct();
                 pwm.enable();

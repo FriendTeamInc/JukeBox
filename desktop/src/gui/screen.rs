@@ -143,10 +143,8 @@ impl JukeBoxGui {
                             background_color,
                             text_color,
                         } => {
-                            ui.add_enabled_ui(false, |ui| {
-                                ui.label(t!("screen.brightness"));
-                                ui.add(Slider::new(&mut brightness, 0..=255));
-                            });
+                            ui.label(t!("screen.brightness"));
+                            ui.add(Slider::new(&mut brightness, 0..=100));
 
                             ui.label(t!("screen.profile.display_keys.select_background_color"));
                             let mut c = split_to_rgb565(background_color);
@@ -169,10 +167,8 @@ impl JukeBoxGui {
                             background_color,
                             text_color,
                         } => {
-                            ui.add_enabled_ui(false, |ui| {
-                                ui.label(t!("screen.brightness"));
-                                ui.add(Slider::new(&mut brightness, 0..=255));
-                            });
+                            ui.label(t!("screen.brightness"));
+                            ui.add(Slider::new(&mut brightness, 0..=100));
 
                             ui.label(t!("screen.profile.display_keys.select_background_color"));
                             let mut c = split_to_rgb565(background_color);

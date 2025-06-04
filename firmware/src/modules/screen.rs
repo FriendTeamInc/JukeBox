@@ -158,7 +158,7 @@ impl ScreenMod {
     }
 
     pub fn clear(&mut self) {
-        self.st.backlight_off();
+        self.st.set_backlight(0);
     }
 
     fn put_pixel(&mut self, color: Bgr565, x: usize, y: usize) {
@@ -237,7 +237,7 @@ impl ScreenMod {
         // TODO: brightness control? via pwm?
 
         let c: Bgr565 = {
-            let c: RawU16 = self.screen_profile.profile_name_color().into();
+            let c: RawU16 = self.screen_profile.text_color().into();
             c.into()
         };
 
@@ -246,14 +246,14 @@ impl ScreenMod {
             c.into()
         };
 
+        self.st.set_backlight(self.screen_profile.brightness());
+
         match self.screen_profile {
-            ScreenProfile::Off => {
-                self.st.backlight_off();
-            }
+            ScreenProfile::Off => {}
             ScreenProfile::DisplayKeys {
                 brightness: _,
                 background_color: _,
-                profile_name_color: _,
+                text_color: _,
             } => {
                 let font1_style = BitmapFontStyleBuilder::new()
                     .text_color(c)
@@ -272,7 +272,7 @@ impl ScreenMod {
             ScreenProfile::DisplayStats {
                 brightness: _,
                 background_color: _,
-                profile_name_color: _,
+                text_color: _,
             } => {
                 let font1_style = BitmapFontStyleBuilder::new()
                     .text_color(c)
@@ -477,7 +477,7 @@ impl ScreenMod {
             ScreenProfile::DisplayKeys {
                 brightness: _,
                 background_color: _,
-                profile_name_color: _,
+                text_color: _,
             } => {
                 for y in 0..3 {
                     for x in 0..4 {
@@ -504,7 +504,7 @@ impl ScreenMod {
             ScreenProfile::DisplayStats {
                 brightness: _,
                 background_color: _,
-                profile_name_color: _,
+                text_color: _,
             } => {
                 ICONS.with_mut_lock(|i| {
                     for y in 0..3 {
@@ -597,11 +597,6 @@ impl ScreenMod {
         let (st, dma_ch0) = self.st.push_framebuffer(self.dma_ch0, unsafe { &FBDATA });
         self.st = st;
         self.dma_ch0 = dma_ch0;
-
-        match self.screen_profile {
-            ScreenProfile::Off => (),
-            _ => self.st.backlight_on(),
-        }
 
         self.keys_previous_frame = self.keys_status;
         for k in self.keys_status.iter_mut() {

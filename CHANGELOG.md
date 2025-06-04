@@ -1,7 +1,7 @@
 # v0.1.3 - Removing Some Unfinished Work (June 1, 2025)
 - Fix crash when GPU name is too long.
 - Rename Profile Name Color to Text Color in screen configuration.
-- Disabled screen brightness, since it is currently unfinished.
+- Finish brightness in screen configuration.
 - Disabled Soundboard functionality, since it is currently unfinished.
 - Disabled Wave RGB pattern, since it is currently unfinished.
 - Vertically expanded the window, since on certain platforms the window is cut off at the bottom.
