@@ -146,12 +146,12 @@ screen:
       title: "Display Keys"
       description: "Displays the action icons and profile name on screen."
       select_background_color: "Background Color:"
-      select_profile_name_color: "Profile Name Color:"
+      select_text_color: "Text Color:"
     display_stats:
       title: "Display Stats"
       description: "Displays your computer's stats on screen."
       select_background_color: "Background Color:"
-      select_profile_name_color: "Profile Name Color:"
+      select_text_color: "Text Color:"
 
 
 action:

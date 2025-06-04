@@ -284,10 +284,13 @@ impl JukeBoxGui {
     }
 
     fn ui(&mut self, ui: &mut Ui) {
-        ui.horizontal(|ui| {
-            self.draw_back_button(ui);
-            self.draw_profile_management(ui);
-            self.draw_settings_toggle(ui);
+        ui.allocate_ui(vec2(464.0, 22.0), |ui| {
+            ui.horizontal(|ui| {
+                self.draw_back_button(ui);
+                self.draw_profile_management(ui);
+                self.draw_settings_toggle(ui);
+            });
+            ui.allocate_space(ui.available_size_before_wrap());
         });
 
         ui.separator();
@@ -630,7 +633,7 @@ pub fn basic_gui() {
     let native_options = eframe::NativeOptions {
         viewport: ViewportBuilder::default()
             .with_title(t!("window_title"))
-            .with_inner_size([960.0, 640.0])
+            .with_inner_size([960.0, 680.0])
             .with_maximize_button(false)
             .with_resizable(false)
             .with_icon(eframe::icon_data::from_png_bytes(&APP_ICON[..]).unwrap()),

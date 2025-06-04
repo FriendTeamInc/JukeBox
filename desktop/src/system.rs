@@ -116,7 +116,7 @@ impl StatReport {
             _ => cpu_brand,
         };
 
-        cpu_name.truncate(18);
+        cpu_name.truncate(20);
 
         cpu_name
     }
@@ -127,7 +127,9 @@ impl StatReport {
         let (memory_used, memory_total, memory_unit) =
             Self::format_memory(self.memory_used, self.memory_total);
 
-        let gpu_name = gpu_info.replace("GeForce", "").trim().to_string();
+        let mut gpu_name = gpu_info.replace("GeForce", "").trim().to_string();
+        gpu_name.truncate(20);
+
         let gpu_usage = format!("{: >5.1}", self.gpu_usage);
         let gpu_temperature = format!("{: >5.1}", self.gpu_temperature);
         let (vram_used, vram_total, vram_unit) =

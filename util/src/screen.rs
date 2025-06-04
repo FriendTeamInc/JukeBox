@@ -16,12 +16,12 @@ pub enum ScreenProfile {
     DisplayKeys {
         brightness: u8,
         background_color: u16,
-        profile_name_color: u16,
+        text_color: u16,
     },
     DisplayStats {
         brightness: u8,
         background_color: u16,
-        profile_name_color: u16,
+        text_color: u16,
     },
 }
 impl ScreenProfile {
@@ -31,12 +31,12 @@ impl ScreenProfile {
             Self::DisplayKeys {
                 brightness: _,
                 background_color: _,
-                profile_name_color: _,
+                text_color: _,
             } => SCREEN_PROFILE_DISPLAY_KEYS,
             Self::DisplayStats {
                 brightness: _,
                 background_color: _,
-                profile_name_color: _,
+                text_color: _,
             } => SCREEN_PROFILE_DISPLAY_STATS,
         }
     }
@@ -47,12 +47,12 @@ impl ScreenProfile {
             Self::DisplayKeys {
                 brightness,
                 background_color: _,
-                profile_name_color: _,
+                text_color: _,
             } => *brightness,
             Self::DisplayStats {
                 brightness,
                 background_color: _,
-                profile_name_color: _,
+                text_color: _,
             } => *brightness,
         }
     }
@@ -63,29 +63,29 @@ impl ScreenProfile {
             Self::DisplayKeys {
                 brightness: _,
                 background_color,
-                profile_name_color: _,
+                text_color: _,
             } => *background_color,
             Self::DisplayStats {
                 brightness: _,
                 background_color,
-                profile_name_color: _,
+                text_color: _,
             } => *background_color,
         }
     }
 
-    pub fn profile_name_color(&self) -> u16 {
+    pub fn text_color(&self) -> u16 {
         match self {
             Self::Off => 0,
             Self::DisplayKeys {
                 brightness: _,
                 background_color: _,
-                profile_name_color,
-            } => *profile_name_color,
+                text_color,
+            } => *text_color,
             Self::DisplayStats {
                 brightness: _,
                 background_color: _,
-                profile_name_color,
-            } => *profile_name_color,
+                text_color,
+            } => *text_color,
         }
     }
 
@@ -99,22 +99,22 @@ impl ScreenProfile {
             Self::DisplayKeys {
                 brightness: _,
                 background_color,
-                profile_name_color,
+                text_color,
             } => {
                 data[2] = (background_color >> 8) as u8;
                 data[3] = (background_color & 0xFF) as u8;
-                data[4] = (profile_name_color >> 8) as u8;
-                data[5] = (profile_name_color & 0xFF) as u8;
+                data[4] = (text_color >> 8) as u8;
+                data[5] = (text_color & 0xFF) as u8;
             }
             Self::DisplayStats {
                 brightness: _,
                 background_color,
-                profile_name_color,
+                text_color,
             } => {
                 data[2] = (background_color >> 8) as u8;
                 data[3] = (background_color & 0xFF) as u8;
-                data[4] = (profile_name_color >> 8) as u8;
-                data[5] = (profile_name_color & 0xFF) as u8;
+                data[4] = (text_color >> 8) as u8;
+                data[5] = (text_color & 0xFF) as u8;
             }
         }
 
@@ -127,12 +127,12 @@ impl ScreenProfile {
             SCREEN_PROFILE_DISPLAY_KEYS => Self::DisplayKeys {
                 brightness: data[1],
                 background_color: ((data[2] as u16) << 8) | (data[3] as u16),
-                profile_name_color: ((data[4] as u16) << 8) | (data[5] as u16),
+                text_color: ((data[4] as u16) << 8) | (data[5] as u16),
             },
             SCREEN_PROFILE_DISPLAY_STATS => Self::DisplayStats {
                 brightness: data[1],
                 background_color: ((data[2] as u16) << 8) | (data[3] as u16),
-                profile_name_color: ((data[4] as u16) << 8) | (data[5] as u16),
+                text_color: ((data[4] as u16) << 8) | (data[5] as u16),
             },
             _ => panic!(),
         }
@@ -142,7 +142,7 @@ impl ScreenProfile {
         Self::DisplayKeys {
             brightness: 255,
             background_color: 0x4208,
-            profile_name_color: 0xFFFF,
+            text_color: 0xFFFF,
         }
     }
 }

@@ -4,7 +4,10 @@ use eframe::egui::{
     color_picker::show_color_at, vec2, Align, Color32, ComboBox, Layout, Response, ScrollArea,
     Sense, Slider, StrokeKind, TextEdit, Ui, Vec2,
 };
-use jukebox_util::{peripheral::DeviceType, rgb::RgbProfile};
+use jukebox_util::{
+    peripheral::DeviceType,
+    rgb::{RgbProfile, RGB_PROFILE_WAVE},
+};
 
 use crate::serial::SerialCommand;
 
@@ -164,6 +167,11 @@ impl JukeBoxGui {
             .truncate()
             .show_ui(ui, |ui| {
                 for (i, t, _) in &rgb_defaults {
+                    // TODO: remove this when wave is implemented
+                    if i.get_type() == RGB_PROFILE_WAVE {
+                        continue;
+                    }
+
                     if ui
                         .selectable_label(self.editing_rgb.get_type() == i.get_type(), t.clone())
                         .clicked()

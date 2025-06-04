@@ -105,7 +105,7 @@ impl ActionMap {
             meta_action_list(),
             input_action_list(),
             system_action_list(),
-            soundboard_action_list(),
+            // soundboard_action_list(),
             #[cfg(feature = "discord")]
             discord_action_list(),
             obs_action_list(),
