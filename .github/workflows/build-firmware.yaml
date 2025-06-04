@@ -18,6 +18,12 @@ jobs:
         with:
           toolchain: stable
           target: thumbv6m-none-eabi
+      - name: "Get dependencies"
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          version: 1
+          execute_install_scripts: true
+          packages: libudev-dev
       - name: "Install flip-link"
         run: cargo install flip-link
       - name: "Install elf2uf2-rs"
