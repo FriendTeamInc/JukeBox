@@ -28,19 +28,11 @@ jobs:
         run: cargo install flip-link
       - name: "Install elf2uf2-rs"
         run: cargo install elf2uf2-rs
-      - name: "Build debug binary with Cargo (Keypad)"
-        run: cd firmware/ && cargo build -F "keypad" && elf2uf2-rs target/thumbv6m-none-eabi/debug/jukebox_firmware target/thumbv6m-none-eabi/debug/jukebox_firmware.uf2
-      - name: "Upload debug binary artifact (Keypad)"
+      - name: "Build binary with Cargo (Keypad)"
+        run: cd firmware/ && cargo build -F "keypad" --release && elf2uf2-rs target/thumbv6m-none-eabi/release/jukebox_firmware target/thumbv6m-none-eabi/release/jukebox_firmware.uf2
+      - name: "Upload binary artifact (Keypad)"
         uses: actions/upload-artifact@v4
         with:
           name: jb_firmware_keypad
-          path: firmware/target/thumbv6m-none-eabi/debug/jukebox_firmware.uf2
+          path: firmware/target/thumbv6m-none-eabi/release/jukebox_firmware.uf2
           retention-days: 90
-      # - name: "Build debug binary with Cargo (Pedalpad)"
-      #   run: cd firmware/ && cargo build -F "pedalpad"
-      # - name: "Upload debug binary artifact (Pedalpad)"
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: jb_firmware_pedalpad
-      #     path: firmware/target/thumbv6m-none-eabi/debug/jukebox_firmware
-      #     retention-days: 90
