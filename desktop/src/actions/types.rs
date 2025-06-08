@@ -14,13 +14,10 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
 use crate::{
-    actions::{input::*, meta::*, obs::*, soundboard::*, system::*},
+    actions::{discord::*, input::*, meta::*, obs::*, soundboard::*, system::*},
     config::{ActionConfig, ActionIcon, JukeBoxConfig},
     input::InputKey,
 };
-
-#[cfg(feature = "discord")]
-use crate::actions::discord::*;
 
 static ICON_CACHE: OnceLock<Mutex<HashMap<String, Vec<u8>>>> = OnceLock::new();
 
@@ -149,13 +146,13 @@ create_actions! {
     ObsSceneCollectionSwitch,
     // ObsFilter,
     // ObsTransition,
-    ObsChapterMarker
+    ObsChapterMarker,
 
-    // DiscordToggleMute,
-    // DiscordToggleDeafen,
-    // DiscordPushToTalk,
-    // DiscordPushToMute,
-    // DiscordPushToDeafen
+    DiscordToggleMute,
+    DiscordToggleDeafen,
+    DiscordPushToTalk,
+    DiscordPushToMute,
+    DiscordPushToDeafen
 }
 
 // #[async_trait::async_trait]

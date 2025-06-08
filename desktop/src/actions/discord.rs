@@ -34,14 +34,15 @@ const ICON_PUSH_TO_MUTE: ImageSource =
 const ICON_PUSH_TO_DEAFEN: ImageSource =
     include_image!("../../../assets/action-icons/discord-headphones-1.bmp");
 
-const DISCORD_CLIENT_ID: &str = env!("DISCORD_CLIENT_ID");
-const DISCORD_CLIENT_SECRET: &str = env!("DISCORD_CLIENT_SECRET");
+const DISCORD_CLIENT_ID: Option<&str> = option_env!("DISCORD_CLIENT_ID");
+const DISCORD_CLIENT_SECRET: Option<&str> = option_env!("DISCORD_CLIENT_SECRET");
 static DISCORD_CLIENT: OnceLock<Mutex<DiscordIpcClient>> = OnceLock::new();
 static DISCORD_MUTED: OnceLock<Mutex<bool>> = OnceLock::new();
 static DISCORD_DEAFENED: OnceLock<Mutex<bool>> = OnceLock::new();
 
 #[rustfmt::skip]
-pub fn discord_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
+#[allow(dead_code)]
+pub fn discord_action_list() -> (String, Vec<(String, Action, String)>) {
     (
         t!("action.discord.title", icon = phos::DISCORD_LOGO).into(),
         vec![
@@ -104,7 +105,15 @@ async fn create_client(
     input_key: InputKey,
     config: Arc<Mutex<JukeBoxConfig>>,
 ) -> Result<(), ActionError> {
-    let mut client = DiscordIpcClient::new(DISCORD_CLIENT_ID);
+    if DISCORD_CLIENT_ID.is_none() || DISCORD_CLIENT_SECRET.is_none() {
+        return Err(ActionError::new(
+            device_uid,
+            input_key,
+            t!("action.discord.err.compile"),
+        ));
+    }
+
+    let mut client = DiscordIpcClient::new(DISCORD_CLIENT_ID.unwrap());
     client
         .connect()
         .map_err(|_| ActionError::new(device_uid, input_key, t!("action.discord.err.connect")))?;
@@ -118,15 +127,19 @@ async fn create_client(
                 ActionError::new(device_uid, input_key, t!("action.discord.err.authorize"))
             })?;
 
-        let oauth = discord_access_token_request(&code, DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET)
-            .await
-            .map_err(|_| {
-                ActionError::new(
-                    device_uid,
-                    input_key,
-                    t!("action.discord.err.oauth_request"),
-                )
-            })?;
+        let oauth = discord_access_token_request(
+            &code,
+            DISCORD_CLIENT_ID.unwrap(),
+            DISCORD_CLIENT_SECRET.unwrap(),
+        )
+        .await
+        .map_err(|_| {
+            ActionError::new(
+                device_uid,
+                input_key,
+                t!("action.discord.err.oauth_request"),
+            )
+        })?;
 
         config.discord_oauth_access = Some(oauth);
         config.save();
@@ -134,8 +147,8 @@ async fn create_client(
         // TODO: refresh with refresh token
         let oauth = discord_refresh_access_token(
             &config.discord_oauth_access.as_ref().unwrap().refresh_token,
-            DISCORD_CLIENT_ID,
-            DISCORD_CLIENT_SECRET,
+            DISCORD_CLIENT_ID.unwrap(),
+            DISCORD_CLIENT_SECRET.unwrap(),
         )
         .await
         .map_err(|_| {

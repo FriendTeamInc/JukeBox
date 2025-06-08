@@ -37,7 +37,7 @@ futures = "0.3"
 
 reqwest = { version = "0.12", features = ["json"] }
 obws = "0.14"
-discord-rich-presence = { git = "https://github.com/NotQuiteApex/discord-rich-presence", branch = "voice-settings", optional = true }
+discord-rich-presence = { git = "https://github.com/NotQuiteApex/discord-rich-presence", branch = "voice-settings" }
 # rustls = "0.23"
 uuid = "1.16"
 sha1_smol = "1.0"
@@ -70,7 +70,7 @@ winresource = "0.1"
 
 [features]
 default = []
-discord = ["dep:discord-rich-presence"]
+discord = []
 gpu = ["dep:nvml-wrapper", "dep:rocm_smi_lib"]
 
 [profile.release]

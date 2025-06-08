@@ -164,7 +164,7 @@ impl JukeBoxGui {
                         .button(RichText::new(phos::TRASH))
                         .on_hover_text_at_pointer(t!("help.profile.delete"));
 
-                    if delete_btn.double_clicked() {
+                    if delete_btn.clicked() {
                         {
                             let mut conf = self.config.blocking_lock();
                             let p = conf.current_profile.clone();

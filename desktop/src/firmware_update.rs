@@ -50,36 +50,44 @@ fn update_device(
 
     let mut conn = None;
 
+    log::debug!("picoboot update: looking for device to update");
     for i in 0..3 {
         match PicobootConnection::new(ctx.clone(), Some((PICOBOOT_VID, PICOBOOT_PID_RP2040))) {
             Ok(c) => {
                 conn = Some(c);
+                log::debug!("picoboot update: found device to update");
                 break;
             }
             Err(e) => {
-                log::warn!("{}", e)
+                log::warn!("picoboot update: {}", e)
             }
         }
         sleep(Duration::from_secs(i));
     }
 
     if let None = conn {
+        log::error!("picoboot update: could not establish picoboot connection");
         bail!("could not establish picoboot connection");
     }
 
     let mut conn = conn.unwrap();
+    log::debug!("picoboot update: beginning update process");
 
     conn.reset_interface()?;
+    log::debug!("picoboot update: resetting interface");
     conn.access_exclusive_eject()?;
+    log::debug!("picoboot update: access exclusive eject");
     conn.exit_xip()?;
+    log::debug!("picoboot update: exitting xip");
 
+    log::debug!("picoboot update: loading uf2");
     status.send(FirmwareUpdateStatus::PreparingFirmware)?;
-
     let fw_pages = uf2_pages(fw);
 
     status.send(FirmwareUpdateStatus::ErasingOldFirmware(0.0))?;
 
     // erase space on flash
+    log::debug!("picoboot update: beginning erase process");
     let page_count = fw_pages.len();
     for (i, _) in fw_pages.iter().enumerate() {
         let addr = (i as u32) * PAGE_SIZE + FLASH_START;
@@ -89,21 +97,27 @@ fn update_device(
             status.send(FirmwareUpdateStatus::ErasingOldFirmware(
                 (i as f32) / (page_count as f32),
             ))?;
+
+            log::debug!("picoboot update: erased {} / {}", i, page_count);
         }
     }
 
+    log::debug!("picoboot update: erase complete");
     status.send(FirmwareUpdateStatus::WritingNewFirmware(0.0))?;
 
+    log::debug!("picoboot update: beginning write process");
     for (i, page) in fw_pages.iter().enumerate() {
         let addr = (i as u32) * PAGE_SIZE + FLASH_START;
         let size = PAGE_SIZE as u32;
 
         // write page to flash
         conn.flash_write(addr, page)?;
+        log::debug!("picoboot update: writed {} / {}", i, page_count);
 
         // confirm flash write was successful
         let read = conn.flash_read(addr, size)?;
         let matching = page.iter().zip(&read).all(|(&a, &b)| a == b);
+        log::debug!("picoboot update: write check: {}", matching);
         assert!(matching, "page does not match flash"); // TODO: change to Err()
 
         status.send(FirmwareUpdateStatus::WritingNewFirmware(

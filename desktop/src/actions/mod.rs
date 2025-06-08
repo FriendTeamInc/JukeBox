@@ -1,5 +1,4 @@
 pub mod action;
-#[cfg(feature = "discord")]
 pub mod discord;
 pub mod input;
 pub mod meta;

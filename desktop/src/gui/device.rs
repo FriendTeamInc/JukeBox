@@ -422,7 +422,7 @@ impl JukeBoxGui {
                         .button(RichText::new(phos::TRASH))
                         .on_hover_text_at_pointer(t!("help.device.forget"));
 
-                    if delete_btn.double_clicked() {
+                    if delete_btn.clicked() {
                         let old_device = self.current_device.clone();
                         self.devices.remove(&old_device);
                         self.current_device =

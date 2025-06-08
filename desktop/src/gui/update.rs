@@ -110,6 +110,7 @@ impl JukeBoxGui {
                 }
 
                 if ui.add(dl_update).clicked() {
+                    log::debug!("doing standard update with github");
                     self.send_update_signal();
                 }
                 if ui.add(cfw_update).clicked() {
@@ -118,7 +119,9 @@ impl JukeBoxGui {
                         .set_directory("~")
                         .pick_file()
                     {
-                        self.send_custom_firmware_update_signal(f.to_string_lossy().into());
+                        let p = f.to_string_lossy().into();
+                        log::debug!("doing cfw update with {}", p);
+                        self.send_custom_firmware_update_signal(p);
                     }
                 }
             });

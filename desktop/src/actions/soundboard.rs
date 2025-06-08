@@ -34,6 +34,7 @@ enum FadeMethod {
 }
 
 #[rustfmt::skip]
+#[allow(dead_code)]
 pub fn soundboard_action_list() -> (String, Vec<(String, Action, String)>) {
     (
         t!("action.soundboard.title", icon = phos::MUSIC_NOTES).into(),

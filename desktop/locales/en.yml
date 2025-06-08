@@ -25,7 +25,7 @@ help:
     select: "Profile Select"
     new: "New Profile"
     edit_name: "Edit Profile Name"
-    delete: "Delete Profile\n(double click)"
+    delete: "Delete Profile"
 
   settings:
     button: "Settings"
@@ -36,7 +36,7 @@ help:
   device:
     select: "Device Select"
     edit_name: "Edit Device Name"
-    forget: "Forget Device\n(double click)"
+    forget: "Forget Device"
     identify: "Identify Device"
     update: "Update Device"
     update_available: "Update Device\n(Update Available!)"

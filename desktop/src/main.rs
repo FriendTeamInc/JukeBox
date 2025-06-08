@@ -5,7 +5,7 @@
 use anyhow::bail;
 use fd_lock::RwLock;
 use reqwest::Client;
-use std::fs::OpenOptions;
+use std::fs::{create_dir_all, OpenOptions};
 
 #[macro_use]
 extern crate rust_i18n;
@@ -37,6 +37,11 @@ pub fn get_reqwest_client() -> &'static reqwest::Client {
 fn main() -> anyhow::Result<()> {
     let mut p = dirs::config_dir().expect("failed to find config directory");
     p.push("JukeBoxDesktop");
+    if let Err(_) = create_dir_all(&p) {
+        // TODO: add a window popup for an error.
+        bail!("failed to create config directory for app lock. aborting.");
+    }
+
     p.push("app.lock");
 
     let mut f = RwLock::new(
