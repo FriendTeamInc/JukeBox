@@ -72,7 +72,7 @@ static OBS_GET_SCENE_COLLECTIONS: OnceLock<AtomicBool> = OnceLock::new();
 static OBS_SCENE_COLLECTIONS: OnceLock<Mutex<Option<Vec<String>>>> = OnceLock::new();
 
 #[rustfmt::skip]
-pub fn obs_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
+pub fn obs_action_list() -> (String, Vec<(String, Action, String)>) {
     OBS_GET_SCENES.get_or_init(|| true.into());
     OBS_SCENES.get_or_init(|| Mutex::new(None));
     OBS_GET_SOURCES.get_or_init(|| true.into());
@@ -85,20 +85,20 @@ pub fn obs_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
     (
         t!("action.obs.title", icon = phos::VINYL_RECORD).into(),
         vec![
-            (AID_OBS_STREAM.into(),             Box::new(ObsStream::default()),                t!("action.obs.toggle_stream.title").into()),
-            (AID_OBS_RECORD.into(),             Box::new(ObsRecord::default()),                t!("action.obs.toggle_record.title").into()),
-            (AID_OBS_RECORD_PAUSE.into(),       Box::new(ObsPauseRecord::default()),           t!("action.obs.pause_record.title").into()),
-            (AID_OBS_REPLAY_BUFFER.into(),      Box::new(ObsReplayBuffer::default()),          t!("action.obs.toggle_replay_buffer.title").into()),
-            (AID_OBS_REPLAY_BUFFER_SAVE.into(), Box::new(ObsSaveReplay::default()),            t!("action.obs.save_replay_buffer.title").into()),
-            (AID_OBS_TOGGLE_SOURCE.into(),      Box::new(ObsSource::default()),                t!("action.obs.toggle_source.title").into()),
-            (AID_OBS_TOGGLE_MUTE.into(),        Box::new(ObsMute::default()),                  t!("action.obs.toggle_mute.title").into()),
-            (AID_OBS_SCENE_SWITCH.into(),       Box::new(ObsSceneSwitch::default()),           t!("action.obs.switch_scene.title").into()),
-            (AID_OBS_PREVIEW_SWITCH.into(),     Box::new(ObsPreviewSceneSwitch::default()),    t!("action.obs.switch_preview_scene.title").into()),
-            (AID_OBS_PREVIEW_PUSH.into(),       Box::new(ObsPreviewScenePush::default()),      t!("action.obs.push_preview_scene.title").into()),
-            (AID_OBS_COLLECTION_SWITCH.into(),  Box::new(ObsSceneCollectionSwitch::default()), t!("action.obs.switch_scene_collection.title").into()),
-            // ("ObsFilter".into(),                Box::new(ObsFilter::default()),                t!("action.obs.toggle_filter.title").into()),
-            // ("ObsTransition".into(),            Box::new(ObsTransition::default()),            t!("action.obs.switch_transition.title").into()),
-            (AID_OBS_CHAPTER_MARKER.into(),     Box::new(ObsChapterMarker::default()),         t!("action.obs.add_chapter_marker.title").into()),
+            (AID_OBS_STREAM.into(),             Action::ObsStream(ObsStream::default()),                               t!("action.obs.toggle_stream.title").into()),
+            (AID_OBS_RECORD.into(),             Action::ObsRecord(ObsRecord::default()),                               t!("action.obs.toggle_record.title").into()),
+            (AID_OBS_RECORD_PAUSE.into(),       Action::ObsPauseRecord(ObsPauseRecord::default()),                     t!("action.obs.pause_record.title").into()),
+            (AID_OBS_REPLAY_BUFFER.into(),      Action::ObsReplayBuffer(ObsReplayBuffer::default()),                   t!("action.obs.toggle_replay_buffer.title").into()),
+            (AID_OBS_REPLAY_BUFFER_SAVE.into(), Action::ObsSaveReplay(ObsSaveReplay::default()),                       t!("action.obs.save_replay_buffer.title").into()),
+            (AID_OBS_TOGGLE_SOURCE.into(),      Action::ObsSource(ObsSource::default()),                               t!("action.obs.toggle_source.title").into()),
+            (AID_OBS_TOGGLE_MUTE.into(),        Action::ObsMute(ObsMute::default()),                                   t!("action.obs.toggle_mute.title").into()),
+            (AID_OBS_SCENE_SWITCH.into(),       Action::ObsSceneSwitch(ObsSceneSwitch::default()),                     t!("action.obs.switch_scene.title").into()),
+            (AID_OBS_PREVIEW_SWITCH.into(),     Action::ObsPreviewSceneSwitch(ObsPreviewSceneSwitch::default()),       t!("action.obs.switch_preview_scene.title").into()),
+            (AID_OBS_PREVIEW_PUSH.into(),       Action::ObsPreviewScenePush(ObsPreviewScenePush::default()),           t!("action.obs.push_preview_scene.title").into()),
+            (AID_OBS_COLLECTION_SWITCH.into(),  Action::ObsSceneCollectionSwitch(ObsSceneCollectionSwitch::default()), t!("action.obs.switch_scene_collection.title").into()),
+            // ("ObsFilter".into(),                Action::ObsFilter(ObsFilter::default()),                               t!("action.obs.toggle_filter.title").into()),
+            // ("ObsTransition".into(),            Action::ObsTransition(ObsTransition::default()),                       t!("action.obs.switch_transition.title").into()),
+            (AID_OBS_CHAPTER_MARKER.into(),     Action::ObsChapterMarker(ObsChapterMarker::default()),                 t!("action.obs.add_chapter_marker.title").into()),
         ],
     )
 }
@@ -252,12 +252,11 @@ async fn check_client(
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsStream {}
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for ObsStream {
-    async fn on_press(
+impl ObsStream {
+    pub async fn on_press(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -273,7 +272,7 @@ impl Action for ObsStream {
         Ok(())
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -282,11 +281,11 @@ impl Action for ObsStream {
         Ok(())
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_OBS_STREAM.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         _device_uid: &String,
@@ -296,21 +295,20 @@ impl Action for ObsStream {
         account_warning(ui, config);
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.obs.toggle_stream.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_STREAM
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsRecord {}
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for ObsRecord {
-    async fn on_press(
+impl ObsRecord {
+    pub async fn on_press(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -326,7 +324,7 @@ impl Action for ObsRecord {
         Ok(())
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -335,11 +333,11 @@ impl Action for ObsRecord {
         Ok(())
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_OBS_RECORD.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         _device_uid: &String,
@@ -349,21 +347,20 @@ impl Action for ObsRecord {
         account_warning(ui, config);
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.obs.toggle_record.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_RECORD
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsPauseRecord {}
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for ObsPauseRecord {
-    async fn on_press(
+impl ObsPauseRecord {
+    pub async fn on_press(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -379,7 +376,7 @@ impl Action for ObsPauseRecord {
         Ok(())
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -388,11 +385,11 @@ impl Action for ObsPauseRecord {
         Ok(())
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_OBS_RECORD_PAUSE.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         _device_uid: &String,
@@ -402,21 +399,20 @@ impl Action for ObsPauseRecord {
         account_warning(ui, config);
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.obs.pause_record.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_PAUSE_RECORD
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsReplayBuffer {}
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for ObsReplayBuffer {
-    async fn on_press(
+impl ObsReplayBuffer {
+    pub async fn on_press(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -436,7 +432,7 @@ impl Action for ObsReplayBuffer {
         Ok(())
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -445,11 +441,11 @@ impl Action for ObsReplayBuffer {
         Ok(())
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_OBS_REPLAY_BUFFER.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         _device_uid: &String,
@@ -459,21 +455,20 @@ impl Action for ObsReplayBuffer {
         account_warning(ui, config);
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.obs.toggle_replay_buffer.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_REPLAY_BUFFER
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsSaveReplay {}
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for ObsSaveReplay {
-    async fn on_press(
+impl ObsSaveReplay {
+    pub async fn on_press(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -493,7 +488,7 @@ impl Action for ObsSaveReplay {
         Ok(())
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -502,11 +497,11 @@ impl Action for ObsSaveReplay {
         Ok(())
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_OBS_REPLAY_BUFFER_SAVE.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         _device_uid: &String,
@@ -516,24 +511,23 @@ impl Action for ObsSaveReplay {
         account_warning(ui, config);
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.obs.save_replay_buffer.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_SAVE_REPLAY
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsSource {
     scene: Option<(Uuid, String)>,
     source: Option<(i64, String)>,
 }
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for ObsSource {
-    async fn on_press(
+impl ObsSource {
+    pub async fn on_press(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -598,7 +592,7 @@ impl Action for ObsSource {
         }
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -607,11 +601,11 @@ impl Action for ObsSource {
         Ok(())
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_OBS_TOGGLE_SOURCE.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         _device_uid: &String,
@@ -697,23 +691,22 @@ impl Action for ObsSource {
         });
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.obs.toggle_source.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_SOURCE
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsMute {
     input: Option<(Uuid, String)>,
 }
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for ObsMute {
-    async fn on_press(
+impl ObsMute {
+    pub async fn on_press(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -744,7 +737,7 @@ impl Action for ObsMute {
         }
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -753,11 +746,11 @@ impl Action for ObsMute {
         Ok(())
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_OBS_TOGGLE_MUTE.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         _device_uid: &String,
@@ -805,23 +798,22 @@ impl Action for ObsMute {
         });
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.obs.toggle_mute.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_MUTE
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsSceneSwitch {
     scene: Option<(Uuid, String)>,
 }
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for ObsSceneSwitch {
-    async fn on_press(
+impl ObsSceneSwitch {
+    pub async fn on_press(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -852,7 +844,7 @@ impl Action for ObsSceneSwitch {
         }
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -861,11 +853,11 @@ impl Action for ObsSceneSwitch {
         Ok(())
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_OBS_SCENE_SWITCH.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         _device_uid: &String,
@@ -912,23 +904,22 @@ impl Action for ObsSceneSwitch {
         });
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.obs.switch_scene.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_SWITCH_SCENE
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsPreviewSceneSwitch {
     scene: Option<(Uuid, String)>,
 }
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for ObsPreviewSceneSwitch {
-    async fn on_press(
+impl ObsPreviewSceneSwitch {
+    pub async fn on_press(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -962,7 +953,7 @@ impl Action for ObsPreviewSceneSwitch {
         }
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -971,11 +962,11 @@ impl Action for ObsPreviewSceneSwitch {
         Ok(())
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_OBS_PREVIEW_SWITCH.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         _device_uid: &String,
@@ -1022,21 +1013,20 @@ impl Action for ObsPreviewSceneSwitch {
         });
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.obs.switch_preview_scene.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_SWITCH_PREVIEW
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsPreviewScenePush {}
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for ObsPreviewScenePush {
-    async fn on_press(
+impl ObsPreviewScenePush {
+    pub async fn on_press(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -1059,7 +1049,7 @@ impl Action for ObsPreviewScenePush {
             })
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -1068,11 +1058,11 @@ impl Action for ObsPreviewScenePush {
         Ok(())
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_OBS_PREVIEW_PUSH.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         _device_uid: &String,
@@ -1082,23 +1072,22 @@ impl Action for ObsPreviewScenePush {
         account_warning(ui, config);
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.obs.push_preview_scene.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_PUSH_PREVIEW
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsSceneCollectionSwitch {
     scene_collection: Option<String>,
 }
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for ObsSceneCollectionSwitch {
-    async fn on_press(
+impl ObsSceneCollectionSwitch {
+    pub async fn on_press(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -1132,7 +1121,7 @@ impl Action for ObsSceneCollectionSwitch {
         }
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -1141,11 +1130,11 @@ impl Action for ObsSceneCollectionSwitch {
         Ok(())
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_OBS_COLLECTION_SWITCH.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         _device_uid: &String,
@@ -1193,21 +1182,20 @@ impl Action for ObsSceneCollectionSwitch {
         });
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.obs.switch_scene_collection.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_SWITCH_COLLECTION
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsChapterMarker {}
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for ObsChapterMarker {
-    async fn on_press(
+impl ObsChapterMarker {
+    pub async fn on_press(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -1230,7 +1218,7 @@ impl Action for ObsChapterMarker {
             })
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -1239,11 +1227,11 @@ impl Action for ObsChapterMarker {
         Ok(())
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_OBS_CHAPTER_MARKER.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         _device_uid: &String,
@@ -1253,11 +1241,11 @@ impl Action for ObsChapterMarker {
         account_warning(ui, config);
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.obs.add_chapter_marker.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_CHAPTER_MARKER
     }
 }

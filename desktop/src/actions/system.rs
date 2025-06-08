@@ -233,7 +233,7 @@ fn system_audio_control_loop(mut cmd_rx: UnboundedReceiver<AudioCommand>) {
 }
 
 #[rustfmt::skip]
-pub fn system_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
+pub fn system_action_list() -> (String, Vec<(String, Action, String)>) {
     let (cmd_tx, cmd_rx) = unbounded_channel();
     SYSTEM_AUDIO_CMD_TX.get_or_init(|| cmd_tx);
     SYSTEM_SOURCES.get_or_init(|| Mutex::new(None));
@@ -248,23 +248,21 @@ pub fn system_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) 
     (
         t!("action.system.title", icon = phos::DESKTOP_TOWER).into(),
         vec![
-            (AID_SYSTEM_OPEN_APP.into(),     Box::new(SystemOpenApp::default()),    t!("action.system.open_app.title").into()),
-            (AID_SYSTEM_OPEN_WEB.into(),     Box::new(SystemOpenWeb::default()),    t!("action.system.open_web.title").into()),
-            (AID_SYSTEM_SND_IN_CTRL.into(),  Box::new(SystemSndInCtrl::default()),  t!("action.system.snd_in_ctrl.title").into()),
-            (AID_SYSTEM_SND_OUT_CTRL.into(), Box::new(SystemSndOutCtrl::default()), t!("action.system.snd_out_ctrl.title").into()),
+            (AID_SYSTEM_OPEN_APP.into(),     Action::SystemOpenApp(SystemOpenApp::default()),       t!("action.system.open_app.title").into()),
+            (AID_SYSTEM_OPEN_WEB.into(),     Action::SystemOpenWeb(SystemOpenWeb::default()),       t!("action.system.open_web.title").into()),
+            (AID_SYSTEM_SND_IN_CTRL.into(),  Action::SystemSndInCtrl(SystemSndInCtrl::default()),   t!("action.system.snd_in_ctrl.title").into()),
+            (AID_SYSTEM_SND_OUT_CTRL.into(), Action::SystemSndOutCtrl(SystemSndOutCtrl::default()), t!("action.system.snd_out_ctrl.title").into()),
         ],
     )
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct SystemOpenApp {
     filepath: String,
     arguments: Vec<String>,
 }
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for SystemOpenApp {
-    async fn on_press(
+impl SystemOpenApp {
+    pub async fn on_press(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -282,7 +280,7 @@ impl Action for SystemOpenApp {
         Ok(())
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -291,11 +289,11 @@ impl Action for SystemOpenApp {
         Ok(())
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_SYSTEM_OPEN_APP.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         _device_uid: &String,
@@ -332,23 +330,21 @@ impl Action for SystemOpenApp {
         }
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.system.open_app.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_OPEN_APP
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct SystemOpenWeb {
     url: String,
 }
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for SystemOpenWeb {
-    async fn on_press(
+impl SystemOpenWeb {
+    pub async fn on_press(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -359,7 +355,7 @@ impl Action for SystemOpenWeb {
         Ok(())
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -368,11 +364,11 @@ impl Action for SystemOpenWeb {
         Ok(())
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_SYSTEM_OPEN_WEB.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         _device_uid: &String,
@@ -383,24 +379,22 @@ impl Action for SystemOpenWeb {
         ui.text_edit_singleline(&mut self.url);
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.system.open_web.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_OPEN_WEB
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct SystemSndInCtrl {
     input_device: Option<String>,
     vol_adjust: i8,
 }
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for SystemSndInCtrl {
-    async fn on_press(
+impl SystemSndInCtrl {
+    pub async fn on_press(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -417,7 +411,7 @@ impl Action for SystemSndInCtrl {
         Ok(())
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -426,11 +420,11 @@ impl Action for SystemSndInCtrl {
         Ok(())
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_SYSTEM_SND_IN_CTRL.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         _device_uid: &String,
@@ -469,24 +463,22 @@ impl Action for SystemSndInCtrl {
         ui.add(Slider::new(&mut self.vol_adjust, -100..=100));
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.system.snd_in_ctrl.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_INPUT_CONTROL
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct SystemSndOutCtrl {
     output_device: Option<String>,
     vol_adjust: i8,
 }
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for SystemSndOutCtrl {
-    async fn on_press(
+impl SystemSndOutCtrl {
+    pub async fn on_press(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -503,7 +495,7 @@ impl Action for SystemSndOutCtrl {
         Ok(())
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -512,11 +504,11 @@ impl Action for SystemSndOutCtrl {
         Ok(())
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_SYSTEM_SND_OUT_CTRL.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         _device_uid: &String,
@@ -555,11 +547,11 @@ impl Action for SystemSndOutCtrl {
         ui.add(Slider::new(&mut self.vol_adjust, -100..=100));
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.system.snd_out_ctrl.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_OUTPUT_CONTROL
     }
 }

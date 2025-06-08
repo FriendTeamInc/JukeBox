@@ -5,8 +5,7 @@
 use anyhow::bail;
 use fd_lock::RwLock;
 use reqwest::Client;
-use std::fs::{File, OpenOptions};
-use std::io::prelude::*;
+use std::fs::OpenOptions;
 
 #[macro_use]
 extern crate rust_i18n;
@@ -50,7 +49,8 @@ fn main() -> anyhow::Result<()> {
     );
     let f = f.try_write();
     if let Err(_) = f {
-        bail!("failed to acquire exclusive lock for application. aborting.")
+        // TODO: add a window popup for an error.
+        bail!("failed to acquire exclusive lock for application. aborting.");
     }
 
     // env_logger::init();

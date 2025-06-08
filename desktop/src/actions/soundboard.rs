@@ -15,7 +15,7 @@ pub const AID_SOUNDBOARD_PLAY_SOUND: &str = "SoundboardPlaySound";
 const ICON_PLAY_SOUND: ImageSource =
     include_image!("../../../assets/action-icons/soundboard-play.bmp");
 
-#[derive(Default, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 enum PlayMethod {
     #[default]
     PlayStop,
@@ -24,7 +24,7 @@ enum PlayMethod {
     LoopStop,
 }
 
-#[derive(Default, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 enum FadeMethod {
     #[default]
     NoFade,
@@ -34,14 +34,14 @@ enum FadeMethod {
 }
 
 #[rustfmt::skip]
-pub fn soundboard_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
+pub fn soundboard_action_list() -> (String, Vec<(String, Action, String)>) {
     (
         t!("action.soundboard.title", icon = phos::MUSIC_NOTES).into(),
-        vec![(AID_SOUNDBOARD_PLAY_SOUND.into(), Box::new(SoundboardPlaySound::default()), t!("action.soundboard.play_sound.title").into())],
+        vec![(AID_SOUNDBOARD_PLAY_SOUND.into(), Action::SoundboardPlaySound(SoundboardPlaySound::default()), t!("action.soundboard.play_sound.title").into())],
     )
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct SoundboardPlaySound {
     filepath: String,
     volume: u8,
@@ -50,10 +50,8 @@ pub struct SoundboardPlaySound {
     fade_time: u8,
     output_device: String,
 }
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for SoundboardPlaySound {
-    async fn on_press(
+impl SoundboardPlaySound {
+    pub async fn on_press(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -63,7 +61,7 @@ impl Action for SoundboardPlaySound {
         Ok(())
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -72,11 +70,11 @@ impl Action for SoundboardPlaySound {
         Ok(())
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_SOUNDBOARD_PLAY_SOUND.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         _device_uid: &String,
@@ -185,11 +183,11 @@ impl Action for SoundboardPlaySound {
             });
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.soundboard.play_sound.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_PLAY_SOUND
     }
 }

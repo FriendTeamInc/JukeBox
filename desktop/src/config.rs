@@ -38,15 +38,15 @@ impl Default for ActionIcon {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct ActionConfig {
-    pub action: Box<dyn Action>,
+    pub action: Action,
     pub icon: ActionIcon,
 }
 impl Default for ActionConfig {
     fn default() -> Self {
         Self {
-            action: Box::new(MetaNoAction {}),
+            action: Action::MetaNoAction(MetaNoAction::default()),
             icon: Default::default(),
         }
     }

@@ -6,12 +6,11 @@ use std::{
     sync::{Arc, OnceLock},
 };
 
-use downcast_rs::{impl_downcast, Downcast, DowncastSend, DowncastSync};
-use dyn_clone::{clone_trait_object, DynClone};
 use eframe::egui::{
     load::Bytes, vec2, Image, ImageSource, TextureFilter, TextureOptions, TextureWrapMode, Ui,
 };
 use jukebox_util::peripheral::DeviceType;
+use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
 use crate::{
@@ -46,55 +45,162 @@ impl fmt::Display for ActionError {
     }
 }
 
-#[async_trait::async_trait]
-#[typetag::serde(tag = "type")]
-pub trait Action: Sync + Send + DynClone + Downcast + DowncastSync + DowncastSend {
-    async fn on_press(
-        &self,
-        device_uid: &String,
-        input_key: InputKey,
-        config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError>;
+macro_rules! create_actions {
+    ( $( $item:ident ),* ) => {
+        #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+        pub enum Action {
+            $($item($item),)*
+        }
 
-    async fn on_release(
-        &self,
-        device_uid: &String,
-        input_key: InputKey,
-        config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError>;
+        impl Action {
+            pub async fn on_press(
+                &self,
+                device_uid: &String,
+                input_key: InputKey,
+                config: Arc<Mutex<JukeBoxConfig>>,
+            ) -> Result<(), ActionError> {
+                match self {
+                    $(Self::$item(x) => x.on_press(device_uid, input_key, config).await,)*
+                }
+            }
 
-    fn get_type(&self) -> String;
+            pub async fn on_release(
+                &self,
+                device_uid: &String,
+                input_key: InputKey,
+                config: Arc<Mutex<JukeBoxConfig>>,
+            ) -> Result<(), ActionError> {
+                match self {
+                    $(Self::$item(x) => x.on_release(device_uid, input_key, config).await,)*
+                }
+            }
 
-    fn edit_ui(
-        &mut self,
-        ui: &mut Ui,
-        device_uid: &String,
-        input_key: InputKey,
-        config: Arc<Mutex<JukeBoxConfig>>,
-    );
+            pub fn edit_ui(
+                &mut self,
+                ui: &mut Ui,
+                device_uid: &String,
+                input_key: InputKey,
+                config: Arc<Mutex<JukeBoxConfig>>,
+            ) {
+                match self {
+                    $(Self::$item(x) => x.edit_ui(ui, device_uid, input_key, config),)*
+                }
+            }
 
-    fn help(&self) -> String;
+            pub fn get_type(&self) -> String {
+                match self {
+                    $(Self::$item(x) => x.get_type(),)*
+                }
+            }
 
-    fn icon_source(&self) -> ImageSource;
+            pub fn help(&self) -> String {
+                match self {
+                    $(Self::$item(x) => x.help(),)*
+                }
+            }
 
-    fn icon(&self) -> Image {
-        Image::new(self.icon_source())
-            .texture_options(TextureOptions {
-                magnification: TextureFilter::Nearest,
-                minification: TextureFilter::Nearest,
-                wrap_mode: TextureWrapMode::ClampToEdge,
-                mipmap_mode: None,
-            })
-            .corner_radius(2.0)
-            .max_size(vec2(64.0, 64.0))
-    }
+            pub fn icon_source(&self) -> ImageSource {
+                match self {
+                    $(Self::$item(x) => x.icon_source(),)*
+                }
+            }
+
+            pub fn icon(&self) -> Image {
+                Image::new(self.icon_source())
+                    .texture_options(TextureOptions {
+                        magnification: TextureFilter::Nearest,
+                        minification: TextureFilter::Nearest,
+                        wrap_mode: TextureWrapMode::ClampToEdge,
+                        mipmap_mode: None,
+                    })
+                    .corner_radius(2.0)
+                    .max_size(vec2(64.0, 64.0))
+            }
+        }
+    };
 }
-clone_trait_object!(Action);
-impl_downcast!(Action);
+
+create_actions! {
+    MetaNoAction,
+    MetaSwitchProfile,
+    // MetaCopyFromProfile,
+
+    SystemOpenApp,
+    SystemOpenWeb,
+    SystemSndInCtrl,
+    SystemSndOutCtrl,
+
+    SoundboardPlaySound,
+
+    InputKeyboard,
+    InputMouse,
+    // InputGamepad,
+
+    ObsStream,
+    ObsRecord,
+    ObsPauseRecord,
+    ObsReplayBuffer,
+    ObsSaveReplay,
+    ObsSource,
+    ObsMute,
+    ObsSceneSwitch,
+    ObsPreviewSceneSwitch,
+    ObsPreviewScenePush,
+    ObsSceneCollectionSwitch,
+    // ObsFilter,
+    // ObsTransition,
+    ObsChapterMarker
+
+    // DiscordToggleMute,
+    // DiscordToggleDeafen,
+    // DiscordPushToTalk,
+    // DiscordPushToMute,
+    // DiscordPushToDeafen
+}
+
+// #[async_trait::async_trait]
+// #[typetag::serde(tag = "type")]
+// pub trait Action: Sync + Send + DynClone + Downcast + DowncastSync + DowncastSend {
+//     pub async fn on_press(
+//         &self,
+//         device_uid: &String,
+//         input_key: InputKey,
+//         config: Arc<Mutex<JukeBoxConfig>>,
+//     ) -> Result<(), ActionError>;
+//     pub async fn on_release(
+//         &self,
+//         device_uid: &String,
+//         input_key: InputKey,
+//         config: Arc<Mutex<JukeBoxConfig>>,
+//     ) -> Result<(), ActionError>;
+//     fn get_type(&self) -> String;
+//     pub fn edit_ui(
+//         &mut self,
+//         ui: &mut Ui,
+//         device_uid: &String,
+//         input_key: InputKey,
+//         config: Arc<Mutex<JukeBoxConfig>>,
+//     );
+//     pub fn help(&self) -> String;
+//     pub fn icon_source(&self) -> ImageSource;
+//     fn icon(&self) -> Image {
+//         Image::new(self.icon_source())
+//             .texture_options(TextureOptions {
+//                 magnification: TextureFilter::Nearest,
+//                 minification: TextureFilter::Nearest,
+//                 wrap_mode: TextureWrapMode::ClampToEdge,
+//                 mipmap_mode: None,
+//             })
+//             .corner_radius(2.0)
+//             .max_size(vec2(64.0, 64.0))
+//     }
+// }
+// clone_trait_object!(Action);
+// impl_downcast!(Action);
 
 pub struct ActionMap {
     ui_list: Vec<(String, Vec<(String, String)>)>,
-    enum_map: HashMap<String, Box<dyn Action>>,
+    enum_map: HashMap<String, Action>,
 }
 impl ActionMap {
     pub fn new() -> Self {
@@ -135,7 +241,7 @@ impl ActionMap {
         self.ui_list.clone()
     }
 
-    pub fn enum_new(&self, t: String) -> Box<dyn Action> {
+    pub fn enum_new(&self, t: String) -> Action {
         self.enum_map.get(&t).unwrap().clone()
     }
 

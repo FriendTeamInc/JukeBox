@@ -91,7 +91,7 @@ pub struct JukeBoxGui {
     pub editing_key: InputKey,
     pub editing_action_icon: ActionIcon,
     pub editing_action_type: String,
-    pub editing_action: Box<dyn Action>,
+    pub editing_action: Action,
 
     pub editing_rgb: RgbProfile,
 
@@ -252,7 +252,7 @@ impl JukeBoxGui {
             editing_key: InputKey::UnknownKey,
             editing_action_icon: ActionIcon::DefaultActionIcon,
             editing_action_type: "MetaNoAction".into(),
-            editing_action: Box::new(MetaNoAction::default()),
+            editing_action: Action::MetaNoAction(MetaNoAction::default()),
 
             editing_rgb: RgbProfile::default_gui_profile(),
 

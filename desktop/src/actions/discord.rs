@@ -45,11 +45,11 @@ pub fn discord_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>)
     (
         t!("action.discord.title", icon = phos::DISCORD_LOGO).into(),
         vec![
-            (AID_DISCORD_TOGGLE_MUTE.into(),    Box::new(DiscordToggleMute::default()),   t!("action.discord.toggle_mute.title").into()),
-            (AID_DISCORD_TOGGLE_DEAFEN.into(),  Box::new(DiscordToggleDeafen::default()), t!("action.discord.toggle_deafen.title").into()),
-            (AID_DISCORD_PUSH_TO_TALK.into(),   Box::new(DiscordPushToTalk::default()),   t!("action.discord.push_to_talk.title").into()),
-            (AID_DISCORD_PUSH_TO_MUTE.into(),   Box::new(DiscordPushToMute::default()),   t!("action.discord.push_to_mute.title").into()),
-            (AID_DISCORD_PUSH_TO_DEAFEN.into(), Box::new(DiscordPushToDeafen::default()), t!("action.discord.push_to_deafen.title").into()),
+            (AID_DISCORD_TOGGLE_MUTE.into(),    Action::DiscordToggleMute(DiscordToggleMute::default()),     t!("action.discord.toggle_mute.title").into()),
+            (AID_DISCORD_TOGGLE_DEAFEN.into(),  Action::DiscordToggleDeafen(DiscordToggleDeafen::default()), t!("action.discord.toggle_deafen.title").into()),
+            (AID_DISCORD_PUSH_TO_TALK.into(),   Action::DiscordPushToTalk(DiscordPushToTalk::default()),     t!("action.discord.push_to_talk.title").into()),
+            (AID_DISCORD_PUSH_TO_MUTE.into(),   Action::DiscordPushToMute(DiscordPushToMute::default()),     t!("action.discord.push_to_mute.title").into()),
+            (AID_DISCORD_PUSH_TO_DEAFEN.into(), Action::DiscordPushToDeafen(DiscordPushToDeafen::default()), t!("action.discord.push_to_deafen.title").into()),
         ],
     )
 }
@@ -193,12 +193,10 @@ fn account_warning(
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct DiscordToggleMute {}
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for DiscordToggleMute {
-    async fn on_press(
+impl DiscordToggleMute {
+    pub async fn on_press(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -232,7 +230,7 @@ impl Action for DiscordToggleMute {
         .unwrap()?
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -241,11 +239,11 @@ impl Action for DiscordToggleMute {
         Ok(())
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_DISCORD_TOGGLE_MUTE.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         device_uid: &String,
@@ -255,21 +253,19 @@ impl Action for DiscordToggleMute {
         account_warning(ui, device_uid, input_key, config)
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.discord.toggle_mute.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_MUTE
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct DiscordToggleDeafen {}
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for DiscordToggleDeafen {
-    async fn on_press(
+impl DiscordToggleDeafen {
+    pub async fn on_press(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -308,7 +304,7 @@ impl Action for DiscordToggleDeafen {
         .unwrap()?
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -317,11 +313,11 @@ impl Action for DiscordToggleDeafen {
         Ok(())
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_DISCORD_TOGGLE_DEAFEN.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         device_uid: &String,
@@ -331,21 +327,19 @@ impl Action for DiscordToggleDeafen {
         account_warning(ui, device_uid, input_key, config)
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.discord.toggle_deafen.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_DEAFEN
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct DiscordPushToTalk {}
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for DiscordPushToTalk {
-    async fn on_press(
+impl DiscordPushToTalk {
+    pub async fn on_press(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -378,7 +372,7 @@ impl Action for DiscordPushToTalk {
         .unwrap()?
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -411,11 +405,11 @@ impl Action for DiscordPushToTalk {
         .unwrap()?
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_DISCORD_PUSH_TO_TALK.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         device_uid: &String,
@@ -425,21 +419,19 @@ impl Action for DiscordPushToTalk {
         account_warning(ui, device_uid, input_key, config)
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.discord.push_to_talk.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_PUSH_TO_TALK
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct DiscordPushToMute {}
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for DiscordPushToMute {
-    async fn on_press(
+impl DiscordPushToMute {
+    pub async fn on_press(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -472,7 +464,7 @@ impl Action for DiscordPushToMute {
         .unwrap()?
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -505,11 +497,11 @@ impl Action for DiscordPushToMute {
         .unwrap()?
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_DISCORD_PUSH_TO_MUTE.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         device_uid: &String,
@@ -519,21 +511,19 @@ impl Action for DiscordPushToMute {
         account_warning(ui, device_uid, input_key, config)
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.discord.push_to_mute.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_PUSH_TO_MUTE
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct DiscordPushToDeafen {}
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for DiscordPushToDeafen {
-    async fn on_press(
+impl DiscordPushToDeafen {
+    pub async fn on_press(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -567,7 +557,7 @@ impl Action for DiscordPushToDeafen {
         .unwrap()?
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -601,11 +591,11 @@ impl Action for DiscordPushToDeafen {
         .unwrap()?
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_DISCORD_PUSH_TO_DEAFEN.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         device_uid: &String,
@@ -615,11 +605,11 @@ impl Action for DiscordPushToDeafen {
         account_warning(ui, device_uid, input_key, config)
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.discord.push_to_deafen.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_PUSH_TO_DEAFEN
     }
 }

@@ -34,16 +34,12 @@ uf2-decode = "0.2"
 
 tokio = { version = "1.44", features = ["rt-multi-thread", "sync"] }
 futures = "0.3"
-async-trait = "0.1"
-typetag = "0.2"
-dyn-clone = "1.0"
 
 reqwest = { version = "0.12", features = ["json"] }
 obws = "0.14"
 discord-rich-presence = { git = "https://github.com/NotQuiteApex/discord-rich-presence", branch = "voice-settings", optional = true }
 # rustls = "0.23"
 uuid = "1.16"
-downcast-rs = "2.0"
 sha1_smol = "1.0"
 
 sysinfo = { version = "0.34", features = ["multithread"] }

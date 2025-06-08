@@ -12,9 +12,8 @@ use tokio::runtime::Handle;
 
 use crate::{
     actions::{
-        input::{InputKeyboard, InputMouse},
         meta::AID_META_NO_ACTION,
-        types::{get_icon_bytes, ActionError},
+        types::{get_icon_bytes, Action, ActionError},
     },
     config::{ActionConfig, ActionIcon, JukeBoxConfig},
     input::InputKey,
@@ -113,18 +112,18 @@ impl JukeBoxGui {
                 let txs = self.scmd_txs.blocking_lock();
                 if let Some(tx) = txs.get(device_uid) {
                     let slot = k.slot();
-                    let _ = if let Some(kb) = a.action.downcast_ref::<InputKeyboard>() {
-                        tx.send(SerialCommand::SetKeyboardInput(
+                    let _ = match &a.action {
+                        Action::InputKeyboard(kb) => tx.send(SerialCommand::SetKeyboardInput(
                             slot,
                             kb.get_keyboard_event(),
-                        ))
-                    } else if let Some(mouse) = a.action.downcast_ref::<InputMouse>() {
-                        tx.send(SerialCommand::SetMouseInput(slot, mouse.get_mouse_event()))
-                    } else {
-                        tx.send(SerialCommand::SetKeyboardInput(
+                        )),
+                        Action::InputMouse(ms) => {
+                            tx.send(SerialCommand::SetMouseInput(slot, ms.get_mouse_event()))
+                        }
+                        _ => tx.send(SerialCommand::SetKeyboardInput(
                             slot,
                             KeyboardEvent::empty_event(),
-                        ))
+                        )),
                     };
                 }
             }
@@ -195,18 +194,18 @@ impl JukeBoxGui {
         {
             let txs = self.scmd_txs.blocking_lock();
             if let Some(tx) = txs.get(device_uid) {
-                let _ = if let Some(kb) = action.downcast_ref::<InputKeyboard>() {
-                    tx.send(SerialCommand::SetKeyboardInput(
+                let _ = match &action {
+                    Action::InputKeyboard(kb) => tx.send(SerialCommand::SetKeyboardInput(
                         slot,
                         kb.get_keyboard_event(),
-                    ))
-                } else if let Some(mouse) = action.downcast_ref::<InputMouse>() {
-                    tx.send(SerialCommand::SetMouseInput(slot, mouse.get_mouse_event()))
-                } else {
-                    tx.send(SerialCommand::SetKeyboardInput(
+                    )),
+                    Action::InputMouse(ms) => {
+                        tx.send(SerialCommand::SetMouseInput(slot, ms.get_mouse_event()))
+                    }
+                    _ => tx.send(SerialCommand::SetKeyboardInput(
                         slot,
                         KeyboardEvent::empty_event(),
-                    ))
+                    )),
                 };
             }
         }

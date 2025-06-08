@@ -21,23 +21,21 @@ const ICON_COPY_FROM_PROFILE: ImageSource =
     include_image!("../../../assets/action-icons/meta-copyfromprofile.bmp");
 
 #[rustfmt::skip]
-pub fn meta_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
+pub fn meta_action_list() -> (String, Vec<(String, Action, String)>) {
     (
         t!("action.meta.title", icon = phos::GEAR).into(),
         vec![
-            (AID_META_NO_ACTION.into(),        Box::new(MetaNoAction::default()),        t!("action.meta.no_action.title").into()),
-            (AID_META_SWITCH_PROFILE.into(),   Box::new(MetaSwitchProfile::default()),   t!("action.meta.switch_profile.title").into()),
-            (AID_META_COPY_FROM_PROFILE.into(), Box::new(MetaCopyFromProfile::default()), t!("action.meta.copy_from_profile.title").into()),
+            (AID_META_NO_ACTION.into(),         Action::MetaNoAction(MetaNoAction::default()),               t!("action.meta.no_action.title").into()),
+            (AID_META_SWITCH_PROFILE.into(),    Action::MetaSwitchProfile(MetaSwitchProfile::default()),     t!("action.meta.switch_profile.title").into()),
+            // (AID_META_COPY_FROM_PROFILE.into(), Action::MetaCopyFromProfile(MetaCopyFromProfile::default()), t!("action.meta.copy_from_profile.title").into()),
         ],
     )
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct MetaNoAction {}
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for MetaNoAction {
-    async fn on_press(
+impl MetaNoAction {
+    pub async fn on_press(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -51,7 +49,7 @@ impl Action for MetaNoAction {
         Ok(())
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -65,11 +63,11 @@ impl Action for MetaNoAction {
         Ok(())
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_META_NO_ACTION.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         _ui: &mut Ui,
         _device_uid: &String,
@@ -78,23 +76,21 @@ impl Action for MetaNoAction {
     ) {
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.meta.no_action.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_NO_ACTION
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct MetaSwitchProfile {
     profile: String,
 }
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for MetaSwitchProfile {
-    async fn on_press(
+impl MetaSwitchProfile {
+    pub async fn on_press(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -103,7 +99,7 @@ impl Action for MetaSwitchProfile {
         Ok(())
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         device_uid: &String,
         input_key: InputKey,
@@ -134,11 +130,11 @@ impl Action for MetaSwitchProfile {
         }
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_META_SWITCH_PROFILE.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         _device_uid: &String,
@@ -163,124 +159,122 @@ impl Action for MetaSwitchProfile {
             });
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.meta.switch_profile.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_SWITCH_PROFILE
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
-pub struct MetaCopyFromProfile {
-    profile: String,
-}
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for MetaCopyFromProfile {
-    async fn on_press(
-        &self,
-        device_uid: &String,
-        input_key: InputKey,
-        config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
-        let k = config
-            .lock()
-            .await
-            .profiles
-            .get(&self.profile)
-            .and_then(|p| p.get(device_uid))
-            .and_then(|d| d.key_map.get(&input_key))
-            .map(|k| k.clone());
-        if let Some(k) = k {
-            k.action.on_press(device_uid, input_key, config).await
-        } else {
-            Err(ActionError::new(
-                device_uid,
-                input_key,
-                t!(
-                    "action.meta.copy_from_profile.err.action_not_found",
-                    profile = self.profile
-                ),
-            ))
-        }
-    }
+// #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
+// pub struct MetaCopyFromProfile {
+//     profile: String,
+// }
+// impl MetaCopyFromProfile {
+//     pub async fn on_press(
+//         &self,
+//         device_uid: &String,
+//         input_key: InputKey,
+//         config: Arc<Mutex<JukeBoxConfig>>,
+//     ) -> Result<(), ActionError> {
+//         let k = config
+//             .lock()
+//             .await
+//             .profiles
+//             .get(&self.profile)
+//             .and_then(|p| p.get(device_uid))
+//             .and_then(|d| d.key_map.get(&input_key))
+//             .map(|k| k.clone());
+//         if let Some(k) = k {
+//             k.action.on_press(device_uid, input_key, config).await
+//         } else {
+//             Err(ActionError::new(
+//                 device_uid,
+//                 input_key,
+//                 t!(
+//                     "action.meta.copy_from_profile.err.action_not_found",
+//                     profile = self.profile
+//                 ),
+//             ))
+//         }
+//     }
 
-    async fn on_release(
-        &self,
-        device_uid: &String,
-        input_key: InputKey,
-        config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
-        let k = config
-            .lock()
-            .await
-            .profiles
-            .get(&self.profile)
-            .and_then(|p| p.get(device_uid))
-            .and_then(|d| d.key_map.get(&input_key))
-            .map(|k| k.clone());
-        if let Some(k) = k {
-            k.action.on_release(device_uid, input_key, config).await
-        } else {
-            Err(ActionError::new(
-                device_uid,
-                input_key,
-                t!(
-                    "action.meta.copy_from_profile.err.action_not_found",
-                    profile = self.profile
-                ),
-            ))
-        }
-    }
+//     pub async fn on_release(
+//         &self,
+//         device_uid: &String,
+//         input_key: InputKey,
+//         config: Arc<Mutex<JukeBoxConfig>>,
+//     ) -> Result<(), ActionError> {
+//         let k = config
+//             .lock()
+//             .await
+//             .profiles
+//             .get(&self.profile)
+//             .and_then(|p| p.get(device_uid))
+//             .and_then(|d| d.key_map.get(&input_key))
+//             .map(|k| k.clone());
+//         if let Some(k) = k {
+//             k.action.on_release(device_uid, input_key, config).await
+//         } else {
+//             Err(ActionError::new(
+//                 device_uid,
+//                 input_key,
+//                 t!(
+//                     "action.meta.copy_from_profile.err.action_not_found",
+//                     profile = self.profile
+//                 ),
+//             ))
+//         }
+//     }
 
-    fn get_type(&self) -> String {
-        AID_META_COPY_FROM_PROFILE.into()
-    }
+//     pub fn get_type(&self) -> String {
+//         AID_META_COPY_FROM_PROFILE.into()
+//     }
 
-    fn edit_ui(
-        &mut self,
-        ui: &mut Ui,
-        device_uid: &String,
-        input_key: InputKey,
-        config: Arc<Mutex<JukeBoxConfig>>,
-    ) {
-        ui.label(t!("action.meta.copy_from_profile.profile_select"));
-        ComboBox::from_id_salt("MetaCopyFromProfile")
-            .selected_text(self.profile.clone())
-            .width(228.0)
-            .show_ui(ui, |ui| {
-                let config = config.blocking_lock();
-                for (k, v) in &config.profiles {
-                    if *k == config.current_profile {
-                        continue;
-                    }
-                    if v.get(device_uid)
-                        .unwrap()
-                        .key_map
-                        .get(&input_key)
-                        .unwrap()
-                        .action
-                        .get_type()
-                        == AID_META_COPY_FROM_PROFILE
-                    {
-                        continue;
-                    }
-                    ui.selectable_value(&mut self.profile, k.clone(), k.clone());
+//     pub fn edit_ui(
+//         &mut self,
+//         ui: &mut Ui,
+//         device_uid: &String,
+//         input_key: InputKey,
+//         config: Arc<Mutex<JukeBoxConfig>>,
+//     ) {
+//         ui.label(t!("action.meta.copy_from_profile.profile_select"));
+//         ComboBox::from_id_salt("MetaCopyFromProfile")
+//             .selected_text(self.profile.clone())
+//             .width(228.0)
+//             .show_ui(ui, |ui| {
+//                 let config = config.blocking_lock();
+//                 for (k, v) in &config.profiles {
+//                     if *k == config.current_profile {
+//                         continue;
+//                     }
+//                     if v.get(device_uid)
+//                         .unwrap()
+//                         .key_map
+//                         .get(&input_key)
+//                         .unwrap()
+//                         .action
+//                         .get_type()
+//                         == AID_META_COPY_FROM_PROFILE
+//                     {
+//                         continue;
+//                     }
+//                     ui.selectable_value(&mut self.profile, k.clone(), k.clone());
 
-                    // if ui.selectable_label(*k == self.profile, k.clone()).clicked() {
-                    //     self.profile = k.clone();
-                    // }
-                }
-            });
-    }
+//                     // if ui.selectable_label(*k == self.profile, k.clone()).clicked() {
+//                     //     self.profile = k.clone();
+//                     // }
+//                 }
+//             });
+//     }
 
-    fn help(&self) -> String {
-        t!("action.meta.copy_from_profile.help").into()
-    }
+//     pub fn help(&self) -> String {
+//         t!("action.meta.copy_from_profile.help").into()
+//     }
 
-    fn icon_source(&self) -> ImageSource {
-        ICON_COPY_FROM_PROFILE
-    }
-}
+//     pub fn icon_source(&self) -> ImageSource {
+//         ICON_COPY_FROM_PROFILE
+//     }
+// }

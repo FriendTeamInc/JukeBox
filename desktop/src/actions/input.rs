@@ -24,25 +24,23 @@ const ICON_MOUSE: ImageSource = include_image!("../../../assets/action-icons/inp
 static KEY_MAP: OnceLock<HashMap<u8, &str>> = OnceLock::new();
 
 #[rustfmt::skip]
-pub fn input_action_list() -> (String, Vec<(String, Box<dyn Action>, String)>) {
+pub fn input_action_list() -> (String, Vec<(String, Action, String)>) {
     (
         t!("action.input.title", icon = phos::CURSOR_CLICK).into(),
         vec![
-            (AID_INPUT_KEYBOARD.into(), Box::new(InputKeyboard::default()), t!("action.input.keyboard.title").into()),
-            // (AID_INPUT_MOUSE.into(),    Box::new(InputMouse::default()),    t!("action.input.mouse.title").into()),
-            // (AID_INPUT_GAMEPAD.into(),  Box::new(InputGamepad::default()),  t!("action.input.gamepad.title").into()),
+            (AID_INPUT_KEYBOARD.into(), Action::InputKeyboard(InputKeyboard::default()), t!("action.input.keyboard.title").into()),
+            // (AID_INPUT_MOUSE.into(),    Action::InputMouse(InputMouse::default()),    t!("action.input.mouse.title").into()),
+            // (AID_INPUT_GAMEPAD.into(),  Action::InputGamepad(InputGamepad::default()),  t!("action.input.gamepad.title").into()),
         ],
     )
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct InputKeyboard {
     keys: Vec<u8>,
 }
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for InputKeyboard {
-    async fn on_press(
+impl InputKeyboard {
+    pub async fn on_press(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -52,7 +50,7 @@ impl Action for InputKeyboard {
         Ok(())
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -62,11 +60,11 @@ impl Action for InputKeyboard {
         Ok(())
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_INPUT_KEYBOARD.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         _device_uid: &String,
@@ -104,11 +102,11 @@ impl Action for InputKeyboard {
         }
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.input.keyboard.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_KEYBOARD
     }
 }
@@ -123,7 +121,7 @@ impl InputKeyboard {
     }
 }
 
-#[derive(Default, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct InputMouse {
     buttons: u8,
     x: i8,
@@ -131,10 +129,8 @@ pub struct InputMouse {
     scroll_y: i8,
     scroll_x: i8,
 }
-#[async_trait::async_trait]
-#[typetag::serde]
-impl Action for InputMouse {
-    async fn on_press(
+impl InputMouse {
+    pub async fn on_press(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -144,7 +140,7 @@ impl Action for InputMouse {
         Ok(())
     }
 
-    async fn on_release(
+    pub async fn on_release(
         &self,
         _device_uid: &String,
         _input_key: InputKey,
@@ -154,11 +150,11 @@ impl Action for InputMouse {
         Ok(())
     }
 
-    fn get_type(&self) -> String {
+    pub fn get_type(&self) -> String {
         AID_INPUT_MOUSE.into()
     }
 
-    fn edit_ui(
+    pub fn edit_ui(
         &mut self,
         ui: &mut Ui,
         _device_uid: &String,
@@ -230,11 +226,11 @@ impl Action for InputMouse {
         });
     }
 
-    fn help(&self) -> String {
+    pub fn help(&self) -> String {
         t!("action.input.mouse.help").into()
     }
 
-    fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&self) -> ImageSource {
         ICON_MOUSE
     }
 }

@@ -6,9 +6,12 @@ use std::{
 };
 
 use anyhow::Result;
-use futures::future::join_all;
+use futures::future::{join, join_all};
 use jukebox_util::{
-    input::KeyboardEvent, peripheral::DeviceType, rgb::RgbProfile, screen::ScreenProfile,
+    input::{KeyboardEvent, MouseEvent},
+    peripheral::DeviceType,
+    rgb::RgbProfile,
+    screen::ScreenProfile,
 };
 use tokio::sync::{
     mpsc::{UnboundedReceiver, UnboundedSender},
@@ -16,15 +19,13 @@ use tokio::sync::{
 };
 
 use crate::{
+    actions::types::Action,
     config::{ActionConfig, JukeBoxConfig},
     input::InputKey,
     serial::{SerialCommand, SerialEvent},
 };
 
-use super::{
-    input::{InputKeyboard, InputMouse},
-    types::{get_icon_bytes, ActionError},
-};
+use super::types::{get_icon_bytes, ActionError};
 
 async fn update_device_configs(
     scmd_txs: Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
@@ -61,20 +62,35 @@ async fn update_device_configs(
 
     for (k, a) in keys {
         let slot = k.slot();
-        let action = a.action.as_any();
-        let _ = if let Some(kb) = action.downcast_ref::<InputKeyboard>() {
-            tx.send(SerialCommand::SetKeyboardInput(
-                slot,
-                kb.get_keyboard_event(),
-            ))
-        } else if let Some(mouse) = action.downcast_ref::<InputMouse>() {
-            tx.send(SerialCommand::SetMouseInput(slot, mouse.get_mouse_event()))
-        } else {
-            tx.send(SerialCommand::SetKeyboardInput(
-                slot,
-                KeyboardEvent::empty_event(),
-            ))
-        };
+        match a.action {
+            Action::InputKeyboard(kb) => {
+                tx.send(SerialCommand::SetKeyboardInput(
+                    slot,
+                    kb.get_keyboard_event(),
+                ))
+                .unwrap();
+                tx.send(SerialCommand::SetMouseInput(slot, MouseEvent::default()))
+                    .unwrap();
+            }
+            Action::InputMouse(ms) => {
+                tx.send(SerialCommand::SetKeyboardInput(
+                    slot,
+                    KeyboardEvent::empty_event(),
+                ))
+                .unwrap();
+                tx.send(SerialCommand::SetMouseInput(slot, ms.get_mouse_event()))
+                    .unwrap();
+            }
+            _ => {
+                tx.send(SerialCommand::SetKeyboardInput(
+                    slot,
+                    KeyboardEvent::empty_event(),
+                ))
+                .unwrap();
+                tx.send(SerialCommand::SetMouseInput(slot, MouseEvent::default()))
+                    .unwrap();
+            }
+        }
     }
 }
 
@@ -160,21 +176,41 @@ pub async fn action_task(
                     let pressed = keys.difference(&prevkeys);
                     let released = prevkeys.difference(&keys);
 
-                    let mut futures = Vec::new();
+                    let mut pressed_futures = Vec::new();
+                    let mut released_futures = Vec::new();
 
                     for p in pressed {
                         if let Some(r) = current_profile.get(p) {
-                            futures.push(r.action.on_press(&device_uid, *p, config.clone()));
+                            pressed_futures.push(r.action.on_press(
+                                &device_uid,
+                                *p,
+                                config.clone(),
+                            ));
                         }
                     }
 
                     for p in released {
                         if let Some(r) = current_profile.get(p) {
-                            futures.push(r.action.on_release(&device_uid, *p, config.clone()));
+                            released_futures.push(r.action.on_release(
+                                &device_uid,
+                                *p,
+                                config.clone(),
+                            ));
                         }
                     }
 
-                    for res in join_all(futures).await {
+                    let (pressed, released) =
+                        join(join_all(pressed_futures), join_all(released_futures)).await;
+
+                    for res in pressed {
+                        match res {
+                            Ok(_) => {}
+                            Err(e) => {
+                                let _ = ae_tx.send(e);
+                            }
+                        }
+                    }
+                    for res in released {
                         match res {
                             Ok(_) => {}
                             Err(e) => {

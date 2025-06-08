@@ -410,13 +410,13 @@ pub async fn serial_loop(
                 device_uid: device_uid.clone(),
                 keys: keys.clone(),
             })
-            .context("failed to send input info to react")?;
+            .context("failed to send input info to action thread")?;
         sg_tx
             .send(SerialEvent::GetInputKeys {
                 device_uid: device_uid.clone(),
                 keys: keys.clone(),
             })
-            .context("failed to send input info to gui")?;
+            .context("failed to send input info to gui thread")?;
 
         // TODO: only send system stats when device has a screen
         if Instant::now() >= tick {
