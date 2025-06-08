@@ -390,6 +390,17 @@ impl JukeBoxGui {
         }
     }
 
+    pub fn is_rgb_changed(&self) -> bool {
+        let c = self.config.blocking_lock();
+        let p = c.current_profile.clone();
+        c.profiles
+            .get(&p)
+            .and_then(|p| p.get(&self.current_device))
+            .and_then(|d| d.rgb_profile.clone())
+            .and_then(|rgb| Some(rgb != self.editing_rgb))
+            .unwrap_or(false)
+    }
+
     pub fn save_rgb_and_exit(&mut self) {
         {
             let mut c = self.config.blocking_lock();

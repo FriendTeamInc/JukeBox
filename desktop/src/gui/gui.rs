@@ -552,7 +552,9 @@ impl JukeBoxGui {
                 || self.update_status == FirmwareUpdateStatus::End);
         ui.add_enabled_ui(enabled, |ui| {
             let saveable = match self.gui_tab {
-                GuiTab::EditingAction | GuiTab::EditingRGB | GuiTab::EditingScreen => true,
+                GuiTab::EditingAction => self.is_action_changed(),
+                GuiTab::EditingRGB => self.is_rgb_changed(),
+                GuiTab::EditingScreen => self.is_screen_changed(),
                 _ => false,
             };
             if ui

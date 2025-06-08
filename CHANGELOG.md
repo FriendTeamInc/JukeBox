@@ -1,3 +1,12 @@
+# v0.2.1 - Albrecht Entrati (June 8, 2025)
+- Major refactor internally for actions. Old config files will be discarded!
+- Add lots of debug prints for the update process.
+- Fix config directory missing for app lock purposes.
+- Begin push for Discord integration available by default. Unfinished.
+- Changed delete profile and forget device to be single click instead of double click.
+- The save and exit pop up will now only show when a change has actually been made.
+- Drop some old dependencies from the desktop app.
+
 # v0.2.0 - Debugging Days (June 8, 2025)
 - Changed default brightness for RGB from 255 to 100.
 - Added log file for testers to send in.

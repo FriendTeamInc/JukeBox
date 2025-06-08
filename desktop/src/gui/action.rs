@@ -211,6 +211,23 @@ impl JukeBoxGui {
         }
     }
 
+    pub fn is_action_changed(&self) -> bool {
+        let c = self.config.blocking_lock();
+        let current_profile = c.current_profile.clone();
+        let profile = c.profiles.get(&current_profile).unwrap();
+        let d = profile.get(&self.current_device).unwrap();
+
+        if let Some(old_action) = d.key_map.get(&self.editing_key) {
+            let new_action = ActionConfig {
+                action: self.editing_action.clone(),
+                icon: self.editing_action_icon.clone(),
+            };
+            new_action != *old_action
+        } else {
+            false
+        }
+    }
+
     pub fn save_action_and_exit(&mut self) {
         // TODO: have config validate input?
 

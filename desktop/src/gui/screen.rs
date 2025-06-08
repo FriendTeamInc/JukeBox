@@ -230,6 +230,17 @@ impl JukeBoxGui {
         }
     }
 
+    pub fn is_screen_changed(&self) -> bool {
+        let c = self.config.blocking_lock();
+        let p = c.current_profile.clone();
+        c.profiles
+            .get(&p)
+            .and_then(|p| p.get(&self.current_device))
+            .and_then(|d| d.screen_profile.clone())
+            .and_then(|screen| Some(screen != self.editing_screen))
+            .unwrap_or(false)
+    }
+
     pub fn save_screen_and_exit(&mut self) {
         {
             let mut c = self.config.blocking_lock();
