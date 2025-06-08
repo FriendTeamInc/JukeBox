@@ -1,3 +1,8 @@
+# v0.2.0 - Debugging Days (June 8, 2025)
+- Changed default brightness for RGB from 255 to 100.
+- Added log file for testers to send in.
+- Prevent new instances of the desktop application from launching.
+
 # v0.1.3 - Removing Some Unfinished Work (June 3, 2025)
 - Fix crash when GPU name is too long.
 - Rename Profile Name Color to Text Color in screen configuration.
