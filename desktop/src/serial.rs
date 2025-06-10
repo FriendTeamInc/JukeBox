@@ -131,7 +131,7 @@ async fn send_bytes(f: &mut Serial, bytes: &[u8]) -> Result<()> {
     block_in_place(|| {
         let size = &encode_packet_size(bytes.len());
 
-        log::debug!(
+        log::trace!(
             "send_bytes: {} ({:?}) {:?}",
             decode_packet_size(size[0], size[1], size[2]),
             size,

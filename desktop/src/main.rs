@@ -1,6 +1,6 @@
 // A desktop application for interfacing with a JukeBox over serial.
 
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // disables console spawning for release build
+// #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // disables console spawning for release build
 
 use anyhow::bail;
 use fd_lock::RwLock;
@@ -54,7 +54,7 @@ fn main() -> anyhow::Result<()> {
     );
     let f = f.try_write();
     if let Err(_) = f {
-        // TODO: add a window popup for an error.
+        // TODO: send signal to other app to reopen window
         bail!("failed to acquire exclusive lock for application. aborting.");
     }
 

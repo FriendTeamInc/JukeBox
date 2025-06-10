@@ -50,6 +50,9 @@ help:
     modal_remind_me_later: "Remind me later"
     modal_ignore_updates: "Ignore updates"
     modal_download_update: "Download Update"
+    
+    error_modal_title: "Update Error!"
+    error_modal_exit: "   Ok   "
 
   rgb:
     select: "RGB Profile Select"
@@ -96,6 +99,24 @@ update:
     erasing: "Erasing old firmware..."
     writing: "Writing new firmware..."
     end: "Done!"
+    error: ""
+  error:
+    github_unknown_error: "Failed to get release information from GitHub, due to an unknown error."
+    github_not_found: "Failed to get release information from GitHub, release information not found."
+    github_failed_to_parse: "Failed to get release information from GitHub, failed to parse release information."
+    github_no_firmware: "Failed to get firmware from GitHub, none found in the latest release."
+    github_download_failed: "Failed to get firmware from GitHub, download failed... \"%{e}\""
+    usb_context_fail: "Failed to create USB context for updating... \"%{e}\""
+    picoboot_connect_fail: "Failed to connect to device for updating."
+    picoboot_reset_interface_fail: "Failed to connect to reset device for updating... \"%{e}\""
+    picoboot_reset_exclusive_fail: "Failed to connect to reset exclusive access on the device for updating... \"%{e}\""
+    picoboot_exit_xip_fail: "Failed to connect to exit XIP on the device for updating... \"%{e}\""
+    firmware_parse: "Failed to parse UF2 firmware... \"%{e}\""
+    flash_erase_fail: "Failed to erase flash at address %{addr:#X}... \"%{e}\""
+    flash_write_fail: "Failed to write flash at address %{addr:#X}... \"%{e}\""
+    flash_read_fail: "Failed to read flash at address %{addr:#X} for write confirmation... \"%{e}\""
+    flash_check_fail: "Flash at address %{addr:#X} did not match new firmware."
+    device_reboot_fail: "Failed to reboot device after updating... \"%{e}\""
 
 rgb:
   title: "RGB Mode:"

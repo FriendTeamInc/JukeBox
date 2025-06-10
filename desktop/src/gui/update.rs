@@ -1,75 +1,81 @@
 use eframe::egui::{vec2, Button, Color32, ProgressBar, RichText, Ui};
 use rfd::FileDialog;
 use tokio::spawn;
+use tokio::sync::mpsc::UnboundedSender;
 
-use crate::firmware_update::{firmware_update_task, FirmwareUpdateStatus};
+use crate::firmware_update::{firmware_update_task, FirmwareUpdateStatus, UpdateError};
 use crate::get_reqwest_client;
 use crate::serial::SerialCommand;
-use crate::software_update::get_github_release;
+use crate::software_update::{get_github_release, GitHubError};
 
 use super::gui::JukeBoxGui;
 
+async fn download_firmware_update(
+    us_tx2: UnboundedSender<FirmwareUpdateStatus>,
+) -> Result<(), UpdateError> {
+    let release = get_github_release("FriendTeamInc", "JukeBox", "latest")
+        .await
+        .map_err(|e| match e {
+            GitHubError::UnknownError => UpdateError::new(t!("update.error.github_unknown_error")),
+            GitHubError::NotFound => UpdateError::new(t!("update.error.github_not_found")),
+            GitHubError::FailedToParse => {
+                UpdateError::new(t!("update.error.github_failed_to_parse"))
+            }
+        })?;
+
+    let fw_asset = match release
+        .assets
+        .iter()
+        .filter(|a| a.name == "jukebox_firmware.uf2")
+        .next()
+    {
+        Some(fw_asset) => Ok(fw_asset.clone()),
+        None => Err(UpdateError::new(t!("update.error.github_no_firmware"))),
+    }?;
+
+    let fw = get_reqwest_client()
+        .get(fw_asset.browser_download_url)
+        .send()
+        .await
+        .map_err(|e| UpdateError::new(t!("update.error.github_download_failed", e = e)))?
+        .bytes()
+        .await
+        .map_err(|e| UpdateError::new(t!("update.error.github_download_failed", e = e)))?
+        .to_vec();
+
+    firmware_update_task(fw, us_tx2).await
+}
+
 impl JukeBoxGui {
     fn send_custom_firmware_update_signal(&mut self, fw_path: String) {
-        {
-            let scmd_txs = self.scmd_txs.blocking_lock();
-            if let Some(tx) = scmd_txs.get(&self.current_device) {
-                tx.send(SerialCommand::Update)
-                    .expect("failed to send update command");
-            }
+        if let Some(tx) = self.scmd_txs.blocking_lock().get(&self.current_device) {
+            tx.send(SerialCommand::Update)
+                .expect("failed to send update command");
         }
 
         let fw = std::fs::read(fw_path).unwrap();
 
         let us_tx2 = self.us_tx.clone();
-        let device_uid = self.current_device.clone();
         spawn(async move {
-            firmware_update_task(device_uid, fw, us_tx2).await;
+            match firmware_update_task(fw, us_tx2.clone()).await {
+                Ok(()) => {}
+                Err(e) => us_tx2.send(FirmwareUpdateStatus::Error(e)).unwrap(),
+            }
         });
     }
 
     fn send_update_signal(&mut self) {
-        {
-            let scmd_txs = self.scmd_txs.blocking_lock();
-            if let Some(tx) = scmd_txs.get(&self.current_device) {
-                tx.send(SerialCommand::Update)
-                    .expect("failed to send update command");
-            }
+        if let Some(tx) = self.scmd_txs.blocking_lock().get(&self.current_device) {
+            tx.send(SerialCommand::Update)
+                .expect("failed to send update command");
         }
 
         let us_tx2 = self.us_tx.clone();
-        let device_uid = self.current_device.clone();
         spawn(async move {
-            let fw = match get_github_release("FriendTeamInc", "JukeBox", "latest").await {
-                Ok(release) => {
-                    // TODO: maybe signal in gui that a firmware is being downloaded and if any errors occur?
-                    let fw_asset = release
-                        .assets
-                        .iter()
-                        .filter(|a| a.name == "jukebox_firmware.uf2")
-                        .next()
-                        .unwrap()
-                        .clone();
-                    Some(
-                        get_reqwest_client()
-                            .get(fw_asset.browser_download_url)
-                            .send()
-                            .await
-                            .unwrap()
-                            .bytes()
-                            .await
-                            .unwrap()
-                            .to_vec(),
-                    )
-                }
-                Err(e) => {
-                    log::warn!("firmware update release error: {:?}", e);
-                    None
-                }
+            match download_firmware_update(us_tx2.clone()).await {
+                Ok(()) => {}
+                Err(e) => us_tx2.send(FirmwareUpdateStatus::Error(e)).unwrap(),
             }
-            .unwrap();
-
-            firmware_update_task(device_uid, fw, us_tx2).await;
         });
     }
 
@@ -131,7 +137,7 @@ impl JukeBoxGui {
 
                 while let Ok(p) = self.us_rx.try_recv() {
                     self.update_status = p;
-                    match p {
+                    match &self.update_status {
                         FirmwareUpdateStatus::Start => self.update_progress = 0.0,
                         FirmwareUpdateStatus::Connecting => self.update_progress = 0.05,
                         FirmwareUpdateStatus::PreparingFirmware => self.update_progress = 0.1,
@@ -142,6 +148,10 @@ impl JukeBoxGui {
                             self.update_progress = 0.4 + 0.6 * n
                         }
                         FirmwareUpdateStatus::End => self.update_progress = 1.0,
+                        FirmwareUpdateStatus::Error(e) => {
+                            self.update_progress = 0.0;
+                            self.update_error = Some(e.clone());
+                        }
                     }
                 }
 
@@ -160,6 +170,7 @@ impl JukeBoxGui {
                 FirmwareUpdateStatus::ErasingOldFirmware(_) => t!("update.status.erasing"),
                 FirmwareUpdateStatus::WritingNewFirmware(_) => t!("update.status.writing"),
                 FirmwareUpdateStatus::End => t!("update.status.end"),
+                FirmwareUpdateStatus::Error(_) => t!("update.status.error"),
             });
         });
         ui.allocate_space(ui.available_size_before_wrap());

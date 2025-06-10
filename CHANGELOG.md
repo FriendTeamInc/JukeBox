@@ -1,3 +1,8 @@
+# v0.2.2 - Debugging Causes Problems (June 9, 2025)
+- Add pop up for any errors from the update process.
+- Allow console window on Windows, for any panics to be traced. This will be removed later.
+- Disable blocking in firmware debug output, which causes firmware to eventually freeze.
+
 # v0.2.1 - Albrecht Entrati (June 8, 2025)
 - Major refactor internally for actions. Old config files will be discarded!
 - Add lots of debug prints for the update process.

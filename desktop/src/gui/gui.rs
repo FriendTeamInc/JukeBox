@@ -28,7 +28,7 @@ use tokio::{
         Mutex,
     },
 };
-use tray_icon::menu::{Menu, MenuEvent, MenuId, MenuItem, PredefinedMenuItem};
+use tray_icon::menu::{Menu, MenuEvent, MenuId, MenuItem};
 use tray_icon::{TrayIcon, TrayIconBuilder, TrayIconEvent};
 
 use crate::actions::types::ActionError;
@@ -38,7 +38,7 @@ use crate::actions::{
     types::{Action, ActionMap},
 };
 use crate::config::{ActionIcon, DeviceConfig, DeviceInfo, JukeBoxConfig};
-use crate::firmware_update::FirmwareUpdateStatus;
+use crate::firmware_update::{FirmwareUpdateStatus, UpdateError};
 use crate::input::InputKey;
 use crate::serial::{serial_task, SerialCommand, SerialEvent};
 use crate::software_update::software_update_task;
@@ -101,13 +101,15 @@ pub struct JukeBoxGui {
 
     pub update_progress: f32,
     pub update_status: FirmwareUpdateStatus,
+    pub update_error: Option<UpdateError>,
 
     pub thread_breaker: Arc<AtomicBool>,
     pub sg_rx: UnboundedReceiver<SerialEvent>,
     pub scmd_txs: Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
+    pub ae_rx: UnboundedReceiver<ActionError>,
+
     pub us_tx: UnboundedSender<FirmwareUpdateStatus>,
     pub us_rx: UnboundedReceiver<FirmwareUpdateStatus>,
-    pub ae_rx: UnboundedReceiver<ActionError>,
 
     pub gu_rx: UnboundedReceiver<(Version, String)>,
     pub available_version: Version,
@@ -266,9 +268,11 @@ impl JukeBoxGui {
             thread_breaker: thread_breaker,
             sg_rx: sg_rx,
             scmd_txs: scmd_txs,
+            ae_rx: ae_rx,
+
             us_tx: us_tx,
             us_rx: us_rx,
-            ae_rx: ae_rx,
+            update_error: None,
 
             gu_rx: gu_rx,
             available_version: Version::parse(env!("CARGO_PKG_VERSION")).unwrap(),
@@ -313,6 +317,28 @@ impl JukeBoxGui {
 
             self.draw_splash_text(c2);
         });
+
+        if self.update_error.is_some() {
+            let update_error = self.update_error.clone().unwrap();
+            Modal::new(Id::new("UpdateErrorModal")).show(ui.ctx(), |ui| {
+                ui.set_width(400.0);
+
+                ui.heading(t!("help.update.error_modal_title"));
+
+                ui.add_space(10.0);
+
+                ui.label(update_error.msg);
+
+                ui.add_space(15.0);
+
+                ui.horizontal_centered(|ui| {
+                    if ui.button(t!("help.update.modal_exit")).clicked() {
+                        self.update_error = None;
+                        self.gui_tab = GuiTab::Device;
+                    }
+                });
+            });
+        }
 
         if self.action_errors.len() > 0 {
             let action = self.action_errors.get(0).unwrap().clone();
@@ -696,13 +722,7 @@ fn build_tray_icon() -> TrayIcon {
     let _ = SHOW_WINDOW_ID.set(Mutex::new(show_i.id().clone()));
     let _ = QUIT_WINDOW_ID.set(Mutex::new(quit_i.id().clone()));
 
-    let _ = tray_menu.append_items(&[
-        &PredefinedMenuItem::about(Some(&t!("window_title")), None),
-        &PredefinedMenuItem::separator(),
-        &show_i,
-        &PredefinedMenuItem::separator(),
-        &quit_i,
-    ]);
+    let _ = tray_menu.append_items(&[&show_i, &quit_i]);
 
     TrayIconBuilder::new()
         .with_icon(icon)
