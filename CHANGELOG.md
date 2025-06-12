@@ -1,3 +1,7 @@
+# v0.2.4 - Firmware Update Stability (June 11, 2025)
+- Update internal libraries. This specifically addresses an issue where the firmware update page may fail when no drivers are available on Windows.
+- Added a message to the firmware update error page to reconnect the device physically or manually update the firmware.
+
 # v0.2.3 - Iconic Async (June 11, 2025)
 - Fix icon device upload in async thread.
 
