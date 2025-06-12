@@ -19,13 +19,11 @@ use tokio::sync::{
 };
 
 use crate::{
-    actions::types::Action,
+    actions::types::{get_icon_bytes_async, Action, ActionError},
     config::{ActionConfig, JukeBoxConfig},
     input::InputKey,
     serial::{SerialCommand, SerialEvent},
 };
-
-use super::types::{get_icon_bytes, ActionError};
 
 async fn update_device_configs(
     scmd_txs: Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
@@ -55,7 +53,7 @@ async fn update_device_configs(
 
         // set icons on screen
         for (k, a) in &keys {
-            let bytes = get_icon_bytes(a);
+            let bytes = get_icon_bytes_async(a).await;
             let _ = tx.send(SerialCommand::SetScrIcon(k.slot(), bytes));
         }
     }

@@ -1,3 +1,6 @@
+# v0.2.3 - Iconic Async (June 11, 2025)
+- Fix icon device upload in async thread.
+
 # v0.2.2 - Debugging Causes Problems (June 9, 2025)
 - Add pop up for any errors from the update process.
 - Allow console window on Windows, for any panics to be traced. This will be removed later.

@@ -286,6 +286,38 @@ impl ActionMap {
     }
 }
 
+// todo: resolve redundancy here
+pub async fn get_icon_bytes_async(action_config: &ActionConfig) -> [u8; 32 * 32 * 2] {
+    let b = match &action_config.icon {
+        ActionIcon::ImageIcon(i) => {
+            let mut icon_cache = ICON_CACHE
+                .get_or_init(|| Mutex::new(HashMap::new()))
+                .lock()
+                .await;
+
+            if !icon_cache.contains_key(i) {
+                // TODO: use fallback in cases where we can't read icon?
+                icon_cache.insert(
+                    i.into(),
+                    std::fs::read(i).expect("failed to read icon data"),
+                );
+            }
+
+            icon_cache.get(i).unwrap().clone()
+        }
+        ActionIcon::DefaultActionIcon => match action_config.action.icon_source() {
+            ImageSource::Uri(_) => panic!(),
+            ImageSource::Texture(_) => panic!(),
+            ImageSource::Bytes { uri: _, bytes } => match bytes {
+                Bytes::Static(items) => items.to_vec(),
+                Bytes::Shared(items) => items.to_vec(),
+            },
+        },
+    };
+
+    get_icon_bytes_internal(b)
+}
+
 pub fn get_icon_bytes(action_config: &ActionConfig) -> [u8; 32 * 32 * 2] {
     let b = match &action_config.icon {
         ActionIcon::ImageIcon(i) => {
@@ -313,6 +345,10 @@ pub fn get_icon_bytes(action_config: &ActionConfig) -> [u8; 32 * 32 * 2] {
         },
     };
 
+    get_icon_bytes_internal(b)
+}
+
+fn get_icon_bytes_internal(b: Vec<u8>) -> [u8; 32 * 32 * 2] {
     let (_, b) = b.split_at(0x7A);
 
     if b.len() != (32 * 32 * 2) {

@@ -17,6 +17,7 @@ const ICON_NO_ACTION: ImageSource =
     include_image!("../../../assets/action-icons/meta-noaction.bmp");
 const ICON_SWITCH_PROFILE: ImageSource =
     include_image!("../../../assets/action-icons/meta-switchprofile.bmp");
+#[allow(dead_code)]
 const ICON_COPY_FROM_PROFILE: ImageSource =
     include_image!("../../../assets/action-icons/meta-copyfromprofile.bmp");
 
