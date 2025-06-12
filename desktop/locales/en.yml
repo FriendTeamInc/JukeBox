@@ -52,6 +52,7 @@ help:
     modal_download_update: "Download Update"
     
     error_modal_title: "Update Error!"
+    error_modal_reconnect_or_manual_update: "Please physically unplug and reconnect your JukeBox. If the device does not reconnect, you may need to manually update the firmware."
     error_modal_exit: "   Ok   "
 
   rgb:

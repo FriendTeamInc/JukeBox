@@ -507,8 +507,8 @@ pub async fn serial_task(
                 .await
                 .unwrap();
             match r {
-                Err(e) => {
-                    log::debug!("get_serial_device() failure: {:#}", e);
+                Err(_e) => {
+                    // log::debug!("get_serial_device() failure: {:#}", _e);
                     sleep(Duration::from_secs(1)).await;
                     continue;
                 }

@@ -1,6 +1,6 @@
 [package]
 name = "jukebox_desktop"
-version = "0.2.3"
+version = "0.2.4"
 edition = "2021"
 build = "build.rs"
 
@@ -42,13 +42,13 @@ discord-rich-presence = { git = "https://github.com/NotQuiteApex/discord-rich-pr
 uuid = "1.16"
 sha1_smol = "1.0"
 
-sysinfo = { version = "0.34", features = ["multithread"] }
-rocm_smi_lib = { version = "0.3.0", features = ["device"], optional = true }
-nvml-wrapper = { version = "0.10", optional = true }
-semver = "1.0.26"
-egui_commonmark = "0.20.0"
-simple-logging = "2.0.2"
-fd-lock = "4.0.4"
+sysinfo = { version = "0.35", features = ["multithread"] }
+rocm_smi_lib = { version = "0.3", features = ["device"], optional = true }
+nvml-wrapper = { version = "0.11", optional = true }
+semver = "1.0"
+egui_commonmark = "0.20"
+simple-logging = "2.0"
+fd-lock = "4.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18"

@@ -331,6 +331,10 @@ impl JukeBoxGui {
 
                 ui.add_space(15.0);
 
+                ui.label(t!("help.update.error_modal_reconnect_or_manual_update"));
+
+                ui.add_space(15.0);
+
                 ui.horizontal_centered(|ui| {
                     if ui.button(t!("help.update.modal_exit")).clicked() {
                         self.update_error = None;
