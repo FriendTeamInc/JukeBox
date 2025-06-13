@@ -605,9 +605,9 @@ impl JukeBoxGui {
 
     fn save_edit(&mut self) {
         match self.gui_tab {
-            GuiTab::EditingAction => self.save_action_and_exit(),
-            GuiTab::EditingRGB => self.save_rgb_and_exit(),
-            GuiTab::EditingScreen => self.save_screen_and_exit(),
+            GuiTab::EditingAction => self.save_action(),
+            GuiTab::EditingRGB => self.save_rgb(),
+            GuiTab::EditingScreen => self.save_screen(),
             _ => (),
         }
     }

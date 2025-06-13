@@ -1,7 +1,9 @@
-# v0.3.0 - Icon Update (June 13, 2025)
+# v0.3.0 - Icon and Save Update (June 13, 2025)
 - Images of arbitrary size can be used as icons now.
 - Device connection status is now more prominent.
 - Added popup warning for if your config file failed to load.
+- Added explicit save button on configuration screens.
+- Further increase timeout of serial to be at most 250 milliseconds.
 
 # v0.2.5 - More Stability (June 12, 2025)
 - Fix USB mass storage device from appearing when the JukeBox is put into update mode from software.

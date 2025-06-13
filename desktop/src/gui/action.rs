@@ -228,7 +228,7 @@ impl JukeBoxGui {
         }
     }
 
-    pub fn save_action_and_exit(&mut self) {
+    pub fn save_action(&mut self) {
         // TODO: have config validate input?
 
         {
@@ -274,7 +274,7 @@ impl JukeBoxGui {
                     }
                 };
                 let test_btn = ui
-                    .add_sized([50.0, 50.0], test_btn)
+                    .add_sized([60.0, 60.0], test_btn)
                     .on_hover_text_at_pointer(t!("help.action.test_input"));
                 if test_btn.clicked() {
                     let h = Handle::current();
@@ -294,7 +294,15 @@ impl JukeBoxGui {
                     }
                 }
                 ui.vertical(|ui| {
-                    ui.allocate_space(vec2(0.0, 2.0));
+                    ui.add_enabled_ui(self.is_action_changed(), |ui| {
+                        if ui
+                            .button(RichText::new(phos::FLOPPY_DISK))
+                            .on_hover_text_at_pointer(t!("help.action.save"))
+                            .clicked()
+                        {
+                            self.save_action();
+                        }
+                    });
                     if ui
                         .button(RichText::new(phos::FOLDER_OPEN))
                         .on_hover_text_at_pointer(t!("help.action.image_icon"))
@@ -334,10 +342,9 @@ impl JukeBoxGui {
                     },
                 );
             });
-            c1.allocate_space(vec2(0.0, 2.0));
             c1.separator();
             c1.allocate_space(vec2(0.0, 2.0));
-            c1.allocate_ui(vec2(228.0, 170.0), |ui| {
+            c1.allocate_ui(vec2(228.0, 162.0), |ui| {
                 ScrollArea::vertical()
                     .id_salt("ActionEdit")
                     .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)

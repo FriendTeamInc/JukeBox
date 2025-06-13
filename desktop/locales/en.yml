@@ -65,12 +65,15 @@ help:
 
   rgb:
     select: "RGB Profile Select"
+    save: "Save RGB Changes"
 
   screen:
     select: "Screen Profile Select"
+    save: "Save Screen Changes"
 
   action:
     test_input: "Test Action"
+    save: "Save Action Changes"
     image_icon: "Choose Custom Icon"
     reset_icon: "Reset Icon"
 

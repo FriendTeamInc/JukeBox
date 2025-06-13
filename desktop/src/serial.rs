@@ -391,7 +391,7 @@ pub fn serial_get_device(connected_uids: &HashSet<String>) -> Result<Serial> {
     let port = ports.get(0).unwrap();
 
     Ok(serialport::new(port.port_name.clone(), 115200)
-        .timeout(Duration::from_millis(100))
+        .timeout(Duration::from_millis(250))
         .open()
         .context("failed to open serial port")?)
 }

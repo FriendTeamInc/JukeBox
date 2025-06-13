@@ -1,9 +1,10 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use eframe::egui::{
-    color_picker::show_color_at, vec2, Align, Color32, ComboBox, Layout, Response, ScrollArea,
-    Sense, Slider, StrokeKind, TextEdit, Ui, Vec2,
+    color_picker::show_color_at, vec2, Align, Color32, ComboBox, Layout, Response, RichText,
+    ScrollArea, Sense, Slider, StrokeKind, TextEdit, Ui, Vec2,
 };
+use egui_phosphor::regular as phos;
 use jukebox_util::{
     peripheral::DeviceType,
     rgb::{RgbProfile, RGB_PROFILE_WAVE},
@@ -161,27 +162,42 @@ impl JukeBoxGui {
             ),
         ];
 
-        ComboBox::from_id_salt("RGBSelect")
-            .selected_text(rgb_defaults[self.editing_rgb.get_type() as usize].1.clone())
-            .width(200.0)
-            .truncate()
-            .show_ui(ui, |ui| {
-                for (i, t, _) in &rgb_defaults {
-                    // TODO: remove this when wave is implemented
-                    if i.get_type() == RGB_PROFILE_WAVE {
-                        continue;
-                    }
+        ui.horizontal(|ui| {
+            ComboBox::from_id_salt("RGBSelect")
+                .selected_text(rgb_defaults[self.editing_rgb.get_type() as usize].1.clone())
+                .width(200.0)
+                .truncate()
+                .show_ui(ui, |ui| {
+                    for (i, t, _) in &rgb_defaults {
+                        // TODO: remove this when wave is implemented
+                        if i.get_type() == RGB_PROFILE_WAVE {
+                            continue;
+                        }
 
-                    if ui
-                        .selectable_label(self.editing_rgb.get_type() == i.get_type(), t.clone())
-                        .clicked()
-                    {
-                        self.editing_rgb = i.clone();
+                        if ui
+                            .selectable_label(
+                                self.editing_rgb.get_type() == i.get_type(),
+                                t.clone(),
+                            )
+                            .clicked()
+                        {
+                            self.editing_rgb = i.clone();
+                        }
                     }
+                })
+                .response
+                .on_hover_text_at_pointer(t!("help.rgb.select"));
+
+            ui.add_enabled_ui(self.is_rgb_changed(), |ui| {
+                if ui
+                    .button(RichText::new(phos::FLOPPY_DISK))
+                    .on_hover_text_at_pointer(t!("help.rgb.save"))
+                    .clicked()
+                {
+                    self.save_rgb();
                 }
-            })
-            .response
-            .on_hover_text_at_pointer(t!("help.rgb.select"));
+            });
+        });
 
         ui.label(rgb_defaults[self.editing_rgb.get_type() as usize].2.clone());
         ui.label("");
@@ -401,7 +417,7 @@ impl JukeBoxGui {
             .unwrap_or(false)
     }
 
-    pub fn save_rgb_and_exit(&mut self) {
+    pub fn save_rgb(&mut self) {
         {
             let mut c = self.config.blocking_lock();
             let p = c.current_profile.clone();

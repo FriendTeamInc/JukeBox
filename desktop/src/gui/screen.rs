@@ -1,7 +1,8 @@
 use eframe::egui::{
-    color_picker::show_color_at, vec2, Align, Color32, ComboBox, Layout, Response, ScrollArea,
-    Sense, Slider, StrokeKind, TextEdit, Ui, Vec2,
+    color_picker::show_color_at, vec2, Align, Color32, ComboBox, Layout, Response, RichText,
+    ScrollArea, Sense, Slider, StrokeKind, TextEdit, Ui, Vec2,
 };
+use egui_phosphor::regular as phos;
 use jukebox_util::{
     color::{combine_to_rgb565, map_565_to_888, split_to_rgb565},
     peripheral::DeviceType,
@@ -104,26 +105,41 @@ impl JukeBoxGui {
             ),
         ];
 
-        ComboBox::from_id_salt("ScreenProfileSelect")
-            .selected_text(
-                screen_defaults[self.editing_screen.get_type() as usize]
-                    .1
-                    .clone(),
-            )
-            .width(200.0)
-            .truncate()
-            .show_ui(ui, |ui| {
-                for (i, t, _) in &screen_defaults {
-                    if ui
-                        .selectable_label(self.editing_screen.get_type() == i.get_type(), t.clone())
-                        .clicked()
-                    {
-                        self.editing_screen = i.clone();
+        ui.horizontal(|ui| {
+            ComboBox::from_id_salt("ScreenProfileSelect")
+                .selected_text(
+                    screen_defaults[self.editing_screen.get_type() as usize]
+                        .1
+                        .clone(),
+                )
+                .width(200.0)
+                .truncate()
+                .show_ui(ui, |ui| {
+                    for (i, t, _) in &screen_defaults {
+                        if ui
+                            .selectable_label(
+                                self.editing_screen.get_type() == i.get_type(),
+                                t.clone(),
+                            )
+                            .clicked()
+                        {
+                            self.editing_screen = i.clone();
+                        }
                     }
+                })
+                .response
+                .on_hover_text_at_pointer(t!("help.screen.select"));
+
+            ui.add_enabled_ui(self.is_screen_changed(), |ui| {
+                if ui
+                    .button(RichText::new(phos::FLOPPY_DISK))
+                    .on_hover_text_at_pointer(t!("help.screen.save"))
+                    .clicked()
+                {
+                    self.save_screen();
                 }
-            })
-            .response
-            .on_hover_text_at_pointer(t!("help.rgb.select"));
+            });
+        });
 
         ui.label(
             screen_defaults[self.editing_screen.get_type() as usize]
@@ -241,7 +257,7 @@ impl JukeBoxGui {
             .unwrap_or(false)
     }
 
-    pub fn save_screen_and_exit(&mut self) {
+    pub fn save_screen(&mut self) {
         {
             let mut c = self.config.blocking_lock();
             let p = c.current_profile.clone();
