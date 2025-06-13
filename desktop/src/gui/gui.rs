@@ -357,6 +357,7 @@ impl JukeBoxGui {
                     if ui.button(t!("help.update.error_modal_exit")).clicked() {
                         self.update_error = None;
                         self.gui_tab = GuiTab::Device;
+                        self.update_status = FirmwareUpdateStatus::Start;
                     }
                 });
             });

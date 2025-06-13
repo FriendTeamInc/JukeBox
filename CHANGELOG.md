@@ -1,3 +1,6 @@
+# v0.3.1 - Update Fixes (June 13, 2025)
+- Fix inability to leave other screens after a failed update occurred.
+
 # v0.3.0 - Icon and Save Update (June 13, 2025)
 - Images of arbitrary size can be used as icons now.
 - Device connection status is now more prominent.
