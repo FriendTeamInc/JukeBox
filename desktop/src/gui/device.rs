@@ -234,39 +234,39 @@ impl JukeBoxGui {
                             .color(Color32::from_rgb(63, 192, 63)),
                         false => RichText::new(phos::PLUGS).color(Color32::from_rgb(192, 63, 63)),
                     };
-                    ui.add_enabled_ui(i.connected, |ui| {
-                        if ui
-                            .button(s)
-                            .on_hover_text_at_pointer(t!("help.device.identify"))
-                            .clicked()
+
+                    let hint = match i.connected {
+                        true => t!("help.device.connected"),
+                        false => t!("help.device.disconnected"),
+                    };
+
+                    if ui.button(s).on_hover_text_at_pointer(hint).clicked() && i.connected {
+                        let scmd_txs = self.scmd_txs.blocking_lock();
+                        let tx = scmd_txs.get(&self.current_device).unwrap();
+                        let _ = tx.send(SerialCommand::Identify);
+                    }
+
+                    ui.scope(|ui| {
+                        let mut btn = Button::new(phos::DOWNLOAD);
+                        let mut hint_text = t!("help.device.update");
+                        if let Some(version) = &self
+                            .devices
+                            .get(&self.current_device)
+                            .unwrap()
+                            .firmware_version
                         {
-                            let scmd_txs = self.scmd_txs.blocking_lock();
-                            let tx = scmd_txs.get(&self.current_device).unwrap();
-                            let _ = tx.send(SerialCommand::Identify);
+                            if *version < self.available_version {
+                                btn = btn.fill(Color32::BLUE);
+                                hint_text = t!("help.device.update_available");
+                            }
                         }
 
-                        ui.scope(|ui| {
-                            let mut btn = Button::new(phos::DOWNLOAD);
-                            let mut hint_text = t!("help.device.update");
-                            if let Some(version) = &self
-                                .devices
-                                .get(&self.current_device)
-                                .unwrap()
-                                .firmware_version
-                            {
-                                if *version < self.available_version {
-                                    btn = btn.fill(Color32::BLUE);
-                                    hint_text = t!("help.device.update_available");
-                                    // TODO: update on hover text to indicate update available
-                                }
-                            }
-
-                            if ui.add(btn).on_hover_text_at_pointer(hint_text).clicked() {
-                                self.gui_tab = GuiTab::Updating;
-                                self.update_progress = 0.0;
-                                self.update_status = FirmwareUpdateStatus::Start;
-                            }
-                        });
+                        if ui.add(btn).on_hover_text_at_pointer(hint_text).clicked() && i.connected
+                        {
+                            self.gui_tab = GuiTab::Updating;
+                            self.update_progress = 0.0;
+                            self.update_status = FirmwareUpdateStatus::Start;
+                        }
                     });
                 });
                 ui.with_layout(Layout::left_to_right(Align::Max), |ui| {

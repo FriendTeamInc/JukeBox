@@ -404,13 +404,9 @@ impl JukeBoxGui {
                 )
             })?
             .into_rgb8();
-        if image.dimensions() != (32, 32) {
-            return Err(ActionError::new(
-                self.current_device.clone(),
-                self.editing_key,
-                t!("help.action.err.wrong_resolution"),
-            ));
-        }
+
+        let image = image::imageops::resize(&image, 32, 32, image::imageops::FilterType::Nearest);
+
         let rgb = image.into_raw();
         let mut icon = [0u16; 32 * 32];
         for i in 0..(32 * 32) {

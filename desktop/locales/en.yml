@@ -12,6 +12,12 @@ settings:
 help:
   no_device: "Please connect a device."
 
+  generic:
+    modal_title: "Error!"
+    modal_exit: "   Ok   "
+    err:
+      config_failed_to_load: "Your previous config file failed to load. A new default config has been made, but your old file is still saved here:\n\n[`%{config_dir}`](%{config_dir})"
+
   back:
     button: "Back"
     save_button: "Save and Back"
@@ -38,6 +44,8 @@ help:
     edit_name: "Edit Device Name"
     forget: "Forget Device"
     identify: "Identify Device"
+    connected: "Connected"
+    disconnected: "Disconnected"
     update: "Update Device"
     update_available: "Update Device\n(Update Available!)"
     rgb: "RGB Control"
@@ -68,7 +76,6 @@ help:
 
     err:
       not_an_image: "Chosen file is not an image."
-      wrong_resolution: "Image has incorrect resolution. Must be 32 x 32."
       mkdir_fail: "Failed to create icon cache directory."
       write_fail: "Failed to write icon to icon cache directory."
 

@@ -99,7 +99,7 @@ impl Default for JukeBoxConfig {
     }
 }
 impl JukeBoxConfig {
-    fn get_dir() -> PathBuf {
+    pub fn get_dir() -> PathBuf {
         let mut p = dirs::config_dir().expect("failed to find config directory");
         p.push("JukeBoxDesktop");
         create_dir_all(&p).expect("failed to create config directory");
@@ -118,13 +118,13 @@ impl JukeBoxConfig {
         p
     }
 
-    pub fn load() -> Self {
+    pub fn load() -> (Self, bool) {
         let path = Self::get_path();
 
         let file = match File::open(path) {
             Err(e) => {
                 log::error!("failed to open config file: {}", e);
-                return JukeBoxConfig::default();
+                return (JukeBoxConfig::default(), false);
             }
             Ok(f) => f,
         };
@@ -149,14 +149,14 @@ impl JukeBoxConfig {
 
                 std::fs::rename(Self::get_path(), p).expect("failed to save old config");
 
-                return JukeBoxConfig::default();
+                return (JukeBoxConfig::default(), true);
             }
             Ok(c) => c,
         };
 
         // TODO: serde_validate the config?
 
-        conf
+        (conf, false)
     }
 
     pub fn save(&self) {

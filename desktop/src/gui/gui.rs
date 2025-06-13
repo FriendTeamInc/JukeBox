@@ -28,7 +28,7 @@ use tokio::{
         Mutex,
     },
 };
-use tray_icon::menu::{Menu, MenuEvent, MenuId, MenuItem};
+use tray_icon::menu::{Menu, MenuEvent, MenuId, MenuItem, PredefinedMenuItem};
 use tray_icon::{TrayIcon, TrayIconBuilder, TrayIconEvent};
 
 use crate::actions::types::ActionError;
@@ -106,7 +106,6 @@ pub struct JukeBoxGui {
     pub thread_breaker: Arc<AtomicBool>,
     pub sg_rx: UnboundedReceiver<SerialEvent>,
     pub scmd_txs: Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
-    pub ae_rx: UnboundedReceiver<ActionError>,
 
     pub us_tx: UnboundedSender<FirmwareUpdateStatus>,
     pub us_rx: UnboundedReceiver<FirmwareUpdateStatus>,
@@ -118,8 +117,10 @@ pub struct JukeBoxGui {
     pub commonmark_cache: CommonMarkCache,
     pub dismissed_update_notif: bool,
 
-    pub action_map: ActionMap,
+    pub generic_errors: VecDeque<String>,
 
+    pub action_map: ActionMap,
+    pub ae_rx: UnboundedReceiver<ActionError>,
     pub action_errors: VecDeque<ActionError>,
 }
 impl eframe::App for JukeBoxGui {
@@ -177,7 +178,7 @@ impl eframe::App for JukeBoxGui {
 }
 impl JukeBoxGui {
     fn new() -> Self {
-        let config = JukeBoxConfig::load();
+        let (config, config_failed_to_load) = JukeBoxConfig::load();
         config.save(); // Immediately save, in case the config was the loaded default
         let devices: HashMap<String, DeviceInfoExt> = config
             .devices
@@ -202,7 +203,7 @@ impl JukeBoxGui {
         let config_enable_splash = config.enable_splash;
         let config_always_save_on_exit = config.always_save_on_exit;
         let config_ignore_update_notifications = config.ignore_update_notifications;
-        let config = Arc::new(Mutex::new(JukeBoxConfig::load()));
+        let config = Arc::new(Mutex::new(JukeBoxConfig::load().0));
 
         // when gui exits, we use these to signal the other threads to stop
         let thread_breaker = Arc::new(AtomicBool::new(false)); // ends other threads from gui
@@ -234,6 +235,18 @@ impl JukeBoxGui {
         spawn(async move { action_task(sr_rx, action_config, action_scmd_txs, ae_tx).await });
         spawn(async move { spawn_blocking(|| system_task(system_stats)) });
         spawn(async move { software_update_task(gu_tx).await });
+
+        let mut generic_errors = VecDeque::new();
+
+        if config_failed_to_load {
+            generic_errors.push_back(
+                t!(
+                    "help.generic.err.config_failed_to_load",
+                    config_dir = JukeBoxConfig::get_dir().display()
+                )
+                .into(),
+            );
+        }
 
         JukeBoxGui {
             splash_timer: Instant::now(),
@@ -272,7 +285,6 @@ impl JukeBoxGui {
             thread_breaker: thread_breaker,
             sg_rx: sg_rx,
             scmd_txs: scmd_txs,
-            ae_rx: ae_rx,
 
             us_tx: us_tx,
             us_rx: us_rx,
@@ -285,8 +297,10 @@ impl JukeBoxGui {
             commonmark_cache: CommonMarkCache::default(),
             dismissed_update_notif: true,
 
-            action_map: ActionMap::new(),
+            generic_errors: generic_errors,
 
+            action_map: ActionMap::new(),
+            ae_rx: ae_rx,
             action_errors: VecDeque::new(),
         }
     }
@@ -426,6 +440,27 @@ impl JukeBoxGui {
                             open::that("https://github.com/FriendTeamInc/JukeBox/releases/latest");
                     }
                 })
+            });
+        }
+
+        if self.generic_errors.len() > 0 {
+            let generic_error = self.generic_errors.get(0).unwrap().clone();
+            Modal::new(Id::new("GenericErrorModal")).show(ui.ctx(), |ui| {
+                ui.set_width(400.0);
+
+                ui.heading(t!("help.generic.modal_title"));
+
+                ui.add_space(10.0);
+
+                CommonMarkViewer::new().show(ui, &mut self.commonmark_cache, &generic_error);
+
+                ui.add_space(15.0);
+
+                ui.horizontal(|ui| {
+                    if ui.button(t!("help.generic.modal_exit")).clicked() {
+                        self.generic_errors.pop_front();
+                    }
+                });
             });
         }
     }
@@ -728,7 +763,13 @@ fn build_tray_icon() -> TrayIcon {
     let _ = SHOW_WINDOW_ID.set(Mutex::new(show_i.id().clone()));
     let _ = QUIT_WINDOW_ID.set(Mutex::new(quit_i.id().clone()));
 
-    let _ = tray_menu.append_items(&[&show_i, &quit_i]);
+    let _ = tray_menu.append_items(&[
+        &PredefinedMenuItem::about(Some(&t!("window_title")), None),
+        &PredefinedMenuItem::separator(),
+        &show_i,
+        &PredefinedMenuItem::separator(),
+        &quit_i,
+    ]);
 
     TrayIconBuilder::new()
         .with_icon(icon)

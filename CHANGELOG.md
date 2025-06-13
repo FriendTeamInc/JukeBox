@@ -1,3 +1,8 @@
+# v0.3.0 - Icon Update (June 13, 2025)
+- Images of arbitrary size can be used as icons now.
+- Device connection status is now more prominent.
+- Added popup warning for if your config file failed to load.
+
 # v0.2.5 - More Stability (June 12, 2025)
 - Fix USB mass storage device from appearing when the JukeBox is put into update mode from software.
 - Fix firmware update confirmation button translation string.
