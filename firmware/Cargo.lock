@@ -452,7 +452,7 @@ dependencies = [
 
 [[package]]
 name = "jukebox_firmware"
-version = "0.2.4"
+version = "0.2.5"
 dependencies = [
  "cortex-m",
  "cortex-m-rt",

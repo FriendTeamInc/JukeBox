@@ -46,7 +46,7 @@ use crate::splash::SPLASH_MESSAGES;
 use crate::system::system_task;
 
 const APP_ICON: &[u8] = include_bytes!("../../../assets/applogo.png");
-static CLOSE_WINDOW: OnceLock<Mutex<(bool, bool)>> = OnceLock::new();
+static QUIT_APP: OnceLock<Mutex<bool>> = OnceLock::new();
 static SHOW_WINDOW_ID: OnceLock<Mutex<MenuId>> = OnceLock::new();
 static QUIT_WINDOW_ID: OnceLock<Mutex<MenuId>> = OnceLock::new();
 
@@ -124,31 +124,40 @@ pub struct JukeBoxGui {
 }
 impl eframe::App for JukeBoxGui {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+        // Call a new frame every frame, bypassing the limited updates.
+        // NOTE: This is a bad idea, we should probably change this later
+        // and only update the window as necessary.
         // TODO: give ctx to other threads?, so ui can be updated as necessary.
         // but only once
+        ctx.request_repaint();
 
-        // TODO: move this to App::tick when available
+        // TODO: refactor all this to App::tick when available
         // https://github.com/emilk/egui/issues/5113
         self.handle_serial_events(ctx);
-
-        CentralPanel::default().show(ctx, |ui| self.ui(ui));
-
-        let mut close_window = CLOSE_WINDOW.get().unwrap().blocking_lock();
-
-        while let Ok(_) = TrayIconEvent::receiver().try_recv() {}
-        let show_window_id = SHOW_WINDOW_ID.get().unwrap().blocking_lock();
-        let quit_window_id = QUIT_WINDOW_ID.get().unwrap().blocking_lock();
-        while let Ok(e) = MenuEvent::receiver().try_recv() {
-            if e.id == *show_window_id {
-                close_window.0 = false;
-            } else if e.id == *quit_window_id {
-                close_window.1 = true;
-                ctx.send_viewport_cmd(ViewportCommand::Close);
+        let mut quit_app = QUIT_APP.get().unwrap().blocking_lock();
+        #[cfg(target_os = "linux")]
+        {
+            while let Ok(_e) = TrayIconEvent::receiver().try_recv() {}
+            let show_window_id = SHOW_WINDOW_ID.get().unwrap().blocking_lock();
+            let quit_window_id = QUIT_WINDOW_ID.get().unwrap().blocking_lock();
+            while let Ok(e) = MenuEvent::receiver().try_recv() {
+                log::info!("menuevent: {:?}", e);
+                if e.id == *show_window_id {
+                    ctx.send_viewport_cmd(ViewportCommand::Visible(true));
+                } else if e.id == *quit_window_id {
+                    ctx.send_viewport_cmd(ViewportCommand::Visible(false));
+                    *quit_app = true;
+                    ctx.send_viewport_cmd(ViewportCommand::Close);
+                }
             }
         }
-
         if ctx.input(|i| i.viewport().close_requested()) {
-            if close_window.1 {
+            #[cfg(not(target_os = "linux"))]
+            {
+                *quit_app = true;
+            }
+
+            if *quit_app {
                 for (_k, tx) in self.scmd_txs.blocking_lock().iter() {
                     let _ = tx.send(SerialCommand::Disconnect);
                     // .expect(&format!("could not send disconnect signal to device {}", k));
@@ -159,16 +168,11 @@ impl eframe::App for JukeBoxGui {
                 return;
             } else {
                 ctx.send_viewport_cmd(ViewportCommand::CancelClose);
-                close_window.0 = true;
+                ctx.send_viewport_cmd(ViewportCommand::Visible(false));
             }
         }
 
-        ctx.send_viewport_cmd(ViewportCommand::Visible(!close_window.0));
-
-        // Call a new frame every frame, bypassing the limited updates.
-        // NOTE: This is a bad idea, we should probably change this later
-        // and only update the window as necessary.
-        ctx.request_repaint();
+        CentralPanel::default().show(ctx, |ui| self.ui(ui));
     }
 }
 impl JukeBoxGui {
@@ -336,7 +340,7 @@ impl JukeBoxGui {
                 ui.add_space(15.0);
 
                 ui.horizontal_centered(|ui| {
-                    if ui.button(t!("help.update.modal_exit")).clicked() {
+                    if ui.button(t!("help.update.error_modal_exit")).clicked() {
                         self.update_error = None;
                         self.gui_tab = GuiTab::Device;
                     }
@@ -445,8 +449,6 @@ impl JukeBoxGui {
             bring_back_up = true;
         }
         if bring_back_up {
-            let mut close_window = CLOSE_WINDOW.get().unwrap().blocking_lock();
-            close_window.0 = false;
             ctx.send_viewport_cmd(ViewportCommand::RequestUserAttention(
                 UserAttentionType::Informational,
             ));
@@ -673,7 +675,7 @@ pub fn basic_gui() {
         ..Default::default()
     };
 
-    let _ = CLOSE_WINDOW.set(Mutex::new((false, false)));
+    let _ = QUIT_APP.set(Mutex::new(false));
 
     #[cfg(target_os = "linux")]
     std::thread::spawn(|| {

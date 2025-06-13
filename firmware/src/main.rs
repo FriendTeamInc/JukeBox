@@ -73,6 +73,8 @@ use defmt::*;
 use defmt_rtt as _;
 use util::{get_keyboard_events, reset_icons, PERIPHERAL_INPUTS, UPDATE_TRIGGER};
 
+use crate::modules::serial::{SERIAL_READ_SIZE, SERIAL_WRITE_SIZE};
+
 static CORE1_STACK: Stack<16384> = Stack::new();
 
 #[entry]
@@ -120,7 +122,8 @@ fn main() -> ! {
         .add_device(usbd_hid::device::keyboard::NKROBootKeyboardConfig::default())
         // .add_device(usbd_hid::device::mouse::WheelMouseConfig::default())
         .build(&usb_bus);
-    let mut usb_serial = SerialPort::new(&usb_bus);
+    let mut usb_serial =
+        SerialPort::new_with_store(&usb_bus, [0u8; SERIAL_READ_SIZE], [0u8; SERIAL_WRITE_SIZE]);
     let usb_pid = if cfg!(feature = "keypad") {
         0xF20A
     } else if cfg!(feature = "knobpad") {
@@ -298,7 +301,7 @@ fn main() -> ! {
                             cortex_m::asm::nop();
                         }
 
-                        reset_to_usb_boot(0, 0);
+                        reset_to_usb_boot(0, 1);
                     }
                 });
             }

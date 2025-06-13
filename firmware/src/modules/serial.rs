@@ -23,7 +23,7 @@ use jukebox_util::{
 };
 use ringbuffer::{ConstGenericRingBuffer, RingBuffer};
 use rp2040_hal::{fugit::ExtU32, timer::CountDown, usb::UsbBus};
-use usbd_serial::SerialPort;
+use usbd_serial::SerialPort as FullSerialPort;
 
 use crate::util::{
     reset_peripherals, CONNECTION_STATUS, DEFAULT_INPUTS, ICONS, IDENTIFY_TRIGGER, KEYBOARD_EVENTS,
@@ -31,8 +31,11 @@ use crate::util::{
     SCREEN_SYSTEM_STATS, UPDATE_TRIGGER,
 };
 
-const BUFFER_SIZE: usize = 4096;
+type SerialPort<'a> = FullSerialPort<'a, UsbBus, [u8; SERIAL_READ_SIZE], [u8; SERIAL_WRITE_SIZE]>;
 
+pub const SERIAL_WRITE_SIZE: usize = 512;
+pub const SERIAL_READ_SIZE: usize = 128;
+const BUFFER_SIZE: usize = 4096;
 const KEEPALIVE: u32 = 500;
 
 pub struct SerialMod {
@@ -52,7 +55,7 @@ impl SerialMod {
         }
     }
 
-    fn send(serial: &mut SerialPort<UsbBus>, rsp: &[u8]) {
+    fn send(serial: &mut SerialPort, rsp: &[u8]) {
         // TODO: its possible for write to drop some characters, if we're not careful.
         // we should probably handle that before we take on larger communications.
         while let Err(_) = serial.write(rsp) {
@@ -98,7 +101,7 @@ impl SerialMod {
         self.state.clone()
     }
 
-    fn start_update(&mut self, serial: &mut SerialPort<UsbBus>) {
+    fn start_update(&mut self, serial: &mut SerialPort) {
         info!("Command Update");
         Self::send(serial, &[b'0', b'0', b'1', RSP_DISCONNECTED]);
         CONNECTION_STATUS.with_mut_lock(|c| *c = Connection::NotConnected(true));
@@ -106,18 +109,13 @@ impl SerialMod {
         UPDATE_TRIGGER.with_mut_lock(|u| *u = true);
     }
 
-    fn start_identify(&mut self, serial: &mut SerialPort<UsbBus>) {
+    fn start_identify(&mut self, serial: &mut SerialPort) {
         info!("Command Identify");
         Self::send(serial, &[b'0', b'0', b'1', RSP_ACK]);
         IDENTIFY_TRIGGER.with_mut_lock(|u| *u = true);
     }
 
-    pub fn update(
-        &mut self,
-        serial: &mut SerialPort<UsbBus>,
-        firmware_version: &str,
-        device_uid: &str,
-    ) {
+    pub fn update(&mut self, serial: &mut SerialPort, firmware_version: &str, device_uid: &str) {
         if self.state == Connection::Connected && self.keepalive_timer.wait().is_ok() {
             warn!("Keepalive triggered, disconnecting.");
             reset_peripherals(false);

@@ -174,10 +174,10 @@ async fn expect_string(f: &mut Serial, expect: &[u8]) -> Result<()> {
 async fn send_expect(f: &mut Serial, send: &[u8], expect: &[u8]) -> Result<()> {
     send_bytes(f, send)
         .await
-        .with_context(|| format!("failed to send bytes {:?}", send))?;
+        .with_context(|| format!("failed to send bytes in send/expect"))?;
     expect_string(f, expect)
         .await
-        .with_context(|| format!("failed to get bytes {:?}", expect))?;
+        .with_context(|| format!("failed to get expected bytes in send/expect"))?;
     Ok(())
 }
 
@@ -378,8 +378,11 @@ pub fn serial_get_device(connected_uids: &HashSet<String>) -> Result<Serial> {
         })
         .collect();
 
-    log::debug!("serial ports found: {:?}", ports);
-    log::debug!("serial ports connected: {:?}", connected_uids);
+    log::debug!(
+        "serial ports found/connected: {:?} / {:?}",
+        ports,
+        connected_uids
+    );
 
     if ports.len() == 0 {
         bail!("failed to find any jukebox serial ports");
@@ -388,7 +391,7 @@ pub fn serial_get_device(connected_uids: &HashSet<String>) -> Result<Serial> {
     let port = ports.get(0).unwrap();
 
     Ok(serialport::new(port.port_name.clone(), 115200)
-        .timeout(std::time::Duration::from_millis(10))
+        .timeout(Duration::from_millis(100))
         .open()
         .context("failed to open serial port")?)
 }
