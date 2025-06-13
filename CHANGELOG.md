@@ -1,6 +1,7 @@
 # v0.2.5 - More Stability (June 12, 2025)
 - Fix USB mass storage device from appearing when the JukeBox is put into update mode from software.
 - Fix firmware update confirmation button translation string.
+- Adjust USB serial internal buffer sizes in firmware.
 - Revert tray icon functionality for Windows while we wait for egui to add `App::tick()`.
 - Force timeout of serial to be at most 100 milliseconds.
 
