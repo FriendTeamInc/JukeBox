@@ -4,6 +4,7 @@
 - Adjust USB serial internal buffer sizes in firmware.
 - Revert tray icon functionality for Windows while we wait for egui to add `App::tick()`.
 - Force timeout of serial to be at most 100 milliseconds.
+- Update firmware dependencies
 
 # v0.2.4 - Firmware Update Stability (June 11, 2025)
 - Update internal libraries. This specifically addresses an issue where the firmware update page may fail when no drivers are available on Windows.
