@@ -1,3 +1,6 @@
+# v0.4.1 - Feelin' Hot (June 14, 2025)
+- Add preliminary CPU temperature reading support. This may only work on AMD-based CPU's, and has been only tested on Linux.
+
 # v0.4.0 - Mouse Controls, Not for Mice (June 14, 2025)
 - Add mouse event action in app and firmware.
 - Fix device not appearing correctly as composite device.

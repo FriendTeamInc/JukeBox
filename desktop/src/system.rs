@@ -4,7 +4,7 @@ use std::{collections::VecDeque, sync::Arc, thread::sleep};
 
 use anyhow::Result;
 use jukebox_util::{smallstr::SmallStr, stats::SystemStats};
-use sysinfo::{MemoryRefreshKind, System, MINIMUM_CPU_UPDATE_INTERVAL};
+use sysinfo::{Components, MemoryRefreshKind, System, MINIMUM_CPU_UPDATE_INTERVAL};
 use tokio::sync::Mutex;
 
 #[cfg(feature = "gpu")]
@@ -154,6 +154,11 @@ impl StatReport {
 
 pub fn system_task(system_stats: Arc<Mutex<SystemStats>>) -> Result<()> {
     let mut sys = System::new();
+    let mut cmps = Components::new_with_refreshed_list();
+    log::info!("components:");
+    for c in &cmps {
+        log::info!("{c:?}");
+    }
 
     // heuristic to figure out which gpu stats to get
     // we can reasonably assume a user won't have both (probably) and the same count (hopefully)
@@ -213,7 +218,17 @@ pub fn system_task(system_stats: Arc<Mutex<SystemStats>>) -> Result<()> {
 
         let cpu_usage = cpu_usage / (cpu_count as f32);
 
-        // TODO: CPU temp is available as a component in sysinfo, but its different for every CPU :(
+        let mut cpu_temperature = 0.0;
+        cmps.refresh(false);
+        for c in &cmps {
+            // TODO: find more cpu temp labels
+            match c.label() {
+                "Tctl" => {
+                    cpu_temperature = c.temperature().unwrap();
+                }
+                _ => (),
+            }
+        }
 
         // Get Memory Info
         sys.refresh_memory_specifics(MemoryRefreshKind::nothing().with_ram());
@@ -273,7 +288,7 @@ pub fn system_task(system_stats: Arc<Mutex<SystemStats>>) -> Result<()> {
         // push report, we take an average of the past few samples to put in the mutex
         stat_reports.push_back(StatReport {
             cpu_usage,
-            cpu_temperature: 0.0,
+            cpu_temperature,
             memory_used,
             memory_total,
 
