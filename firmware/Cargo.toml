@@ -1,6 +1,6 @@
 [package]
 name = "jukebox_firmware"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2021"
 license = "MIT"
 
@@ -24,7 +24,7 @@ defmt = "1"
 defmt-rtt = { version = "1", features = ["disable-blocking-mode"] }
 panic-probe = { version = "1", features = ["print-defmt"] }
 
-usb-device = "0.3"
+usb-device = { version = "0.3", features = ["control-buffer-256"] }
 usbd-human-interface-device = "0.6"
 usbd-serial = "0.2"
 

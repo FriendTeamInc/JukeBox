@@ -1,3 +1,6 @@
+# v0.4.2 - IADs Fix (June 15, 2025)
+- Fix device not functioning on Windows due to misconfigured USB descriptors.
+
 # v0.4.1 - Feelin' Hot (June 14, 2025)
 - Add preliminary CPU temperature reading support. This may only work on AMD-based CPU's, and has been only tested on Linux.
 

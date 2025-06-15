@@ -161,9 +161,7 @@ fn main() -> ! {
         .unwrap()
         .max_power(500)
         .unwrap()
-        .device_class(0)
-        .device_sub_class(0)
-        .device_protocol(0)
+        .composite_with_iads()
         .build();
 
     reset_icons();
