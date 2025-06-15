@@ -29,7 +29,7 @@ pub fn input_action_list() -> (String, Vec<(String, Action, String)>) {
         t!("action.input.title", icon = phos::CURSOR_CLICK).into(),
         vec![
             (AID_INPUT_KEYBOARD.into(), Action::InputKeyboard(InputKeyboard::default()), t!("action.input.keyboard.title").into()),
-            // (AID_INPUT_MOUSE.into(),    Action::InputMouse(InputMouse::default()),    t!("action.input.mouse.title").into()),
+            (AID_INPUT_MOUSE.into(),    Action::InputMouse(InputMouse::default()),       t!("action.input.mouse.title").into()),
             // (AID_INPUT_GAMEPAD.into(),  Action::InputGamepad(InputGamepad::default()),  t!("action.input.gamepad.title").into()),
         ],
     )
@@ -177,27 +177,27 @@ impl InputMouse {
             ),
             (
                 (self.buttons & (1 << 3)) > 0,
-                t!("action.input.mouse.button.unknown"),
+                t!("action.input.mouse.button.button_4"),
             ),
             (
                 (self.buttons & (1 << 4)) > 0,
-                t!("action.input.mouse.button.unknown"),
+                t!("action.input.mouse.button.button_5"),
             ),
             (
                 (self.buttons & (1 << 5)) > 0,
-                t!("action.input.mouse.button.unknown"),
+                t!("action.input.mouse.button.button_6"),
             ),
             (
                 (self.buttons & (1 << 6)) > 0,
-                t!("action.input.mouse.button.unknown"),
+                t!("action.input.mouse.button.button_7"),
             ),
             (
                 (self.buttons & (1 << 7)) > 0,
-                t!("action.input.mouse.button.unknown"),
+                t!("action.input.mouse.button.button_8"),
             ),
         ];
         let mut n = 0;
-        for (i, (bit, text)) in bits.iter_mut().enumerate().rev() {
+        for (i, (bit, text)) in bits.iter_mut().enumerate() {
             ui.checkbox(bit, text.clone());
             n |= (*bit as u8) << i;
         }

@@ -65,7 +65,13 @@ use rp2040_hal::{pio::PIOExt, Clock};
 
 use usb_device::{class_prelude::*, prelude::*};
 use usbd_hid::prelude::*;
-use usbd_human_interface_device::{self as usbd_hid, device::keyboard::NKROBootKeyboard};
+use usbd_human_interface_device::{
+    self as usbd_hid,
+    device::{
+        keyboard::NKROBootKeyboard,
+        mouse::{WheelMouse, WheelMouseReport},
+    },
+};
 use usbd_serial::SerialPort;
 
 #[allow(unused_imports)]
@@ -73,7 +79,10 @@ use defmt::*;
 use defmt_rtt as _;
 use util::{get_keyboard_events, reset_icons, PERIPHERAL_INPUTS, UPDATE_TRIGGER};
 
-use crate::modules::serial::{SERIAL_READ_SIZE, SERIAL_WRITE_SIZE};
+use crate::{
+    modules::serial::{SERIAL_READ_SIZE, SERIAL_WRITE_SIZE},
+    util::get_mouse_events,
+};
 
 static CORE1_STACK: Stack<16384> = Stack::new();
 
@@ -120,7 +129,7 @@ fn main() -> ! {
     ));
     let mut usb_hid = UsbHidClassBuilder::new()
         .add_device(usbd_hid::device::keyboard::NKROBootKeyboardConfig::default())
-        // .add_device(usbd_hid::device::mouse::WheelMouseConfig::default())
+        .add_device(usbd_hid::device::mouse::WheelMouseConfig::default())
         .build(&usb_bus);
     let mut usb_serial =
         SerialPort::new_with_store(&usb_bus, [0u8; SERIAL_READ_SIZE], [0u8; SERIAL_WRITE_SIZE]);
@@ -148,7 +157,13 @@ fn main() -> ! {
             .product(usb_product)
             .serial_number(&uid)])
         .unwrap()
-        .composite_with_iads()
+        .max_packet_size_0(64)
+        .unwrap()
+        .max_power(500)
+        .unwrap()
+        .device_class(0)
+        .device_sub_class(0)
+        .device_protocol(0)
         .build();
 
     reset_icons();
@@ -309,7 +324,7 @@ fn main() -> ! {
         .expect("failed to start core1");
 
     // main event loop (USB comms)
-    // let mut prev_mouse_report = WheelMouseReport::default();
+    let mut prev_mouse_report = WheelMouseReport::default();
     loop {
         // tick for hid devices
         if hid_tick.wait().is_ok() {
@@ -327,23 +342,22 @@ fn main() -> ! {
             }
 
             // handle mouse
-            // TODO: get this working?
-            // let mouse_report = get_mouse_events();
-            // if mouse_report != prev_mouse_report {
-            //     match usb_hid
-            //         .device::<WheelMouse<'_, _>, _>()
-            //         .write_report(&mouse_report)
-            //     {
-            //         Ok(_) => {
-            //             prev_mouse_report = mouse_report;
-            //         }
-            //         Err(UsbHidError::Duplicate) => {}
-            //         Err(UsbHidError::WouldBlock) => {}
-            //         Err(e) => {
-            //             core::panic!("Failed to write mouse report: {:?}", e)
-            //         }
-            //     }
-            // }
+            let mouse_report = get_mouse_events();
+            if mouse_report != prev_mouse_report {
+                match usb_hid
+                    .device::<WheelMouse<'_, _>, _>()
+                    .write_report(&mouse_report)
+                {
+                    Ok(_) => {
+                        prev_mouse_report = mouse_report;
+                    }
+                    Err(UsbHidError::Duplicate) => {}
+                    Err(UsbHidError::WouldBlock) => {}
+                    Err(e) => {
+                        core::panic!("Failed to write mouse report: {:?}", e)
+                    }
+                }
+            }
         }
 
         // tick for n-key rollover
@@ -361,10 +375,7 @@ fn main() -> ! {
         if usb_dev.poll(&mut [&mut usb_hid, &mut usb_serial]) {
             // handle serial
             serial_mod.update(&mut usb_serial, ver, uid);
-            match usb_serial.flush() {
-                Ok(_) => {}
-                Err(_) => {}
-            }
+            let _ = usb_serial.flush();
         }
     }
 }

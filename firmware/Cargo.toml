@@ -1,6 +1,6 @@
 [package]
 name = "jukebox_firmware"
-version = "0.3.1"
+version = "0.4.0"
 edition = "2021"
 license = "MIT"
 
@@ -25,7 +25,7 @@ defmt-rtt = { version = "1", features = ["disable-blocking-mode"] }
 panic-probe = { version = "1", features = ["print-defmt"] }
 
 usb-device = "0.3"
-usbd-human-interface-device = { version = "0.5" }
+usbd-human-interface-device = "0.6"
 usbd-serial = "0.2"
 
 ringbuffer = { version = "0.15", default-features = false }
@@ -40,7 +40,7 @@ mutually_exclusive_features = "0.1"
 embedded-dma = "0.2"
 embedded-graphics = { version = "0.8", features = ["fixed_point"] }
 embedded-graphics-framebuf = "0.5"
-mplusfonts = "0.1"
+mplusfonts = "0.2"
 
 [features]
 default = ["keypad"]

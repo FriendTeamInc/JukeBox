@@ -1,3 +1,10 @@
+# v0.4.0 - Mouse Controls, Not for Mice (June 14, 2025)
+- Add mouse event action in app and firmware.
+- Fix device not appearing correctly as composite device.
+- Fix device not requesting enough power.
+- Fix device max packet size to be larger for performance.
+- Update some firmware dependencies.
+
 # v0.3.1 - Update Fixes (June 13, 2025)
 - Fix inability to leave other screens after a failed update occurred.
 

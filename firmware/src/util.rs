@@ -196,7 +196,7 @@ pub fn get_keyboard_events() -> [Keyboard; 12 * 6] {
     keys
 }
 
-pub fn _get_mouse_events() -> WheelMouseReport {
+pub fn get_mouse_events() -> WheelMouseReport {
     let mut buttons = 0u8;
     let mut x = 0isize;
     let mut y = 0isize;

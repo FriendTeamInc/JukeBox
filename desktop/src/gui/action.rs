@@ -6,7 +6,10 @@ use eframe::egui::{
 };
 use egui_phosphor::regular as phos;
 use image::EncodableLayout;
-use jukebox_util::{input::KeyboardEvent, peripheral::DeviceType};
+use jukebox_util::{
+    input::{KeyboardEvent, MouseEvent},
+    peripheral::DeviceType,
+};
 use rfd::FileDialog;
 use tokio::runtime::Handle;
 
@@ -112,19 +115,32 @@ impl JukeBoxGui {
                 let txs = self.scmd_txs.blocking_lock();
                 if let Some(tx) = txs.get(device_uid) {
                     let slot = k.slot();
-                    let _ = match &a.action {
-                        Action::InputKeyboard(kb) => tx.send(SerialCommand::SetKeyboardInput(
-                            slot,
-                            kb.get_keyboard_event(),
-                        )),
-                        Action::InputMouse(ms) => {
-                            tx.send(SerialCommand::SetMouseInput(slot, ms.get_mouse_event()))
+                    match &a.action {
+                        Action::InputKeyboard(kb) => {
+                            let _ = tx.send(SerialCommand::SetKeyboardInput(
+                                slot,
+                                kb.get_keyboard_event(),
+                            ));
+                            let _ =
+                                tx.send(SerialCommand::SetMouseInput(slot, MouseEvent::default()));
                         }
-                        _ => tx.send(SerialCommand::SetKeyboardInput(
-                            slot,
-                            KeyboardEvent::empty_event(),
-                        )),
-                    };
+                        Action::InputMouse(ms) => {
+                            let _ = tx.send(SerialCommand::SetKeyboardInput(
+                                slot,
+                                KeyboardEvent::empty_event(),
+                            ));
+                            let _ =
+                                tx.send(SerialCommand::SetMouseInput(slot, ms.get_mouse_event()));
+                        }
+                        _ => {
+                            let _ = tx.send(SerialCommand::SetKeyboardInput(
+                                slot,
+                                KeyboardEvent::empty_event(),
+                            ));
+                            let _ =
+                                tx.send(SerialCommand::SetMouseInput(slot, MouseEvent::default()));
+                        }
+                    }
                 }
             }
         }
