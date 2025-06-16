@@ -123,9 +123,16 @@ impl StatReport {
 
     pub fn to_system_stats(self, cpu_name: String, gpu_info: String) -> SystemStats {
         let cpu_usage = format!("{: >5.1}", self.cpu_usage);
-        let cpu_temperature = format!("{: >5.1}", self.cpu_temperature);
         let (memory_used, memory_total, memory_unit) =
             Self::format_memory(self.memory_used, self.memory_total);
+
+        // sysinfo crate does not provide temperature on windows machines currently
+        // TODO: when it eventually does, we can remove this
+        let cpu_temperature = if cfg!(target_os = "windows") {
+            String::from("N/A")
+        } else {
+            format!("{: >5.1}", self.cpu_temperature)
+        };
 
         let mut gpu_name = gpu_info.replace("GeForce", "").trim().to_string();
         gpu_name.truncate(20);

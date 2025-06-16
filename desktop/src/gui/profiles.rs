@@ -5,7 +5,7 @@ use egui_phosphor::regular as phos;
 use jukebox_util::{peripheral::DeviceType, rgb::RgbProfile, screen::ScreenProfile};
 
 use crate::{
-    actions::meta::{AID_META_COPY_FROM_PROFILE, AID_META_SWITCH_PROFILE},
+    actions::{meta::MetaSwitchProfile, types::Action},
     config::DeviceConfig,
     serial::SerialCommand,
 };
@@ -17,7 +17,6 @@ impl JukeBoxGui {
         ui.add_enabled_ui(self.gui_tab == GuiTab::Device, |ui| {
             // Profile select/edit
             if self.profile_renaming {
-                // TODO: this shifts everything down a bit too much, fix later
                 let edit =
                     ui.add(TextEdit::singleline(&mut self.profile_name_entry).desired_width(142.0));
                 if edit.lost_focus() && self.profile_name_entry.len() > 0 {
@@ -29,34 +28,39 @@ impl JukeBoxGui {
                         .profiles
                         .contains_key(&self.profile_name_entry);
 
-                    if !contains {
+                    if !contains && self.profile_name_entry.chars().count() <= 18 {
                         {
                             let mut conf = self.config.blocking_lock();
 
-                            // TODO: make sure name is only 18 utf8 code points long
-
-                            let p = conf.current_profile.clone();
-                            let c = conf.profiles.remove(&p).expect("");
+                            let current_profile = conf.current_profile.clone();
+                            let c = conf.profiles.remove(&current_profile).expect("");
                             conf.profiles.insert(self.profile_name_entry.clone(), c);
                             conf.current_profile.replace_with(&self.profile_name_entry);
 
-                            // TODO: edit configs to reference new profile instead of wiping it
                             for (_, p) in conf.profiles.iter_mut() {
                                 for (_, d) in p.iter_mut() {
                                     for (_, k) in d.key_map.iter_mut() {
-                                        match k.action.get_type().as_ref() {
-                                            AID_META_SWITCH_PROFILE => {
-                                                k.action = self
-                                                    .action_map
-                                                    .enum_new(AID_META_SWITCH_PROFILE.into());
+                                        k.action = match &k.action {
+                                            Action::MetaSwitchProfile(msp) => {
+                                                if msp.profile == current_profile {
+                                                    Action::MetaSwitchProfile(MetaSwitchProfile {
+                                                        profile: self.profile_name_entry.clone(),
+                                                    })
+                                                } else {
+                                                    k.action.clone()
+                                                }
                                             }
-                                            AID_META_COPY_FROM_PROFILE => {
-                                                k.action = self
-                                                    .action_map
-                                                    .enum_new(AID_META_COPY_FROM_PROFILE.into());
-                                            }
-                                            _ => {}
-                                        }
+                                            // Action::MetaCopyFromProfile(mcfp) => {
+                                            //     if mcfp.profile == current_profile {
+                                            //         Action::MetaCopyFromProfile(MetaCopyFromProfile {
+                                            //             profile: self.profile_name_entry.clone(),
+                                            //         })
+                                            //     } else {
+                                            //         k.action.clone()
+                                            //     }
+                                            // }
+                                            _ => k.action.clone(),
+                                        };
                                     }
                                 }
                             }
@@ -167,27 +171,34 @@ impl JukeBoxGui {
                     if delete_btn.clicked() {
                         {
                             let mut conf = self.config.blocking_lock();
-                            let p = conf.current_profile.clone();
-                            conf.profiles.remove(&p);
+                            let old_profile = conf.current_profile.clone();
+                            conf.profiles.remove(&old_profile);
                             conf.current_profile = conf.profiles.keys().next().unwrap().clone();
 
                             for (_, p) in conf.profiles.iter_mut() {
                                 for (_, d) in p.iter_mut() {
                                     for (_, k) in d.key_map.iter_mut() {
-                                        // TODO: only reset configs that reference the old profile
-                                        match k.action.get_type().as_ref() {
-                                            AID_META_SWITCH_PROFILE => {
-                                                k.action = self
-                                                    .action_map
-                                                    .enum_new(AID_META_SWITCH_PROFILE.into());
+                                        k.action = match &k.action {
+                                            Action::MetaSwitchProfile(msp) => {
+                                                if msp.profile == old_profile {
+                                                    Action::MetaSwitchProfile(MetaSwitchProfile {
+                                                        profile: String::new(),
+                                                    })
+                                                } else {
+                                                    k.action.clone()
+                                                }
                                             }
-                                            AID_META_COPY_FROM_PROFILE => {
-                                                k.action = self
-                                                    .action_map
-                                                    .enum_new(AID_META_COPY_FROM_PROFILE.into());
-                                            }
-                                            _ => {}
-                                        }
+                                            // Action::MetaCopyFromProfile(mcfp) => {
+                                            //     if mcfp.profile == old_profile {
+                                            //         Action::MetaCopyFromProfile(MetaCopyFromProfile {
+                                            //             profile: String::new(),
+                                            //         })
+                                            //     } else {
+                                            //         k.action.clone()
+                                            //     }
+                                            // }
+                                            _ => k.action.clone(),
+                                        };
                                     }
                                 }
                             }

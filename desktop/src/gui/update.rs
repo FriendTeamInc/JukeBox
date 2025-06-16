@@ -100,7 +100,7 @@ impl JukeBoxGui {
             ));
 
             ui.allocate_space(vec2(0.0, 5.0));
-            ui.label(RichText::new(t!("update.warning")).color(Color32::DARK_RED)); // TODO
+            ui.label(RichText::new(t!("update.warning")).color(Color32::DARK_RED));
 
             ui.allocate_space(vec2(0.0, 13.0));
 

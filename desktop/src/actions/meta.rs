@@ -11,6 +11,7 @@ use super::types::{Action, ActionError};
 
 pub const AID_META_NO_ACTION: &str = "MetaNoAction";
 pub const AID_META_SWITCH_PROFILE: &str = "MetaSwitchProfile";
+#[allow(dead_code)]
 pub const AID_META_COPY_FROM_PROFILE: &str = "MetaCopyFromProfile";
 
 const ICON_NO_ACTION: ImageSource =
@@ -88,7 +89,7 @@ impl MetaNoAction {
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct MetaSwitchProfile {
-    profile: String,
+    pub profile: String,
 }
 impl MetaSwitchProfile {
     pub async fn on_press(

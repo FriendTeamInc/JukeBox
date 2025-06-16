@@ -1,3 +1,7 @@
+# v0.4.3 - Patch TODOs (June 16, 2025)
+- Switch Profile action will now better switch its target profile when the original target profile is deleted or renamed.
+- Disable CPU temperature read out on Windows (since Windows and sysinfo do not have methods to read temperature currently).
+
 # v0.4.2 - IADs Fix (June 15, 2025)
 - Fix device not functioning on Windows due to misconfigured USB descriptors.
 

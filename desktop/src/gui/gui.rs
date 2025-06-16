@@ -682,7 +682,6 @@ impl JukeBoxGui {
             }
             self.splash_timer = Instant::now() + Duration::from_secs(30);
         }
-        // TODO: display error message from key here if relevant
         if self.config_enable_splash {
             ui.with_layout(Layout::right_to_left(Align::BOTTOM), |ui| {
                 ui.label(
