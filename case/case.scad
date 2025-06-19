@@ -7,6 +7,8 @@ gen_top = false;
 gen_bot = false;
 // Generates leg case piece
 gen_leg = false;
+// Generates leg brace case piece
+gen_leg_brace = false;
 // Generates screen case piece
 gen_scr = true;
 // Generates screen detail for top case piece
@@ -92,9 +94,13 @@ kbSH = 20;
 
 /* [Case leg settings] */
 // Leg width
-clipW = 10;
+clipW = 20;
 // Leg rounding radius
 clipR = 4;
+// Leg Brace width
+braceW = 20;
+// Leg Brace length
+braceL = 90;
 
 /* [Case screen settings] */
 // Screen width
@@ -280,34 +286,39 @@ module case_detail() {
 }
 
 module case_leg() {
-    lH = clH+ctH+1;
-    lS = cS;
+    lH = clH+ctH+1.5;
+    lS = cS-4;
     difference() {
         union() {
-            translate([ -clipR,  0, 0]) cube([clipR, lH, clipW]);
-            translate([     lS,  0, 0]) cube([clipR, lH, clipW]);
-            translate([      0, lH, 0]) cube([lS, clipR, clipW]);
-            
-            rect4(0, 0, lS, lH, 0) cylinder(h=clipW, r=clipR);
+            translate([lS + clipR, clipR, 0]) cylinder(h=clipW, r=clipR);
+            translate([lS + clipR, clipR, 0]) cube([clipR, clipR + lH, clipW]);
 
-            hull() {
-                translate([   0,      lH, 0]) cylinder(h=clipW, r=clipR);
-                translate([  lS,      lH, 0]) cylinder(h=clipW, r=clipR);
-                translate([lS/3, lH+lS/2, 0]) cylinder(h=clipW, r=clipR);
+            translate([clipR, 2 * clipR + lH, 0]) hull() {
+                translate([   0,       0, 0]) cylinder(h=clipW, r=clipR);
+                translate([  lS,       0, 0]) cylinder(h=clipW, r=clipR);
+                translate([lS/3, lS/1.75, 0]) cylinder(h=clipW, r=clipR);
             }
         }
         union() {
-            translate([0,0,-1]) cube([lS, lH, clipW+2]);
-            translate([0,0,-1]) linear_extrude(height=clipW+2) polygon(points=[[0,lH],[lS,lH],[lS/3, lH+lS/2]]);
+            translate([lS, clipR, 0]) cube([clipR, lH, clipW]);
 
-            // rubber feet spots (angling is estimated, TOFIX?)
-            stop1=0.1;
-            stop2=0.9;
-            translate([lS/3+stop1*(2*lS/3), lH+lS/2-stop1*(lS/2), 0]) rotate([0,90,53.125]) translate([-clipW/2,0,cpFH]) cylinder(d=cpFD, h=cpFH);
-            translate([lS/3+stop2*(2*lS/3), lH+lS/2-stop2*(lS/2), 0]) rotate([0,90,53.125]) translate([-clipW/2,0,cpFH]) cylinder(d=cpFD, h=cpFH);
+            translate([clipR, 2 * clipR + lH, -1]) linear_extrude(height=clipW+2) polygon(points=[[0,0],[lS,0],[lS/3, lS/1.75]]);
         }
     }
-    translate([0, lH, 0]) cube([lS, clipR, clipW]);
+}
+
+module case_leg_brace() {
+    difference() {
+        union() {
+            translate([0, 0, clipR]) rotate([0, 90, 0]) cylinder(h=braceW, r=clipR);
+            cube([braceW, braceL, clipR * 2]);
+            translate([0, braceL, clipR]) rotate([0, 90, 0]) cylinder(h=braceW, r=clipR);
+        }
+        union() {
+            translate([0, 0, clipR]) cube([braceW, clipW, clipR]);
+            translate([0, braceL-clipW, clipR]) cube([braceW, clipW, clipR]);
+        }
+    }
 }
 
 difference() {
@@ -330,4 +341,5 @@ difference() {
     }
 }
 if (gen_leg) color([1, 0, 0]) case_leg();
+if (gen_leg_brace) color([1, 1, 0]) case_leg_brace();
 // if (gen_detail) translate([0, 0, clH]) color([0, 0, 1]) case_detail();

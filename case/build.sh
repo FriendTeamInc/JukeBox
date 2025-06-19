@@ -7,4 +7,5 @@ openscad -o build/case-bot-scr.stl -D gen_scr=true -D gen_bot=true case.scad
 openscad -o build/case-top.stl -D gen_top=true case.scad
 openscad -o build/case-bot.stl -D gen_bot=true case.scad
 openscad -o build/case-leg.stl -D gen_leg=true case.scad
+openscad -o build/case-leg-brace.stl -D gen_leg_brace=true case.scad
 cd $ORIGINALWD

@@ -256,7 +256,7 @@ impl JukeBoxGui {
                             .firmware_version
                         {
                             if *version < self.available_version {
-                                btn = btn.fill(Color32::BLUE);
+                                btn = btn.fill(Color32::from_rgb(32, 64, 200));
                                 hint_text = t!("help.device.update_available");
                             }
                         }
