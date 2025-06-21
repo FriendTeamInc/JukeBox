@@ -38,7 +38,7 @@ use tokio::{
     time::sleep,
 };
 
-#[derive(PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct SerialConnectionDetails {
     pub input_identifier: u8,
     pub firmware_version: String,
@@ -522,6 +522,7 @@ pub async fn serial_task(
         // Greet and link up
         let device_info = greet_host(&mut f).await?;
         let device_uid = device_info.device_uid.clone();
+        log::info!("device connected: {:?}", device_info);
         // TODO: check that firmware version is ok
         let sg_tx = sg_tx.clone();
         let sr_tx = sr_tx.clone();

@@ -580,6 +580,7 @@ impl JukeBoxGui {
                     if self.devices.contains_key(&device_uid) {
                         let v = self.devices.get_mut(&device_uid).unwrap();
                         v.connected = false;
+                        v.firmware_version = None;
                         v.device_inputs.clear();
                     }
                     let mut scmd_txs = self.scmd_txs.blocking_lock();
@@ -589,6 +590,7 @@ impl JukeBoxGui {
                     if self.devices.contains_key(&device_uid) {
                         let v = self.devices.get_mut(&device_uid).unwrap();
                         v.connected = false;
+                        v.firmware_version = None;
                         v.device_inputs.clear();
                     }
                     let mut scmd_txs = self.scmd_txs.blocking_lock();
