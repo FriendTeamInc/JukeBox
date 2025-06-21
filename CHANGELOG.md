@@ -3,6 +3,10 @@
 - Disable CPU temperature read out on Windows (since Windows and sysinfo do not have methods to read temperature currently).
 - Add info statement to list device firmware and UID on connection.
 - Fix application remembering device firmware of a disconnected device.
+- Take last 4 characters of UID for name instead of first 4 due to collisions.
+- Fix panics and stuck loops when packet length read fails.
+- Fix stuck loop when serial disconnects with data in its buffer.
+- The above fixes do not solve the random disconnects that serial experiences, and will need to be investigated further later. For some reason, either the application drops random bytes, or the firmware consumes random bytes.
 
 # v0.4.2 - IADs Fix (June 15, 2025)
 - Fix device not functioning on Windows due to misconfigured USB descriptors.

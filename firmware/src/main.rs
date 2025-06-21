@@ -335,7 +335,7 @@ fn main() -> ! {
                 Err(UsbHidError::Duplicate) => {}
                 Err(UsbHidError::WouldBlock) => {}
                 Err(e) => {
-                    core::panic!("Failed to write keyboard report: {:?}", e)
+                    defmt::error!("Failed to write keyboard report: {:?}", e);
                 }
             }
 
@@ -352,7 +352,7 @@ fn main() -> ! {
                     Err(UsbHidError::Duplicate) => {}
                     Err(UsbHidError::WouldBlock) => {}
                     Err(e) => {
-                        core::panic!("Failed to write mouse report: {:?}", e)
+                        defmt::error!("Failed to write mouse report: {:?}", e);
                     }
                 }
             }
@@ -364,7 +364,7 @@ fn main() -> ! {
                 Ok(_) => {}
                 Err(UsbHidError::WouldBlock) => {}
                 Err(e) => {
-                    core::panic!("Failed to process keyboard tick: {:?}", e)
+                    defmt::error!("Failed to process keyboard tick: {:?}", e);
                 }
             };
         }
@@ -373,7 +373,13 @@ fn main() -> ! {
         if usb_dev.poll(&mut [&mut usb_hid, &mut usb_serial]) {
             // handle serial
             serial_mod.update(&mut usb_serial, ver, uid);
-            let _ = usb_serial.flush();
+            match usb_serial.flush() {
+                Ok(_) => {}
+                Err(usbd_serial::UsbError::WouldBlock) => {}
+                Err(e) => {
+                    defmt::error!("Failed to flush serial: {:?}", e);
+                }
+            };
         }
     }
 }

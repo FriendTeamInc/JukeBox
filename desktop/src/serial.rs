@@ -86,7 +86,7 @@ async fn get_serial_string(f: &mut Serial) -> Result<Vec<u8>> {
 
         loop {
             if Instant::now() >= timeout {
-                bail!("serial read timed out");
+                bail!("serial read timed out (current buffer: {:?})", buf);
             }
 
             let mut b = [0u8; 1];
@@ -106,7 +106,9 @@ async fn get_serial_string(f: &mut Serial) -> Result<Vec<u8>> {
                     let w1 = buf[0];
                     let w2 = buf[1];
                     let w3 = buf[2];
-                    size = decode_packet_size(w1, w2, w3);
+                    size = decode_packet_size(w1, w2, w3).map_err(|_| {
+                        anyhow!("failed to decode packet size {} {} {}", w1, w2, w3)
+                    })?;
                 } else {
                     size -= 1;
                     if size == 0 {
@@ -129,14 +131,15 @@ async fn send_cmd(f: &mut Serial, c: u8) -> Result<()> {
 
 async fn send_bytes(f: &mut Serial, bytes: &[u8]) -> Result<()> {
     block_in_place(|| {
-        let size = &encode_packet_size(bytes.len());
+        let size = &encode_packet_size(bytes.len())
+            .map_err(|_| anyhow!("failed to encode packet size {}", bytes.len()))?;
 
-        log::trace!(
-            "send_bytes: {} ({:?}) {:?}",
-            decode_packet_size(size[0], size[1], size[2]),
-            size,
-            bytes
-        );
+        // log::trace!(
+        //     "send_bytes: {} ({:?}) {:?}",
+        //     decode_packet_size(size[0], size[1], size[2]),
+        //     size,
+        //     bytes
+        // );
 
         f.write_all(size)
             .with_context(|| format!("failed to write message size for {:?}", bytes))?;
@@ -149,7 +152,9 @@ async fn send_bytes(f: &mut Serial, bytes: &[u8]) -> Result<()> {
 }
 
 async fn expect_string(f: &mut Serial, expect: &[u8]) -> Result<()> {
-    let s = get_serial_string(f).await?;
+    let s = get_serial_string(f)
+        .await
+        .with_context(|| format!("expected string: {:?}", expect))?;
 
     let matching = s.iter().zip(expect).filter(|&(a, b)| a == b).count() == s.len();
 
@@ -195,7 +200,7 @@ async fn greet_host(f: &mut Serial) -> Result<SerialConnectionDetails> {
     send_cmd(f, CMD_GREET)
         .await
         .context("failed to send greet")?;
-    let resp = get_serial_string(f).await?;
+    let resp = get_serial_string(f).await.context("expected greeting")?;
 
     if *resp.iter().nth(0).unwrap_or(&0) != RSP_LINK_HEADER {
         send_negative_ack(f).await?;
@@ -246,7 +251,7 @@ async fn transmit_get_input_keys(f: &mut Serial) -> Result<HashSet<InputKey>> {
     send_cmd(f, CMD_GET_INPUT_KEYS)
         .await
         .context("failed to send get input keys")?;
-    let resp = get_serial_string(f).await?;
+    let resp = get_serial_string(f).await.context("expected input keys")?;
 
     if *resp.get(0).unwrap_or(&0) != RSP_INPUT_HEADER {
         log::info!("rsp input: {:?}", resp);
@@ -378,11 +383,7 @@ pub fn serial_get_device(connected_uids: &HashSet<String>) -> Result<Serial> {
         })
         .collect();
 
-    log::debug!(
-        "serial ports found/connected: {:?} / {:?}",
-        ports,
-        connected_uids
-    );
+    log::debug!("serial: {:?} / {:?}", ports, connected_uids);
 
     if ports.len() == 0 {
         bail!("failed to find any jukebox serial ports");
@@ -424,7 +425,10 @@ pub async fn serial_loop(
         // TODO: only send system stats when device has a screen
         if Instant::now() >= tick {
             tick = Instant::now().checked_add(Duration::from_secs(1)).unwrap();
-            let stats = system_stats.lock().await.clone();
+            let stats = {
+                let locked = system_stats.lock().await;
+                locked.clone()
+            };
             transmit_set_system_stats(f, stats).await?;
         }
 
@@ -485,8 +489,6 @@ pub async fn serial_loop(
                 }
             }
         }
-
-        sleep(Duration::from_millis(25)).await;
     }
 
     log::info!("exiting device thread {}", device_uid);
@@ -501,6 +503,8 @@ pub async fn serial_task(
     sr_tx: UnboundedSender<SerialEvent>,
     system_stats: Arc<Mutex<SystemStats>>,
 ) -> Result<()> {
+    log::debug!("starting serial thread...");
+
     let connected_uids = Arc::new(Mutex::new(HashSet::new()));
 
     while !brkr.load(std::sync::atomic::Ordering::Relaxed) {

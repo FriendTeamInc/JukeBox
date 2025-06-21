@@ -33,8 +33,8 @@ use crate::util::{
 
 type SerialPort<'a> = FullSerialPort<'a, UsbBus, [u8; SERIAL_READ_SIZE], [u8; SERIAL_WRITE_SIZE]>;
 
-pub const SERIAL_WRITE_SIZE: usize = 512;
-pub const SERIAL_READ_SIZE: usize = 1024;
+pub const SERIAL_WRITE_SIZE: usize = 256;
+pub const SERIAL_READ_SIZE: usize = 512;
 const BUFFER_SIZE: usize = 4096;
 const KEEPALIVE: u32 = 500;
 
@@ -60,7 +60,6 @@ impl SerialMod {
         // we should probably handle that before we take on larger communications.
         while let Err(_) = serial.write(rsp) {
             let _ = serial.flush();
-            cortex_m::asm::nop();
         }
     }
 
@@ -70,26 +69,33 @@ impl SerialMod {
             let w2 = *self.buffer.get(1).unwrap();
             let w3 = *self.buffer.get(2).unwrap();
 
-            let size = decode_packet_size(w1, w2, w3);
+            match decode_packet_size(w1, w2, w3) {
+                Ok(size) => {
+                    if self.buffer.len() >= size + 3 {
+                        // dequeue packet size
+                        self.buffer.dequeue();
+                        self.buffer.dequeue();
+                        self.buffer.dequeue();
 
-            if self.buffer.len() >= size + 3 {
-                // dequeue packet size
-                self.buffer.dequeue();
-                self.buffer.dequeue();
-                self.buffer.dequeue();
+                        // dequeue command type
+                        let c = self.buffer.dequeue().unwrap();
+                        let cmd = Command::decode(c);
 
-                // dequeue command type
-                let c = self.buffer.dequeue().unwrap();
-                let cmd = Command::decode(c);
+                        let mut data = [0u8; MAX_PACKET_SIZE];
+                        for i in 0..size - 1 {
+                            data[i] = self.buffer.dequeue().unwrap();
+                        }
 
-                let mut data = [0u8; MAX_PACKET_SIZE];
-                for i in 0..size - 1 {
-                    data[i] = self.buffer.dequeue().unwrap();
+                        Some((cmd, data))
+                    } else {
+                        None
+                    }
                 }
-
-                Some((cmd, data))
-            } else {
-                None
+                Err(()) => {
+                    error!("failed to decode packet size: {} {} {}", w1, w2, w3);
+                    self.buffer.clear();
+                    None
+                }
             }
         } else {
             None
@@ -120,6 +126,8 @@ impl SerialMod {
             warn!("Keepalive triggered, disconnecting.");
             reset_peripherals(false);
             self.state = Connection::NotConnected(false);
+            self.buffer.clear();
+            warn!("Peripherals reset.");
         }
 
         let mut buf = [0u8; 128];
@@ -142,6 +150,7 @@ impl SerialMod {
 
         // process command
         let mut unknown = || {
+            error!("unknown command: {}", data);
             Self::send(serial, &[b'0', b'0', b'1', RSP_UNKNOWN]);
             false
         };
@@ -353,7 +362,7 @@ impl SerialMod {
         };
 
         if valid {
-            // info!("restarting keepalive");
+            // info!("restarting keepalive for command: {}", decode);
             let _ = self.keepalive_timer.cancel();
             self.keepalive_timer.start(KEEPALIVE.millis());
             // restart keepalive timer with valid command

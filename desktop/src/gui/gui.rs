@@ -499,7 +499,7 @@ impl JukeBoxGui {
                     let device_type: DeviceType = device_info.input_identifier.into();
                     let firmware_version = device_info.firmware_version;
 
-                    let short_uid = device_uid[..4].to_string();
+                    let short_uid = device_uid[11..].to_string();
 
                     // TODO: double check that the device name is fine to use
                     let device_name: String = match device_type {

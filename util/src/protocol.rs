@@ -72,64 +72,61 @@ impl Command {
     }
 }
 
-fn decode_size_digit(w: u8) -> usize {
-    // todo: switch to results instead of panics
+fn decode_size_digit(w: u8) -> Result<usize, ()> {
     match w {
-        b'0' => 0x0,
-        b'1' => 0x1,
-        b'2' => 0x2,
-        b'3' => 0x3,
-        b'4' => 0x4,
-        b'5' => 0x5,
-        b'6' => 0x6,
-        b'7' => 0x7,
-        b'8' => 0x8,
-        b'9' => 0x9,
-        b'a' => 0xA,
-        b'A' => 0xA,
-        b'b' => 0xB,
-        b'B' => 0xB,
-        b'c' => 0xC,
-        b'C' => 0xC,
-        b'd' => 0xD,
-        b'D' => 0xD,
-        b'e' => 0xE,
-        b'E' => 0xE,
-        b'f' => 0xF,
-        b'F' => 0xF,
-        _ => panic!("cannot decode digit {}", w),
+        b'0' => Ok(0x0),
+        b'1' => Ok(0x1),
+        b'2' => Ok(0x2),
+        b'3' => Ok(0x3),
+        b'4' => Ok(0x4),
+        b'5' => Ok(0x5),
+        b'6' => Ok(0x6),
+        b'7' => Ok(0x7),
+        b'8' => Ok(0x8),
+        b'9' => Ok(0x9),
+        b'a' => Ok(0xA),
+        b'A' => Ok(0xA),
+        b'b' => Ok(0xB),
+        b'B' => Ok(0xB),
+        b'c' => Ok(0xC),
+        b'C' => Ok(0xC),
+        b'd' => Ok(0xD),
+        b'D' => Ok(0xD),
+        b'e' => Ok(0xE),
+        b'E' => Ok(0xE),
+        b'f' => Ok(0xF),
+        b'F' => Ok(0xF),
+        _ => Err(()), // panic!("cannot decode digit {}", w),
     }
 }
 
-fn encode_size_digit(w: usize) -> u8 {
-    // todo: switch to results instead of panics
+fn encode_size_digit(w: usize) -> Result<u8, ()> {
     match w {
-        0x0 => b'0',
-        0x1 => b'1',
-        0x2 => b'2',
-        0x3 => b'3',
-        0x4 => b'4',
-        0x5 => b'5',
-        0x6 => b'6',
-        0x7 => b'7',
-        0x8 => b'8',
-        0x9 => b'9',
-        0xA => b'A',
-        0xB => b'B',
-        0xC => b'C',
-        0xD => b'D',
-        0xE => b'E',
-        0xF => b'F',
-        _ => panic!("cannot encode digit {}", w),
+        0x0 => Ok(b'0'),
+        0x1 => Ok(b'1'),
+        0x2 => Ok(b'2'),
+        0x3 => Ok(b'3'),
+        0x4 => Ok(b'4'),
+        0x5 => Ok(b'5'),
+        0x6 => Ok(b'6'),
+        0x7 => Ok(b'7'),
+        0x8 => Ok(b'8'),
+        0x9 => Ok(b'9'),
+        0xA => Ok(b'A'),
+        0xB => Ok(b'B'),
+        0xC => Ok(b'C'),
+        0xD => Ok(b'D'),
+        0xE => Ok(b'E'),
+        0xF => Ok(b'F'),
+        _ => Err(()), // panic!("cannot encode digit {}", w),
     }
 }
 
-pub fn decode_packet_size(w1: u8, w2: u8, w3: u8) -> usize {
-    // todo: switch to results instead of panics
-    decode_size_digit(w1) * 16 * 16 + decode_size_digit(w2) * 16 + decode_size_digit(w3)
+pub fn decode_packet_size(w1: u8, w2: u8, w3: u8) -> Result<usize, ()> {
+    Ok(decode_size_digit(w1)? * 16 * 16 + decode_size_digit(w2)? * 16 + decode_size_digit(w3)?)
 }
 
-pub fn encode_packet_size(s: usize) -> [u8; 3] {
+pub fn encode_packet_size(s: usize) -> Result<[u8; 3], ()> {
     if s > 16 * 16 * 16 - 1 {
         panic!("packet too big!")
     }
@@ -138,9 +135,9 @@ pub fn encode_packet_size(s: usize) -> [u8; 3] {
     let w2 = (s / 16) % 16;
     let w1 = s % 16;
 
-    [
-        encode_size_digit(w3),
-        encode_size_digit(w2),
-        encode_size_digit(w1),
-    ]
+    Ok([
+        encode_size_digit(w3)?,
+        encode_size_digit(w2)?,
+        encode_size_digit(w1)?,
+    ])
 }
