@@ -2939,7 +2939,7 @@ dependencies = [
 
 [[package]]
 name = "jukebox_desktop"
-version = "0.4.4"
+version = "0.4.5"
 dependencies = [
  "anyhow",
  "dirs",

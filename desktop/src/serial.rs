@@ -404,30 +404,42 @@ pub async fn serial_loop(
     f: &mut Serial,
     sg_tx: UnboundedSender<SerialEvent>,
     sr_tx: UnboundedSender<SerialEvent>,
-    device_uid: String,
+    device_info: SerialConnectionDetails,
     mut s_cmd_rx: UnboundedReceiver<SerialCommand>,
     system_stats: Arc<Mutex<SystemStats>>,
 ) -> Result<()> {
-    let mut tick = Instant::now().checked_add(Duration::from_secs(1)).unwrap();
+    let device_uid = device_info.device_uid;
+    let device_type: DeviceType = device_info.input_identifier.into();
+
+    let mut keys_tick = Instant::now()
+        .checked_add(Duration::from_millis(50))
+        .unwrap();
+    let mut sys_stats_tick = Instant::now().checked_add(Duration::from_secs(1)).unwrap();
 
     'forv: loop {
-        let keys = transmit_get_input_keys(f).await?;
-        sr_tx
-            .send(SerialEvent::GetInputKeys {
-                device_uid: device_uid.clone(),
-                keys: keys.clone(),
-            })
-            .context("failed to send input info to action thread")?;
-        sg_tx
-            .send(SerialEvent::GetInputKeys {
-                device_uid: device_uid.clone(),
-                keys: keys.clone(),
-            })
-            .context("failed to send input info to gui thread")?;
+        let now = Instant::now();
 
-        // TODO: only send system stats when device has a screen
-        if Instant::now() >= tick {
-            tick = Instant::now().checked_add(Duration::from_secs(1)).unwrap();
+        if now >= keys_tick {
+            keys_tick = Instant::now()
+                .checked_add(Duration::from_millis(50))
+                .unwrap();
+            let keys = transmit_get_input_keys(f).await?;
+            sr_tx
+                .send(SerialEvent::GetInputKeys {
+                    device_uid: device_uid.clone(),
+                    keys: keys.clone(),
+                })
+                .context("failed to send input info to action thread")?;
+            sg_tx
+                .send(SerialEvent::GetInputKeys {
+                    device_uid: device_uid.clone(),
+                    keys: keys.clone(),
+                })
+                .context("failed to send input info to gui thread")?;
+        }
+
+        if device_type == DeviceType::KeyPad && now >= sys_stats_tick {
+            sys_stats_tick = Instant::now().checked_add(Duration::from_secs(1)).unwrap();
             let stats = {
                 let locked = system_stats.lock().await;
                 locked.clone()
@@ -447,20 +459,24 @@ pub async fn serial_loop(
                     transmit_set_mouse_input(f, slot, mouse_event).await?;
                 }
                 SerialCommand::SetRgbMode(rgb_profile) => {
-                    // TODO: only send when device has rgb
-                    transmit_set_rgb_mode(f, rgb_profile).await?;
+                    if device_type == DeviceType::KeyPad {
+                        transmit_set_rgb_mode(f, rgb_profile).await?;
+                    }
                 }
                 SerialCommand::SetScrIcon(slot, icon_data) => {
-                    // TODO: only send when device has a screen
-                    transmit_set_scr_icon(f, slot, icon_data).await?;
+                    if device_type == DeviceType::KeyPad {
+                        transmit_set_scr_icon(f, slot, icon_data).await?;
+                    }
                 }
                 SerialCommand::SetScrMode(screen_profile) => {
-                    // TODO: only send when device has a screen
-                    transmit_set_screen_mode(f, screen_profile).await?;
+                    if device_type == DeviceType::KeyPad {
+                        transmit_set_screen_mode(f, screen_profile).await?;
+                    }
                 }
                 SerialCommand::SetProfileName(profile_name) => {
-                    // TODO: only send when device has a screen
-                    transmit_set_profile_name(f, profile_name).await?;
+                    if device_type == DeviceType::KeyPad {
+                        transmit_set_profile_name(f, profile_name).await?;
+                    }
                 }
                 SerialCommand::Update => {
                     transmit_update_signal(f).await?;
@@ -492,6 +508,8 @@ pub async fn serial_loop(
                 }
             }
         }
+
+        sleep(Duration::from_micros(100)).await;
     }
 
     log::info!("exiting device thread {}", device_uid);
@@ -500,7 +518,6 @@ pub async fn serial_loop(
 }
 
 pub async fn build_config(config: Arc<Mutex<JukeBoxConfig>>, device_info: SerialConnectionDetails) {
-    // TODO: We probably shouldn't keep this in the gui thread.
     let device_uid = device_info.device_uid;
     let device_type: DeviceType = device_info.input_identifier.into();
 
@@ -638,7 +655,7 @@ pub async fn serial_task(
                 &mut f,
                 sg_tx.clone(),
                 sr_tx.clone(),
-                device_uid.clone(),
+                device_info.clone(),
                 s_cmd_rx,
                 system_stats,
             )

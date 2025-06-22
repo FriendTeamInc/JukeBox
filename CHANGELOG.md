@@ -1,3 +1,7 @@
+# v0.4.5 - Clock Forever (June 22, 2025)
+- Fix keyboard key requests being way too frequent.
+- Only send RGB and Screen packets to keypad devices, futureproofing.
+
 # v0.4.4 - Initiliazing Fixes (June 22, 2025)
 - Fix potential device nickname collisions on first connection.
 - Fix device not receiving default configuration on first connection.
