@@ -1,6 +1,8 @@
 // Serial communication to JukeBox devices
 // The main task launches new tasks for each device connected
 
+use crate::actions::types::ActionMap;
+use crate::config::{DeviceConfig, DeviceInfo, JukeBoxConfig};
 use crate::input::InputKey;
 
 use std::cmp::min;
@@ -11,6 +13,7 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, bail, Context, Result};
+use jukebox_util::peripheral::DeviceType;
 use jukebox_util::protocol::{CMD_SET_PROFILE_NAME, CMD_SET_SCR_MODE, CMD_SET_SYSTEM_STATS};
 use jukebox_util::screen::{ProfileName, ScreenProfile, PROFILE_NAME_CHAR_LEN};
 use jukebox_util::stats::SystemStats;
@@ -496,7 +499,84 @@ pub async fn serial_loop(
     Ok(())
 }
 
+pub async fn build_config(config: Arc<Mutex<JukeBoxConfig>>, device_info: SerialConnectionDetails) {
+    // TODO: We probably shouldn't keep this in the gui thread.
+    let device_uid = device_info.device_uid;
+    let device_type: DeviceType = device_info.input_identifier.into();
+
+    let short_uid = device_uid[12..].to_string();
+
+    let mut device_name: String = match device_type {
+        DeviceType::Unknown => t!("device_name.unknown", uid = device_uid.clone()),
+        DeviceType::KeyPad => t!("device_name.keypad", uid = short_uid),
+        DeviceType::KnobPad => t!("device_name.knobpad", uid = short_uid),
+        DeviceType::PedalPad => t!("device_name.pedalpad", uid = short_uid),
+    }
+    .to_string();
+
+    let mut conf = config.lock().await;
+
+    // checks to see that the generated name won't collide with an existing device
+    let mut name_index = 0;
+    loop {
+        let mut found_collision = false;
+        let new_device_name = if name_index > 0 {
+            format!("{} ({})", device_name, name_index)
+        } else {
+            device_name.clone()
+        };
+
+        for (_, info) in &conf.devices {
+            if info.nickname == new_device_name {
+                found_collision = true;
+            }
+        }
+
+        if !found_collision {
+            device_name = new_device_name;
+            break;
+        }
+
+        name_index += 1;
+    }
+    let device_name = device_name;
+
+    if !conf.devices.contains_key(&device_uid) {
+        conf.devices.insert(
+            device_uid.clone(),
+            DeviceInfo {
+                device_type: device_type,
+                nickname: device_name.clone(),
+            },
+        );
+
+        let rgb_profile = match device_type {
+            DeviceType::KeyPad => Some(RgbProfile::default_gui_profile()),
+            _ => None,
+        };
+        let screen_profile = match device_type {
+            DeviceType::KeyPad => Some(ScreenProfile::default_profile()),
+            _ => None,
+        };
+
+        for (_, v) in conf.profiles.iter_mut() {
+            if !v.contains_key(&device_uid) {
+                v.insert(
+                    device_uid.clone(),
+                    DeviceConfig {
+                        key_map: ActionMap::default_action_config(device_type.into()),
+                        rgb_profile: rgb_profile.clone(),
+                        screen_profile: screen_profile.clone(),
+                    },
+                );
+            }
+        }
+    }
+    conf.save();
+}
+
 pub async fn serial_task(
+    config: Arc<Mutex<JukeBoxConfig>>,
     brkr: Arc<AtomicBool>,
     scmd_txs: Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
     sg_tx: UnboundedSender<SerialEvent>,
@@ -535,6 +615,8 @@ pub async fn serial_task(
 
         scmd_txs.lock().await.insert(device_uid.clone(), s_cmd_tx);
         connected_uids.lock().await.insert(device_uid.clone());
+
+        build_config(config.clone(), device_info.clone()).await;
 
         let connected_uids = connected_uids.clone();
         let scmd_txs = scmd_txs.clone();

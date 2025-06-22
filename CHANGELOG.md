@@ -1,3 +1,7 @@
+# v0.4.4 - Initiliazing Fixes (June 22, 2025)
+- Fix potential device nickname collisions on first connection.
+- Fix device not receiving default configuration on first connection.
+
 # v0.4.3 - Patch TODOs (June 21, 2025)
 - Switch Profile action will now better switch its target profile when the original target profile is deleted or renamed.
 - Disable CPU temperature read out on Windows (since Windows and sysinfo do not have methods to read temperature currently).

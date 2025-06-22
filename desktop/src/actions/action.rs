@@ -38,6 +38,7 @@ async fn update_device_configs(
     let tx = if let Some(tx) = txs.get(device_uid) {
         tx
     } else {
+        log::warn!("failed to find serial command sender for {}", device_uid);
         return;
     };
 

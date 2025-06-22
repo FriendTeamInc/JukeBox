@@ -58,11 +58,11 @@ fn main() -> anyhow::Result<()> {
         bail!("failed to acquire exclusive lock for application. aborting.");
     }
 
-    env_logger::init();
-    // let mut p = dirs::config_dir().expect("failed to find config directory");
-    // p.push("JukeBoxDesktop");
-    // p.push("jukebox_desktop_debug.log");
-    // simple_logging::log_to_file(p, log::LevelFilter::Debug).unwrap();
+    // env_logger::init();
+    let mut p = dirs::config_dir().expect("failed to find config directory");
+    p.push("JukeBoxDesktop");
+    p.push("jukebox_desktop_debug.log");
+    simple_logging::log_to_file(p, log::LevelFilter::Debug).unwrap();
 
     // For OBS websocket TLS support, currently unused.
     // rustls::crypto::aws_lc_rs::default_provider()

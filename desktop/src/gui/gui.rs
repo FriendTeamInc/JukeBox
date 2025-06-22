@@ -13,7 +13,6 @@ use eframe::Frame;
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 use egui_extras::install_image_loaders;
 use egui_phosphor::regular as phos;
-use jukebox_util::peripheral::DeviceType;
 use jukebox_util::rgb::RgbProfile;
 use jukebox_util::screen::ScreenProfile;
 use jukebox_util::stats::SystemStats;
@@ -37,7 +36,7 @@ use crate::actions::{
     meta::MetaNoAction,
     types::{Action, ActionMap},
 };
-use crate::config::{ActionIcon, DeviceConfig, DeviceInfo, JukeBoxConfig};
+use crate::config::{ActionIcon, DeviceInfo, JukeBoxConfig};
 use crate::firmware_update::{FirmwareUpdateStatus, UpdateError};
 use crate::input::InputKey;
 use crate::serial::{serial_task, SerialCommand, SerialEvent};
@@ -222,6 +221,7 @@ impl JukeBoxGui {
         let (ae_tx, ae_rx) = unbounded_channel::<ActionError>(); // action thread sends action errors to gui thread
         let (gu_tx, gu_rx) = unbounded_channel::<(Version, String)>(); // software update thread sends update available signal to gui thread
 
+        let serial_config = config.clone();
         let serial_scmd_txs = scmd_txs.clone();
         let action_config = config.clone();
         let action_scmd_txs = scmd_txs.clone();
@@ -229,9 +229,17 @@ impl JukeBoxGui {
         let system_stats: Arc<Mutex<SystemStats>> = Arc::new(Mutex::new(SystemStats::default()));
         let serial_ss = system_stats.clone();
 
-        spawn(
-            async move { serial_task(brkr_serial, serial_scmd_txs, sg_tx, sr_tx, serial_ss).await },
-        );
+        spawn(async move {
+            serial_task(
+                serial_config,
+                brkr_serial,
+                serial_scmd_txs,
+                sg_tx,
+                sr_tx,
+                serial_ss,
+            )
+            .await
+        });
         spawn(async move { action_task(sr_rx, action_config, action_scmd_txs, ae_tx).await });
         spawn(async move { spawn_blocking(|| system_task(system_stats)) });
         spawn(async move { software_update_task(gu_tx).await });
@@ -494,65 +502,17 @@ impl JukeBoxGui {
         while let Ok(event) = self.sg_rx.try_recv() {
             match event {
                 SerialEvent::Connected { device_info } => {
-                    // TODO: We shouldn't really keep this in the gui thread.
                     let device_uid = device_info.device_uid;
-                    let device_type: DeviceType = device_info.input_identifier.into();
                     let firmware_version = device_info.firmware_version;
+                    let device_type = device_info.input_identifier;
 
-                    let short_uid = device_uid[11..].to_string();
+                    self.current_device = device_uid.clone();
 
-                    // TODO: double check that the device name is fine to use
-                    let device_name: String = match device_type {
-                        DeviceType::Unknown => t!("device_name.unknown", uid = device_uid.clone()),
-                        DeviceType::KeyPad => t!("device_name.keypad", uid = short_uid),
-                        DeviceType::KnobPad => t!("device_name.knobpad", uid = short_uid),
-                        DeviceType::PedalPad => t!("device_name.pedalpad", uid = short_uid),
-                    }
-                    .to_string();
-
-                    {
-                        let mut conf = self.config.blocking_lock();
-                        if !conf.devices.contains_key(&device_uid) {
-                            conf.devices.insert(
-                                device_uid.clone(),
-                                DeviceInfo {
-                                    device_type: device_type,
-                                    nickname: device_name.clone(),
-                                },
-                            );
-
-                            let rgb_profile = match device_type {
-                                DeviceType::KeyPad => Some(RgbProfile::default_gui_profile()),
-                                _ => None,
-                            };
-                            let screen_profile = match device_type {
-                                DeviceType::KeyPad => Some(ScreenProfile::default_profile()),
-                                _ => None,
-                            };
-
-                            for (_, v) in conf.profiles.iter_mut() {
-                                if !v.contains_key(&device_uid) {
-                                    v.insert(
-                                        device_uid.clone(),
-                                        DeviceConfig {
-                                            key_map: self
-                                                .action_map
-                                                .default_action_config(device_type.into()),
-                                            rgb_profile: rgb_profile.clone(),
-                                            screen_profile: screen_profile.clone(),
-                                        },
-                                    );
-                                }
-                            }
-                        }
-                        conf.save();
-                    }
-
-                    if self.current_device.is_empty()
-                        || self.devices.iter().all(|(_, d)| !d.connected)
-                    {
-                        self.current_device = device_uid.clone();
-                    }
+                    let device_name = {
+                        let conf = self.config.blocking_lock();
+                        let device = conf.devices.get(&device_uid).unwrap();
+                        device.nickname.clone()
+                    };
 
                     if self.devices.contains_key(&device_uid) {
                         let v = self.devices.get_mut(&device_uid).unwrap();

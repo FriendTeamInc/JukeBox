@@ -5,7 +5,10 @@ use egui_phosphor::regular as phos;
 use jukebox_util::{peripheral::DeviceType, rgb::RgbProfile, screen::ScreenProfile};
 
 use crate::{
-    actions::{meta::MetaSwitchProfile, types::Action},
+    actions::{
+        meta::MetaSwitchProfile,
+        types::{Action, ActionMap},
+    },
     config::DeviceConfig,
     serial::SerialCommand,
 };
@@ -137,9 +140,9 @@ impl JukeBoxGui {
                         m.insert(
                             d.clone(),
                             DeviceConfig {
-                                key_map: self
-                                    .action_map
-                                    .default_action_config(t.device_info.device_type.into()),
+                                key_map: ActionMap::default_action_config(
+                                    t.device_info.device_type.into(),
+                                ),
                                 rgb_profile: rgb_profile.clone(),
                                 screen_profile: screen_profile.clone(),
                             },

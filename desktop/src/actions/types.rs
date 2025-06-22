@@ -242,7 +242,7 @@ impl ActionMap {
         self.enum_map.get(&t).unwrap().clone()
     }
 
-    pub fn default_action_config(&self, d: DeviceType) -> HashMap<InputKey, ActionConfig> {
+    pub fn default_action_config(d: DeviceType) -> HashMap<InputKey, ActionConfig> {
         use InputKey as IK;
         let keys = match d {
             DeviceType::Unknown => &[][..],
@@ -276,7 +276,7 @@ impl ActionMap {
             c.insert(
                 *k,
                 ActionConfig {
-                    action: self.enum_map.get("MetaNoAction").unwrap().clone(),
+                    action: Action::MetaNoAction(MetaNoAction {}),
                     icon: ActionIcon::DefaultActionIcon,
                 },
             );
