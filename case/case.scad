@@ -14,7 +14,7 @@ gen_scr = true;
 // Generates screen detail for top case piece
 gen_detail = false;
 // Case size (width & height)
-cS = 98;
+cS = 108;
 // Case corner radius (rounded corners)
 cR = 3;
 // Case mounting hardware offset
@@ -76,7 +76,7 @@ logoY = 83;
 // Keyboard key size
 kbS = 17;
 // Keyboard key matrix position (X)
-kbX = 49;
+kbX = cS/2;
 // Keyboard key matrix position (Y)
 kbY = 39;
 // Keyboard key matrix offset (X)
@@ -103,10 +103,14 @@ braceW = 20;
 braceL = 90;
 
 /* [Case screen settings] */
-// Screen width
-csSCRW = 48;
-// Screen height
-csSCRH = 34.8;
+// Screen Cutout width
+csScrCW = 57.5;
+// Screen Cutout height
+csScrCH = 36.5;
+// Screen Window width
+csScrWW = 42.5;
+// Screen Window height
+csScrWH = 32.5;
 
 module rect4(x1, y1, x2, y2, h) {
     translate([x1, y1, h]) children();
@@ -144,8 +148,8 @@ module speaker_icon() {
     }
 }
 
-SOX = cS / 2 - (csSCRW + ctW * 2) / 2; // screen origin x
-SOY = cS - 8.5 - ctW - csSCRH / 2; // screen origin y
+SOX = cS / 2 - (csScrCW + ctW * 2) / 2; // screen origin x
+SOY = cS - 10 - ctW - csScrCH / 2; // screen origin y
 
 module case_top() {
     difference() {
@@ -157,8 +161,8 @@ module case_top() {
                     roundedsquare(cS, cS, ctH, cR);
                     // Screen body
                     if (gen_scr) translate([SOX, SOY, 0]) union() {
-                        sW = csSCRW + ctW * 2;
-                        sH = csSCRH + ctW * 2;
+                        sW = csScrCW + ctW * 2;
+                        sH = csScrCH + ctW * 2;
                         translate([0, 0, ctH]) chamferedsquare(sW, sH, 1, 3, 2);
                         roundedsquare(sW, sH, ctH, 3);
                     }
@@ -171,14 +175,17 @@ module case_top() {
                     // Screen cutout
                     if (gen_scr) translate([SOX, SOY, 0]) union() {
                         // Cutout interior
-                        translate([ctW, ctW, 0]) cube([csSCRW, csSCRH, ctH]);
-                        // Screen cutout
-                        translate([ctW + 2-1, ctW + 1, ctH]) cube([csSCRW - 3.5+1.5, csSCRH - 4+1+1, 1]);
+                        translate([ctW, ctW, 0]) cube([csScrCW, csScrCH, ctH]);
+                        // Screen Window
+                        // translate([ctW + 2-1, ctW + 1, ctH]) cube([csScrCW - 3.5+1.5, csScrCH - 4+1+1, 1]);
+                        translate([ctW+(csScrCW-csScrWW)/2, ctW+(csScrCH-csScrWH)/2, ctH]) cube([csScrWW, csScrWH, 1]);
                     }
-                    // reset button cutout
-                    translate([cS-11, cS-25, ctH]) cylinder(h=1, d=6);
+
+                    // // reset button cutout
+                    // translate([cS-11, cS-25, ctH]) cylinder(h=1, d=6);
+
                     // identify led cutout
-                    translate([cS-18, cS-9, ctH]) cylinder(h=1, d=2);
+                    translate([cS-25, cS-10, ctH]) cylinder(h=1, d=2);
                 }
             }
 
@@ -235,11 +242,11 @@ module case_bottom() {
 
             // Screen table
             if (gen_scr) translate([SOX, SOY, 0]) union() {
-                chamferedsquare(csSCRW + ctW * 2, csSCRH + ctW * 2, clC, cR-clC, cR);
-                translate([0, 0, clC]) roundedsquare(csSCRW + ctW * 2, csSCRH + ctW * 2, clH-clC, cR);
-                translate([clS, clS+(csSCRH-16), clH]) {
-                    translate([0, 1, 0]) roundedsquare(csSCRW-1, 14, cpH, cR);
-                    translate([0, 4, cpH]) roundedsquare(csSCRW-1, 11, 1.6, cR);
+                chamferedsquare(csScrCW + ctW * 2, csScrCH + ctW * 2, clC, cR-clC, cR);
+                translate([0, 0, clC]) roundedsquare(csScrCW + ctW * 2, csScrCH + ctW * 2, clH-clC, cR);
+                translate([clS, clS+(csScrCH-16), clH]) {
+                    translate([0, 1, 0]) roundedsquare(csScrCW-1, 14, cpH, cR);
+                    translate([0, 4, cpH]) roundedsquare(csScrCW-1, 11, 1.6, cR);
                 }
             }
 
