@@ -140,64 +140,60 @@ rgb:
   saturation: "Saturation:"
   value: "Value:"
 
-  profile:
-    off:
-      title: "Off"
-      description: "Disables all RGB."
-    static_solid:
-      title: "Static (Solid)"
-      description: "Displays a single color on all keys."
-      select_color: "Select Color:"
-    static_per_key:
-      title: "Static (Per Key)"
-      description: "Displays a color on every key."
-      select_color: "Select Colors:"
-    wave:
-      title: "Wave"
-      description: "Waves through a list of colors, transitioning from one to the next constantly."
-      speed: "Speed:"
-      speed_x: "Speed X:"
-      speed_y: "Speed Y:"
-      select_color: "Select Colors:"
-      add_color: "Add Color"
-      delete_color: "Delete Color"
-    breathe:
-      title: "Breathe"
-      description: "Rotates through a list of colors, holding on each before transitioning."
-      hold_time: "Color Hold Time (in seconds):"
-      trans_time: "Color Transition Time (in seconds):"
-      select_color: "Select Colors:"
-      add_color: "Add Color"
-      delete_color: "Delete Color"
-    rainbow_solid:
-      title: "Rainbow (Solid)"
-      description: "Displays the full rainbow of colors on every key."
-      speed: "Speed:"
-    rainbow_wave:
-      title: "Rainbow (Wave)"
-      description: "Displays the full rainbow of colors on each key, offset by its positional speed."
-      speed: "Speed:"
-      speed_x: "Speed X:"
-      speed_y: "Speed Y:"
+  off:
+    title: "Off"
+    description: "Disables all RGB."
+  static_solid:
+    title: "Static (Solid)"
+    description: "Displays a single color on all keys."
+    select_color: "Select Color:"
+  static_per_key:
+    title: "Static (Per Key)"
+    description: "Displays a color on every key."
+    select_color: "Select Colors:"
+  wave:
+    title: "Wave"
+    description: "Waves through a list of colors, transitioning from one to the next constantly."
+    speed: "Speed:"
+    speed_x: "Speed X:"
+    speed_y: "Speed Y:"
+    select_color: "Select Colors:"
+    add_color: "Add Color"
+    delete_color: "Delete Color"
+  breathe:
+    title: "Breathe"
+    description: "Rotates through a list of colors, holding on each before transitioning."
+    hold_time: "Color Hold Time (in seconds):"
+    trans_time: "Color Transition Time (in seconds):"
+    select_color: "Select Colors:"
+    add_color: "Add Color"
+    delete_color: "Delete Color"
+  rainbow_solid:
+    title: "Rainbow (Solid)"
+    description: "Displays the full rainbow of colors on every key."
+    speed: "Speed:"
+  rainbow_wave:
+    title: "Rainbow (Wave)"
+    description: "Displays the full rainbow of colors on each key, offset by its positional speed."
+    speed: "Speed:"
+    speed_x: "Speed X:"
+    speed_y: "Speed Y:"
 
 screen:
   title: "Screen Settings:"
   brightness: "Screen Brightness:"
+  select_background_color: "Background Color:"
+  select_text_color: "Text Color:"
 
-  profile:
-    off:
-      title: "Off"
-      description: "Disables the screen."
-    display_keys:
-      title: "Display Keys"
-      description: "Displays the action icons and profile name on screen."
-      select_background_color: "Background Color:"
-      select_text_color: "Text Color:"
-    display_stats:
-      title: "Display Stats"
-      description: "Displays your computer's stats on screen."
-      select_background_color: "Background Color:"
-      select_text_color: "Text Color:"
+  off:
+    title: "Off"
+    description: "Disables the screen."
+  display_keys:
+    title: "Display Keys"
+    description: "Displays the action icons and profile name on screen."
+  display_stats:
+    title: "Display Stats"
+    description: "Displays your computer's stats on screen."
 
 
 action:

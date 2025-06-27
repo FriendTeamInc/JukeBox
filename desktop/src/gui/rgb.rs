@@ -81,82 +81,38 @@ impl JukeBoxGui {
         let rgb_defaults = [
             (
                 RgbProfile::Off,
-                t!("rgb.profile.off.title"),
-                t!("rgb.profile.off.description"),
+                t!("rgb.off.title"),
+                t!("rgb.off.description"),
             ),
             (
-                RgbProfile::StaticSolid {
-                    brightness: 25,
-                    color: (255, 200, 100),
-                },
-                t!("rgb.profile.static_solid.title"),
-                t!("rgb.profile.static_solid.description"),
+                RgbProfile::default_static_solid(),
+                t!("rgb.static_solid.title"),
+                t!("rgb.static_solid.description"),
             ),
             (
-                RgbProfile::StaticPerKey {
-                    brightness: 25,
-                    colors: [
-                        (100, 155, 255),
-                        (255, 200, 100),
-                        (255, 200, 100),
-                        (100, 155, 255),
-                        (255, 200, 100),
-                        (100, 155, 255),
-                        (100, 155, 255),
-                        (255, 200, 100),
-                        (100, 155, 255),
-                        (255, 200, 100),
-                        (255, 200, 100),
-                        (100, 155, 255),
-                    ],
-                },
-                t!("rgb.profile.static_per_key.title"),
-                t!("rgb.profile.static_per_key.description"),
+                RgbProfile::default_static_per_key(),
+                t!("rgb.static_per_key.title"),
+                t!("rgb.static_per_key.description"),
             ),
             (
-                RgbProfile::Wave {
-                    brightness: 25,
-                    speed: 10,
-                    speed_x: 20,
-                    speed_y: 0,
-                    color_count: 3,
-                    colors: [(51, 187, 255), (153, 119, 255), (255, 119, 221), (0, 0, 0)],
-                },
-                t!("rgb.profile.wave.title"),
-                t!("rgb.profile.wave.description"),
+                RgbProfile::default_wave(),
+                t!("rgb.wave.title"),
+                t!("rgb.wave.description"),
             ),
             (
-                RgbProfile::Breathe {
-                    brightness: 25,
-                    hold_time: 20,
-                    trans_time: 5,
-                    color_count: 3,
-                    colors: [(51, 187, 255), (153, 119, 255), (255, 119, 221), (0, 0, 0)],
-                },
-                t!("rgb.profile.breathe.title"),
-                t!("rgb.profile.breathe.description"),
+                RgbProfile::default_breathe(),
+                t!("rgb.breathe.title"),
+                t!("rgb.breathe.description"),
             ),
             (
-                RgbProfile::RainbowSolid {
-                    brightness: 25,
-                    speed: 30,
-                    saturation: 100,
-                    value: 100,
-                },
-                t!("rgb.profile.rainbow_solid.title"),
-                t!("rgb.profile.rainbow_solid.description"),
+                RgbProfile::default_rainbow_solid(),
+                t!("rgb.rainbow_solid.title"),
+                t!("rgb.rainbow_solid.description"),
             ),
             (
-                RgbProfile::RainbowWave {
-                    brightness: 25,
-                    speed: 100,
-                    speed_x: 0,
-                    speed_y: 30,
-                    saturation: 100,
-                    value: 100,
-                },
-                t!("rgb.profile.rainbow_wave.title"),
-                t!("rgb.profile.rainbow_wave.description"),
+                RgbProfile::default_rainbow_wave(),
+                t!("rgb.rainbow_wave.title"),
+                t!("rgb.rainbow_wave.description"),
             ),
         ];
 
@@ -208,7 +164,7 @@ impl JukeBoxGui {
                             ui.label(t!("rgb.brightness"));
                             ui.add(Slider::new(&mut brightness, 0..=100));
 
-                            ui.label(t!("rgb.profile.static_solid.select_color"));
+                            ui.label(t!("rgb.static_solid.select_color"));
                             Self::draw_rgb888_editor(ui, &mut color);
 
                             self.editing_rgb = RgbProfile::StaticSolid { brightness, color };
@@ -221,7 +177,7 @@ impl JukeBoxGui {
                             ui.add(Slider::new(&mut brightness, 0..=100));
                             ui.label("");
 
-                            ui.label(t!("rgb.profile.static_per_key.select_color"));
+                            ui.label(t!("rgb.static_per_key.select_color"));
                             ui.label("");
                             for (i, c) in colors.iter_mut().enumerate() {
                                 ui.label(format!("{}.", i + 1));
@@ -242,16 +198,16 @@ impl JukeBoxGui {
                             ui.label(t!("rgb.brightness"));
                             ui.add(Slider::new(&mut brightness, 0..=100));
 
-                            ui.label(t!("rgb.profile.wave.speed"));
+                            ui.label(t!("rgb.wave.speed"));
                             ui.add(Slider::new(&mut speed, -100..=100));
 
-                            ui.label(t!("rgb.profile.wave.speed_x"));
+                            ui.label(t!("rgb.wave.speed_x"));
                             ui.add(Slider::new(&mut speed_x, -100..=100));
 
-                            ui.label(t!("rgb.profile.wave.speed_y"));
+                            ui.label(t!("rgb.wave.speed_y"));
                             ui.add(Slider::new(&mut speed_y, -100..=100));
 
-                            ui.label(t!("rgb.profile.wave.select_color"));
+                            ui.label(t!("rgb.wave.select_color"));
                             ui.label("");
                             let mut delete_idx = None;
                             for i in 0..color_count {
@@ -260,9 +216,7 @@ impl JukeBoxGui {
                                     ui.add_enabled_ui(color_count > 1, |ui| {
                                         if ui
                                             .button(phos::TRASH)
-                                            .on_hover_text_at_pointer(t!(
-                                                "rgb.profile.wave.delete_color"
-                                            ))
+                                            .on_hover_text_at_pointer(t!("rgb.wave.delete_color"))
                                             .clicked()
                                         {
                                             delete_idx = Some(i);
@@ -282,7 +236,7 @@ impl JukeBoxGui {
                             ui.add_enabled_ui(color_count < 4, |ui| {
                                 if ui
                                     .button("+")
-                                    .on_hover_text_at_pointer(t!("rgb.profile.wave.add_color"))
+                                    .on_hover_text_at_pointer(t!("rgb.wave.add_color"))
                                     .clicked()
                                 {
                                     color_count += 1;
@@ -309,13 +263,13 @@ impl JukeBoxGui {
                             ui.label(t!("rgb.brightness"));
                             ui.add(Slider::new(&mut brightness, 0..=100));
 
-                            ui.label(t!("rgb.profile.breathe.hold_time"));
+                            ui.label(t!("rgb.breathe.hold_time"));
                             ui.add(Slider::new(&mut hold_time, 0..=255));
 
-                            ui.label(t!("rgb.profile.breathe.trans_time"));
+                            ui.label(t!("rgb.breathe.trans_time"));
                             ui.add(Slider::new(&mut trans_time, 0..=255));
 
-                            ui.label(t!("rgb.profile.breathe.select_color"));
+                            ui.label(t!("rgb.breathe.select_color"));
                             ui.label("");
                             let mut delete_idx = None;
                             for i in 0..color_count {
@@ -325,7 +279,7 @@ impl JukeBoxGui {
                                         if ui
                                             .button(phos::TRASH)
                                             .on_hover_text_at_pointer(t!(
-                                                "rgb.profile.breathe.delete_color"
+                                                "rgb.breathe.delete_color"
                                             ))
                                             .clicked()
                                         {
@@ -346,7 +300,7 @@ impl JukeBoxGui {
                             ui.add_enabled_ui(color_count < 4, |ui| {
                                 if ui
                                     .button("+")
-                                    .on_hover_text_at_pointer(t!("rgb.profile.breathe.add_color"))
+                                    .on_hover_text_at_pointer(t!("rgb.breathe.add_color"))
                                     .clicked()
                                 {
                                     color_count += 1;
@@ -371,7 +325,7 @@ impl JukeBoxGui {
                             ui.label(t!("rgb.brightness"));
                             ui.add(Slider::new(&mut brightness, 0..=100));
 
-                            ui.label(t!("rgb.profile.rainbow_solid.speed"));
+                            ui.label(t!("rgb.rainbow_solid.speed"));
                             ui.add(Slider::new(&mut speed, -100..=100));
 
                             ui.label(t!("rgb.saturation"));
@@ -398,13 +352,13 @@ impl JukeBoxGui {
                             ui.label(t!("rgb.brightness"));
                             ui.add(Slider::new(&mut brightness, 0..=100));
 
-                            ui.label(t!("rgb.profile.rainbow_wave.speed"));
+                            ui.label(t!("rgb.rainbow_wave.speed"));
                             ui.add(Slider::new(&mut speed, -100..=100));
 
-                            ui.label(t!("rgb.profile.rainbow_wave.speed_x"));
+                            ui.label(t!("rgb.rainbow_wave.speed_x"));
                             ui.add(Slider::new(&mut speed_x, -100..=100));
 
-                            ui.label(t!("rgb.profile.rainbow_wave.speed_y"));
+                            ui.label(t!("rgb.rainbow_wave.speed_y"));
                             ui.add(Slider::new(&mut speed_y, -100..=100));
 
                             ui.label(t!("rgb.saturation"));

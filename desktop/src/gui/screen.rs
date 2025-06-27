@@ -82,26 +82,18 @@ impl JukeBoxGui {
         let screen_defaults = [
             (
                 ScreenProfile::Off,
-                t!("screen.profile.off.title"),
-                t!("screen.profile.off.description"),
+                t!("screen.off.title"),
+                t!("screen.off.description"),
             ),
             (
-                ScreenProfile::DisplayKeys {
-                    brightness: 255,
-                    background_color: 0x4208,
-                    text_color: 0xFFFF,
-                },
-                t!("screen.profile.display_keys.title"),
-                t!("screen.profile.display_keys.description"),
+                ScreenProfile::default_display_keys(),
+                t!("screen.display_keys.title"),
+                t!("screen.display_keys.description"),
             ),
             (
-                ScreenProfile::DisplayStats {
-                    brightness: 255,
-                    background_color: 0x4208,
-                    text_color: 0xFFFF,
-                },
-                t!("screen.profile.display_stats.title"),
-                t!("screen.profile.display_stats.description"),
+                ScreenProfile::default_display_stats(),
+                t!("screen.display_stats.title"),
+                t!("screen.display_stats.description"),
             ),
         ];
 
@@ -162,12 +154,12 @@ impl JukeBoxGui {
                             ui.label(t!("screen.brightness"));
                             ui.add(Slider::new(&mut brightness, 0..=100));
 
-                            ui.label(t!("screen.profile.display_keys.select_background_color"));
+                            ui.label(t!("screen.select_background_color"));
                             let mut c = split_to_rgb565(background_color);
                             Self::draw_rgb565_editor(ui, &mut c);
                             let background_color = combine_to_rgb565(c.0, c.1, c.2);
 
-                            ui.label(t!("screen.profile.display_keys.select_text_color"));
+                            ui.label(t!("screen.select_text_color"));
                             let mut c = split_to_rgb565(text_color);
                             Self::draw_rgb565_editor(ui, &mut c);
                             let text_color = combine_to_rgb565(c.0, c.1, c.2);
@@ -186,12 +178,12 @@ impl JukeBoxGui {
                             ui.label(t!("screen.brightness"));
                             ui.add(Slider::new(&mut brightness, 0..=100));
 
-                            ui.label(t!("screen.profile.display_keys.select_background_color"));
+                            ui.label(t!("screen.select_background_color"));
                             let mut c = split_to_rgb565(background_color);
                             Self::draw_rgb565_editor(ui, &mut c);
                             let background_color = combine_to_rgb565(c.0, c.1, c.2);
 
-                            ui.label(t!("screen.profile.display_keys.select_text_color"));
+                            ui.label(t!("screen.select_text_color"));
                             let mut c = split_to_rgb565(text_color);
                             Self::draw_rgb565_editor(ui, &mut c);
                             let text_color = combine_to_rgb565(c.0, c.1, c.2);

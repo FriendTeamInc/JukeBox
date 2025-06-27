@@ -455,12 +455,73 @@ impl RgbProfile {
             hold_time: 20,
             trans_time: 10,
             color_count: 2,
-            colors: [(255, 255, 255), (127, 127, 127), (0, 0, 0), (0, 0, 0)],
+            colors: [(255, 255, 255), (150, 150, 150), (0, 0, 0), (0, 0, 0)],
         }
     }
 
     pub const fn default_gui_profile() -> Self {
-        Self::RainbowWave {
+        Self::default_rainbow_wave()
+    }
+
+    pub const fn default_static_solid() -> Self {
+        RgbProfile::StaticSolid {
+            brightness: 25,
+            color: (255, 200, 100),
+        }
+    }
+
+    pub const fn default_static_per_key() -> Self {
+        RgbProfile::StaticPerKey {
+            brightness: 25,
+            colors: [
+                (100, 155, 255),
+                (255, 200, 100),
+                (255, 200, 100),
+                (100, 155, 255),
+                (255, 200, 100),
+                (100, 155, 255),
+                (100, 155, 255),
+                (255, 200, 100),
+                (100, 155, 255),
+                (255, 200, 100),
+                (255, 200, 100),
+                (100, 155, 255),
+            ],
+        }
+    }
+
+    pub const fn default_wave() -> Self {
+        RgbProfile::Wave {
+            brightness: 25,
+            speed: 10,
+            speed_x: 20,
+            speed_y: 0,
+            color_count: 3,
+            colors: [(51, 187, 255), (153, 119, 255), (255, 119, 221), (0, 0, 0)],
+        }
+    }
+
+    pub const fn default_breathe() -> Self {
+        RgbProfile::Breathe {
+            brightness: 25,
+            hold_time: 20,
+            trans_time: 5,
+            color_count: 3,
+            colors: [(51, 187, 255), (153, 119, 255), (255, 119, 221), (0, 0, 0)],
+        }
+    }
+
+    pub const fn default_rainbow_solid() -> Self {
+        RgbProfile::RainbowSolid {
+            brightness: 25,
+            speed: 30,
+            saturation: 100,
+            value: 100,
+        }
+    }
+
+    pub const fn default_rainbow_wave() -> Self {
+        RgbProfile::RainbowWave {
             brightness: 25,
             speed: 100,
             speed_x: 0,
