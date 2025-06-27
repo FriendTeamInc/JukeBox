@@ -37,6 +37,7 @@ pub enum RgbProfile {
     },
     Wave {
         brightness: u8,
+        speed: i8,
         speed_x: i8,
         speed_y: i8,
         color_count: u8,
@@ -78,6 +79,7 @@ impl RgbProfile {
             } => RGB_PROFILE_STATIC_PER_KEY,
             Self::Wave {
                 brightness: _,
+                speed: _,
                 speed_x: _,
                 speed_y: _,
                 color_count: _,
@@ -120,6 +122,7 @@ impl RgbProfile {
             } => *brightness,
             Self::Wave {
                 brightness,
+                speed: _,
                 speed_x: _,
                 speed_y: _,
                 color_count: _,
@@ -181,18 +184,20 @@ impl RgbProfile {
             }
             Self::Wave {
                 brightness: _,
+                speed,
                 speed_x,
                 speed_y,
                 color_count,
                 colors,
             } => {
-                data[2] = unsafe { transmute(speed_x) };
-                data[3] = unsafe { transmute(speed_y) };
-                data[4] = color_count;
-                set_color(&mut data[5..=7], colors[0]);
-                set_color(&mut data[8..=10], colors[1]);
-                set_color(&mut data[11..=13], colors[2]);
-                set_color(&mut data[14..=16], colors[3]);
+                data[2] = unsafe { transmute(speed) };
+                data[3] = unsafe { transmute(speed_x) };
+                data[4] = unsafe { transmute(speed_y) };
+                data[5] = color_count;
+                set_color(&mut data[6..=8], colors[0]);
+                set_color(&mut data[9..=11], colors[1]);
+                set_color(&mut data[12..=14], colors[2]);
+                set_color(&mut data[15..=17], colors[3]);
             }
             Self::Breathe {
                 brightness: _,
@@ -264,14 +269,15 @@ impl RgbProfile {
             },
             RGB_PROFILE_WAVE => Self::Wave {
                 brightness: data[1],
-                speed_x: unsafe { transmute(data[2]) },
-                speed_y: unsafe { transmute(data[3]) },
-                color_count: data[4],
+                speed: unsafe { transmute(data[2]) },
+                speed_x: unsafe { transmute(data[3]) },
+                speed_y: unsafe { transmute(data[4]) },
+                color_count: data[5],
                 colors: [
-                    get_color(&data[5..=7]),
-                    get_color(&data[8..=10]),
-                    get_color(&data[11..=13]),
-                    get_color(&data[14..=16]),
+                    get_color(&data[6..=8]),
+                    get_color(&data[9..=11]),
+                    get_color(&data[12..=14]),
+                    get_color(&data[15..=17]),
                 ],
             },
             RGB_PROFILE_BREATHE => Self::Breathe {
@@ -327,11 +333,39 @@ impl RgbProfile {
             }
             Self::Wave {
                 brightness: _,
-                speed_x: _,
-                speed_y: _,
-                color_count: _,
-                colors: _,
-            } => todo!(),
+                speed,
+                speed_x,
+                speed_y,
+                color_count,
+                colors,
+            } => {
+                let color_count = *color_count as usize;
+                let n = color_count as f32;
+                let sx = *speed_x as f32;
+                let sy = *speed_y as f32;
+                let t = (t as f32) / 100_000.0 * (*speed as f32);
+                let factor = 50f32;
+
+                for i in 0..12 {
+                    let x = (i % 4) as f32;
+                    let y = (i / 4) as f32;
+
+                    let t = (t + (sx * x) + (sy * y)) % (n * factor);
+                    let r = (t / factor) as usize;
+
+                    let color1 = colors[r];
+                    let color2 = colors[if r + 1 == color_count { 0 } else { r + 1 }];
+                    let p = (t % factor) / factor;
+
+                    let trans_color = (
+                        ((color1.0 as f32) + (((color2.0 as f32) - (color1.0 as f32)) * p)) as u8,
+                        ((color1.1 as f32) + (((color2.1 as f32) - (color1.1 as f32)) * p)) as u8,
+                        ((color1.2 as f32) + (((color2.2 as f32) - (color1.2 as f32)) * p)) as u8,
+                    );
+
+                    buffer[i] = trans_color;
+                }
+            }
             Self::Breathe {
                 brightness: _,
                 hold_time,

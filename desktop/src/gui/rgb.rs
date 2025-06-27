@@ -5,10 +5,7 @@ use eframe::egui::{
     ScrollArea, Sense, Slider, StrokeKind, TextEdit, Ui, Vec2,
 };
 use egui_phosphor::regular as phos;
-use jukebox_util::{
-    peripheral::DeviceType,
-    rgb::{RgbProfile, RGB_PROFILE_WAVE},
-};
+use jukebox_util::{peripheral::DeviceType, rgb::RgbProfile};
 
 use crate::serial::SerialCommand;
 
@@ -119,7 +116,8 @@ impl JukeBoxGui {
             (
                 RgbProfile::Wave {
                     brightness: 25,
-                    speed_x: 50,
+                    speed: 10,
+                    speed_x: 20,
                     speed_y: 0,
                     color_count: 3,
                     colors: [(51, 187, 255), (153, 119, 255), (255, 119, 221), (0, 0, 0)],
@@ -169,11 +167,6 @@ impl JukeBoxGui {
                 .truncate()
                 .show_ui(ui, |ui| {
                     for (i, t, _) in &rgb_defaults {
-                        // TODO: remove this when wave is implemented
-                        if i.get_type() == RGB_PROFILE_WAVE {
-                            continue;
-                        }
-
                         if ui
                             .selectable_label(
                                 self.editing_rgb.get_type() == i.get_type(),
@@ -240,18 +233,66 @@ impl JukeBoxGui {
                         }
                         RgbProfile::Wave {
                             mut brightness,
-                            speed_x,
-                            speed_y,
-                            color_count,
-                            colors,
+                            mut speed,
+                            mut speed_x,
+                            mut speed_y,
+                            mut color_count,
+                            mut colors,
                         } => {
                             ui.label(t!("rgb.brightness"));
                             ui.add(Slider::new(&mut brightness, 0..=100));
 
-                            ui.label("todo!");
+                            ui.label(t!("rgb.profile.wave.speed"));
+                            ui.add(Slider::new(&mut speed, -100..=100));
+
+                            ui.label(t!("rgb.profile.wave.speed_x"));
+                            ui.add(Slider::new(&mut speed_x, -100..=100));
+
+                            ui.label(t!("rgb.profile.wave.speed_y"));
+                            ui.add(Slider::new(&mut speed_y, -100..=100));
+
+                            ui.label(t!("rgb.profile.wave.select_color"));
+                            ui.label("");
+                            let mut delete_idx = None;
+                            for i in 0..color_count {
+                                ui.horizontal(|ui| {
+                                    ui.label(format!("{}.", i + 1));
+                                    ui.add_enabled_ui(color_count > 1, |ui| {
+                                        if ui
+                                            .button(phos::TRASH)
+                                            .on_hover_text_at_pointer(t!(
+                                                "rgb.profile.wave.delete_color"
+                                            ))
+                                            .clicked()
+                                        {
+                                            delete_idx = Some(i);
+                                        }
+                                    });
+                                });
+                                Self::draw_rgb888_editor(ui, &mut colors[i as usize]);
+                                ui.label("");
+                            }
+                            if let Some(x) = delete_idx {
+                                for i in x..color_count - 1 {
+                                    colors[i as usize] = colors[(i + 1) as usize];
+                                }
+                                color_count -= 1;
+                            }
+
+                            ui.add_enabled_ui(color_count < 4, |ui| {
+                                if ui
+                                    .button("+")
+                                    .on_hover_text_at_pointer(t!("rgb.profile.wave.add_color"))
+                                    .clicked()
+                                {
+                                    color_count += 1;
+                                    colors[(color_count - 1) as usize] = (0, 0, 0);
+                                }
+                            });
 
                             self.editing_rgb = RgbProfile::Wave {
                                 brightness,
+                                speed,
                                 speed_x,
                                 speed_y,
                                 color_count,
@@ -392,7 +433,6 @@ impl JukeBoxGui {
                     .as_micros()
                     % 1_000_000_000;
                 let buf = self.editing_rgb.calculate_matrix(t as u64);
-                // let _brtns = self.editing_rgb.brightness(); // TODO
                 ui.vertical(|ui| {
                     ui.allocate_exact_size(vec2(0.0, 10.0), Sense::empty());
                     for y in 0..3 {
