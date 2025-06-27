@@ -4,7 +4,6 @@ window_title: "JukeBox Desktop"
 
 settings:
   title: "JukeBox Desktop"
-  donate: "Donate"
   repository: "Repository"
   homepage: "Homepage"
   copyright: "Made w/ <3 by Friend Team Inc. (c) 2024"
@@ -12,8 +11,14 @@ settings:
 help:
   no_device: "Please connect a device."
 
+  intro:
+    message_1: "Welcome to the JukeBox Desktop Application! Here, you can configure your JukeBox device to do all sorts of powerful things.\n\nLet's walk through some important details first..."
+    message_2: "Your JukeBox can be customized entirely to your liking!\n\nProfiles determine what actions are assigned to the buttons of any connected device. Each keypad device can have its screen and RGB settings made per profile, too.\n\nEach button on your device can do a wide variety of actions, like opening applications and websites, acting like a keyboard and mouse, and more!"
+    message_3: "If there is an update available for the application or device firmware, a popup like this one will appear.\n\nIf any actions you attempt to use fail, an error popup will appear.\n\nIf you're unsure of what any buttons do, just hover over the button for a moment and a tooltip will appear.\n\nWhen you close this window, the application will remain running in the background, and can be found in your system tray."
+    message_4_windows: "You appear to be running a Windows PC.\n\nYou should know, certain applications are known to interfere with JukeBox devices.\n\nIn order to ensure your device functions properly, please close any application known to cause issues. A full list of the problematic software can be found [here]() (TODO)."
+    message_4_linux: "You appear to be running a Linux machine.\n\nIn order for your JukeBox device to communicate with the desktop app, your user needs to be added to the `dialout` group on your machine.\n\nYou will also need the appropriate udev rules installed, listed [here]() (TODO).\n\nYou may also need to restart this software after."
+
   generic:
-    modal_title: "Error!"
     modal_exit: "   Ok   "
     err:
       config_failed_to_load: "Your previous config file failed to load. A new default config has been made, but your old file is still saved here:\n\n[`%{config_dir}`](%{config_dir})"

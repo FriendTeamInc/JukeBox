@@ -202,7 +202,8 @@ impl JukeBoxGui {
         let config_enable_splash = config.enable_splash;
         let config_always_save_on_exit = config.always_save_on_exit;
         let config_ignore_update_notifications = config.ignore_update_notifications;
-        let config = Arc::new(Mutex::new(JukeBoxConfig::load().0));
+        let config_seen_intro_messages = config.seen_intro_messages;
+        let config = Arc::new(Mutex::new(config));
 
         // when gui exits, we use these to signal the other threads to stop
         let thread_breaker = Arc::new(AtomicBool::new(false)); // ends other threads from gui
@@ -254,6 +255,21 @@ impl JukeBoxGui {
                 )
                 .into(),
             );
+        }
+        if !config_seen_intro_messages && !config_failed_to_load {
+            generic_errors.push_back(t!("help.intro.message_1").into());
+            generic_errors.push_back(t!("help.intro.message_2").into());
+            generic_errors.push_back(t!("help.intro.message_3").into());
+            if cfg!(target_os = "windows") {
+                generic_errors.push_back(t!("help.intro.message_4_windows").into());
+            } else {
+                generic_errors.push_back(t!("help.intro.message_4_linux").into());
+            }
+
+            // TODO: this doesn't actually ensure the user sees all the messages
+            let mut conf = config.blocking_lock();
+            conf.seen_intro_messages = true;
+            conf.save();
         }
 
         JukeBoxGui {
@@ -348,10 +364,8 @@ impl JukeBoxGui {
             let update_error = self.update_error.clone().unwrap();
             Modal::new(Id::new("UpdateErrorModal")).show(ui.ctx(), |ui| {
                 ui.set_width(400.0);
-
                 ui.heading(t!("help.update.error_modal_title"));
-
-                ui.add_space(10.0);
+                ui.separator();
 
                 ui.label(update_error.msg);
 
@@ -375,10 +389,8 @@ impl JukeBoxGui {
             let action = self.action_errors.get(0).unwrap().clone();
             Modal::new(Id::new("ActionErrorModal")).show(ui.ctx(), |ui| {
                 ui.set_width(400.0);
-
                 ui.heading(t!("help.action.modal_title"));
-
-                ui.add_space(10.0);
+                ui.separator();
 
                 ui.label(action.msg);
 
@@ -411,13 +423,13 @@ impl JukeBoxGui {
         if self.current_version != self.available_version && !self.dismissed_update_notif {
             Modal::new(Id::new("UpdateAvailableModal")).show(ui.ctx(), |ui| {
                 ui.set_width(400.0);
-                ui.set_height(200.0);
+                ui.set_height(300.0);
                 ui.heading(t!("help.update.modal_title"));
                 ui.label(format!(
                     "v{} -> v{}",
                     self.current_version, self.available_version
                 ));
-                ui.add_space(10.0);
+                ui.separator();
 
                 ScrollArea::vertical().max_height(150.0).show(ui, |ui| {
                     CommonMarkViewer::new().show(
@@ -454,12 +466,10 @@ impl JukeBoxGui {
 
         if self.generic_errors.len() > 0 {
             let generic_error = self.generic_errors.get(0).unwrap().clone();
-            Modal::new(Id::new("GenericErrorModal")).show(ui.ctx(), |ui| {
+            Modal::new(Id::new("GenericPopupModal")).show(ui.ctx(), |ui| {
                 ui.set_width(400.0);
-
-                ui.heading(t!("help.generic.modal_title"));
-
-                ui.add_space(10.0);
+                ui.heading("");
+                ui.separator();
 
                 CommonMarkViewer::new().show(ui, &mut self.commonmark_cache, &generic_error);
 

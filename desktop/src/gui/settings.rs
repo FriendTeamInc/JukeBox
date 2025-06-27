@@ -87,11 +87,6 @@ impl JukeBoxGui {
                 });
                 c2.with_layout(Layout::right_to_left(Align::Max), |ui| {
                     ui.hyperlink_to(
-                        t!("settings.donate"),
-                        "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-                    );
-                    ui.label(" - ");
-                    ui.hyperlink_to(
                         t!("settings.repository"),
                         "https://github.com/FriendTeamInc/JukeBox",
                     );

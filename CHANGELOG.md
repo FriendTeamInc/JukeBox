@@ -1,3 +1,7 @@
+# v0.5.0 - Tut Trials (TODO)
+- Add a welcome message on very first startup with some important info for the user.
+- Remove donate "link".
+
 # v0.4.6 - I'm Blue (June 26, 2025)
 - Update default theme for device when not connected to application. This now includes an indicator of USB connection status (red if not connecting, green if connected with host), the device's UID, and its firmware version. It's also blue now.
 - Fix "N/A" temperature not displaying correctly on device.
