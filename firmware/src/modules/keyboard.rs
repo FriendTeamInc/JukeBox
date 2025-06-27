@@ -18,7 +18,7 @@ pub struct KeyboardMod {
     col_pins: [Pin<DynPinId, FunctionSioInput, PullDown>; KEY_COLS],
     row_pins: [Pin<DynPinId, FunctionSioOutput, PullDown>; KEY_ROWS],
     poll_timer: CountDown,
-    pressed_keys: [bool; 16], // TODO: change to KEY_ROWS * KEY_COLS
+    pressed_keys: [bool; 16],
 }
 
 impl KeyboardMod {

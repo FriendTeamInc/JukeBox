@@ -407,7 +407,6 @@ impl ScreenMod {
                     .draw(&mut self.fb);
 
                     // CPU name
-                    // TODO: color appropriately
                     let _ = Text::with_text_style(
                         self.system_stats.cpu_name.to_str(),
                         Point::new(3, 10),
@@ -492,7 +491,6 @@ impl ScreenMod {
                     .draw(&mut self.fb);
 
                     // GPU name
-                    // TODO: color appropriately
                     let _ = Text::with_text_style(
                         self.system_stats.gpu_name.to_str(),
                         Point::new(320 - 2 - 2, 10),

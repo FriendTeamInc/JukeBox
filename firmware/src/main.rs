@@ -245,7 +245,6 @@ fn main() -> ! {
                     timer.count_down(),
                 );
                 rgb::RgbMod::new(ws, timer.count_down())
-                // TODO: load rgb mode from eeprom
             };
 
             #[cfg(feature = "pedalpad")]

@@ -64,6 +64,7 @@ type ScreenSystemStats = Mutex<10, (bool, SystemStats)>;
 type ScreenControls = Mutex<11, (bool, ScreenProfile)>;
 type UsbStatus = Mutex<12, (bool, UsbDeviceState)>;
 
+// TODO: load defaults from eeprom
 pub const DEFAULT_INPUTS: JBInputs = inputs_default();
 pub const DEFAULT_KEYBOARD_EVENTS: [KeyboardEvent; 12] = KeyboardEvent::default_events();
 pub const DEFAULT_MOUSE_EVENTS: [MouseEvent; 12] = MouseEvent::default_events();

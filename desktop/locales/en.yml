@@ -160,6 +160,11 @@ rgb:
     breathe:
       title: "Breathe"
       description: "Rotates through a list of colors, holding on each before transitioning."
+      hold_time: "Color Hold Time (in seconds):"
+      trans_time: "Color Transition Time (in seconds):"
+      select_color: "Select Colors:"
+      add_color: "Add Color"
+      delete_color: "Delete Color"
     rainbow_solid:
       title: "Rainbow (Solid)"
       description: "Displays the full rainbow of colors on every key."

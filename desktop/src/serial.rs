@@ -590,6 +590,7 @@ pub async fn build_config(config: Arc<Mutex<JukeBoxConfig>>, device_info: Serial
             }
         }
     }
+
     conf.save();
 }
 

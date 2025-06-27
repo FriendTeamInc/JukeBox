@@ -90,7 +90,7 @@ impl JukeBoxGui {
             (
                 RgbProfile::StaticSolid {
                     brightness: 25,
-                    color: (204, 153, 51),
+                    color: (255, 200, 100),
                 },
                 t!("rgb.profile.static_solid.title"),
                 t!("rgb.profile.static_solid.description"),
@@ -99,18 +99,18 @@ impl JukeBoxGui {
                 RgbProfile::StaticPerKey {
                     brightness: 25,
                     colors: [
-                        (127, 127, 127),
-                        (127, 127, 127),
-                        (127, 127, 127),
-                        (127, 127, 127),
-                        (127, 127, 127),
-                        (127, 127, 127),
-                        (127, 127, 127),
-                        (127, 127, 127),
-                        (127, 127, 127),
-                        (127, 127, 127),
-                        (127, 127, 127),
-                        (127, 127, 127),
+                        (100, 155, 255),
+                        (255, 200, 100),
+                        (255, 200, 100),
+                        (100, 155, 255),
+                        (255, 200, 100),
+                        (100, 155, 255),
+                        (100, 155, 255),
+                        (255, 200, 100),
+                        (100, 155, 255),
+                        (255, 200, 100),
+                        (255, 200, 100),
+                        (100, 155, 255),
                     ],
                 },
                 t!("rgb.profile.static_per_key.title"),
@@ -122,7 +122,7 @@ impl JukeBoxGui {
                     speed_x: 50,
                     speed_y: 0,
                     color_count: 3,
-                    colors: [(200, 0, 0), (0, 200, 0), (0, 0, 200), (0, 0, 0)],
+                    colors: [(51, 187, 255), (153, 119, 255), (255, 119, 221), (0, 0, 0)],
                 },
                 t!("rgb.profile.wave.title"),
                 t!("rgb.profile.wave.description"),
@@ -133,7 +133,7 @@ impl JukeBoxGui {
                     hold_time: 20,
                     trans_time: 5,
                     color_count: 3,
-                    colors: [(200, 0, 0), (0, 200, 0), (0, 0, 200), (0, 0, 0)],
+                    colors: [(51, 187, 255), (153, 119, 255), (255, 119, 221), (0, 0, 0)],
                 },
                 t!("rgb.profile.breathe.title"),
                 t!("rgb.profile.breathe.description"),
@@ -260,15 +260,58 @@ impl JukeBoxGui {
                         }
                         RgbProfile::Breathe {
                             mut brightness,
-                            hold_time,
-                            trans_time,
-                            color_count,
-                            colors,
+                            mut hold_time,
+                            mut trans_time,
+                            mut color_count,
+                            mut colors,
                         } => {
                             ui.label(t!("rgb.brightness"));
                             ui.add(Slider::new(&mut brightness, 0..=100));
 
-                            ui.label("todo!");
+                            ui.label(t!("rgb.profile.breathe.hold_time"));
+                            ui.add(Slider::new(&mut hold_time, 0..=255));
+
+                            ui.label(t!("rgb.profile.breathe.trans_time"));
+                            ui.add(Slider::new(&mut trans_time, 0..=255));
+
+                            ui.label(t!("rgb.profile.breathe.select_color"));
+                            ui.label("");
+                            let mut delete_idx = None;
+                            for i in 0..color_count {
+                                ui.horizontal(|ui| {
+                                    ui.label(format!("{}.", i + 1));
+                                    ui.add_enabled_ui(color_count > 1, |ui| {
+                                        if ui
+                                            .button(phos::TRASH)
+                                            .on_hover_text_at_pointer(t!(
+                                                "rgb.profile.breathe.delete_color"
+                                            ))
+                                            .clicked()
+                                        {
+                                            delete_idx = Some(i);
+                                        }
+                                    });
+                                });
+                                Self::draw_rgb888_editor(ui, &mut colors[i as usize]);
+                                ui.label("");
+                            }
+                            if let Some(x) = delete_idx {
+                                for i in x..color_count - 1 {
+                                    colors[i as usize] = colors[(i + 1) as usize];
+                                }
+                                color_count -= 1;
+                            }
+
+                            ui.add_enabled_ui(color_count < 4, |ui| {
+                                if ui
+                                    .button("+")
+                                    .on_hover_text_at_pointer(t!("rgb.profile.breathe.add_color"))
+                                    .clicked()
+                                {
+                                    color_count += 1;
+                                    colors[(color_count - 1) as usize] = (0, 0, 0);
+                                }
+                            });
 
                             self.editing_rgb = RgbProfile::Breathe {
                                 brightness,
