@@ -141,7 +141,7 @@ impl ScreenProfile {
     pub const fn default_profile() -> Self {
         Self::DisplayKeys {
             brightness: 100,
-            background_color: 0x4208,
+            background_color: 0b00000_001101_10011,
             text_color: 0xFFFF,
         }
     }

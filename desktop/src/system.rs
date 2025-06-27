@@ -129,7 +129,7 @@ impl StatReport {
         // sysinfo crate does not provide temperature on windows machines currently
         // TODO: when it eventually does, we can remove this
         let cpu_temperature = if cfg!(target_os = "windows") {
-            String::from("N/A")
+            String::from("  N/A")
         } else {
             format!("{: >5.1}", self.cpu_temperature)
         };

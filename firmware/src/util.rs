@@ -13,6 +13,7 @@ use jukebox_util::{
     smallstr::SmallStr,
     stats::SystemStats,
 };
+use usb_device::device::UsbDeviceState;
 use usbd_human_interface_device::{device::mouse::WheelMouseReport, page::Keyboard};
 
 use crate::mutex::Mutex;
@@ -61,6 +62,7 @@ type MouseEvents = Mutex<8, [MouseEvent; 12]>;
 type ProfileNameControl = Mutex<9, (bool, ProfileName)>;
 type ScreenSystemStats = Mutex<10, (bool, SystemStats)>;
 type ScreenControls = Mutex<11, (bool, ScreenProfile)>;
+type UsbStatus = Mutex<12, (bool, UsbDeviceState)>;
 
 pub const DEFAULT_INPUTS: JBInputs = inputs_default();
 pub const DEFAULT_KEYBOARD_EVENTS: [KeyboardEvent; 12] = KeyboardEvent::default_events();
@@ -81,6 +83,7 @@ pub static MOUSE_EVENTS: MouseEvents = Mutex::new(DEFAULT_MOUSE_EVENTS);
 pub static PROFILE_NAME: ProfileNameControl = Mutex::new((true, DEFAULT_PROFILE_NAME));
 pub static SCREEN_SYSTEM_STATS: ScreenSystemStats = Mutex::new((false, DEFAULT_SYSTEM_STATS));
 pub static SCREEN_CONTROLS: ScreenControls = Mutex::new((false, DEFAULT_SCREEN_PROFILE));
+pub static USB_STATUS: UsbStatus = Mutex::new((false, UsbDeviceState::Default));
 
 #[macro_export]
 macro_rules! time_func {
@@ -102,7 +105,7 @@ pub fn reset_icons() {
                 let mut x = 0;
                 while x < 32 {
                     // TODO: use dma to swap out the icons
-                    let (r, g, b) = split_to_rgb565(!DEFAULT_ICONS[i][32 * y + x]);
+                    let (r, g, b) = split_to_rgb565(DEFAULT_ICONS[i][32 * y + x]);
                     icons[i].1[32 * y + x] = Bgr565::new(r, g, b);
                     x += 1;
                 }

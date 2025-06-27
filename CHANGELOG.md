@@ -1,3 +1,7 @@
+# v0.4.6 - I'm Blue (June 26, 2025)
+- Update default theme for device when not connected to application. This now includes an indicator of USB connection status (red if not connecting, green if connected with host), the device's UID, and its firmware version. It's also blue now.
+- Fix "N/A" temperature not displaying correctly on device.
+
 # v0.4.5 - Clock Forever (June 22, 2025)
 - Fix keyboard key requests being way too frequent.
 - Only send RGB and Screen packets to keypad devices, futureproofing.

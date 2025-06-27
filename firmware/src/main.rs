@@ -81,7 +81,7 @@ use util::{get_keyboard_events, reset_icons, PERIPHERAL_INPUTS, UPDATE_TRIGGER};
 
 use crate::{
     modules::serial::{SERIAL_READ_SIZE, SERIAL_WRITE_SIZE},
-    util::get_mouse_events,
+    util::{get_mouse_events, USB_STATUS},
 };
 
 static CORE1_STACK: Stack<16384> = Stack::new();
@@ -283,7 +283,8 @@ fn main() -> ! {
 
                 #[cfg(feature = "keypad")]
                 {
-                    screen_mod = screen_mod.update(&keyboard_mod.get_pressed_keys(), &timer);
+                    screen_mod =
+                        screen_mod.update(&keyboard_mod.get_pressed_keys(), &timer, uid, ver);
                 }
 
                 // update mutexes
@@ -381,5 +382,12 @@ fn main() -> ! {
                 }
             };
         }
+
+        USB_STATUS.with_mut_lock(|s| {
+            let new_status = usb_dev.state();
+            if s.1 != new_status {
+                *s = (true, new_status);
+            }
+        });
     }
 }
