@@ -68,52 +68,6 @@ impl KeyboardMod {
     pub fn get_pressed_keys(&self) -> [bool; 16] {
         self.pressed_keys
     }
-
-    // pub fn get_default_hardware_inputs() -> [Keyboard; 12 * 6] {
-    //     let mut pressed = [Keyboard::NoEventIndicated; 12 * 6];
-
-    //     let keys = [
-    //         Keyboard::F13,
-    //         Keyboard::F14,
-    //         Keyboard::F15,
-    //         Keyboard::F16,
-    //         Keyboard::F17,
-    //         Keyboard::F18,
-    //         Keyboard::F19,
-    //         Keyboard::F20,
-    //         Keyboard::F21,
-    //         Keyboard::F22,
-    //         Keyboard::F23,
-    //         Keyboard::F24,
-    //     ];
-    //     let mut i = [false; 12];
-    //     PERIPHERAL_INPUTS.with_lock(|k| {
-    //         match k {
-    //             JBInputs::KeyPad(key_inputs) => {
-    //                 i[0] = key_inputs.key1.into();
-    //                 i[1] = key_inputs.key2.into();
-    //                 i[2] = key_inputs.key3.into();
-    //                 i[3] = key_inputs.key4.into();
-    //                 i[4] = key_inputs.key5.into();
-    //                 i[5] = key_inputs.key6.into();
-    //                 i[6] = key_inputs.key7.into();
-    //                 i[7] = key_inputs.key8.into();
-    //                 i[8] = key_inputs.key9.into();
-    //                 i[9] = key_inputs.key10.into();
-    //                 i[10] = key_inputs.key11.into();
-    //                 i[11] = key_inputs.key12.into();
-    //             }
-    //             _ => todo!(),
-    //         };
-    //     });
-    //     for (i, (k, j)) in keys.iter().zip(i).enumerate() {
-    //         if j {
-    //             pressed[i] = *k;
-    //         }
-    //     }
-
-    //     pressed
-    // }
 }
 
 fn nop_loop(n: u8) {

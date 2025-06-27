@@ -110,7 +110,6 @@ impl MetaSwitchProfile {
         let mut config = config.lock().await;
         if config.profiles.contains_key(&self.profile) {
             config.current_profile = self.profile.clone();
-            // TODO: send command to device to change hardware inputs?
             Ok(())
         } else {
             if self.profile.len() == 0 {

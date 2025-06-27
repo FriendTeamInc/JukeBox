@@ -43,7 +43,7 @@ use tokio::{
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct SerialConnectionDetails {
-    pub input_identifier: u8,
+    pub device_type: DeviceType,
     pub firmware_version: String,
     pub device_uid: String,
 }
@@ -215,7 +215,7 @@ async fn greet_host(f: &mut Serial) -> Result<SerialConnectionDetails> {
     let mut device_uid = None;
     for (i, s) in resp.split(|c| *c == RSP_LINK_DELIMITER).enumerate() {
         if i == 1 {
-            input_identifier = Some(s.get(0).unwrap_or(&IDENT_UNKNOWN_INPUT));
+            input_identifier = Some(s.get(0).unwrap_or(&IDENT_UNKNOWN_INPUT).to_owned());
         } else if i == 2 {
             firmware_version = Some(s);
         } else if i == 3 {
@@ -242,11 +242,12 @@ async fn greet_host(f: &mut Serial) -> Result<SerialConnectionDetails> {
             bail!("failed to parse device info (failed to convert device uid to utf-8)");
         }
     };
+    let device_type: DeviceType = input_identifier.unwrap().into();
 
     Ok(SerialConnectionDetails {
-        input_identifier: *input_identifier.unwrap(),
-        firmware_version: firmware_version,
-        device_uid: device_uid,
+        device_type,
+        firmware_version,
+        device_uid,
     })
 }
 
@@ -409,7 +410,7 @@ pub async fn serial_loop(
     system_stats: Arc<Mutex<SystemStats>>,
 ) -> Result<()> {
     let device_uid = device_info.device_uid;
-    let device_type: DeviceType = device_info.input_identifier.into();
+    let device_type = device_info.device_type;
 
     let mut keys_tick = Instant::now()
         .checked_add(Duration::from_millis(50))
@@ -519,7 +520,7 @@ pub async fn serial_loop(
 
 pub async fn build_config(config: Arc<Mutex<JukeBoxConfig>>, device_info: SerialConnectionDetails) {
     let device_uid = device_info.device_uid;
-    let device_type: DeviceType = device_info.input_identifier.into();
+    let device_type = device_info.device_type;
 
     let short_uid = device_uid[12..].to_string();
 

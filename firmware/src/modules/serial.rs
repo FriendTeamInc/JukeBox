@@ -333,7 +333,6 @@ impl SerialMod {
                     true
                 }
                 Command::Identify => {
-                    // TODO: flash led for identifying
                     self.start_identify(serial);
                     true
                 }

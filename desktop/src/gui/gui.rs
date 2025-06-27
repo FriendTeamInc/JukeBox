@@ -514,7 +514,7 @@ impl JukeBoxGui {
                 SerialEvent::Connected { device_info } => {
                     let device_uid = device_info.device_uid;
                     let firmware_version = device_info.firmware_version;
-                    let device_type = device_info.input_identifier;
+                    let device_type = device_info.device_type;
 
                     self.current_device = device_uid.clone();
 
@@ -526,7 +526,7 @@ impl JukeBoxGui {
 
                     if self.devices.contains_key(&device_uid) {
                         let v = self.devices.get_mut(&device_uid).unwrap();
-                        v.device_info.device_type = device_type.into();
+                        v.device_info.device_type = device_type;
                         // v.device_info.nickname = device_name;
                         v.firmware_version = Some(Version::parse(&firmware_version).unwrap());
                         v.connected = true;
@@ -536,7 +536,7 @@ impl JukeBoxGui {
                             device_uid.clone(),
                             DeviceInfoExt {
                                 device_info: DeviceInfo {
-                                    device_type: device_type.into(),
+                                    device_type: device_type,
                                     nickname: device_name,
                                 },
                                 firmware_version: Some(Version::parse(&firmware_version).unwrap()),

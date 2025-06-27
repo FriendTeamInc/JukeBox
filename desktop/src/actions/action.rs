@@ -132,7 +132,7 @@ pub async fn action_task(
             .unwrap_or(DeviceType::Unknown)
             .clone();
 
-        (device_type, profile, c.current_profile.clone(), rgb, scr) // TODO: add hardware input info
+        (device_type, profile, c.current_profile.clone(), rgb, scr)
     };
 
     while let Some(evnt) = s_evnt_rx.recv().await {
@@ -142,7 +142,6 @@ pub async fn action_task(
 
                 clear_set(&mut prevkeys, device_uid).await;
 
-                // TODO: set hardware inputs here
                 let (device_type, keys, profile_name, rgb_profile, screen_profile) =
                     get_profile_info(&config, device_uid).await;
                 update_device_configs(
