@@ -1,19 +1,18 @@
-# Manually flashing new firmware on the JukeBox
-This document is a step by step process on how to load new firmware onto your JukeBox, in cases where the JukeBox Desktop application can't do it for you.
+# Updating Your JukeBox Device Firmware
+There are two methods for updating your JukeBox, using the desktop application and manually flashing the firmware.
 
-## 0. Try the JukeBox desktop software!
-If you can plug in your JukeBox and it connects to the desktop software, you can update the firmware in-app. In the bottom right of the device management page, click the update device button. Click update and keep the device connected, the application will download and install the latest firmware. You can also click the "CFW" button to install a custom firmware.
+## 1. Updating via the Desktop Application
+1. Connect your device to your computer and open the desktop application. Your device is connected when the desktop application shows a green plug symbol.
+2. Click the update button next to the green plug symbol to open the update page. Do note, that if you haven't already, you may need to configure the device to be allowed to update on [Windows with Zadig](TODO) or [Linux with udev rules](TODO).
+3. Click the front and center update button, and allow the application to flash new firmware onto the device. You can also load a custom firmware file with the CFW button, though this is not recommended nor supported.
+4. All done! Enjoy your updated device!
 
-(TODO: add pictures)
-
-If for whatever reason your JukeBox device no longer connects to the desktop software, you can manually install new (or custom) firmware by following these steps.
-
-## 1. Getting your device into flashing mode
-Unplug your JukeBox device from your computer. Press and hold down the FLASH button. While holding the FLASH button, plug the JukeBox device into your computer. A new USB storage device should appear named RPI-RP2 (you may need to let go of the FLASH button before it appears).
-
-(TODO: add pictures)
-
-## 2. Flashing the firmware
-Navigate to the [latest release page](https://github.com/FriendTeamInc/JukeBox/releases/latest), and download the appropriate firmware, which is a .UF2 file. Drag and drop that .UF2 file into the RPI-RP2 storage device that appeared. After a moment, the device will disappear and the JukeBox will reboot with its new firmware installed. You should now be able to connect your JukeBox to the desktop software again.
-
-(TODO: add pictures)
+## 2. Manually Flashing New Firmware on Tour Device
+1. Unplug the device from your computer.
+2. Locate the BOOT button on your device. Hold this button down.
+    - On the JukeBox KeyPad, this BOOT button is above the rightmost key next to the screen.
+3. While holding the button, connect the device to your computer. The device SHOULD NOT boot or light up normally.
+4. Let go of the BOOT button. A USB storage device should appear in your file explorer, named something like "RPI-RP2".
+5. Download the latest firmware [here](https://github.com/FriendTeamInc/JukeBox/releases/latest). The firmware is a UF2 file.
+6. Drag and drop the firmware into the "RPI-RP2" storage device and wait for the transfer to complete. When finished, your JukeBox device will reboot with the latest firmware installed.
+7. All done! Enjoy your updated device!
