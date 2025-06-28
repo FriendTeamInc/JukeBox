@@ -3,7 +3,7 @@ There are two methods for updating your JukeBox, using the desktop application a
 
 ## 1. Updating via the Desktop Application
 1. Connect your device to your computer and open the desktop application. Your device is connected when the desktop application shows a green plug symbol.
-2. Click the update button next to the green plug symbol to open the update page. Do note, that if you haven't already, you may need to configure the device to be allowed to update on [Windows with Zadig](TODO) or [Linux with udev rules](TODO).
+2. Click the update button next to the green plug symbol to open the update page. Do note, that if you haven't already, you may need to configure the device to be allowed to update on [Windows with Zadig](docs/windows-compatibility.md#updating-the-device-firmware) or [Linux with udev rules](docs/windows-compatibility.md#updating-the-device-firmware).
 3. Click the front and center update button, and allow the application to flash new firmware onto the device. You can also load a custom firmware file with the CFW button, though this is not recommended nor supported.
 4. All done! Enjoy your updated device!
 
