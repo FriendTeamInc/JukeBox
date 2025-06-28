@@ -3,6 +3,7 @@
 - Remove donate "link".
 - Add "Breathe" RGB pattern configuration.
 - Add "Wave" RGB pattern configuration.
+- Fix RGB previews, specifically the rounded corners.
 
 # v0.4.6 - I'm Blue (June 26, 2025)
 - Update default theme for device when not connected to application. This now includes an indicator of USB connection status (red if not connecting, green if connected with host), the device's UID, and its firmware version. It's also blue now.
