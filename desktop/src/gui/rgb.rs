@@ -1,8 +1,8 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use eframe::egui::{
-    color_picker::show_color_at, vec2, Align, Color32, ComboBox, Layout, Response, RichText,
-    ScrollArea, Sense, Slider, StrokeKind, TextEdit, Ui, Vec2,
+    vec2, Align, Color32, ComboBox, Layout, Response, RichText, ScrollArea, Sense, Slider,
+    TextEdit, Ui, Vec2,
 };
 use egui_phosphor::regular as phos;
 use jukebox_util::{peripheral::DeviceType, rgb::RgbProfile};
@@ -35,7 +35,7 @@ impl JukeBoxGui {
             });
 
             ui.with_layout(Layout::top_down(Align::Min), |ui| {
-                Self::draw_rgb888_preview(
+                Self::draw_rgb_preview(
                     ui,
                     Color32::from_rgb(color.0, color.1, color.2),
                     vec2(52.0, 38.0),
@@ -53,24 +53,15 @@ impl JukeBoxGui {
         });
     }
 
-    fn draw_rgb888_preview(ui: &mut Ui, color: Color32, size: Vec2) -> Response {
+    pub fn draw_rgb_preview(ui: &mut Ui, color: Color32, size: Vec2) -> Response {
         let (rect, response) = ui.allocate_exact_size(size, Sense::empty());
 
         if ui.is_rect_visible(rect) {
             let visuals = ui.visuals().widgets.noninteractive;
             let rect = rect.expand(visuals.expansion);
 
-            let stroke_width = 0.5;
-            show_color_at(ui.painter(), color, rect.shrink(stroke_width));
-
-            // TODO: deal with exposed corners
             let corner_radius = visuals.corner_radius.at_least(8);
-            ui.painter().rect_stroke(
-                rect,
-                corner_radius,
-                (2.0, visuals.bg_fill),
-                StrokeKind::Inside,
-            );
+            ui.painter().rect_filled(rect, corner_radius, color);
         }
 
         response
@@ -394,7 +385,7 @@ impl JukeBoxGui {
                             ui.allocate_exact_size(vec2(3.0, 45.0), Sense::empty());
                             for x in 0..4 {
                                 let c = buf[x + y * 4];
-                                Self::draw_rgb888_preview(
+                                Self::draw_rgb_preview(
                                     ui,
                                     Color32::from_rgb(c.0, c.1, c.2),
                                     vec2(40.0, 40.0),

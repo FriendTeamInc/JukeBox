@@ -251,6 +251,7 @@ action:
       title: "Open Website"
       help: "Opens a website on press."
       url: "URL:"
+      err: "Failed to open webpage \"%{webpage}\". Reason: %{reason}"
     snd_in_ctrl:
       title: "Audio Input Control"
       help: "Adjust an Audio Input Device volume by specified amount on press."

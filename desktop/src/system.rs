@@ -81,6 +81,7 @@ impl StatReport {
     }
 
     pub fn get_cpu_name(cpu_vendor: String, cpu_brand: String) -> String {
+        log::debug!("cpu info: {} {}", cpu_vendor, cpu_brand);
         let mut cpu_name = match cpu_vendor.as_str() {
             "GenuineIntel" => {
                 // TODO

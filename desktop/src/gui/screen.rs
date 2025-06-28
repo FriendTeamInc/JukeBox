@@ -1,6 +1,5 @@
 use eframe::egui::{
-    color_picker::show_color_at, vec2, Align, Color32, ComboBox, Layout, Response, RichText,
-    ScrollArea, Sense, Slider, StrokeKind, TextEdit, Ui, Vec2,
+    vec2, Align, Color32, ComboBox, Layout, RichText, ScrollArea, Sense, Slider, TextEdit, Ui,
 };
 use egui_phosphor::regular as phos;
 use jukebox_util::{
@@ -23,29 +22,6 @@ impl JukeBoxGui {
         }
     }
 
-    fn draw_rgb565_preview(ui: &mut Ui, color: Color32, size: Vec2) -> Response {
-        let (rect, response) = ui.allocate_exact_size(size, Sense::empty());
-
-        if ui.is_rect_visible(rect) {
-            let visuals = ui.visuals().widgets.noninteractive;
-            let rect = rect.expand(visuals.expansion);
-
-            let stroke_width = 0.5;
-            show_color_at(ui.painter(), color, rect.shrink(stroke_width));
-
-            // TODO: deal with exposed corners
-            let corner_radius = visuals.corner_radius.at_least(8);
-            ui.painter().rect_stroke(
-                rect,
-                corner_radius,
-                (2.0, visuals.bg_fill),
-                StrokeKind::Inside,
-            );
-        }
-
-        response
-    }
-
     fn draw_rgb565_editor(ui: &mut Ui, color: &mut (u8, u8, u8)) {
         let mut hex = format!("#{:04X}", combine_to_rgb565(color.0, color.1, color.2));
 
@@ -59,11 +35,7 @@ impl JukeBoxGui {
             ui.with_layout(Layout::top_down(Align::Min), |ui| {
                 let c2 = map_565_to_888(*color);
 
-                Self::draw_rgb565_preview(
-                    ui,
-                    Color32::from_rgb(c2.0, c2.1, c2.2),
-                    vec2(52.0, 38.0),
-                );
+                Self::draw_rgb_preview(ui, Color32::from_rgb(c2.0, c2.1, c2.2), vec2(52.0, 38.0));
 
                 let r = ui.add(TextEdit::singleline(&mut hex).desired_width(45.0));
                 if r.changed() {
