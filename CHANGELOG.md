@@ -1,9 +1,11 @@
-# v0.5.0 - Tut Trials (TODO)
+# v0.5.0 - Tut Trials (June 27, 2025)
 - Add a welcome message on very first startup with some important info for the user.
 - Remove donate "link".
 - Add "Breathe" RGB pattern configuration.
 - Add "Wave" RGB pattern configuration.
 - Fix RGB previews, specifically the rounded corners.
+- Enable NVIDIA GPU monitoring support. AMD support will be added later once cross compiling is sorted.
+- Update dependencies for desktop app and firmware.
 
 # v0.4.6 - I'm Blue (June 26, 2025)
 - Update default theme for device when not connected to application. This now includes an indicator of USB connection status (red if not connecting, green if connected with host), the device's UID, and its firmware version. It's also blue now.

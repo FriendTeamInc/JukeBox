@@ -30,6 +30,7 @@ use tokio::{
 use tray_icon::menu::{Menu, MenuEvent, MenuId, MenuItem, PredefinedMenuItem};
 use tray_icon::{TrayIcon, TrayIconBuilder, TrayIconEvent};
 
+use crate::actions::meta::AID_META_NO_ACTION;
 use crate::actions::types::ActionError;
 use crate::actions::{
     action::action_task,
@@ -266,7 +267,7 @@ impl JukeBoxGui {
                 generic_errors.push_back(t!("help.intro.message_4_linux").into());
             }
 
-            // TODO: this doesn't actually ensure the user sees all the messages
+            // this doesn't actually ensure the user sees all the messages
             let mut conf = config.blocking_lock();
             conf.seen_intro_messages = true;
             conf.save();
@@ -294,7 +295,7 @@ impl JukeBoxGui {
 
             editing_key: InputKey::UnknownKey,
             editing_action_icon: ActionIcon::DefaultActionIcon,
-            editing_action_type: "MetaNoAction".into(),
+            editing_action_type: AID_META_NO_ACTION.into(),
             editing_action: Action::MetaNoAction(MetaNoAction::default()),
 
             editing_rgb: RgbProfile::default_gui_profile(),

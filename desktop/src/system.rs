@@ -7,9 +7,8 @@ use jukebox_util::{smallstr::SmallStr, stats::SystemStats};
 use sysinfo::{Components, MemoryRefreshKind, System, MINIMUM_CPU_UPDATE_INTERVAL};
 use tokio::sync::Mutex;
 
-#[cfg(feature = "gpu")]
 use nvml_wrapper::{enum_wrappers::device::TemperatureSensor, Nvml};
-#[cfg(feature = "gpu")]
+#[cfg(feature = "amd_gpu")]
 use rocm_smi_lib::{RocmSmi, RsmiTemperatureMetric, RsmiTemperatureType};
 
 #[allow(dead_code)]
@@ -171,25 +170,15 @@ pub fn system_task(system_stats: Arc<Mutex<SystemStats>>) -> Result<()> {
     // heuristic to figure out which gpu stats to get
     // we can reasonably assume a user won't have both (probably) and the same count (hopefully)
     // if they do, then they probably don't have any discrete gpu installed (for sanity's sake)
-    #[cfg(feature = "gpu")]
+    // TODO: enable amd gpu support when cross compiling the rocm lib is possible
+    #[cfg(feature = "amd_gpu")]
     let (gpu_preference, nvml, mut rocm) = {
         let nvml = Nvml::init();
         let mut rocm = RocmSmi::init();
         let gpu_preference = match (&nvml, rocm.as_mut()) {
-            (Ok(n), Ok(a)) => {
-                if let Ok(nvidia_count) = n.device_count() {
-                    let amd_count = a.get_device_count();
-                    if amd_count == nvidia_count {
-                        GpuPreference::None
-                    } else if amd_count > nvidia_count {
-                        GpuPreference::Amd
-                    } else {
-                        GpuPreference::Nvidia
-                    }
-                } else {
-                    GpuPreference::Amd
-                }
-            }
+            // if we find both nvidia and amd support, we default to nvidia because its more popular.
+            // this may need to change in the future.
+            (Ok(_), Ok(_)) => GpuPreference::Nvidia,
             (Ok(_), Err(_)) => GpuPreference::Nvidia,
             (Err(_), Ok(_)) => GpuPreference::Amd,
             (Err(_), Err(_)) => GpuPreference::None,
@@ -197,6 +186,17 @@ pub fn system_task(system_stats: Arc<Mutex<SystemStats>>) -> Result<()> {
         log::info!("gpu preference: {:?}", gpu_preference);
 
         (gpu_preference, nvml, rocm)
+    };
+    #[cfg(not(feature = "amd_gpu"))]
+    let (gpu_preference, nvml) = {
+        let nvml = Nvml::init();
+        let gpu_preference = match &nvml {
+            Ok(_) => GpuPreference::Nvidia,
+            Err(_) => GpuPreference::None,
+        };
+        log::info!("gpu preference: {:?}", gpu_preference);
+
+        (gpu_preference, nvml)
     };
 
     let mut cpu_info: Option<String> = None;
@@ -248,7 +248,7 @@ pub fn system_task(system_stats: Arc<Mutex<SystemStats>>) -> Result<()> {
         let (mut gpu_info, mut gpu_usage, mut gpu_temperature, mut vram_used, mut vram_total) =
             (String::from("Unknown GPU"), 0.0f32, 0.0f32, 0u64, 0u64);
 
-        #[cfg(feature = "gpu")]
+        #[cfg(feature = "amd_gpu")]
         match gpu_preference {
             GpuPreference::Nvidia => {
                 if let Ok(n) = &nvml {
@@ -291,6 +291,29 @@ pub fn system_task(system_stats: Arc<Mutex<SystemStats>>) -> Result<()> {
                 }
             }
             GpuPreference::None => {}
+        }
+        #[cfg(not(feature = "amd_gpu"))]
+        match gpu_preference {
+            GpuPreference::Nvidia => {
+                if let Ok(n) = &nvml {
+                    if let Ok(d) = n.device_by_index(0) {
+                        if let Ok(name) = d.name() {
+                            gpu_info = name;
+                        }
+                        if let Ok(rates) = d.utilization_rates() {
+                            gpu_usage = rates.gpu as f32;
+                        }
+                        if let Ok(temp) = d.temperature(TemperatureSensor::Gpu) {
+                            gpu_temperature = temp as f32;
+                        }
+                        if let Ok(memory) = d.memory_info() {
+                            vram_used = memory.used;
+                            vram_total = memory.total;
+                        }
+                    }
+                }
+            }
+            _ => {}
         }
 
         // push report, we take an average of the past few samples to put in the mutex
