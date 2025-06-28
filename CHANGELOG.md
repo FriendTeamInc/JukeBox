@@ -1,3 +1,6 @@
+# v0.5.1 - TODO (TODO)
+- Update links to documentation for Windows and Linux setup intro messages.
+
 # v0.5.0 - Tut Trials (June 27, 2025)
 - Add a welcome message on very first startup with some important info for the user.
 - Remove donate "link".
