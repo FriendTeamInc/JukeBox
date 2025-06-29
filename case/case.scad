@@ -9,6 +9,8 @@ gen_bot = false;
 gen_leg = false;
 // Generates leg brace case piece
 gen_leg_brace = false;
+// Generates screen spacer piece
+gen_screen_spacer = false;
 // Generates screen detail for top case piece
 gen_detail = false;
 // Case size (width & height)
@@ -274,7 +276,7 @@ module case_detail() {
 }
 
 module case_leg() {
-    lH = clH+ctH+1.5;
+    lH = clH+ctH+1.25;
     lS = cS-4;
     difference() {
         union() {
@@ -288,11 +290,14 @@ module case_leg() {
             }
         }
         union() {
-            translate([lS, clipR, 0]) cube([clipR, lH, clipW]);
+            translate([lS, clipR, -1]) cube([clipR, lH, clipW+2]);
 
             translate([clipR, 2 * clipR + lH, -1]) linear_extrude(height=clipW+2) polygon(points=[[0,0],[lS,0],[lS/3, lS/1.75]]);
         }
     }
+
+    translate([cS-cpF, lH+clipR, clipW/2]) rotate([90, 0, 0]) cylinder(d1=cpFD, d2=cpFD-2, h=cpFH/2);
+    translate([cpF, lH+clipR, clipW/2]) rotate([90, 0, 0]) cylinder(d1=cpFD, d2=cpFD-2, h=cpFH/2);
 }
 
 module case_leg_brace() {
@@ -306,6 +311,13 @@ module case_leg_brace() {
             translate([0, 0, clipR]) cube([braceW, clipW, clipR]);
             translate([0, braceL-clipW, clipR]) cube([braceW, clipW, clipR]);
         }
+    }
+}
+
+module case_screen_spacer() {
+    difference() {
+        cube([52, 36.5, 2]);
+        translate([0, 8, -1]) cube([26, 20.5, 4]);
     }
 }
 
@@ -325,5 +337,6 @@ difference() {
     }
 }
 if (gen_leg) color([1, 0, 0]) case_leg();
-if (gen_leg_brace) color([1, 1, 0]) case_leg_brace();
+if (gen_leg_brace) color([0, 1, 1]) case_leg_brace();
+if (gen_screen_spacer) color([0, 0, 1]) case_screen_spacer();
 // if (gen_detail) translate([0, 0, clH]) color([0, 0, 1]) case_detail();
