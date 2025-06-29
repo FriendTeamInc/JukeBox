@@ -9,8 +9,6 @@ gen_bot = false;
 gen_leg = false;
 // Generates leg brace case piece
 gen_leg_brace = false;
-// Generates screen case piece
-gen_scr = true;
 // Generates screen detail for top case piece
 gen_detail = false;
 // Case size (width & height)
@@ -28,7 +26,7 @@ $fn=32;
 // Case connector hole size
 ioHS = 10;
 // Case connector hole offset
-ioHO = cS-cmO-8;
+ioHO = cS-cmO-17.5;
 // Case connector hole buffer
 ioHB = 0.125;
 
@@ -149,7 +147,7 @@ module speaker_icon() {
 }
 
 SOX = cS / 2 - (csScrCW + ctW * 2) / 2; // screen origin x
-SOY = cS - 10 - ctW - csScrCH / 2; // screen origin y
+SOY = cS - 18 - ctW - csScrCH / 2-2.75; // screen origin y
 
 module case_top() {
     difference() {
@@ -159,13 +157,6 @@ module case_top() {
                     // Top shell body
                     translate([0, 0, ctH]) chamferedsquare(cS, cS, 1, 3, 2);
                     roundedsquare(cS, cS, ctH, cR);
-                    // Screen body
-                    if (gen_scr) translate([SOX, SOY, 0]) union() {
-                        sW = csScrCW + ctW * 2;
-                        sH = csScrCH + ctW * 2;
-                        translate([0, 0, ctH]) chamferedsquare(sW, sH, 1, 3, 2);
-                        roundedsquare(sW, sH, ctH, 3);
-                    }
                 }
                 union() {
                     // USB-C hole
@@ -173,12 +164,11 @@ module case_top() {
                     // Interior
                     translate([ctW, ctW, -1]) roundedsquare(cS-ctW*2, cS-ctW*2, ctH+1, cR);
                     // Screen cutout
-                    if (gen_scr) translate([SOX, SOY, 0]) union() {
-                        // Cutout interior
-                        translate([ctW, ctW, 0]) cube([csScrCW, csScrCH, ctH]);
+                    translate([SOX, SOY, 0]) union() {
                         // Screen Window
-                        // translate([ctW + 2-1, ctW + 1, ctH]) cube([csScrCW - 3.5+1.5, csScrCH - 4+1+1, 1]);
                         translate([ctW+(csScrCW-csScrWW)/2, ctW+(csScrCH-csScrWH)/2, ctH]) cube([csScrWW, csScrWH, 1]);
+                        // Inset
+                        translate([ctW+(csScrCW+csScrWW)/2+2-52, 2.5, 0]) cube([52, csScrCH, 8.8]);
                     }
 
                     // // reset button cutout
@@ -193,21 +183,22 @@ module case_top() {
 
             // Mounting plates
             square4(0, cS-ctM-ctW, h) roundedsquare(ctM+ctW, ctM+ctW, ctMH, cpR);
+            translate([cmO, 0, h]) cube([cS - cmO*2, ctM+1.5, ctMH]);
+            translate([0,          0, h]) roundedsquare(ctM+ctW+4, ctM+ctW+60, ctMH, cpR);
+            translate([cS-ctM-ctW-4, 0, h]) roundedsquare(ctM+ctW+4, ctM+ctW+60, ctMH, cpR);
+            translate([0, cS-ctM-ctW-12, h]) roundedsquare(ctM+ctW, ctM+ctW+12, ctMH, cpR);
 
-            // Support poles (keyboard)
-            kS2 = kbSH / 2;
-            kSW = kbSW - kbS;
-            kSH = kbSH - kbS;
-            kSW2 = kSW / 2;
-            kSH2 = kSH / 2;
-            kXW2 = kbX - kSW2;
-            kYH2 = kbY - kSH2;
-            c = [kSW, kSH, ctMH];
-            for (i = [-1:1]) {
-                for (j = [-1:2:3]) {
-                    translate([kXW2 + kbSH * i, kYH2 + kS2 * j, h]) cube(c);
-                }
+            // Supports (screen)
+            translate([SOX, SOY, 0]) union() {
+                translate([ctW+(csScrCW+csScrWW)/2+2, ctW+(csScrCH+csScrWH)/2-.75, h]) cube([20, 3, ctMH]);
+                translate([ctW-(csScrCW-csScrWW)/2-12.5, ctW+(csScrCH+csScrWH)/2-.75, h]) cube([20, 3, ctMH]);
+
+                translate([ctW+(csScrCW-cS)/2, 1, h]) cube([cS, 1.5, ctMH]);
             }
+
+            // Supports (keyboard)
+            translate([0, 47.5, h]) cube([cS, 3, ctMH]);
+            translate([0, 27.5, h]) cube([cS, 3, ctMH]);
         }
 
         union() {
@@ -239,16 +230,6 @@ module case_bottom() {
             // Case floor
             chamferedsquare(cS, cS, clC, cR-clC, cR);
             translate([0, 0, clC]) roundedsquare(cS, cS, clH-clC, cR);
-
-            // Screen table
-            if (gen_scr) translate([SOX, SOY, 0]) union() {
-                chamferedsquare(csScrCW + ctW * 2, csScrCH + ctW * 2, clC, cR-clC, cR);
-                translate([0, 0, clC]) roundedsquare(csScrCW + ctW * 2, csScrCH + ctW * 2, clH-clC, cR);
-                translate([clS, clS+(csScrCH-16), clH]) {
-                    translate([0, 1, 0]) roundedsquare(csScrCW-1, 14, cpH, cR);
-                    translate([0, 4, cpH]) roundedsquare(csScrCW-1, 11, 1.6, cR);
-                }
-            }
 
             // PCB table
             difference() {
@@ -283,11 +264,11 @@ module case_detail() {
     x2 = cS / 2 + 37;
     y = cS - 18;
     h = ctH + 0.75;
-    if (!gen_scr)
-        translate([logoX, logoY, h])
-            linear_extrude(height=0.5, center=true)
-                scale([logoS, logoS, 0.5])
-                    import(file="../assets/textlogo.svg", center=true);
+    // if (!gen_scr)
+    //     translate([logoX, logoY, h])
+    //         linear_extrude(height=0.5, center=true)
+    //             scale([logoS, logoS, 0.5])
+    //                 import(file="../assets/textlogo.svg", center=true);
     translate([x1, y, h]) scale([1.1, 1.1, 0.5]) speaker_icon();
     translate([x2, y, h]) scale([1.1, 1.1, 0.5]) speaker_icon();
 }
@@ -336,10 +317,6 @@ difference() {
     
     // cutout for io
     union() {
-        // USB side
-        // translate([0, ioHO-ioHS+ioHB, clH]) cube([clS, ioHS-ioHB*2, cpW+1.6]);
-        // translate([0, ioHO-ioHS, clH]) cube([3, ioHS, 10]);
-
         // Debug pad side
         // ioHS2 = 23-3;
         // ioHO2 = cS-cmO-2.5-1.5;
