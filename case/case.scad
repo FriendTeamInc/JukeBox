@@ -1,18 +1,6 @@
 // JukeBox Case
 
 /* [General settings] */
-// Generates top case piece
-gen_top = false;
-// Generates bottom case piece
-gen_bot = false;
-// Generates leg case piece
-gen_leg = false;
-// Generates leg brace case piece
-gen_leg_brace = false;
-// Generates screen spacer piece
-gen_screen_spacer = false;
-// Generates screen detail for top case piece
-gen_detail = false;
 // Case size (width & height)
 cS = 108;
 // Case corner radius (rounded corners)
@@ -94,13 +82,11 @@ kbSH = 20;
 
 /* [Case leg settings] */
 // Leg width
-clipW = 20;
+clipW = 13;
 // Leg rounding radius
 clipR = 4;
 // Leg Brace width
 braceW = 20;
-// Leg Brace length
-braceL = 90;
 
 /* [Case screen settings] */
 // Screen Cutout width
@@ -221,7 +207,7 @@ module case_top() {
             }
             
             // Jukebox logo
-            if (gen_detail) case_detail();
+            // case_detail();
         }
     }
 }
@@ -301,6 +287,7 @@ module case_leg() {
 }
 
 module case_leg_brace() {
+    braceL = cS - cpF * 2 + clipW / 2 * 2;
     difference() {
         union() {
             translate([0, 0, clipR]) rotate([0, 90, 0]) cylinder(h=braceW, r=clipR);
@@ -321,22 +308,10 @@ module case_screen_spacer() {
     }
 }
 
-difference() {
-    union() {
-        if (gen_top) translate([0, 0, clH]) color([1, 1, 0]) case_top();
-        if (gen_bot) color([0, 1, 0]) case_bottom();
-    }
-    
-    // cutout for io
-    union() {
-        // Debug pad side
-        // ioHS2 = 23-3;
-        // ioHO2 = cS-cmO-2.5-1.5;
-        // translate([cS-2.5, ioHO2-ioHS2, clH]) cube([2.5, ioHS2, 3.8]);
-        // translate([cS-12, ioHO2-ioHS2, clH]) cube([12, ioHS2, 3]);
-    }
-}
-if (gen_leg) color([1, 0, 0]) case_leg();
-if (gen_leg_brace) color([0, 1, 1]) case_leg_brace();
-if (gen_screen_spacer) color([0, 0, 1]) case_screen_spacer();
-// if (gen_detail) translate([0, 0, clH]) color([0, 0, 1]) case_detail();
+translate([-3, 3, 9]) rotate([0, 180, 0]) case_top();
+translate([3, 3, 0]) case_bottom();
+translate([-10, 15, 0]) rotate([0, 0, 180]) case_leg();
+translate([10, 15, 0]) rotate([0, 0, 180]) scale([-1, 1, 1]) case_leg();
+translate([clipR+3, cS+6+braceW, 0]) rotate([0, 0, -90]) case_leg_brace();
+scale([-1, 1, 1]) translate([clipR+3, cS+6+braceW, 0]) rotate([0, 0, -90]) case_leg_brace();
+rotate([0, 0, -90]) translate([25, -18.25, 0]) case_screen_spacer();
