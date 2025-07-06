@@ -264,21 +264,36 @@ module case_detail() {
 module case_leg() {
     lH = clH+ctH+1.25;
     lS = cS-4;
+    
+    points = [
+        [   0,       0, 0],
+        [  lS,       0, 0],
+        [lS/3, lS/1.75, 0]
+    ];
+    legX = points[2][0] - points[1][0];
+    legY = points[2][1] - points[1][1];
+    angle = atan2(legX, legY);
+    length1 = sqrt(legX * legX + legY * legY);
+    length2 = sqrt(points[2][0] * points[2][0] + points[2][1] * points[2][1]);
+
     difference() {
         union() {
             translate([lS + clipR, clipR, 0]) cylinder(h=clipW, r=clipR);
             translate([lS + clipR, clipR, 0]) cube([clipR, clipR + lH, clipW]);
 
             translate([clipR, 2 * clipR + lH, 0]) hull() {
-                translate([   0,       0, 0]) cylinder(h=clipW, r=clipR);
-                translate([  lS,       0, 0]) cylinder(h=clipW, r=clipR);
-                translate([lS/3, lS/1.75, 0]) cylinder(h=clipW, r=clipR);
+                translate(points[0]) cylinder(h=clipW, r=clipR);
+                translate(points[1]) cylinder(h=clipW, r=clipR);
+                translate(points[2]) cylinder(h=clipW, r=clipR);
             }
         }
         union() {
             translate([lS, clipR, -1]) cube([clipR, lH, clipW+2]);
 
             translate([clipR, 2 * clipR + lH, -1]) linear_extrude(height=clipW+2) polygon(points=[[0,0],[lS,0],[lS/3, lS/1.75]]);
+
+            // cut out for rubber feet
+            rotate([0, 0, -angle]) translate([length1-1.6-1.5, -length2+1, 0]) cube([1.5, length1-2, clipW]);
         }
     }
 
