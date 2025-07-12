@@ -1,4 +1,8 @@
-# v0.5.1 - TODO (TODO)
+# v0.6.0 - Defaultized (TODO)
+- Added EEPROM support to firmware. Default, app-disconnected profiles can now be set.
+- Increase max number of colors for Wave and Breathe RGB patterns from 4 to 16.
+- Update Screen profile max size to be 256 bytes.
+- Update RGB Profile max size to be 64 bytes.
 - Update links to documentation for Windows and Linux setup intro messages.
 
 # v0.5.0 - Tut Trials (June 27, 2025)

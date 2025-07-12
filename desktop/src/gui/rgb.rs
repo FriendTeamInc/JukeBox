@@ -5,7 +5,10 @@ use eframe::egui::{
     TextEdit, Ui, Vec2,
 };
 use egui_phosphor::regular as phos;
-use jukebox_util::{peripheral::DeviceType, rgb::RgbProfile};
+use jukebox_util::{
+    peripheral::DeviceType,
+    rgb::{RgbProfile, RGB_BREATHE_COLOR_COUNT_MAX, RGB_WAVE_COLOR_COUNT_MAX},
+};
 
 use crate::serial::SerialCommand;
 
@@ -224,7 +227,7 @@ impl JukeBoxGui {
                                 color_count -= 1;
                             }
 
-                            ui.add_enabled_ui(color_count < 4, |ui| {
+                            ui.add_enabled_ui(color_count < RGB_WAVE_COLOR_COUNT_MAX as u8, |ui| {
                                 if ui
                                     .button("+")
                                     .on_hover_text_at_pointer(t!("rgb.wave.add_color"))
@@ -288,16 +291,19 @@ impl JukeBoxGui {
                                 color_count -= 1;
                             }
 
-                            ui.add_enabled_ui(color_count < 4, |ui| {
-                                if ui
-                                    .button("+")
-                                    .on_hover_text_at_pointer(t!("rgb.breathe.add_color"))
-                                    .clicked()
-                                {
-                                    color_count += 1;
-                                    colors[(color_count - 1) as usize] = (0, 0, 0);
-                                }
-                            });
+                            ui.add_enabled_ui(
+                                color_count < RGB_BREATHE_COLOR_COUNT_MAX as u8,
+                                |ui| {
+                                    if ui
+                                        .button("+")
+                                        .on_hover_text_at_pointer(t!("rgb.breathe.add_color"))
+                                        .clicked()
+                                    {
+                                        color_count += 1;
+                                        colors[(color_count - 1) as usize] = (0, 0, 0);
+                                    }
+                                },
+                            );
 
                             self.editing_rgb = RgbProfile::Breathe {
                                 brightness,

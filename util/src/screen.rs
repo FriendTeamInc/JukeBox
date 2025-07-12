@@ -4,6 +4,8 @@ pub const PROFILE_NAME_CODE_POINT_LEN: usize = 18;
 pub const PROFILE_NAME_CHAR_LEN: usize = PROFILE_NAME_CODE_POINT_LEN * 4;
 pub type ProfileName = SmallStr<{ PROFILE_NAME_CHAR_LEN + 1 }>;
 
+pub const SCREEN_PROFILE_SIZE: usize = 256;
+
 pub const SCREEN_PROFILE_OFF: u8 = 0;
 pub const SCREEN_PROFILE_DISPLAY_KEYS: u8 = 1;
 pub const SCREEN_PROFILE_DISPLAY_STATS: u8 = 2;
@@ -89,8 +91,8 @@ impl ScreenProfile {
         }
     }
 
-    pub fn encode(self) -> [u8; 100] {
-        let mut data = [0u8; 100];
+    pub fn encode(self) -> [u8; SCREEN_PROFILE_SIZE] {
+        let mut data = [0u8; SCREEN_PROFILE_SIZE];
         data[0] = self.get_type();
         data[1] = self.brightness();
 

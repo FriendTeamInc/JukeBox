@@ -28,6 +28,7 @@ mod st7789;
 mod uid;
 mod util;
 mod modules {
+    pub mod eeprom;
     pub mod keyboard;
     pub mod led;
     pub mod pedals;
@@ -50,7 +51,8 @@ use rp2040_hal::{
     dma::DMAExt,
     entry,
     fugit::ExtU32,
-    gpio::Pins,
+    fugit::RateExtU32,
+    gpio::{FunctionI2C, Pin, Pins},
     multicore::{Multicore, Stack},
     pac::Peripherals,
     pwm::Slices,
@@ -164,10 +166,10 @@ fn main() -> ! {
         .composite_with_iads()
         .build();
 
-    reset_icons();
-
-    // set up modules
+    // set up serial module
     let mut serial_mod = serial::SerialMod::new(timer.count_down());
+    // set up icon buffers
+    reset_icons();
 
     // core 1 event loop (GPIO)
     core1
@@ -182,19 +184,35 @@ fn main() -> ! {
             let dma = pac.DMA.split(&mut pac.RESETS);
             let pwm_slices = Slices::new(pac.PWM, &mut pac.RESETS);
 
+            // set up i2c eeprom defaults
+            let mut eeprom_mod = {
+                let eeprom_sda: Pin<_, FunctionI2C, _> = pins.gpio4.reconfigure();
+                let eeprom_scl: Pin<_, FunctionI2C, _> = pins.gpio5.reconfigure();
+                let eeprom_i2c = rp2040_hal::I2C::i2c0(
+                    pac.I2C0,
+                    eeprom_sda,
+                    eeprom_scl,
+                    1.MHz(),
+                    &mut pac.RESETS,
+                    &clocks.system_clock,
+                );
+
+                eeprom::EepromMod::new(eeprom_i2c)
+            };
+
             // set up GPIO and modules
             #[cfg(feature = "keypad")]
             let mut keyboard_mod = {
                 let kb_col_pins = [
-                    pins.gpio12.into_function().into_dyn_pin().into_pull_type(),
-                    pins.gpio13.into_function().into_dyn_pin().into_pull_type(),
-                    pins.gpio14.into_function().into_dyn_pin().into_pull_type(),
-                    pins.gpio15.into_function().into_dyn_pin().into_pull_type(),
+                    pins.gpio12.reconfigure().into_dyn_pin(),
+                    pins.gpio13.reconfigure().into_dyn_pin(),
+                    pins.gpio14.reconfigure().into_dyn_pin(),
+                    pins.gpio15.reconfigure().into_dyn_pin(),
                 ];
                 let kb_row_pins = [
-                    pins.gpio9.into_function().into_dyn_pin().into_pull_type(),
-                    pins.gpio10.into_function().into_dyn_pin().into_pull_type(),
-                    pins.gpio11.into_function().into_dyn_pin().into_pull_type(),
+                    pins.gpio9.reconfigure().into_dyn_pin(),
+                    pins.gpio10.reconfigure().into_dyn_pin(),
+                    pins.gpio11.reconfigure().into_dyn_pin(),
                 ];
                 keyboard::KeyboardMod::new(kb_col_pins, kb_row_pins, timer.count_down())
             };
@@ -202,12 +220,11 @@ fn main() -> ! {
             #[cfg(feature = "keypad")]
             let mut screen_mod = {
                 let screen_pins = (
-                    pins.gpio21.into_function().into_dyn_pin().into_pull_type(), // data
-                    pins.gpio20.into_function().into_dyn_pin().into_pull_type(), // clock
-                    pins.gpio19.into_function().into_dyn_pin().into_pull_type(), // cs
-                    pins.gpio18.into_function().into_dyn_pin().into_pull_type(), // dc
-                    pins.gpio17.into_function().into_dyn_pin().into_pull_type(), // rst
-                                                                                 // pins.gpio16.into_function().into_dyn_pin().into_pull_type(), // backlight
+                    pins.gpio21.reconfigure().into_dyn_pin(), // data
+                    pins.gpio20.reconfigure().into_dyn_pin(), // clock
+                    pins.gpio19.reconfigure().into_dyn_pin(), // cs
+                    pins.gpio18.reconfigure().into_dyn_pin(), // dc
+                    pins.gpio17.reconfigure().into_dyn_pin(), // rst
                 );
                 let (mut pio1, _, sm1, _, _) = pac.PIO1.split(&mut pac.RESETS);
                 let bl = {
@@ -250,9 +267,9 @@ fn main() -> ! {
             #[cfg(feature = "pedalpad")]
             let mut pedal_mod = {
                 let pedal_pins = [
-                    pins.gpio2.into_function().into_dyn_pin().into_pull_type(),
-                    pins.gpio3.into_function().into_dyn_pin().into_pull_type(),
-                    pins.gpio4.into_function().into_dyn_pin().into_pull_type(),
+                    pins.gpio2.reconfigure().into_dyn_pin(),
+                    pins.gpio3.reconfigure().into_dyn_pin(),
+                    pins.gpio4.reconfigure().into_dyn_pin(),
                 ];
                 pedals::PedalMod::new(pedal_pins, timer.count_down())
             };

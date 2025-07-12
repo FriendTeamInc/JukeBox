@@ -63,27 +63,32 @@ type ProfileNameControl = Mutex<9, (bool, ProfileName)>;
 type ScreenSystemStats = Mutex<10, (bool, SystemStats)>;
 type ScreenControls = Mutex<11, (bool, ScreenProfile)>;
 type UsbStatus = Mutex<12, (bool, UsbDeviceState)>;
+type DefaultRgbProfile = Mutex<13, (bool, RgbProfile)>;
+type DefaultScreenProfile = Mutex<14, (bool, ScreenProfile)>;
 
 // TODO: load defaults from eeprom
 pub const DEFAULT_INPUTS: JBInputs = inputs_default();
 pub const DEFAULT_KEYBOARD_EVENTS: [KeyboardEvent; 12] = KeyboardEvent::default_events();
 pub const DEFAULT_MOUSE_EVENTS: [MouseEvent; 12] = MouseEvent::default_events();
 pub const DEFAULT_PROFILE_NAME: ProfileName = SmallStr::default();
-pub const DEFAULT_RGB_PROFILE: RgbProfile = RgbProfile::default_device_profile();
-pub const DEFAULT_SCREEN_PROFILE: ScreenProfile = ScreenProfile::default_profile();
 pub const DEFAULT_SYSTEM_STATS: SystemStats = SystemStats::default();
+
+pub static DEFAULT_RGB_PROFILE: DefaultRgbProfile =
+    Mutex::new((false, RgbProfile::default_device_profile()));
+pub static DEFAULT_SCREEN_PROFILE: DefaultScreenProfile =
+    Mutex::new((false, ScreenProfile::default_profile()));
 
 pub static CONNECTION_STATUS: ConnectionStatus = Mutex::new(Connection::NotConnected(true));
 pub static PERIPHERAL_INPUTS: PeripheralInputs = Mutex::new(DEFAULT_INPUTS);
 pub static UPDATE_TRIGGER: UpdateTrigger = Mutex::new(false);
 pub static IDENTIFY_TRIGGER: IdentifyTrigger = Mutex::new(false);
-pub static RGB_CONTROLS: RgbControls = Mutex::new((false, DEFAULT_RGB_PROFILE));
+pub static RGB_CONTROLS: RgbControls = Mutex::new((false, RgbProfile::default_device_profile()));
 pub static ICONS: Icons = Mutex::new([(false, [Bgr565::BLACK; 32 * 32]); 12]);
 pub static KEYBOARD_EVENTS: KeyboardEvents = Mutex::new(DEFAULT_KEYBOARD_EVENTS);
 pub static MOUSE_EVENTS: MouseEvents = Mutex::new(DEFAULT_MOUSE_EVENTS);
 pub static PROFILE_NAME: ProfileNameControl = Mutex::new((true, DEFAULT_PROFILE_NAME));
 pub static SCREEN_SYSTEM_STATS: ScreenSystemStats = Mutex::new((false, DEFAULT_SYSTEM_STATS));
-pub static SCREEN_CONTROLS: ScreenControls = Mutex::new((false, DEFAULT_SCREEN_PROFILE));
+pub static SCREEN_CONTROLS: ScreenControls = Mutex::new((false, ScreenProfile::default_profile()));
 pub static USB_STATUS: UsbStatus = Mutex::new((false, UsbDeviceState::Default));
 
 #[macro_export]
@@ -138,11 +143,15 @@ pub fn reset_peripherals(s: bool) {
     });
     RGB_CONTROLS.with_mut_lock(|c| {
         c.0 = true;
-        c.1 = DEFAULT_RGB_PROFILE;
+        DEFAULT_RGB_PROFILE.with_lock(|p| {
+            c.1 = p.1.clone();
+        });
     });
     SCREEN_CONTROLS.with_mut_lock(|s| {
         s.0 = true;
-        s.1 = DEFAULT_SCREEN_PROFILE;
+        DEFAULT_SCREEN_PROFILE.with_lock(|p| {
+            s.1 = p.1.clone();
+        });
     });
     SCREEN_SYSTEM_STATS.with_mut_lock(|s| {
         s.0 = true;

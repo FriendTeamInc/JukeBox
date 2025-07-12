@@ -151,6 +151,11 @@ impl ScreenMod {
     ) -> Self {
         timer.start(REFRESH_RATE.millis());
 
+        let mut default_screen_profile = ScreenProfile::default_profile();
+        DEFAULT_SCREEN_PROFILE.with_lock(|p| {
+            default_screen_profile = p.1.clone();
+        });
+
         ScreenMod {
             st,
 
@@ -158,9 +163,9 @@ impl ScreenMod {
             fb: FrameBuf::new(FBBackEnd {t: unsafe { &mut FBDATA }}, SCR_W, SCR_H),
 
             profile_name: DEFAULT_PROFILE_NAME,
-            screen_profile: DEFAULT_SCREEN_PROFILE,
+            screen_profile: default_screen_profile,
             system_stats: DEFAULT_SYSTEM_STATS,
-    usb_state: UsbDeviceState::Default,
+            usb_state: UsbDeviceState::Default,
 
             dma_ch0,
             timer,

@@ -12,7 +12,7 @@ const fn get_color(data: &[u8]) -> (u8, u8, u8) {
     (data[0], data[1], data[2])
 }
 
-pub const RGB_PROFILE_SIZE: usize = 40;
+pub const RGB_PROFILE_SIZE: usize = 64;
 
 pub const RGB_PROFILE_OFF: u8 = 0;
 pub const RGB_PROFILE_STATIC_SOLID: u8 = 1;
@@ -21,6 +21,10 @@ pub const RGB_PROFILE_WAVE: u8 = 3;
 pub const RGB_PROFILE_BREATHE: u8 = 4;
 pub const RGB_PROFILE_RAINBOW_SOLID: u8 = 5;
 pub const RGB_PROFILE_RAINBOW_WAVE: u8 = 6;
+
+pub const RGB_STATIC_PER_KEY_COUNT: usize = 12;
+pub const RGB_WAVE_COLOR_COUNT_MAX: usize = 16;
+pub const RGB_BREATHE_COLOR_COUNT_MAX: usize = 16;
 
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -33,7 +37,7 @@ pub enum RgbProfile {
     },
     StaticPerKey {
         brightness: u8,
-        colors: [(u8, u8, u8); 12],
+        colors: [(u8, u8, u8); RGB_STATIC_PER_KEY_COUNT],
     },
     Wave {
         brightness: u8,
@@ -41,14 +45,14 @@ pub enum RgbProfile {
         speed_x: i8,
         speed_y: i8,
         color_count: u8,
-        colors: [(u8, u8, u8); 4],
+        colors: [(u8, u8, u8); RGB_WAVE_COLOR_COUNT_MAX],
     },
     Breathe {
         brightness: u8,
         hold_time: u8,
         trans_time: u8,
         color_count: u8,
-        colors: [(u8, u8, u8); 4],
+        colors: [(u8, u8, u8); RGB_BREATHE_COLOR_COUNT_MAX],
     },
     RainbowSolid {
         brightness: u8,
@@ -169,18 +173,9 @@ impl RgbProfile {
                 brightness: _,
                 colors,
             } => {
-                set_color(&mut data[2..=4], colors[0]);
-                set_color(&mut data[5..=7], colors[1]);
-                set_color(&mut data[8..=10], colors[2]);
-                set_color(&mut data[11..=13], colors[3]);
-                set_color(&mut data[14..=16], colors[4]);
-                set_color(&mut data[17..=19], colors[5]);
-                set_color(&mut data[20..=22], colors[6]);
-                set_color(&mut data[23..=25], colors[7]);
-                set_color(&mut data[26..=28], colors[8]);
-                set_color(&mut data[29..=31], colors[9]);
-                set_color(&mut data[32..=34], colors[10]);
-                set_color(&mut data[35..=37], colors[11]);
+                for i in 0..RGB_STATIC_PER_KEY_COUNT {
+                    set_color(&mut data[(2 + i * 3)..=(4 + i * 3)], colors[i]);
+                }
             }
             Self::Wave {
                 brightness: _,
@@ -194,10 +189,9 @@ impl RgbProfile {
                 data[3] = unsafe { transmute(speed_x) };
                 data[4] = unsafe { transmute(speed_y) };
                 data[5] = color_count;
-                set_color(&mut data[6..=8], colors[0]);
-                set_color(&mut data[9..=11], colors[1]);
-                set_color(&mut data[12..=14], colors[2]);
-                set_color(&mut data[15..=17], colors[3]);
+                for i in 0..RGB_WAVE_COLOR_COUNT_MAX {
+                    set_color(&mut data[(6 + i * 3)..=(8 + i * 3)], colors[i]);
+                }
             }
             Self::Breathe {
                 brightness: _,
@@ -209,10 +203,9 @@ impl RgbProfile {
                 data[2] = hold_time;
                 data[3] = trans_time;
                 data[4] = color_count;
-                set_color(&mut data[5..=7], colors[0]);
-                set_color(&mut data[8..=10], colors[1]);
-                set_color(&mut data[11..=13], colors[2]);
-                set_color(&mut data[14..=16], colors[3]);
+                for i in 0..RGB_WAVE_COLOR_COUNT_MAX {
+                    set_color(&mut data[(5 + i * 3)..=(7 + i * 3)], colors[i]);
+                }
             }
             Self::RainbowSolid {
                 brightness: _,
@@ -250,48 +243,46 @@ impl RgbProfile {
                 brightness: data[1],
                 color: get_color(&data[2..=4]),
             },
-            RGB_PROFILE_STATIC_PER_KEY => Self::StaticPerKey {
-                brightness: data[1],
-                colors: [
-                    get_color(&data[2..=4]),
-                    get_color(&data[5..=7]),
-                    get_color(&data[8..=10]),
-                    get_color(&data[11..=13]),
-                    get_color(&data[14..=16]),
-                    get_color(&data[17..=19]),
-                    get_color(&data[20..=22]),
-                    get_color(&data[23..=25]),
-                    get_color(&data[26..=28]),
-                    get_color(&data[29..=31]),
-                    get_color(&data[32..=34]),
-                    get_color(&data[35..=37]),
-                ],
-            },
-            RGB_PROFILE_WAVE => Self::Wave {
-                brightness: data[1],
-                speed: unsafe { transmute(data[2]) },
-                speed_x: unsafe { transmute(data[3]) },
-                speed_y: unsafe { transmute(data[4]) },
-                color_count: data[5],
-                colors: [
-                    get_color(&data[6..=8]),
-                    get_color(&data[9..=11]),
-                    get_color(&data[12..=14]),
-                    get_color(&data[15..=17]),
-                ],
-            },
-            RGB_PROFILE_BREATHE => Self::Breathe {
-                brightness: data[1],
-                hold_time: data[2],
-                trans_time: data[3],
-                color_count: data[4],
-                colors: [
-                    get_color(&data[5..=7]),
-                    get_color(&data[8..=10]),
-                    get_color(&data[11..=13]),
-                    get_color(&data[14..=16]),
-                ],
-            },
+            RGB_PROFILE_STATIC_PER_KEY => {
+                let mut colors = [(0, 0, 0); RGB_STATIC_PER_KEY_COUNT];
+                for i in 0..RGB_STATIC_PER_KEY_COUNT {
+                    colors[i] = get_color(&data[(2 + i * 3)..=(4 + i * 3)])
+                }
+
+                Self::StaticPerKey {
+                    brightness: data[1],
+                    colors,
+                }
+            }
+            RGB_PROFILE_WAVE => {
+                let mut colors = [(0, 0, 0); RGB_WAVE_COLOR_COUNT_MAX];
+                for i in 0..RGB_WAVE_COLOR_COUNT_MAX {
+                    colors[i] = get_color(&data[(6 + i * 3)..=(8 + i * 3)])
+                }
+
+                Self::Wave {
+                    brightness: data[1],
+                    speed: unsafe { transmute(data[2]) },
+                    speed_x: unsafe { transmute(data[3]) },
+                    speed_y: unsafe { transmute(data[4]) },
+                    color_count: data[5],
+                    colors,
+                }
+            }
+            RGB_PROFILE_BREATHE => {
+                let mut colors = [(0, 0, 0); RGB_BREATHE_COLOR_COUNT_MAX];
+                for i in 0..RGB_BREATHE_COLOR_COUNT_MAX {
+                    colors[i] = get_color(&data[(5 + i * 3)..=(7 + i * 3)])
+                }
+
+                Self::Breathe {
+                    brightness: data[1],
+                    hold_time: data[2],
+                    trans_time: data[3],
+                    color_count: data[4],
+                    colors,
+                }
+            }
             RGB_PROFILE_RAINBOW_SOLID => Self::RainbowSolid {
                 brightness: data[1],
                 speed: unsafe { transmute(data[2]) },
@@ -455,7 +446,24 @@ impl RgbProfile {
             hold_time: 20,
             trans_time: 10,
             color_count: 2,
-            colors: [(255, 255, 255), (150, 150, 150), (0, 0, 0), (0, 0, 0)],
+            colors: [
+                (255, 255, 255),
+                (150, 150, 150),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+            ],
         }
     }
 
@@ -497,7 +505,24 @@ impl RgbProfile {
             speed_x: 20,
             speed_y: 0,
             color_count: 3,
-            colors: [(51, 187, 255), (153, 119, 255), (255, 119, 221), (0, 0, 0)],
+            colors: [
+                (51, 187, 255),
+                (153, 119, 255),
+                (255, 119, 221),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+            ],
         }
     }
 
@@ -507,7 +532,24 @@ impl RgbProfile {
             hold_time: 20,
             trans_time: 5,
             color_count: 3,
-            colors: [(51, 187, 255), (153, 119, 255), (255, 119, 221), (0, 0, 0)],
+            colors: [
+                (51, 187, 255),
+                (153, 119, 255),
+                (255, 119, 221),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+                (0, 0, 0),
+            ],
         }
     }
 
