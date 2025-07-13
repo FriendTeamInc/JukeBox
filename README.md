@@ -78,6 +78,8 @@ Estimated power usage is 5 volts at 0.1 amps, or 0.5 watts.
 | D25            | 150080GS75000          | 1   |       |
 | J1             | USB4105-GF-A           | 1   |       |
 | Q1             | S8050-SOT-23           | 1   |       |
+| SW1-12         | Keyboard Key Switch    | 12  |       |
+| SW13           | RS-282G05A3-SM RT      | 1   |       |
 | U1             | AZ1117IH-3.3TRG1       | 1   |       |
 | U2             | W25Q128JVSIQ-TR        | 1   |       |
 | U3             | RP2350A                | 1   |       |
