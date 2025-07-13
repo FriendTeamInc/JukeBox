@@ -40,6 +40,7 @@ impl EepromMod {
 
     fn initialize(&mut self) {
         // Check that the first page is 0xFB, if not then we need to initialize the device
+        // TODO: check against a version?
         let mut read = [0x0u8; 128];
         let _ = self.eeprom_dev.read_data(0x0, &mut read);
         if read != [0xFBu8; 128] {
@@ -47,6 +48,11 @@ impl EepromMod {
         }
 
         // TODO: read eeprom values into defaults
+
+        // 0x0080-0x00FF - Default USB HID Events (7*16=112 round up to 128)
+        // 0x0100-0x017F - Default RGB Profile (64)
+        // 0x0180-0x0280 - Default Screen Profile (256)
+        // Total Size = 448 bytes
     }
 
     fn wipe_eeprom(&mut self) {
