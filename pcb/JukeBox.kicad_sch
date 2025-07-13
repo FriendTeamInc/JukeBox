@@ -10073,24 +10073,14 @@
 		(uuid "06f996cc-0cb2-469b-bd31-72eb540c19e2")
 	)
 	(label "SCRD0"
-		(at 246.38 240.03 0)
+		(at 246.38 222.25 0)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
 			(justify left bottom)
 		)
-		(uuid "0bc7ad44-c92a-4bf6-9462-ee591143ae34")
-	)
-	(label "SCRD3"
-		(at 246.38 232.41 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "0c595cfa-2131-4164-96df-4d2f043f2e08")
+		(uuid "0879576d-9a98-4447-a642-0f8b0f18c879")
 	)
 	(label "RGBDOUT"
 		(at 402.59 30.48 180)
@@ -10232,6 +10222,16 @@
 		)
 		(uuid "3857cd9c-f120-4111-9661-c91276587cd2")
 	)
+	(label "SCRD5"
+		(at 246.38 234.95 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "419dc245-c1db-48ef-895d-fd31009ae6b2")
+	)
 	(label "SCRBL"
 		(at 246.38 217.17 0)
 		(effects
@@ -10291,6 +10291,16 @@
 			(justify right bottom)
 		)
 		(uuid "51ce9af2-d476-44ee-b2c4-295bb0ea267c")
+	)
+	(label "SCRD6"
+		(at 246.38 237.49 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "52f733c7-ff0f-4604-9b12-bc5024a8e6dd")
 	)
 	(label "USB_D-"
 		(at 86.36 200.66 180)
@@ -10382,6 +10392,16 @@
 		)
 		(uuid "731d7dab-d07a-481f-bbe7-57419488fdb3")
 	)
+	(label "SCRD7"
+		(at 246.38 240.03 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "74024be3-e4c5-448d-b859-b27c982e6a6f")
+	)
 	(label "DBGTX"
 		(at 246.38 179.07 0)
 		(effects
@@ -10462,16 +10482,6 @@
 		)
 		(uuid "867f68a4-9e63-48f6-befc-d27b4d8aaabe")
 	)
-	(label "SCRD2"
-		(at 246.38 234.95 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "887e882c-0349-40fd-aec8-bb03894c77ae")
-	)
 	(label "LEDPIN"
 		(at 172.72 43.18 180)
 		(effects
@@ -10502,15 +10512,15 @@
 		)
 		(uuid "91b73d4e-036e-4024-aaa8-819506c3632b")
 	)
-	(label "SCRD5"
-		(at 246.38 227.33 0)
+	(label "SCRD3"
+		(at 246.38 229.87 0)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
 			(justify left bottom)
 		)
-		(uuid "93f28f10-d5c6-4e4e-aa53-36763d935417")
+		(uuid "94d8dc47-ba0b-4f09-903c-587208cc3f68")
 	)
 	(label "QSPI_SD2"
 		(at 35.56 123.19 0)
@@ -10632,6 +10642,16 @@
 		)
 		(uuid "b6d322b0-1d19-43ab-8bd4-c728fae87757")
 	)
+	(label "SCRD4"
+		(at 246.38 232.41 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "b72e7f2f-1c64-4b11-bf38-4284f9089776")
+	)
 	(label "QSPI_SS"
 		(at 35.56 113.03 0)
 		(effects
@@ -10732,6 +10752,16 @@
 		)
 		(uuid "d0aea983-e118-4130-848e-f72e3fd200e9")
 	)
+	(label "SCRD2"
+		(at 246.38 227.33 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "d0bf9e6f-83c8-44e8-b908-fb35a31dd68b")
+	)
 	(label "SCRRST"
 		(at 351.79 90.17 180)
 		(effects
@@ -10762,16 +10792,6 @@
 		)
 		(uuid "d5583fcd-db53-40bf-8da6-aaa911dae6fe")
 	)
-	(label "SCRD1"
-		(at 246.38 237.49 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "d5a234d2-e92d-4f94-9318-3e8b6bec646a")
-	)
 	(label "GPIO17"
 		(at 240.03 219.71 180)
 		(effects
@@ -10791,16 +10811,6 @@
 			(justify left bottom)
 		)
 		(uuid "d623898b-da2e-4c04-afd3-3189280d7296")
-	)
-	(label "SCRD6"
-		(at 246.38 224.79 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "d7b26a60-244d-4385-9a8c-fd2ae0eb97d0")
 	)
 	(label "QSPI_SD2"
 		(at 151.13 196.85 0)
@@ -10882,16 +10892,6 @@
 		)
 		(uuid "e9b1741a-1c3d-4b92-852c-b3ed8028ee67")
 	)
-	(label "SCRD7"
-		(at 246.38 222.25 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "eb918b19-534d-422a-9e23-86a4fe2d5a9c")
-	)
 	(label "DBGRX"
 		(at 34.29 199.39 180)
 		(effects
@@ -10932,15 +10932,15 @@
 		)
 		(uuid "f4217764-24bb-4a99-a60b-a590b05dbc5b")
 	)
-	(label "SCRD4"
-		(at 246.38 229.87 0)
+	(label "SCRD1"
+		(at 246.38 224.79 0)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
 			(justify left bottom)
 		)
-		(uuid "f80276e6-63ff-42b3-a782-9b9138af3d9e")
+		(uuid "f59b8ee7-e9e5-45a1-81e2-30b86cf7cf05")
 	)
 	(label "I2C0SCL"
 		(at 58.42 161.29 180)
