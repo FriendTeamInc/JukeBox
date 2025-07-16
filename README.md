@@ -70,8 +70,8 @@ Estimated power usage is 5 volts at 0.1 amps, or 0.5 watts.
 | R15            | RMCF0402FT33R0         | 1   | 33    |
 | C1, C2         | GRM21BR61C106KE15K     | 2   | 10u   |
 | C3, C4         | GCM1555C1H150JA16D     | 2   | 15p   |
-| C5, C9, C11-18 | GRM155R71E104KE14J     | 1   | 100n  |
-| C6-8, C10      | GRM155R71E472KA01D     | 4   | 4.7u  |
+| C5, C9, C11-18 | GRM155R71E104KE14J     | 10  | 100n  |
+| C6-8, C10      | GRM155R60J475ME47D     | 4   | 4.7u  |
 | L1             | AOTA-B201610S3R3-101-T | 1   | 3.3u  |
 | D1-12          | 1N4148W-SOD-123        | 12  |       |
 | D13-24         | WS2812B-2020           | 12  |       |
@@ -85,7 +85,7 @@ Estimated power usage is 5 volts at 0.1 amps, or 0.5 watts.
 | U3             | RP2350A                | 1   |       |
 | U4             | TFTQ-T20ST22ZP01       | 1   |       |
 | U4             | FH34SRJ-22S-0.5SH(50)  | 1   |       |
-| U5             | CAT24C512              | 1   |       |
+| U5             | CAT24C512WI-GT3        | 1   |       |
 | Y1             | ABM8-272-T3            | 1   |       |
 
 # License
