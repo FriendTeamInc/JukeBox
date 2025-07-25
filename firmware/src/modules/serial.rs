@@ -27,9 +27,8 @@ use rp2040_hal::{fugit::ExtU32, timer::CountDown, usb::UsbBus};
 use usbd_serial::SerialPort as FullSerialPort;
 
 use crate::util::{
-    reset_peripherals, CONNECTION_STATUS, DEFAULT_INPUTS, ICONS, IDENTIFY_TRIGGER, INPUT_EVENTS,
-    PERIPHERAL_INPUTS, PROFILE_NAME, RGB_CONTROLS, SCREEN_CONTROLS, SCREEN_SYSTEM_STATS,
-    UPDATE_TRIGGER,
+    reset_peripherals, CONNECTION_STATUS, ICONS, IDENTIFY_TRIGGER, INPUT_EVENTS, PERIPHERAL_INPUTS,
+    PROFILE_NAME, RGB_CONTROLS, SCREEN_CONTROLS, SCREEN_SYSTEM_STATS, UPDATE_TRIGGER,
 };
 
 type SerialPort<'a> = FullSerialPort<'a, UsbBus, [u8; SERIAL_READ_SIZE], [u8; SERIAL_WRITE_SIZE]>;
@@ -198,16 +197,10 @@ impl SerialMod {
             Connection::Connected => match decode {
                 Command::GetInputKeys => {
                     // copy peripherals and inputs out
-                    let inputs = {
-                        let mut inputs = DEFAULT_INPUTS;
-                        PERIPHERAL_INPUTS.with_lock(|i| {
-                            inputs = *i;
-                        });
-                        inputs
-                    };
+                    let inputs = PERIPHERAL_INPUTS.with_lock(|i| *i);
 
                     // write all the inputs out
-                    let _ = match inputs {
+                    match inputs {
                         JBInputs::KeyPad(i) => {
                             Self::send(serial, b"004");
                             Self::send(serial, &[RSP_INPUT_HEADER]);
@@ -259,10 +252,7 @@ impl SerialMod {
                 }
                 Command::SetRgbMode => {
                     let rgb = RgbProfile::decode(&data);
-                    RGB_CONTROLS.with_mut_lock(|c| {
-                        c.0 = true;
-                        c.1 = rgb;
-                    });
+                    RGB_CONTROLS.with_mut_lock(|c| *c = (true, rgb));
 
                     Self::send(serial, RSP_FULL_ACK);
 
@@ -293,10 +283,7 @@ impl SerialMod {
                 Command::SetScrMode => {
                     let profile = ScreenProfile::decode(&data);
 
-                    SCREEN_CONTROLS.with_mut_lock(|s| {
-                        s.0 = true;
-                        s.1 = profile;
-                    });
+                    SCREEN_CONTROLS.with_mut_lock(|p| *p = (true, profile));
 
                     Self::send(serial, RSP_FULL_ACK);
 
@@ -305,10 +292,7 @@ impl SerialMod {
                 Command::SetSystemStats => {
                     let stats = SystemStats::decode(&data);
 
-                    SCREEN_SYSTEM_STATS.with_mut_lock(|s| {
-                        s.0 = true;
-                        s.1 = stats;
-                    });
+                    SCREEN_SYSTEM_STATS.with_mut_lock(|s| *s = (true, stats));
 
                     Self::send(serial, RSP_FULL_ACK);
 
@@ -317,10 +301,7 @@ impl SerialMod {
                 Command::SetProfileName => {
                     let new_profile_name: ProfileName = SmallStr::decode(&data);
 
-                    PROFILE_NAME.with_mut_lock(|p| {
-                        p.0 = true;
-                        p.1 = new_profile_name;
-                    });
+                    PROFILE_NAME.with_mut_lock(|p| *p = (true, new_profile_name));
 
                     Self::send(serial, RSP_FULL_ACK);
 

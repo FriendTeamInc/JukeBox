@@ -5,15 +5,14 @@
 
 #[link_section = ".boot2"]
 #[used]
-pub static BOOT_LOADER: [u8; 256] = rp2040_boot2::BOOT_LOADER_W25Q080; // rp2040_boot2::BOOT_LOADER_GENERIC_03H;
+pub static BOOT_LOADER: [u8; 256] = rp2040_boot2::BOOT_LOADER_W25Q080;
 
 #[link_section = ".bi_entries"]
 #[used]
-pub static PICOTOOL_ENTRIES: [binary_info::EntryAddr; 7] = [
+pub static PICOTOOL_ENTRIES: [binary_info::EntryAddr; 6] = [
     binary_info::rp_program_name!(c"JukeBox Firmware"),
     binary_info::rp_cargo_version!(),
     binary_info::rp_program_build_attribute!(),
-    binary_info::rp_pico_board!(c"pico"),
     binary_info::rp_boot2_name(c"boot2_w25q080").addr(),
     binary_info::rp_program_description!(c"Firmware for JukeBox V5."),
     binary_info::rp_program_url!(c"https://jukebox.friendteam.biz"),
@@ -171,19 +170,19 @@ fn main() -> ! {
     // set up icon buffers
     reset_icons();
 
+    // set up peripherals we need
+    let pins = Pins::new(
+        pac.IO_BANK0,
+        pac.PADS_BANK0,
+        sio.gpio_bank0,
+        &mut pac.RESETS,
+    );
+    let dma = pac.DMA.split(&mut pac.RESETS);
+    let pwm_slices = Slices::new(pac.PWM, &mut pac.RESETS);
+
     // core 1 event loop (GPIO)
     core1
         .spawn(CORE1_STACK.take().unwrap(), move || {
-            let mut pac = unsafe { Peripherals::steal() };
-            let pins = Pins::new(
-                pac.IO_BANK0,
-                pac.PADS_BANK0,
-                sio.gpio_bank0,
-                &mut pac.RESETS,
-            );
-            let dma = pac.DMA.split(&mut pac.RESETS);
-            let pwm_slices = Slices::new(pac.PWM, &mut pac.RESETS);
-
             // set up i2c eeprom defaults
             let mut eeprom_mod = {
                 let eeprom_sda: Pin<_, FunctionI2C, _> = pins.gpio4.reconfigure();

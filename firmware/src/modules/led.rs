@@ -11,10 +11,11 @@ use rp2040_hal::{
 
 use crate::util::IDENTIFY_TRIGGER;
 
-const BLINK_TIME: u64 = 3_000_000;
-const BLINK_PERIOD: u64 = 1_000_000;
 const TIMER_NOM: u32 = 1;
 const TIMER_DENOM: u32 = 1_000_000;
+const BLINK_TIME: Duration<u64, TIMER_NOM, TIMER_DENOM> =
+    Duration::<u64, TIMER_NOM, TIMER_DENOM>::from_ticks(3_000_000u64);
+const BLINK_PERIOD: u64 = 1_000_000;
 
 fn pingpong(x: i64) -> u16 {
     let p = BLINK_PERIOD as i64;
@@ -45,14 +46,7 @@ impl LedMod {
         IDENTIFY_TRIGGER.with_mut_lock(|i| {
             if *i {
                 *i = false;
-                self.blink_goal = Some(
-                    t.clone()
-                        .checked_add(Duration::<u64, TIMER_NOM, TIMER_DENOM>::from_ticks(
-                            BLINK_TIME,
-                        ))
-                        .unwrap()
-                        .ticks(),
-                );
+                self.blink_goal = Some(t.clone().checked_add(BLINK_TIME).unwrap().ticks());
             }
         });
 
@@ -62,7 +56,7 @@ impl LedMod {
                 self.blink_goal = None;
                 return;
             }
-            self.led_pwm.set_duty(pingpong(t as i64));
+            self.led_pwm.set_duty(pingpong((g - t) as i64));
         } else {
             self.clear();
         }

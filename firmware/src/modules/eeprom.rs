@@ -64,7 +64,6 @@ impl EepromMod {
 
     fn initialize(&mut self) {
         // Check that the first page is 0xFB, if not then we need to initialize the device
-        // TODO: check against a version?
         let mut read = [0x0u8; 1];
         let _ = self.eeprom_dev.read_data(0x0, &mut read);
         if read != [0xFBu8; 1] {
@@ -149,9 +148,9 @@ impl EepromMod {
             let new_default_screen_profile =
                 ScreenProfile::decode(&data[SCREEN_PROFILE_RANGE_START..SCREEN_PROFILE_RANGE_END]);
 
-            DEFAULT_INPUT_EVENTS.with_mut_lock(|p| *p = (true, new_usb_hid_events));
-            DEFAULT_RGB_PROFILE.with_mut_lock(|p| *p = (true, new_default_rgb_profile));
-            DEFAULT_SCREEN_PROFILE.with_mut_lock(|p| *p = (true, new_default_screen_profile));
+            DEFAULT_INPUT_EVENTS.with_mut_lock(|p| *p = (false, new_usb_hid_events));
+            DEFAULT_RGB_PROFILE.with_mut_lock(|p| *p = (false, new_default_rgb_profile));
+            DEFAULT_SCREEN_PROFILE.with_mut_lock(|p| *p = (false, new_default_screen_profile));
         }
     }
 
@@ -180,5 +179,9 @@ impl EepromMod {
             crc ^= b;
         }
         crc
+    }
+
+    pub fn update(&mut self) {
+        // if defaults have changed, update the eeprom
     }
 }

@@ -13,6 +13,7 @@ use jukebox_util::{
     smallstr::SmallStr,
     stats::SystemStats,
 };
+// use rp2040_hal::dma::{single_buffer, Channel, CH1};
 use usb_device::device::UsbDeviceState;
 use usbd_human_interface_device::{device::mouse::WheelMouseReport, page::Keyboard};
 
@@ -64,14 +65,12 @@ type ProfileNameControl = Mutex<9, (bool, ProfileName)>;
 type ScreenSystemStats = Mutex<10, (bool, SystemStats)>;
 type ScreenControls = Mutex<11, (bool, ScreenProfile)>;
 type UsbStatus = Mutex<12, (bool, UsbDeviceState)>;
+
 type DefaultInputEvents = Mutex<13, (bool, [InputEvent; 16])>;
 type DefaultRgbProfile = Mutex<14, (bool, RgbProfile)>;
 type DefaultScreenProfile = Mutex<15, (bool, ScreenProfile)>;
 
-// TODO: load defaults from eeprom
 pub const DEFAULT_INPUTS: JBInputs = inputs_default();
-// pub const DEFAULT_KEYBOARD_EVENTS: [KeyboardEvent; 12] = KeyboardEvent::default_events();
-// pub const DEFAULT_MOUSE_EVENTS: [MouseEvent; 12] = MouseEvent::default_events();
 pub const DEFAULT_PROFILE_NAME: ProfileName = SmallStr::default();
 pub const DEFAULT_SYSTEM_STATS: SystemStats = SystemStats::default();
 
@@ -89,8 +88,6 @@ pub static IDENTIFY_TRIGGER: IdentifyTrigger = Mutex::new(false);
 pub static RGB_CONTROLS: RgbControls = Mutex::new((false, RgbProfile::default_device_profile()));
 pub static ICONS: Icons = Mutex::new([(false, [Bgr565::BLACK; 32 * 32]); 12]);
 pub static INPUT_EVENTS: InputEvents = Mutex::new(InputEvent::default_events());
-// pub static KEYBOARD_EVENTS: KeyboardEvents = Mutex::new(DEFAULT_KEYBOARD_EVENTS);
-// pub static MOUSE_EVENTS: MouseEvents = Mutex::new(DEFAULT_MOUSE_EVENTS);
 pub static PROFILE_NAME: ProfileNameControl = Mutex::new((true, DEFAULT_PROFILE_NAME));
 pub static SCREEN_SYSTEM_STATS: ScreenSystemStats = Mutex::new((false, DEFAULT_SYSTEM_STATS));
 pub static SCREEN_CONTROLS: ScreenControls = Mutex::new((false, ScreenProfile::default_profile()));
@@ -110,7 +107,15 @@ macro_rules! time_func {
 pub fn reset_icons() {
     ICONS.with_mut_lock(|icons| {
         let mut i = 0;
-        while i < icons.len() {
+        // let mut dma_ch1 = dma_ch1;
+        let len = icons.len();
+        while i < len {
+            icons[i].0 = true;
+            // dma_ch1 = single_buffer::Config::new(dma_ch1, &DEFAULT_ICONS[i], &mut icons[i].1)
+            //     .start()
+            //     .wait()
+            //     .0;
+
             let mut y = 0;
             while y < 32 {
                 let mut x = 0;
@@ -122,7 +127,6 @@ pub fn reset_icons() {
                 }
                 y += 1;
             }
-            icons[i].0 = true;
             i += 1;
         }
     });
@@ -142,31 +146,12 @@ pub const fn inputs_default() -> JBInputs {
 
 pub fn reset_peripherals(s: bool) {
     CONNECTION_STATUS.with_mut_lock(|c| *c = Connection::NotConnected(s));
-    PROFILE_NAME.with_mut_lock(|p| {
-        p.0 = true;
-        p.1 = DEFAULT_PROFILE_NAME;
-    });
-    RGB_CONTROLS.with_mut_lock(|c| {
-        c.0 = true;
-        DEFAULT_RGB_PROFILE.with_lock(|p| {
-            c.1 = p.1.clone();
-        });
-    });
-    SCREEN_CONTROLS.with_mut_lock(|s| {
-        s.0 = true;
-        DEFAULT_SCREEN_PROFILE.with_lock(|p| {
-            s.1 = p.1.clone();
-        });
-    });
-    SCREEN_SYSTEM_STATS.with_mut_lock(|s| {
-        s.0 = true;
-        s.1 = DEFAULT_SYSTEM_STATS;
-    });
-    INPUT_EVENTS.with_mut_lock(|e| {
-        DEFAULT_INPUT_EVENTS.with_lock(|p| {
-            *e = p.1.clone();
-        });
-    });
+    PROFILE_NAME.with_mut_lock(|p| *p = (true, DEFAULT_PROFILE_NAME));
+    RGB_CONTROLS.with_mut_lock(|c| *c = (true, DEFAULT_RGB_PROFILE.with_lock(|p| p.1.clone())));
+    SCREEN_CONTROLS
+        .with_mut_lock(|s| *s = (true, DEFAULT_SCREEN_PROFILE.with_lock(|p| p.1.clone())));
+    SCREEN_SYSTEM_STATS.with_mut_lock(|s| *s = (true, DEFAULT_SYSTEM_STATS));
+    INPUT_EVENTS.with_mut_lock(|e| *e = DEFAULT_INPUT_EVENTS.with_lock(|p| p.1.clone()));
     reset_icons();
 }
 

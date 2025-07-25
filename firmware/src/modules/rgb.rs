@@ -34,10 +34,7 @@ impl RgbMod {
     ) -> Self {
         count_down.start(FRAME_TIME.millis());
 
-        let mut default_rgb_profile = RgbProfile::default_device_profile();
-        DEFAULT_RGB_PROFILE.with_lock(|p| {
-            default_rgb_profile = p.1.clone();
-        });
+        let default_rgb_profile = DEFAULT_RGB_PROFILE.with_lock(|p| p.1.clone());
 
         RgbMod {
             ws: ws,

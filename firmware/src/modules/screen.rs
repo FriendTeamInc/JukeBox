@@ -151,10 +151,7 @@ impl ScreenMod {
     ) -> Self {
         timer.start(REFRESH_RATE.millis());
 
-        let mut default_screen_profile = ScreenProfile::default_profile();
-        DEFAULT_SCREEN_PROFILE.with_lock(|p| {
-            default_screen_profile = p.1.clone();
-        });
+        let default_screen_profile = DEFAULT_SCREEN_PROFILE.with_lock(|p| p.1.clone());
 
         ScreenMod {
             st,
