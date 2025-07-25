@@ -1,4 +1,4 @@
-use jukebox_util::{rgb::RgbProfile, screen::ScreenProfile};
+use jukebox_util::{input::InputEvent, rgb::RgbProfile, screen::ScreenProfile};
 use rp2040_hal::{
     gpio::{
         bank0::{Gpio4, Gpio5},
@@ -8,7 +8,7 @@ use rp2040_hal::{
     I2C,
 };
 
-use crate::util::{DEFAULT_RGB_PROFILE, DEFAULT_SCREEN_PROFILE};
+use crate::util::{DEFAULT_INPUT_EVENTS, DEFAULT_RGB_PROFILE, DEFAULT_SCREEN_PROFILE};
 
 const DEFAULTS_PAGE_SIZE: usize = 512;
 const FULL_PAGE_SIZE: usize = DEFAULTS_PAGE_SIZE + 2; // marker + crc + page
@@ -16,7 +16,7 @@ const EEPROM_SIZE: u32 = 65536;
 
 // Page Layout
 // 0x000-0x010 - Reserved
-// 0x010-0x090 - Default USB HID Events (7*16=112)
+// 0x010-0x090 - Default USB HID Events (7*16=112, round up to 128)
 // 0x090-0x0D0 - Default RGB Profile (64)
 // 0x0D0-0x1D0 - Default Screen Profile (256)
 // 0x1D0-0x200 - Reserved
@@ -72,7 +72,6 @@ impl EepromMod {
             return;
         }
 
-        // TODO: read eeprom values into defaults
         self.load_defaults();
     }
 
@@ -143,12 +142,14 @@ impl EepromMod {
             }
 
             self.defaults_address = addr;
-            // TODO: add usb hid events
+            let new_usb_hid_events =
+                InputEvent::decode(&data[USB_HID_EVENTS_RANGE_START..USB_HID_EVENTS_RANGE_END]);
             let new_default_rgb_profile =
                 RgbProfile::decode(&data[RGB_PROFILE_RANGE_START..RGB_PROFILE_RANGE_END]);
             let new_default_screen_profile =
                 ScreenProfile::decode(&data[SCREEN_PROFILE_RANGE_START..SCREEN_PROFILE_RANGE_END]);
 
+            DEFAULT_INPUT_EVENTS.with_mut_lock(|p| *p = (true, new_usb_hid_events));
             DEFAULT_RGB_PROFILE.with_mut_lock(|p| *p = (true, new_default_rgb_profile));
             DEFAULT_SCREEN_PROFILE.with_mut_lock(|p| *p = (true, new_default_screen_profile));
         }
@@ -157,7 +158,10 @@ impl EepromMod {
     fn encode_defaults_page() -> [u8; DEFAULTS_PAGE_SIZE] {
         let mut data = [0u8; DEFAULTS_PAGE_SIZE];
 
-        // TODO: add usb hid events
+        DEFAULT_INPUT_EVENTS.with_lock(|p| {
+            let d = InputEvent::encode(p.1.clone());
+            data[USB_HID_EVENTS_RANGE_START..USB_HID_EVENTS_RANGE_END].copy_from_slice(&d);
+        });
         DEFAULT_RGB_PROFILE.with_lock(|p| {
             let d = p.1.clone().encode();
             data[RGB_PROFILE_RANGE_START..RGB_PROFILE_RANGE_END].copy_from_slice(&d);

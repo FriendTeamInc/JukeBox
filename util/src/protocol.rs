@@ -31,6 +31,10 @@ pub const RSP_INPUT_HEADER: u8 = b'!';
 pub const RSP_UNKNOWN: u8 = b'?';
 pub const RSP_DISCONNECTED: u8 = b'\x04';
 
+pub const RSP_FULL_ACK: &[u8] = &[b'0', b'0', b'1', RSP_ACK];
+pub const RSP_FULL_UNKNOWN: &[u8] = &[b'0', b'0', b'1', RSP_UNKNOWN];
+pub const RSP_FULL_DISCONNECTED: &[u8] = &[b'0', b'0', b'1', RSP_DISCONNECTED];
+
 #[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 #[repr(u8)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]

@@ -7,14 +7,15 @@ use embedded_graphics::pixelcolor::Bgr565;
 use embedded_hal::timer::{Cancel as _, CountDown as _};
 use jukebox_util::{
     color::split_to_rgb565,
-    input::{KeyboardEvent, MouseEvent},
+    input::{InputEvent, KeyboardEvent, MouseEvent},
     peripheral::{
         Connection, JBInputs, IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT,
         IDENT_UNKNOWN_INPUT,
     },
     protocol::{
-        decode_packet_size, Command, MAX_PACKET_SIZE, RSP_ACK, RSP_DISCONNECTED, RSP_INPUT_HEADER,
-        RSP_LINK_DELIMITER, RSP_LINK_HEADER, RSP_UNKNOWN,
+        decode_packet_size, Command, MAX_PACKET_SIZE, RSP_ACK, RSP_DISCONNECTED, RSP_FULL_ACK,
+        RSP_FULL_DISCONNECTED, RSP_FULL_UNKNOWN, RSP_INPUT_HEADER, RSP_LINK_DELIMITER,
+        RSP_LINK_HEADER,
     },
     rgb::RgbProfile,
     screen::{ProfileName, ScreenProfile},
@@ -26,9 +27,9 @@ use rp2040_hal::{fugit::ExtU32, timer::CountDown, usb::UsbBus};
 use usbd_serial::SerialPort as FullSerialPort;
 
 use crate::util::{
-    reset_peripherals, CONNECTION_STATUS, DEFAULT_INPUTS, ICONS, IDENTIFY_TRIGGER, KEYBOARD_EVENTS,
-    MOUSE_EVENTS, PERIPHERAL_INPUTS, PROFILE_NAME, RGB_CONTROLS, SCREEN_CONTROLS,
-    SCREEN_SYSTEM_STATS, UPDATE_TRIGGER,
+    reset_peripherals, CONNECTION_STATUS, DEFAULT_INPUTS, ICONS, IDENTIFY_TRIGGER, INPUT_EVENTS,
+    PERIPHERAL_INPUTS, PROFILE_NAME, RGB_CONTROLS, SCREEN_CONTROLS, SCREEN_SYSTEM_STATS,
+    UPDATE_TRIGGER,
 };
 
 type SerialPort<'a> = FullSerialPort<'a, UsbBus, [u8; SERIAL_READ_SIZE], [u8; SERIAL_WRITE_SIZE]>;
@@ -136,7 +137,7 @@ impl SerialMod {
             Ok(s) => {
                 // copy read data to internal buffer
                 for b in 0..s {
-                    self.buffer.push(buf[b]);
+                    let _ = self.buffer.enqueue(buf[b]);
                 }
             }
         }
@@ -151,7 +152,7 @@ impl SerialMod {
         // process command
         let mut unknown = || {
             error!("unknown command: {}", data);
-            Self::send(serial, &[b'0', b'0', b'1', RSP_UNKNOWN]);
+            Self::send(serial, RSP_FULL_UNKNOWN);
             false
         };
         let valid = match self.state {
@@ -231,12 +232,11 @@ impl SerialMod {
                     let new_input = &data[1..6 + 1];
                     let new_input = KeyboardEvent::decode(new_input);
 
-                    KEYBOARD_EVENTS.with_mut_lock(|e| {
-                        e[slot as usize] = new_input;
+                    INPUT_EVENTS.with_mut_lock(|e| {
+                        e[slot as usize] = InputEvent::Keyboard(new_input);
                     });
 
-                    Self::send(serial, b"001");
-                    Self::send(serial, &[RSP_ACK]);
+                    Self::send(serial, RSP_FULL_ACK);
 
                     true
                 }
@@ -245,12 +245,11 @@ impl SerialMod {
                     let new_input = &data[1..5 + 1];
                     let new_input = MouseEvent::decode(new_input);
 
-                    MOUSE_EVENTS.with_mut_lock(|e| {
-                        e[slot as usize] = new_input;
+                    INPUT_EVENTS.with_mut_lock(|e| {
+                        e[slot as usize] = InputEvent::Mouse(new_input);
                     });
 
-                    Self::send(serial, b"001");
-                    Self::send(serial, &[RSP_ACK]);
+                    Self::send(serial, RSP_FULL_ACK);
 
                     true
                 }
@@ -265,8 +264,7 @@ impl SerialMod {
                         c.1 = rgb;
                     });
 
-                    Self::send(serial, b"001");
-                    Self::send(serial, &[RSP_ACK]);
+                    Self::send(serial, RSP_FULL_ACK);
 
                     true
                 }
@@ -288,8 +286,7 @@ impl SerialMod {
                         scr_icon.0 = true;
                     });
 
-                    Self::send(serial, b"001");
-                    Self::send(serial, &[RSP_ACK]);
+                    Self::send(serial, RSP_FULL_ACK);
 
                     true
                 }
@@ -301,8 +298,7 @@ impl SerialMod {
                         s.1 = profile;
                     });
 
-                    Self::send(serial, b"001");
-                    Self::send(serial, &[RSP_ACK]);
+                    Self::send(serial, RSP_FULL_ACK);
 
                     true
                 }
@@ -314,8 +310,7 @@ impl SerialMod {
                         s.1 = stats;
                     });
 
-                    Self::send(serial, b"001");
-                    Self::send(serial, &[RSP_ACK]);
+                    Self::send(serial, RSP_FULL_ACK);
 
                     true
                 }
@@ -327,8 +322,7 @@ impl SerialMod {
                         p.1 = new_profile_name;
                     });
 
-                    Self::send(serial, b"001");
-                    Self::send(serial, &[RSP_ACK]);
+                    Self::send(serial, RSP_FULL_ACK);
 
                     true
                 }
@@ -341,7 +335,7 @@ impl SerialMod {
                     true
                 }
                 Command::Disconnect => {
-                    Self::send(serial, &[b'0', b'0', b'1', RSP_DISCONNECTED]);
+                    Self::send(serial, RSP_FULL_DISCONNECTED);
                     self.state = Connection::NotConnected(true);
                     reset_peripherals(true);
 

@@ -6,7 +6,7 @@ use core::{
 use embedded_graphics::{pixelcolor::Bgr565, prelude::RgbColor};
 use jukebox_util::{
     color::split_to_rgb565,
-    input::{KeyboardEvent, MouseEvent},
+    input::InputEvent,
     peripheral::{Connection, JBInputs, KeyInputs, KnobInputs, PedalInputs},
     rgb::RgbProfile,
     screen::{ProfileName, ScreenProfile},
@@ -57,22 +57,26 @@ type IdentifyTrigger = Mutex<3, bool>;
 type RgbControls = Mutex<4, (bool, RgbProfile)>; // (changed, settings)
 type ConnectionStatus = Mutex<5, Connection>;
 type Icons = Mutex<6, [(bool, [Bgr565; 32 * 32]); 12]>;
-type KeyboardEvents = Mutex<7, [KeyboardEvent; 12]>;
-type MouseEvents = Mutex<8, [MouseEvent; 12]>;
+type InputEvents = Mutex<7, [InputEvent; 16]>;
+// type KeyboardEvents = Mutex<7, [KeyboardEvent; 12]>;
+// type MouseEvents = Mutex<8, [MouseEvent; 12]>;
 type ProfileNameControl = Mutex<9, (bool, ProfileName)>;
 type ScreenSystemStats = Mutex<10, (bool, SystemStats)>;
 type ScreenControls = Mutex<11, (bool, ScreenProfile)>;
 type UsbStatus = Mutex<12, (bool, UsbDeviceState)>;
-type DefaultRgbProfile = Mutex<13, (bool, RgbProfile)>;
-type DefaultScreenProfile = Mutex<14, (bool, ScreenProfile)>;
+type DefaultInputEvents = Mutex<13, (bool, [InputEvent; 16])>;
+type DefaultRgbProfile = Mutex<14, (bool, RgbProfile)>;
+type DefaultScreenProfile = Mutex<15, (bool, ScreenProfile)>;
 
 // TODO: load defaults from eeprom
 pub const DEFAULT_INPUTS: JBInputs = inputs_default();
-pub const DEFAULT_KEYBOARD_EVENTS: [KeyboardEvent; 12] = KeyboardEvent::default_events();
-pub const DEFAULT_MOUSE_EVENTS: [MouseEvent; 12] = MouseEvent::default_events();
+// pub const DEFAULT_KEYBOARD_EVENTS: [KeyboardEvent; 12] = KeyboardEvent::default_events();
+// pub const DEFAULT_MOUSE_EVENTS: [MouseEvent; 12] = MouseEvent::default_events();
 pub const DEFAULT_PROFILE_NAME: ProfileName = SmallStr::default();
 pub const DEFAULT_SYSTEM_STATS: SystemStats = SystemStats::default();
 
+pub static DEFAULT_INPUT_EVENTS: DefaultInputEvents =
+    Mutex::new((false, InputEvent::default_events()));
 pub static DEFAULT_RGB_PROFILE: DefaultRgbProfile =
     Mutex::new((false, RgbProfile::default_device_profile()));
 pub static DEFAULT_SCREEN_PROFILE: DefaultScreenProfile =
@@ -84,8 +88,9 @@ pub static UPDATE_TRIGGER: UpdateTrigger = Mutex::new(false);
 pub static IDENTIFY_TRIGGER: IdentifyTrigger = Mutex::new(false);
 pub static RGB_CONTROLS: RgbControls = Mutex::new((false, RgbProfile::default_device_profile()));
 pub static ICONS: Icons = Mutex::new([(false, [Bgr565::BLACK; 32 * 32]); 12]);
-pub static KEYBOARD_EVENTS: KeyboardEvents = Mutex::new(DEFAULT_KEYBOARD_EVENTS);
-pub static MOUSE_EVENTS: MouseEvents = Mutex::new(DEFAULT_MOUSE_EVENTS);
+pub static INPUT_EVENTS: InputEvents = Mutex::new(InputEvent::default_events());
+// pub static KEYBOARD_EVENTS: KeyboardEvents = Mutex::new(DEFAULT_KEYBOARD_EVENTS);
+// pub static MOUSE_EVENTS: MouseEvents = Mutex::new(DEFAULT_MOUSE_EVENTS);
 pub static PROFILE_NAME: ProfileNameControl = Mutex::new((true, DEFAULT_PROFILE_NAME));
 pub static SCREEN_SYSTEM_STATS: ScreenSystemStats = Mutex::new((false, DEFAULT_SYSTEM_STATS));
 pub static SCREEN_CONTROLS: ScreenControls = Mutex::new((false, ScreenProfile::default_profile()));
@@ -157,28 +162,30 @@ pub fn reset_peripherals(s: bool) {
         s.0 = true;
         s.1 = DEFAULT_SYSTEM_STATS;
     });
-    KEYBOARD_EVENTS.with_mut_lock(|e| {
-        *e = DEFAULT_KEYBOARD_EVENTS;
-    });
-    MOUSE_EVENTS.with_mut_lock(|e| {
-        *e = DEFAULT_MOUSE_EVENTS;
+    INPUT_EVENTS.with_mut_lock(|e| {
+        DEFAULT_INPUT_EVENTS.with_lock(|p| {
+            *e = p.1.clone();
+        });
     });
     reset_icons();
 }
 
-pub fn get_keyboard_events() -> [Keyboard; 12 * 6] {
-    let mut keys = [Keyboard::NoEventIndicated; 12 * 6];
+pub fn get_keyboard_events() -> [Keyboard; 16 * 6] {
+    let mut keys = [Keyboard::NoEventIndicated; 16 * 6];
 
-    KEYBOARD_EVENTS.with_lock(|e| {
-        let mut f = |k: bool, o: usize| {
-            if k {
-                keys[o * 6 + 0] = e[o].keys[0].into();
-                keys[o * 6 + 1] = e[o].keys[1].into();
-                keys[o * 6 + 2] = e[o].keys[2].into();
-                keys[o * 6 + 3] = e[o].keys[3].into();
-                keys[o * 6 + 4] = e[o].keys[4].into();
-                keys[o * 6 + 5] = e[o].keys[5].into();
+    INPUT_EVENTS.with_lock(|e| {
+        let mut f = |k: bool, o: usize| match &e[o] {
+            InputEvent::Keyboard(e) => {
+                if k {
+                    keys[o * 6 + 0] = e.keys[0].into();
+                    keys[o * 6 + 1] = e.keys[1].into();
+                    keys[o * 6 + 2] = e.keys[2].into();
+                    keys[o * 6 + 3] = e.keys[3].into();
+                    keys[o * 6 + 4] = e.keys[4].into();
+                    keys[o * 6 + 5] = e.keys[5].into();
+                }
             }
+            InputEvent::Mouse(_) => {}
         };
         PERIPHERAL_INPUTS.with_lock(|i| match i {
             JBInputs::KeyPad(i) => {
@@ -216,14 +223,17 @@ pub fn get_mouse_events() -> WheelMouseReport {
     let mut scroll_y = 0isize;
     let mut scroll_x = 0isize;
 
-    MOUSE_EVENTS.with_lock(|e| {
-        let mut f = |k: bool, o: usize| {
-            if k {
-                buttons |= e[o].buttons;
-                x += e[o].x as isize;
-                y += e[o].y as isize;
-                scroll_y += e[o].scroll_y as isize;
-                scroll_x += e[o].scroll_x as isize;
+    INPUT_EVENTS.with_lock(|e| {
+        let mut f = |k: bool, o: usize| match &e[o] {
+            InputEvent::Keyboard(_) => {}
+            InputEvent::Mouse(e) => {
+                if k {
+                    buttons |= e.buttons;
+                    x += e.x as isize;
+                    y += e.y as isize;
+                    scroll_y += e.scroll_y as isize;
+                    scroll_x += e.scroll_x as isize;
+                }
             }
         };
         PERIPHERAL_INPUTS.with_lock(|i| match i {

@@ -1,3 +1,6 @@
+use bincode::{decode_from_slice, encode_into_slice, Decode, Encode};
+use serde::{Deserialize, Serialize};
+
 pub const KEYBOARD_SCAN_CODES: [(u8, &str); 169] = [
     (0x04, "A"),
     (0x05, "B"),
@@ -172,6 +175,50 @@ pub const KEYBOARD_SCAN_CODES: [(u8, &str); 169] = [
     (0xE7, "Right Super"), // aka GUI
 ]; //0xE8-0xFFFF Reserved
 
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Encode, Decode)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
+pub enum InputEvent {
+    Keyboard(KeyboardEvent),
+    Mouse(MouseEvent),
+}
+impl InputEvent {
+    #[rustfmt::skip]
+    pub const fn default_events() -> [Self; 16] {
+        [
+            Self::Keyboard(KeyboardEvent { keys: [0x68, 0, 0, 0, 0, 0], }),
+            Self::Keyboard(KeyboardEvent { keys: [0x69, 0, 0, 0, 0, 0], }),
+            Self::Keyboard(KeyboardEvent { keys: [0x6A, 0, 0, 0, 0, 0], }),
+            Self::Keyboard(KeyboardEvent { keys: [0x6B, 0, 0, 0, 0, 0], }),
+            Self::Keyboard(KeyboardEvent { keys: [0x6C, 0, 0, 0, 0, 0], }),
+            Self::Keyboard(KeyboardEvent { keys: [0x6D, 0, 0, 0, 0, 0], }),
+            Self::Keyboard(KeyboardEvent { keys: [0x6E, 0, 0, 0, 0, 0], }),
+            Self::Keyboard(KeyboardEvent { keys: [0x6F, 0, 0, 0, 0, 0], }),
+            Self::Keyboard(KeyboardEvent { keys: [0x70, 0, 0, 0, 0, 0], }),
+            Self::Keyboard(KeyboardEvent { keys: [0x71, 0, 0, 0, 0, 0], }),
+            Self::Keyboard(KeyboardEvent { keys: [0x72, 0, 0, 0, 0, 0], }),
+            Self::Keyboard(KeyboardEvent { keys: [0x73, 0, 0, 0, 0, 0], }),
+            Self::Keyboard(KeyboardEvent { keys: [0xE4, 0, 0, 0, 0, 0], }),
+            Self::Keyboard(KeyboardEvent { keys: [0xE5, 0, 0, 0, 0, 0], }),
+            Self::Keyboard(KeyboardEvent { keys: [0xE6, 0, 0, 0, 0, 0], }),
+            Self::Keyboard(KeyboardEvent { keys: [0xE7, 0, 0, 0, 0, 0], }),
+        ]
+    }
+
+    pub fn encode(events: [Self; 16]) -> [u8; 112] {
+        let mut data = [0u8; 112];
+        let _ = encode_into_slice(events, &mut data, bincode::config::standard()).unwrap();
+        data
+    }
+
+    pub fn decode(events: &[u8]) -> [Self; 16] {
+        decode_from_slice(events, bincode::config::standard())
+            .unwrap()
+            .0
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Encode, Decode)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct KeyboardEvent {
     pub keys: [u8; 6],
 }
@@ -233,6 +280,8 @@ impl KeyboardEvent {
     }
 }
 
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Encode, Decode)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct MouseEvent {
     pub buttons: u8,
     pub x: i8,
