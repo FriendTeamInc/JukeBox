@@ -6,7 +6,7 @@ build = "build.rs"
 license = "MIT"
 
 [dependencies]
-jukebox_util = { path = "../util", features = ["serde"] }
+jukebox_util = { path = "../util" }
 
 log = "0.4"
 env_logger = "0.11"

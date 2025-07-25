@@ -1,16 +1,7 @@
-use core::mem::transmute;
+use bincode::{decode_from_slice, encode_into_slice, Decode, Encode};
+use serde::{Deserialize, Serialize};
 
 use crate::color::hsv2rgb;
-
-const fn set_color(data: &mut [u8], color: (u8, u8, u8)) {
-    data[0] = color.0;
-    data[1] = color.1;
-    data[2] = color.2;
-}
-
-const fn get_color(data: &[u8]) -> (u8, u8, u8) {
-    (data[0], data[1], data[2])
-}
 
 pub const RGB_PROFILE_SIZE: usize = 64;
 
@@ -26,8 +17,7 @@ pub const RGB_STATIC_PER_KEY_COUNT: usize = 12;
 pub const RGB_WAVE_COLOR_COUNT_MAX: usize = 16;
 pub const RGB_BREATHE_COLOR_COUNT_MAX: usize = 16;
 
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Encode, Decode)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum RgbProfile {
     Off,
@@ -158,147 +148,15 @@ impl RgbProfile {
 
     pub fn encode(self) -> [u8; RGB_PROFILE_SIZE] {
         let mut data = [0u8; RGB_PROFILE_SIZE];
-        data[0] = self.get_type();
-        data[1] = self.brightness();
-
-        match self {
-            Self::Off => (),
-            Self::StaticSolid {
-                brightness: _,
-                color,
-            } => {
-                set_color(&mut data[2..=4], color);
-            }
-            Self::StaticPerKey {
-                brightness: _,
-                colors,
-            } => {
-                for i in 0..RGB_STATIC_PER_KEY_COUNT {
-                    set_color(&mut data[(2 + i * 3)..=(4 + i * 3)], colors[i]);
-                }
-            }
-            Self::Wave {
-                brightness: _,
-                speed,
-                speed_x,
-                speed_y,
-                color_count,
-                colors,
-            } => {
-                data[2] = unsafe { transmute(speed) };
-                data[3] = unsafe { transmute(speed_x) };
-                data[4] = unsafe { transmute(speed_y) };
-                data[5] = color_count;
-                for i in 0..RGB_WAVE_COLOR_COUNT_MAX {
-                    set_color(&mut data[(6 + i * 3)..=(8 + i * 3)], colors[i]);
-                }
-            }
-            Self::Breathe {
-                brightness: _,
-                hold_time,
-                trans_time,
-                color_count,
-                colors,
-            } => {
-                data[2] = hold_time;
-                data[3] = trans_time;
-                data[4] = color_count;
-                for i in 0..RGB_WAVE_COLOR_COUNT_MAX {
-                    set_color(&mut data[(5 + i * 3)..=(7 + i * 3)], colors[i]);
-                }
-            }
-            Self::RainbowSolid {
-                brightness: _,
-                speed,
-                saturation,
-                value,
-            } => {
-                data[2] = unsafe { transmute(speed) };
-                data[3] = unsafe { transmute(saturation) };
-                data[4] = unsafe { transmute(value) };
-            }
-            Self::RainbowWave {
-                brightness: _,
-                speed,
-                speed_x,
-                speed_y,
-                saturation,
-                value,
-            } => {
-                data[2] = unsafe { transmute(speed) };
-                data[3] = unsafe { transmute(speed_x) };
-                data[4] = unsafe { transmute(speed_y) };
-                data[5] = unsafe { transmute(saturation) };
-                data[6] = unsafe { transmute(value) };
-            }
-        }
+        let _ = encode_into_slice(self, &mut data, bincode::config::standard()).unwrap();
 
         data
     }
 
     pub fn decode(data: &[u8]) -> Self {
-        match data[0] {
-            RGB_PROFILE_OFF => Self::Off,
-            RGB_PROFILE_STATIC_SOLID => Self::StaticSolid {
-                brightness: data[1],
-                color: get_color(&data[2..=4]),
-            },
-            RGB_PROFILE_STATIC_PER_KEY => {
-                let mut colors = [(0, 0, 0); RGB_STATIC_PER_KEY_COUNT];
-                for i in 0..RGB_STATIC_PER_KEY_COUNT {
-                    colors[i] = get_color(&data[(2 + i * 3)..=(4 + i * 3)])
-                }
-
-                Self::StaticPerKey {
-                    brightness: data[1],
-                    colors,
-                }
-            }
-            RGB_PROFILE_WAVE => {
-                let mut colors = [(0, 0, 0); RGB_WAVE_COLOR_COUNT_MAX];
-                for i in 0..RGB_WAVE_COLOR_COUNT_MAX {
-                    colors[i] = get_color(&data[(6 + i * 3)..=(8 + i * 3)])
-                }
-
-                Self::Wave {
-                    brightness: data[1],
-                    speed: unsafe { transmute(data[2]) },
-                    speed_x: unsafe { transmute(data[3]) },
-                    speed_y: unsafe { transmute(data[4]) },
-                    color_count: data[5],
-                    colors,
-                }
-            }
-            RGB_PROFILE_BREATHE => {
-                let mut colors = [(0, 0, 0); RGB_BREATHE_COLOR_COUNT_MAX];
-                for i in 0..RGB_BREATHE_COLOR_COUNT_MAX {
-                    colors[i] = get_color(&data[(5 + i * 3)..=(7 + i * 3)])
-                }
-
-                Self::Breathe {
-                    brightness: data[1],
-                    hold_time: data[2],
-                    trans_time: data[3],
-                    color_count: data[4],
-                    colors,
-                }
-            }
-            RGB_PROFILE_RAINBOW_SOLID => Self::RainbowSolid {
-                brightness: data[1],
-                speed: unsafe { transmute(data[2]) },
-                saturation: data[3],
-                value: data[4],
-            },
-            RGB_PROFILE_RAINBOW_WAVE => Self::RainbowWave {
-                brightness: data[1],
-                speed: unsafe { transmute(data[2]) },
-                speed_x: unsafe { transmute(data[3]) },
-                speed_y: unsafe { transmute(data[4]) },
-                saturation: data[5],
-                value: data[6],
-            },
-            _ => panic!(),
-        }
+        decode_from_slice(data, bincode::config::standard())
+            .unwrap()
+            .0
     }
 
     pub fn calculate_matrix(&self, t: u64) -> [(u8, u8, u8); 12] {

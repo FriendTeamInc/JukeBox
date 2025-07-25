@@ -1,3 +1,6 @@
+use bincode::{decode_from_slice, encode_into_slice, Decode, Encode};
+use serde::{Deserialize, Serialize};
+
 use crate::smallstr::SmallStr;
 
 pub const PROFILE_NAME_CODE_POINT_LEN: usize = 18;
@@ -10,8 +13,7 @@ pub const SCREEN_PROFILE_OFF: u8 = 0;
 pub const SCREEN_PROFILE_DISPLAY_KEYS: u8 = 1;
 pub const SCREEN_PROFILE_DISPLAY_STATS: u8 = 2;
 
-#[derive(Debug, Clone, PartialEq)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Encode, Decode)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum ScreenProfile {
     Off,
@@ -93,51 +95,15 @@ impl ScreenProfile {
 
     pub fn encode(self) -> [u8; SCREEN_PROFILE_SIZE] {
         let mut data = [0u8; SCREEN_PROFILE_SIZE];
-        data[0] = self.get_type();
-        data[1] = self.brightness();
-
-        match self {
-            Self::Off => {}
-            Self::DisplayKeys {
-                brightness: _,
-                background_color,
-                text_color,
-            } => {
-                data[2] = (background_color >> 8) as u8;
-                data[3] = (background_color & 0xFF) as u8;
-                data[4] = (text_color >> 8) as u8;
-                data[5] = (text_color & 0xFF) as u8;
-            }
-            Self::DisplayStats {
-                brightness: _,
-                background_color,
-                text_color,
-            } => {
-                data[2] = (background_color >> 8) as u8;
-                data[3] = (background_color & 0xFF) as u8;
-                data[4] = (text_color >> 8) as u8;
-                data[5] = (text_color & 0xFF) as u8;
-            }
-        }
+        let _ = encode_into_slice(self, &mut data, bincode::config::standard()).unwrap();
 
         data
     }
 
     pub fn decode(data: &[u8]) -> Self {
-        match data[0] {
-            SCREEN_PROFILE_OFF => Self::Off,
-            SCREEN_PROFILE_DISPLAY_KEYS => Self::DisplayKeys {
-                brightness: data[1],
-                background_color: ((data[2] as u16) << 8) | (data[3] as u16),
-                text_color: ((data[4] as u16) << 8) | (data[5] as u16),
-            },
-            SCREEN_PROFILE_DISPLAY_STATS => Self::DisplayStats {
-                brightness: data[1],
-                background_color: ((data[2] as u16) << 8) | (data[3] as u16),
-                text_color: ((data[4] as u16) << 8) | (data[5] as u16),
-            },
-            _ => panic!(),
-        }
+        decode_from_slice(data, bincode::config::standard())
+            .unwrap()
+            .0
     }
 
     pub const fn default_profile() -> Self {

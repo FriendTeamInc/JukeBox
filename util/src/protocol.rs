@@ -1,5 +1,7 @@
 // All the utilities for the communication protocol
 
+use serde::{Deserialize, Serialize};
+
 pub const MAX_PACKET_SIZE: usize = 4095;
 
 pub const CMD_GREET: u8 = b'\x05';
@@ -29,9 +31,8 @@ pub const RSP_INPUT_HEADER: u8 = b'!';
 pub const RSP_UNKNOWN: u8 = b'?';
 pub const RSP_DISCONNECTED: u8 = b'\x04';
 
-#[derive(PartialEq, Clone, Copy, Debug)]
+#[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 #[repr(u8)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Command {
     Greeting,
