@@ -1,14 +1,19 @@
+use embedded_hal::timer::CountDown as _;
 use jukebox_util::{input::InputEvent, rgb::RgbProfile, screen::ScreenProfile};
 use rp2040_hal::{
+    fugit::ExtU32,
     gpio::{
         bank0::{Gpio4, Gpio5},
         FunctionI2c, Pin, PullUp,
     },
     pac::I2C0,
+    timer::CountDown,
     I2C,
 };
 
 use crate::util::{DEFAULT_INPUT_EVENTS, DEFAULT_RGB_PROFILE, DEFAULT_SCREEN_PROFILE};
+
+const UPDATE_RATE: u32 = 500;
 
 const DEFAULTS_PAGE_SIZE: usize = 512;
 const FULL_PAGE_SIZE: usize = DEFAULTS_PAGE_SIZE + 2; // marker + crc + page
@@ -20,8 +25,8 @@ const EEPROM_SIZE: u32 = 65536;
 // 0x090-0x0D0 - Default RGB Profile (64)
 // 0x0D0-0x1D0 - Default Screen Profile (256)
 // 0x1D0-0x200 - Reserved
-const USB_HID_EVENTS_RANGE_START: usize = 0x010;
-const USB_HID_EVENTS_RANGE_END: usize = 0x090;
+const INPUT_EVENTS_RANGE_START: usize = 0x010;
+const INPUT_EVENTS_RANGE_END: usize = 0x090;
 const RGB_PROFILE_RANGE_START: usize = 0x090;
 const RGB_PROFILE_RANGE_END: usize = 0x0D0;
 const SCREEN_PROFILE_RANGE_START: usize = 0x0D0;
@@ -45,16 +50,20 @@ type EepromDev = eeprom24x::Eeprom24x<
 pub struct EepromMod {
     eeprom_dev: EepromDev,
     defaults_address: u32,
+    timer: CountDown,
 }
 
 impl EepromMod {
-    pub fn new(eeprom_i2c: EepromI2c) -> Self {
+    pub fn new(eeprom_i2c: EepromI2c, mut count_down: CountDown) -> Self {
         let eeprom_dev =
             eeprom24x::Eeprom24x::new_24x512(eeprom_i2c, eeprom24x::SlaveAddr::Default);
+
+        count_down.start(UPDATE_RATE.millis());
 
         let mut eeprom_mod = Self {
             eeprom_dev,
             defaults_address: 0,
+            timer: count_down,
         };
 
         eeprom_mod.initialize();
@@ -142,7 +151,7 @@ impl EepromMod {
 
             self.defaults_address = addr;
             let new_usb_hid_events =
-                InputEvent::decode(&data[USB_HID_EVENTS_RANGE_START..USB_HID_EVENTS_RANGE_END]);
+                InputEvent::decode(&data[INPUT_EVENTS_RANGE_START..INPUT_EVENTS_RANGE_END]);
             let new_default_rgb_profile =
                 RgbProfile::decode(&data[RGB_PROFILE_RANGE_START..RGB_PROFILE_RANGE_END]);
             let new_default_screen_profile =
@@ -157,15 +166,18 @@ impl EepromMod {
     fn encode_defaults_page() -> [u8; DEFAULTS_PAGE_SIZE] {
         let mut data = [0u8; DEFAULTS_PAGE_SIZE];
 
-        DEFAULT_INPUT_EVENTS.with_lock(|p| {
+        DEFAULT_INPUT_EVENTS.with_mut_lock(|p| {
+            p.0 = false;
             let d = InputEvent::encode(p.1.clone());
-            data[USB_HID_EVENTS_RANGE_START..USB_HID_EVENTS_RANGE_END].copy_from_slice(&d);
+            data[INPUT_EVENTS_RANGE_START..INPUT_EVENTS_RANGE_END].copy_from_slice(&d);
         });
-        DEFAULT_RGB_PROFILE.with_lock(|p| {
+        DEFAULT_RGB_PROFILE.with_mut_lock(|p| {
+            p.0 = false;
             let d = p.1.clone().encode();
             data[RGB_PROFILE_RANGE_START..RGB_PROFILE_RANGE_END].copy_from_slice(&d);
         });
-        DEFAULT_SCREEN_PROFILE.with_lock(|p| {
+        DEFAULT_SCREEN_PROFILE.with_mut_lock(|p| {
+            p.0 = false;
             let d = p.1.clone().encode();
             data[SCREEN_PROFILE_RANGE_START..SCREEN_PROFILE_RANGE_END].copy_from_slice(&d);
         });
@@ -182,6 +194,18 @@ impl EepromMod {
     }
 
     pub fn update(&mut self) {
+        if !self.timer.wait().is_ok() {
+            return;
+        }
+
         // if defaults have changed, update the eeprom
+        let (changed_ie, _) = DEFAULT_INPUT_EVENTS.with_lock(|i| i.clone());
+        let (changed_rp, _) = DEFAULT_RGB_PROFILE.with_lock(|p| p.clone());
+        let (changed_sp, _) = DEFAULT_SCREEN_PROFILE.with_lock(|p| p.clone());
+        let changed = changed_ie || changed_rp || changed_sp;
+
+        if changed {
+            self.save_eeprom();
+        }
     }
 }

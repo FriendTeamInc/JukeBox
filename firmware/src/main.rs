@@ -196,7 +196,7 @@ fn main() -> ! {
                     &clocks.system_clock,
                 );
 
-                eeprom::EepromMod::new(eeprom_i2c)
+                eeprom::EepromMod::new(eeprom_i2c, timer.count_down())
             };
 
             // set up GPIO and modules
@@ -291,6 +291,7 @@ fn main() -> ! {
                 pedal_mod.update();
 
                 // update accessories
+                eeprom_mod.update();
                 led_mod.update(timer.get_counter());
 
                 #[cfg(feature = "keypad")]
