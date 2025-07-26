@@ -13,21 +13,22 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, bail, Context, Result};
+use jukebox_util::input::InputEvent;
 use jukebox_util::peripheral::DeviceType;
-use jukebox_util::protocol::{CMD_SET_PROFILE_NAME, CMD_SET_SCR_MODE, CMD_SET_SYSTEM_STATS};
+use jukebox_util::protocol::{
+    CMD_SET_INPUT_EVENT, CMD_SET_PROFILE_NAME, CMD_SET_SCR_MODE, CMD_SET_SYSTEM_STATS,
+};
 use jukebox_util::screen::{ProfileName, ScreenProfile, PROFILE_NAME_CHAR_LEN};
 use jukebox_util::stats::SystemStats;
 use jukebox_util::{
-    input::{KeyboardEvent, MouseEvent},
     peripheral::{
         KeyInputs, KnobInputs, PedalInputs, IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT,
         IDENT_UNKNOWN_INPUT,
     },
     protocol::{
         decode_packet_size, encode_packet_size, CMD_DISCONNECT, CMD_GET_INPUT_KEYS, CMD_GREET,
-        CMD_IDENTIFY, CMD_NEGATIVE_ACK, CMD_SET_KEYBOARD_INPUT, CMD_SET_MOUSE_INPUT,
-        CMD_SET_RGB_MODE, CMD_SET_SCR_ICON, CMD_UPDATE, RSP_ACK, RSP_DISCONNECTED,
-        RSP_INPUT_HEADER, RSP_LINK_DELIMITER, RSP_LINK_HEADER, RSP_UNKNOWN,
+        CMD_IDENTIFY, CMD_NEGATIVE_ACK, CMD_SET_RGB_MODE, CMD_SET_SCR_ICON, CMD_UPDATE, RSP_ACK,
+        RSP_DISCONNECTED, RSP_INPUT_HEADER, RSP_LINK_DELIMITER, RSP_LINK_HEADER, RSP_UNKNOWN,
     },
     rgb::RgbProfile,
 };
@@ -51,8 +52,9 @@ pub struct SerialConnectionDetails {
 #[allow(unused)]
 pub enum SerialCommand {
     Identify,
-    SetKeyboardInput(u8, KeyboardEvent),
-    SetMouseInput(u8, MouseEvent),
+    SetInputEvent(u8, InputEvent),
+    // SetKeyboardInput(u8, KeyboardEvent),
+    // SetMouseInput(u8, MouseEvent),
     // SetGamepadInput(u8, [u8; 6]),
     SetRgbMode(RgbProfile),
     SetScrIcon(u8, [u8; 32 * 32 * 2]),
@@ -305,15 +307,8 @@ async fn transmit_get_input_keys(f: &mut Serial) -> Result<HashSet<InputKey>> {
     Ok(result)
 }
 
-async fn transmit_set_keyboard_input(f: &mut Serial, slot: u8, event: KeyboardEvent) -> Result<()> {
-    let mut cmd = vec![CMD_SET_KEYBOARD_INPUT, slot];
-    cmd.extend_from_slice(&event.encode());
-
-    send_expect(f, &cmd, &[RSP_ACK]).await
-}
-
-async fn transmit_set_mouse_input(f: &mut Serial, slot: u8, event: MouseEvent) -> Result<()> {
-    let mut cmd = vec![CMD_SET_MOUSE_INPUT, slot];
+async fn transmit_set_input_event(f: &mut Serial, slot: u8, event: InputEvent) -> Result<()> {
+    let mut cmd = vec![CMD_SET_INPUT_EVENT, slot];
     cmd.extend_from_slice(&event.encode());
 
     send_expect(f, &cmd, &[RSP_ACK]).await
@@ -421,6 +416,7 @@ pub async fn serial_loop(
         let now = Instant::now();
 
         if now >= keys_tick {
+            log::info!("key tick");
             keys_tick = Instant::now()
                 .checked_add(Duration::from_millis(50))
                 .unwrap();
@@ -453,11 +449,8 @@ pub async fn serial_loop(
                 SerialCommand::Identify => {
                     transmit_identify_signal(f).await?;
                 }
-                SerialCommand::SetKeyboardInput(slot, keyboard_event) => {
-                    transmit_set_keyboard_input(f, slot, keyboard_event).await?;
-                }
-                SerialCommand::SetMouseInput(slot, mouse_event) => {
-                    transmit_set_mouse_input(f, slot, mouse_event).await?;
+                SerialCommand::SetInputEvent(slot, input_event) => {
+                    transmit_set_input_event(f, slot, input_event).await?;
                 }
                 SerialCommand::SetRgbMode(rgb_profile) => {
                     if device_type == DeviceType::KeyPad {

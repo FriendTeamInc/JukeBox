@@ -5,7 +5,7 @@ use std::{
 
 use eframe::egui::{include_image, ComboBox, ImageSource, Slider, Ui};
 use egui_phosphor::regular as phos;
-use jukebox_util::input::{KeyboardEvent, MouseEvent, KEYBOARD_SCAN_CODES};
+use jukebox_util::input::{InputEvent, KeyboardEvent, MouseEvent, KEYBOARD_SCAN_CODES};
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
@@ -109,15 +109,14 @@ impl InputKeyboard {
     pub fn icon_source(&self) -> ImageSource {
         ICON_KEYBOARD
     }
-}
-impl InputKeyboard {
-    pub fn get_keyboard_event(&self) -> KeyboardEvent {
+
+    pub fn get_input_event(&self) -> InputEvent {
         let mut keys = [0u8; 6];
         for (i, v) in self.keys.iter().enumerate() {
             keys[i] = *v;
         }
 
-        KeyboardEvent { keys }
+        InputEvent::Keyboard(KeyboardEvent { keys })
     }
 }
 
@@ -233,15 +232,14 @@ impl InputMouse {
     pub fn icon_source(&self) -> ImageSource {
         ICON_MOUSE
     }
-}
-impl InputMouse {
-    pub fn get_mouse_event(&self) -> MouseEvent {
-        MouseEvent {
+
+    pub fn get_input_event(&self) -> InputEvent {
+        InputEvent::Mouse(MouseEvent {
             buttons: self.buttons,
             x: self.x,
             y: self.y,
             scroll_y: self.scroll_y,
             scroll_x: self.scroll_x,
-        }
+        })
     }
 }

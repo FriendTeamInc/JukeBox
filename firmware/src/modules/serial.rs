@@ -4,10 +4,10 @@
 use defmt::*;
 
 use embedded_graphics::pixelcolor::Bgr565;
-use embedded_hal::timer::{Cancel as _, CountDown as _};
+use embedded_hal::timer::CountDown as _;
 use jukebox_util::{
     color::split_to_rgb565,
-    input::{InputEvent, KeyboardEvent, MouseEvent},
+    input::InputEvent,
     peripheral::{
         Connection, JBInputs, IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT,
         IDENT_UNKNOWN_INPUT,
@@ -36,7 +36,7 @@ type SerialPort<'a> = FullSerialPort<'a, UsbBus, [u8; SERIAL_READ_SIZE], [u8; SE
 pub const SERIAL_WRITE_SIZE: usize = 256;
 pub const SERIAL_READ_SIZE: usize = 512;
 const BUFFER_SIZE: usize = 4096;
-const KEEPALIVE: u32 = 500;
+const KEEPALIVE: u32 = 1000;
 
 pub struct SerialMod {
     buffer: ConstGenericRingBuffer<u8, BUFFER_SIZE>,
@@ -220,35 +220,14 @@ impl SerialMod {
 
                     true
                 }
-                Command::SetKeyboardInput => {
+                Command::SetInputEvent => {
                     let slot = data[0];
-                    let new_input = &data[1..6 + 1];
-                    let new_input = KeyboardEvent::decode(new_input);
-
-                    INPUT_EVENTS.with_mut_lock(|e| {
-                        e[slot as usize] = InputEvent::Keyboard(new_input);
-                    });
+                    let new_input = InputEvent::decode(&data[1..7 + 1]);
+                    INPUT_EVENTS.with_mut_lock(|e| e[slot as usize] = new_input);
 
                     Self::send(serial, RSP_FULL_ACK);
 
                     true
-                }
-                Command::SetMouseInput => {
-                    let slot = data[0];
-                    let new_input = &data[1..5 + 1];
-                    let new_input = MouseEvent::decode(new_input);
-
-                    INPUT_EVENTS.with_mut_lock(|e| {
-                        e[slot as usize] = InputEvent::Mouse(new_input);
-                    });
-
-                    Self::send(serial, RSP_FULL_ACK);
-
-                    true
-                }
-                Command::SetGamepadInput => {
-                    // TODO:
-                    unknown()
                 }
                 Command::SetRgbMode => {
                     let rgb = RgbProfile::decode(&data);
@@ -337,7 +316,6 @@ impl SerialMod {
 
         if valid {
             // info!("restarting keepalive for command: {}", decode);
-            let _ = self.keepalive_timer.cancel();
             self.keepalive_timer.start(KEEPALIVE.millis());
             // restart keepalive timer with valid command
         }

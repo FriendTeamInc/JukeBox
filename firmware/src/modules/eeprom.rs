@@ -194,7 +194,7 @@ impl EepromMod {
 
             self.defaults_address = addr;
             let new_usb_hid_events =
-                InputEvent::decode(&data[INPUT_EVENTS_RANGE_START..INPUT_EVENTS_RANGE_END]);
+                InputEvent::decode_all(&data[INPUT_EVENTS_RANGE_START..INPUT_EVENTS_RANGE_END]);
             let new_default_rgb_profile =
                 RgbProfile::decode(&data[RGB_PROFILE_RANGE_START..RGB_PROFILE_RANGE_END]);
             let new_default_screen_profile =
@@ -213,7 +213,7 @@ impl EepromMod {
 
         DEFAULT_INPUT_EVENTS.with_mut_lock(|p| {
             p.0 = false;
-            let d = InputEvent::encode(p.1.clone());
+            let d = InputEvent::encode_all(p.1.clone());
             data[INPUT_EVENTS_RANGE_START..INPUT_EVENTS_RANGE_END].copy_from_slice(&d);
         });
         DEFAULT_RGB_PROFILE.with_mut_lock(|p| {

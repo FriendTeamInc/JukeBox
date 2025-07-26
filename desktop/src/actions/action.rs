@@ -8,10 +8,7 @@ use std::{
 use anyhow::Result;
 use futures::future::{join, join_all};
 use jukebox_util::{
-    input::{KeyboardEvent, MouseEvent},
-    peripheral::DeviceType,
-    rgb::RgbProfile,
-    screen::ScreenProfile,
+    input::InputEvent, peripheral::DeviceType, rgb::RgbProfile, screen::ScreenProfile,
 };
 use tokio::sync::{
     mpsc::{UnboundedReceiver, UnboundedSender},
@@ -61,36 +58,18 @@ async fn update_device_configs(
 
     for (k, a) in keys {
         let slot = k.slot();
-        match a.action {
-            Action::InputKeyboard(kb) => {
-                tx.send(SerialCommand::SetKeyboardInput(
-                    slot,
-                    kb.get_keyboard_event(),
-                ))
-                .unwrap();
-                tx.send(SerialCommand::SetMouseInput(slot, MouseEvent::default()))
-                    .unwrap();
-            }
-            Action::InputMouse(ms) => {
-                tx.send(SerialCommand::SetKeyboardInput(
-                    slot,
-                    KeyboardEvent::empty_event(),
-                ))
-                .unwrap();
-                tx.send(SerialCommand::SetMouseInput(slot, ms.get_mouse_event()))
-                    .unwrap();
-            }
-            _ => {
-                tx.send(SerialCommand::SetKeyboardInput(
-                    slot,
-                    KeyboardEvent::empty_event(),
-                ))
-                .unwrap();
-                tx.send(SerialCommand::SetMouseInput(slot, MouseEvent::default()))
-                    .unwrap();
-            }
-        }
+        send_input_event(tx, slot, &a.action);
     }
+}
+
+pub fn send_input_event(tx: &UnboundedSender<SerialCommand>, slot: u8, action: &Action) {
+    let _ = match action {
+        Action::InputKeyboard(kb) => {
+            tx.send(SerialCommand::SetInputEvent(slot, kb.get_input_event()))
+        }
+        Action::InputMouse(ms) => tx.send(SerialCommand::SetInputEvent(slot, ms.get_input_event())),
+        _ => tx.send(SerialCommand::SetInputEvent(slot, InputEvent::default())),
+    };
 }
 
 pub async fn action_task(

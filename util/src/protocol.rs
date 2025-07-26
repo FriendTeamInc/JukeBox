@@ -7,9 +7,10 @@ pub const MAX_PACKET_SIZE: usize = 4095;
 pub const CMD_GREET: u8 = b'\x05';
 
 pub const CMD_GET_INPUT_KEYS: u8 = b'\x41';
-pub const CMD_SET_KEYBOARD_INPUT: u8 = b'\x42';
-pub const CMD_SET_MOUSE_INPUT: u8 = b'\x43';
-pub const CMD_SET_GAMEPAD_INPUT: u8 = b'\x44';
+pub const CMD_SET_INPUT_EVENT: u8 = b'\x42';
+// pub const CMD_SET_KEYBOARD_INPUT: u8 = b'\x42';
+// pub const CMD_SET_MOUSE_INPUT: u8 = b'\x43';
+// pub const CMD_SET_GAMEPAD_INPUT: u8 = b'\x44';
 pub const CMD_SET_RGB_MODE: u8 = b'\x45';
 pub const CMD_SET_SCR_MODE: u8 = b'\x46';
 pub const CMD_SET_SCR_ICON: u8 = b'\x47';
@@ -41,9 +42,10 @@ pub const RSP_FULL_DISCONNECTED: &[u8] = &[b'0', b'0', b'1', RSP_DISCONNECTED];
 pub enum Command {
     Greeting,
     GetInputKeys,
-    SetKeyboardInput,
-    SetMouseInput,
-    SetGamepadInput,
+    SetInputEvent,
+    // SetKeyboardInput,
+    // SetMouseInput,
+    // SetGamepadInput,
     SetRgbMode,
     SetScrIcon,
     SetScrMode,
@@ -60,9 +62,10 @@ impl Command {
         match w {
             CMD_GREET => Self::Greeting,
             CMD_GET_INPUT_KEYS => Self::GetInputKeys,
-            CMD_SET_KEYBOARD_INPUT => Self::SetKeyboardInput,
-            CMD_SET_MOUSE_INPUT => Self::SetMouseInput,
-            CMD_SET_GAMEPAD_INPUT => Self::SetGamepadInput,
+            CMD_SET_INPUT_EVENT => Self::SetInputEvent,
+            // CMD_SET_KEYBOARD_INPUT => Self::SetKeyboardInput,
+            // CMD_SET_MOUSE_INPUT => Self::SetMouseInput,
+            // CMD_SET_GAMEPAD_INPUT => Self::SetGamepadInput,
             CMD_SET_RGB_MODE => Self::SetRgbMode,
             CMD_SET_SCR_ICON => Self::SetScrIcon,
             CMD_SET_SCR_MODE => Self::SetScrMode,

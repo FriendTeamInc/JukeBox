@@ -75,7 +75,7 @@ pub const DEFAULT_PROFILE_NAME: ProfileName = SmallStr::default();
 pub const DEFAULT_SYSTEM_STATS: SystemStats = SystemStats::default();
 
 pub static DEFAULT_INPUT_EVENTS: DefaultInputEvents =
-    Mutex::new((false, InputEvent::default_events()));
+    Mutex::new((false, InputEvent::default_all()));
 pub static DEFAULT_RGB_PROFILE: DefaultRgbProfile =
     Mutex::new((false, RgbProfile::default_device_profile()));
 pub static DEFAULT_SCREEN_PROFILE: DefaultScreenProfile =
@@ -87,7 +87,7 @@ pub static UPDATE_TRIGGER: UpdateTrigger = Mutex::new(false);
 pub static IDENTIFY_TRIGGER: IdentifyTrigger = Mutex::new(false);
 pub static RGB_CONTROLS: RgbControls = Mutex::new((false, RgbProfile::default_device_profile()));
 pub static ICONS: Icons = Mutex::new([(false, [Bgr565::BLACK; 32 * 32]); 12]);
-pub static INPUT_EVENTS: InputEvents = Mutex::new(InputEvent::default_events());
+pub static INPUT_EVENTS: InputEvents = Mutex::new(InputEvent::default_all());
 pub static PROFILE_NAME: ProfileNameControl = Mutex::new((true, DEFAULT_PROFILE_NAME));
 pub static SCREEN_SYSTEM_STATS: ScreenSystemStats = Mutex::new((false, DEFAULT_SYSTEM_STATS));
 pub static SCREEN_CONTROLS: ScreenControls = Mutex::new((false, ScreenProfile::default_profile()));

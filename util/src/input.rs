@@ -182,35 +182,56 @@ pub enum InputEvent {
     Mouse(MouseEvent),
 }
 impl InputEvent {
-    #[rustfmt::skip]
-    pub const fn default_events() -> [Self; 16] {
+    pub const fn default() -> Self {
+        Self::keyboard_key(0)
+    }
+
+    pub fn encode(self) -> [u8; 7] {
+        let mut data = [0u8; 7];
+        let _ = encode_into_slice(self, &mut data, bincode::config::standard()).unwrap();
+        data
+    }
+
+    pub fn decode(data: &[u8]) -> Self {
+        decode_from_slice(data, bincode::config::standard())
+            .unwrap()
+            .0
+    }
+
+    const fn keyboard_key(key: u8) -> Self {
+        Self::Keyboard(KeyboardEvent {
+            keys: [key, 0, 0, 0, 0, 0],
+        })
+    }
+
+    pub const fn default_all() -> [Self; 16] {
         [
-            Self::Keyboard(KeyboardEvent { keys: [0x68, 0, 0, 0, 0, 0], }),
-            Self::Keyboard(KeyboardEvent { keys: [0x69, 0, 0, 0, 0, 0], }),
-            Self::Keyboard(KeyboardEvent { keys: [0x6A, 0, 0, 0, 0, 0], }),
-            Self::Keyboard(KeyboardEvent { keys: [0x6B, 0, 0, 0, 0, 0], }),
-            Self::Keyboard(KeyboardEvent { keys: [0x6C, 0, 0, 0, 0, 0], }),
-            Self::Keyboard(KeyboardEvent { keys: [0x6D, 0, 0, 0, 0, 0], }),
-            Self::Keyboard(KeyboardEvent { keys: [0x6E, 0, 0, 0, 0, 0], }),
-            Self::Keyboard(KeyboardEvent { keys: [0x6F, 0, 0, 0, 0, 0], }),
-            Self::Keyboard(KeyboardEvent { keys: [0x70, 0, 0, 0, 0, 0], }),
-            Self::Keyboard(KeyboardEvent { keys: [0x71, 0, 0, 0, 0, 0], }),
-            Self::Keyboard(KeyboardEvent { keys: [0x72, 0, 0, 0, 0, 0], }),
-            Self::Keyboard(KeyboardEvent { keys: [0x73, 0, 0, 0, 0, 0], }),
-            Self::Keyboard(KeyboardEvent { keys: [0xE4, 0, 0, 0, 0, 0], }),
-            Self::Keyboard(KeyboardEvent { keys: [0xE5, 0, 0, 0, 0, 0], }),
-            Self::Keyboard(KeyboardEvent { keys: [0xE6, 0, 0, 0, 0, 0], }),
-            Self::Keyboard(KeyboardEvent { keys: [0xE7, 0, 0, 0, 0, 0], }),
+            Self::keyboard_key(0x68),
+            Self::keyboard_key(0x69),
+            Self::keyboard_key(0x6A),
+            Self::keyboard_key(0x6B),
+            Self::keyboard_key(0x6C),
+            Self::keyboard_key(0x6D),
+            Self::keyboard_key(0x6E),
+            Self::keyboard_key(0x6F),
+            Self::keyboard_key(0x70),
+            Self::keyboard_key(0x71),
+            Self::keyboard_key(0x72),
+            Self::keyboard_key(0x73),
+            Self::keyboard_key(0xE4),
+            Self::keyboard_key(0xE5),
+            Self::keyboard_key(0xE6),
+            Self::keyboard_key(0xE7),
         ]
     }
 
-    pub fn encode(events: [Self; 16]) -> [u8; 112] {
+    pub fn encode_all(events: [Self; 16]) -> [u8; 112] {
         let mut data = [0u8; 112];
         let _ = encode_into_slice(events, &mut data, bincode::config::standard()).unwrap();
         data
     }
 
-    pub fn decode(events: &[u8]) -> [Self; 16] {
+    pub fn decode_all(events: &[u8]) -> [Self; 16] {
         decode_from_slice(events, bincode::config::standard())
             .unwrap()
             .0
