@@ -196,7 +196,7 @@ fn main() -> ! {
                     &clocks.system_clock,
                 );
 
-                eeprom::EepromMod::new(eeprom_i2c, timer.count_down())
+                eeprom::EepromMod::new(eeprom_i2c, timer.count_down(), timer.count_down())
             };
 
             // set up GPIO and modules
@@ -351,8 +351,8 @@ fn main() -> ! {
                 Ok(_) => {}
                 Err(UsbHidError::Duplicate) => {}
                 Err(UsbHidError::WouldBlock) => {}
-                Err(e) => {
-                    defmt::error!("Failed to write keyboard report: {:?}", e);
+                Err(_e) => {
+                    // defmt::error!("Failed to write keyboard report: {:?}", e);
                 }
             }
 
@@ -368,8 +368,8 @@ fn main() -> ! {
                     }
                     Err(UsbHidError::Duplicate) => {}
                     Err(UsbHidError::WouldBlock) => {}
-                    Err(e) => {
-                        defmt::error!("Failed to write mouse report: {:?}", e);
+                    Err(_e) => {
+                        // defmt::error!("Failed to write mouse report: {:?}", e);
                     }
                 }
             }
@@ -380,8 +380,8 @@ fn main() -> ! {
             match usb_hid.tick() {
                 Ok(_) => {}
                 Err(UsbHidError::WouldBlock) => {}
-                Err(e) => {
-                    defmt::error!("Failed to process keyboard tick: {:?}", e);
+                Err(_e) => {
+                    // defmt::error!("Failed to process keyboard tick: {:?}", e);
                 }
             };
         }
@@ -393,8 +393,8 @@ fn main() -> ! {
             match usb_serial.flush() {
                 Ok(_) => {}
                 Err(usbd_serial::UsbError::WouldBlock) => {}
-                Err(e) => {
-                    defmt::error!("Failed to flush serial: {:?}", e);
+                Err(_e) => {
+                    // defmt::error!("Failed to flush serial: {:?}", e);
                 }
             };
         }

@@ -80,7 +80,7 @@ Estimated power usage is 5 volts at 0.1 amps, or 0.5 watts.
 | U2          | W25Q128JVSIQ-TR    | 1   |       |
 | U3          | RP2040             | 1   |       |
 | U4          | TFTQ-T20SH12ZP01   | 1   |       |
-| U5          | CAT24C512          | 1   |       |
+| U5          | CAT24C512WI-GT3    | 1   |       |
 | Y1          | ABM8-272-T3        | 1   |       |
 
 # License

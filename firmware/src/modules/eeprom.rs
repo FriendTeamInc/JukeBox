@@ -1,3 +1,6 @@
+use core::cmp::min;
+
+use defmt::error;
 use embedded_hal::timer::CountDown as _;
 use jukebox_util::{input::InputEvent, rgb::RgbProfile, screen::ScreenProfile};
 use rp2040_hal::{
@@ -17,7 +20,10 @@ const UPDATE_RATE: u32 = 500;
 
 const DEFAULTS_PAGE_SIZE: usize = 512;
 const FULL_PAGE_SIZE: usize = DEFAULTS_PAGE_SIZE + 2; // marker + crc + page
-const EEPROM_SIZE: u32 = 65536;
+const EEPROM_SIZE: u32 = 65536 / 4;
+const EEPROM_PAGE_SIZE: u32 = 128;
+const EEPROM_PAGE_COUNT: u32 = EEPROM_SIZE / EEPROM_PAGE_SIZE;
+const EEPROM_MAGIC_BYTE: u8 = 0xFB;
 
 // Page Layout
 // 0x000-0x010 - Reserved
@@ -26,7 +32,7 @@ const EEPROM_SIZE: u32 = 65536;
 // 0x0D0-0x1D0 - Default Screen Profile (256)
 // 0x1D0-0x200 - Reserved
 const INPUT_EVENTS_RANGE_START: usize = 0x010;
-const INPUT_EVENTS_RANGE_END: usize = 0x090;
+const INPUT_EVENTS_RANGE_END: usize = 0x090 - 16;
 const RGB_PROFILE_RANGE_START: usize = 0x090;
 const RGB_PROFILE_RANGE_END: usize = 0x0D0;
 const SCREEN_PROFILE_RANGE_START: usize = 0x0D0;
@@ -50,20 +56,22 @@ type EepromDev = eeprom24x::Eeprom24x<
 pub struct EepromMod {
     eeprom_dev: EepromDev,
     defaults_address: u32,
+    delay: CountDown,
     timer: CountDown,
 }
 
 impl EepromMod {
-    pub fn new(eeprom_i2c: EepromI2c, mut count_down: CountDown) -> Self {
+    pub fn new(eeprom_i2c: EepromI2c, delay: CountDown, mut timer: CountDown) -> Self {
         let eeprom_dev =
             eeprom24x::Eeprom24x::new_24x512(eeprom_i2c, eeprom24x::SlaveAddr::Default);
 
-        count_down.start(UPDATE_RATE.millis());
+        timer.start(UPDATE_RATE.millis());
 
         let mut eeprom_mod = Self {
             eeprom_dev,
             defaults_address: 0,
-            timer: count_down,
+            delay,
+            timer,
         };
 
         eeprom_mod.initialize();
@@ -73,9 +81,8 @@ impl EepromMod {
 
     fn initialize(&mut self) {
         // Check that the first page is 0xFB, if not then we need to initialize the device
-        let mut read = [0x0u8; 1];
-        let _ = self.eeprom_dev.read_data(0x0, &mut read);
-        if read != [0xFBu8; 1] {
+        let read = self.eeprom_dev.read_byte(0x0).unwrap();
+        if read != EEPROM_MAGIC_BYTE {
             self.wipe_eeprom();
             return;
         }
@@ -84,14 +91,53 @@ impl EepromMod {
     }
 
     fn wipe_eeprom(&mut self) {
-        for i in 0..512 {
-            let _ = self.eeprom_dev.write_page(i * 128, &[0xFFu8; 128]);
+        for i in 0..EEPROM_PAGE_COUNT {
+            self.write_page(i * 128, &[0xFFu8; 128]);
         }
-        let _ = self.eeprom_dev.write_page(0x0, &[0xFBu8; 1]);
 
         self.defaults_address = 0;
-
         self.save_eeprom();
+
+        self.write_page(0x0, &[EEPROM_MAGIC_BYTE; 1]);
+    }
+
+    fn write_page(&mut self, addr: u32, data: &[u8]) {
+        let mut idx = 0;
+        let mut addr = addr;
+        let addr_end = addr + data.len() as u32;
+        while addr < addr_end {
+            let page_len = min(
+                (data.len() - idx) as u32,
+                EEPROM_PAGE_SIZE - (addr % EEPROM_PAGE_SIZE),
+            );
+
+            let idx_start = idx;
+            let idx_end = idx + page_len as usize;
+
+            let page_addr_start = addr;
+            let page_addr_end = addr + page_len;
+
+            match self
+                .eeprom_dev
+                .write_page(page_addr_start, &data[idx_start..idx_end])
+            {
+                Ok(_) => {}
+                Err(e) => {
+                    error!(
+                        "eeprom error (addr, l1, l2): {} ({}, {}..{})",
+                        e, addr, idx_start, idx_end
+                    );
+                    defmt::panic!();
+                }
+            };
+
+            addr = page_addr_end;
+            idx = idx_end;
+
+            // let eeprom finish writing
+            self.delay.start(5.millis());
+            while self.delay.wait().is_err() {}
+        }
     }
 
     fn save_eeprom(&mut self) {
@@ -102,12 +148,14 @@ impl EepromMod {
         if self.defaults_address == 0 {
             // save new page
             self.defaults_address = 1;
-            let _ = self.eeprom_dev.write_page(0x1, &[0x0u8; 1]);
-            let _ = self.eeprom_dev.write_page(0x2, &[crc; 1]);
-            let _ = self.eeprom_dev.write_page(0x3, &page);
+            self.write_page(0x1, &[0x0u8; 1]);
+            self.write_page(0x2, &[crc; 1]);
+            self.write_page(0x3, &page);
         } else {
             // mark old page as old
-            let _ = self.eeprom_dev.write_byte(self.defaults_address, 0xFF);
+            self.eeprom_dev
+                .write_byte(self.defaults_address, 0xFF)
+                .unwrap();
 
             // new page start address, wrap around if page would overrun
             self.defaults_address += FULL_PAGE_SIZE as u32;
@@ -116,15 +164,9 @@ impl EepromMod {
             }
 
             // save new page
-            let _ = self
-                .eeprom_dev
-                .write_page(self.defaults_address + 0x0, &[0x0u8; 1]);
-            let _ = self
-                .eeprom_dev
-                .write_page(self.defaults_address + 0x1, &[crc; 1]);
-            let _ = self
-                .eeprom_dev
-                .write_page(self.defaults_address + 0x2, &page);
+            self.write_page(self.defaults_address + 0x0, &[0x0u8; 1]);
+            self.write_page(self.defaults_address + 0x1, &[crc; 1]);
+            self.write_page(self.defaults_address + 0x2, &page);
         }
     }
 
@@ -142,10 +184,11 @@ impl EepromMod {
             let eeprom_crc = self.eeprom_dev.read_byte(addr + 0x1).unwrap();
 
             let mut data = [0u8; DEFAULTS_PAGE_SIZE];
-            let _ = self.eeprom_dev.read_data(addr + 0x2, &mut data).unwrap();
+            self.eeprom_dev.read_data(addr + 0x2, &mut data).unwrap();
             let data_crc = Self::checksum(&data);
 
             if eeprom_crc != data_crc {
+                error!("crc did not match");
                 continue;
             }
 
@@ -160,6 +203,8 @@ impl EepromMod {
             DEFAULT_INPUT_EVENTS.with_mut_lock(|p| *p = (false, new_usb_hid_events));
             DEFAULT_RGB_PROFILE.with_mut_lock(|p| *p = (false, new_default_rgb_profile));
             DEFAULT_SCREEN_PROFILE.with_mut_lock(|p| *p = (false, new_default_screen_profile));
+
+            break;
         }
     }
 
@@ -199,12 +244,10 @@ impl EepromMod {
         }
 
         // if defaults have changed, update the eeprom
-        let (changed_ie, _) = DEFAULT_INPUT_EVENTS.with_lock(|i| i.clone());
-        let (changed_rp, _) = DEFAULT_RGB_PROFILE.with_lock(|p| p.clone());
-        let (changed_sp, _) = DEFAULT_SCREEN_PROFILE.with_lock(|p| p.clone());
-        let changed = changed_ie || changed_rp || changed_sp;
-
-        if changed {
+        let ie = DEFAULT_INPUT_EVENTS.with_lock(|i| i.0);
+        let rp = DEFAULT_RGB_PROFILE.with_lock(|p| p.0);
+        let sp = DEFAULT_SCREEN_PROFILE.with_lock(|p| p.0);
+        if ie || rp || sp {
             self.save_eeprom();
         }
     }
