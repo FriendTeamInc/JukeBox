@@ -71,6 +71,7 @@ help:
   rgb:
     select: "RGB Profile Select"
     save: "Save RGB Changes"
+    select_key: "Select Key"
 
   screen:
     select: "Screen Profile Select"
@@ -151,6 +152,7 @@ rgb:
     title: "Static (Per Key)"
     description: "Displays a color on every key."
     select_color: "Select Colors:"
+
   wave:
     title: "Wave"
     description: "Waves through a list of colors, transitioning from one to the next constantly."

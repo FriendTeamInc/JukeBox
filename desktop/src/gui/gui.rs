@@ -94,6 +94,7 @@ pub struct JukeBoxGui {
     pub editing_action: Action,
 
     pub editing_rgb: RgbProfile,
+    pub editing_rgb_key_index: usize,
 
     pub editing_screen: ScreenProfile,
 
@@ -299,6 +300,7 @@ impl JukeBoxGui {
             editing_action: Action::MetaNoAction(MetaNoAction::default()),
 
             editing_rgb: RgbProfile::default_gui_profile(),
+            editing_rgb_key_index: 0,
 
             editing_screen: ScreenProfile::default_profile(),
 

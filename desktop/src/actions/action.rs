@@ -16,7 +16,7 @@ use tokio::sync::{
 };
 
 use crate::{
-    actions::types::{get_icon_bytes_async, Action, ActionError},
+    actions::types::{get_icon_bytes, get_icon_cache_async, Action, ActionError},
     config::{ActionConfig, JukeBoxConfig},
     input::InputKey,
     serial::{SerialCommand, SerialEvent},
@@ -51,7 +51,7 @@ async fn update_device_configs(
 
         // set icons on screen
         for (k, a) in &keys {
-            let bytes = get_icon_bytes_async(a).await;
+            let bytes = get_icon_bytes(a, &mut get_icon_cache_async().await);
             let _ = tx.send(SerialCommand::SetScrIcon(k.slot(), bytes));
         }
     }

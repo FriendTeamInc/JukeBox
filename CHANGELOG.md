@@ -3,7 +3,10 @@
 - Increase max number of colors for Wave and Breathe RGB patterns from 4 to 16.
 - Update Screen profile max size to be 256 bytes.
 - Update RGB Profile max size to be 64 bytes.
+- Unify USB HID Events (keyboard and mouse) in code and protocol.
 - Update links to documentation for Windows and Linux setup intro messages.
+- Add a drop down select for RGB Static Per Key pattern.
+- Change default profile in software for keypad to the F13-24 keys.
 
 # v0.5.0 - Tut Trials (June 27, 2025)
 - Add a welcome message on very first startup with some important info for the user.

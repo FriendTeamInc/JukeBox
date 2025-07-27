@@ -37,7 +37,7 @@ pub fn input_action_list() -> (String, Vec<(String, Action, String)>) {
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct InputKeyboard {
-    keys: Vec<u8>,
+    pub keys: Vec<u8>,
 }
 impl InputKeyboard {
     pub async fn on_press(

@@ -255,47 +255,6 @@ impl KeyboardEvent {
         Self { keys }
     }
 
-    pub const fn default_events() -> [Self; 12] {
-        [
-            Self {
-                keys: [0x68, 0, 0, 0, 0, 0],
-            },
-            Self {
-                keys: [0x69, 0, 0, 0, 0, 0],
-            },
-            Self {
-                keys: [0x6A, 0, 0, 0, 0, 0],
-            },
-            Self {
-                keys: [0x6B, 0, 0, 0, 0, 0],
-            },
-            Self {
-                keys: [0x6C, 0, 0, 0, 0, 0],
-            },
-            Self {
-                keys: [0x6D, 0, 0, 0, 0, 0],
-            },
-            Self {
-                keys: [0x6E, 0, 0, 0, 0, 0],
-            },
-            Self {
-                keys: [0x6F, 0, 0, 0, 0, 0],
-            },
-            Self {
-                keys: [0x70, 0, 0, 0, 0, 0],
-            },
-            Self {
-                keys: [0x71, 0, 0, 0, 0, 0],
-            },
-            Self {
-                keys: [0x72, 0, 0, 0, 0, 0],
-            },
-            Self {
-                keys: [0x73, 0, 0, 0, 0, 0],
-            },
-        ]
-    }
-
     pub const fn empty_event() -> Self {
         Self { keys: [0; 6] }
     }
@@ -339,22 +298,5 @@ impl MouseEvent {
             scroll_y: 0,
             scroll_x: 0,
         }
-    }
-
-    pub const fn default_events() -> [Self; 12] {
-        [
-            Self::default(),
-            Self::default(),
-            Self::default(),
-            Self::default(),
-            Self::default(),
-            Self::default(),
-            Self::default(),
-            Self::default(),
-            Self::default(),
-            Self::default(),
-            Self::default(),
-            Self::default(),
-        ]
     }
 }

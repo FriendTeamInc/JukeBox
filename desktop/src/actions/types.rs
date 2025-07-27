@@ -11,7 +11,7 @@ use eframe::egui::{
 };
 use jukebox_util::peripheral::DeviceType;
 use serde::{Deserialize, Serialize};
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, MutexGuard};
 
 use crate::{
     actions::{discord::*, input::*, meta::*, obs::*, soundboard::*, system::*},
@@ -19,7 +19,7 @@ use crate::{
     input::InputKey,
 };
 
-static ICON_CACHE: OnceLock<Mutex<HashMap<String, Vec<u8>>>> = OnceLock::new();
+pub static ICON_CACHE: OnceLock<Mutex<HashMap<String, Vec<u8>>>> = OnceLock::new();
 
 #[derive(Debug, Clone)]
 pub struct ActionError {
@@ -155,46 +155,6 @@ create_actions! {
     DiscordPushToDeafen
 }
 
-// #[async_trait::async_trait]
-// #[typetag::serde(tag = "type")]
-// pub trait Action: Sync + Send + DynClone + Downcast + DowncastSync + DowncastSend {
-//     pub async fn on_press(
-//         &self,
-//         device_uid: &String,
-//         input_key: InputKey,
-//         config: Arc<Mutex<JukeBoxConfig>>,
-//     ) -> Result<(), ActionError>;
-//     pub async fn on_release(
-//         &self,
-//         device_uid: &String,
-//         input_key: InputKey,
-//         config: Arc<Mutex<JukeBoxConfig>>,
-//     ) -> Result<(), ActionError>;
-//     fn get_type(&self) -> String;
-//     pub fn edit_ui(
-//         &mut self,
-//         ui: &mut Ui,
-//         device_uid: &String,
-//         input_key: InputKey,
-//         config: Arc<Mutex<JukeBoxConfig>>,
-//     );
-//     pub fn help(&self) -> String;
-//     pub fn icon_source(&self) -> ImageSource;
-//     fn icon(&self) -> Image {
-//         Image::new(self.icon_source())
-//             .texture_options(TextureOptions {
-//                 magnification: TextureFilter::Nearest,
-//                 minification: TextureFilter::Nearest,
-//                 wrap_mode: TextureWrapMode::ClampToEdge,
-//                 mipmap_mode: None,
-//             })
-//             .corner_radius(2.0)
-//             .max_size(vec2(64.0, 64.0))
-//     }
-// }
-// clone_trait_object!(Action);
-// impl_downcast!(Action);
-
 pub struct ActionMap {
     ui_list: Vec<(String, Vec<(String, String)>)>,
     enum_map: HashMap<String, Action>,
@@ -242,59 +202,68 @@ impl ActionMap {
         self.enum_map.get(&t).unwrap().clone()
     }
 
+    fn keyboard_key(key: u8) -> ActionConfig {
+        ActionConfig {
+            action: Action::InputKeyboard(InputKeyboard { keys: vec![key] }),
+            icon: ActionIcon::DefaultActionIcon,
+        }
+    }
+
     pub fn default_action_config(d: DeviceType) -> HashMap<InputKey, ActionConfig> {
         use InputKey as IK;
-        let keys = match d {
-            DeviceType::Unknown => &[][..],
-            DeviceType::KeyPad => &[
-                IK::KeySwitch1,
-                IK::KeySwitch2,
-                IK::KeySwitch3,
-                IK::KeySwitch4,
-                IK::KeySwitch5,
-                IK::KeySwitch6,
-                IK::KeySwitch7,
-                IK::KeySwitch8,
-                IK::KeySwitch9,
-                IK::KeySwitch10,
-                IK::KeySwitch11,
-                IK::KeySwitch12,
-            ][..],
-            DeviceType::KnobPad => &[
-                IK::KnobLeftSwitch,
-                IK::KnobLeftClockwise,
-                IK::KnobLeftCounterClockwise,
-                IK::KnobRightSwitch,
-                IK::KnobRightClockwise,
-                IK::KnobRightCounterClockwise,
-            ][..],
-            DeviceType::PedalPad => &[IK::PedalLeft, IK::PedalMiddle, IK::PedalRight][..],
-        };
 
-        let mut c = HashMap::new();
-        for k in keys {
-            c.insert(
-                *k,
-                ActionConfig {
-                    action: Action::MetaNoAction(MetaNoAction {}),
-                    icon: ActionIcon::DefaultActionIcon,
-                },
-            );
+        match d {
+            DeviceType::KeyPad => HashMap::from([
+                (IK::KeySwitch1, Self::keyboard_key(0x68)),
+                (IK::KeySwitch2, Self::keyboard_key(0x69)),
+                (IK::KeySwitch3, Self::keyboard_key(0x6A)),
+                (IK::KeySwitch4, Self::keyboard_key(0x6B)),
+                (IK::KeySwitch5, Self::keyboard_key(0x6C)),
+                (IK::KeySwitch6, Self::keyboard_key(0x6D)),
+                (IK::KeySwitch7, Self::keyboard_key(0x6E)),
+                (IK::KeySwitch8, Self::keyboard_key(0x6F)),
+                (IK::KeySwitch9, Self::keyboard_key(0x70)),
+                (IK::KeySwitch10, Self::keyboard_key(0x71)),
+                (IK::KeySwitch11, Self::keyboard_key(0x72)),
+                (IK::KeySwitch12, Self::keyboard_key(0x73)),
+            ]),
+            DeviceType::KnobPad => HashMap::from([
+                (IK::KnobLeftSwitch, ActionConfig::default()),
+                (IK::KnobLeftClockwise, ActionConfig::default()),
+                (IK::KnobLeftCounterClockwise, ActionConfig::default()),
+                (IK::KnobRightSwitch, ActionConfig::default()),
+                (IK::KnobRightClockwise, ActionConfig::default()),
+                (IK::KnobRightCounterClockwise, ActionConfig::default()),
+            ]),
+            DeviceType::PedalPad => HashMap::from([
+                (IK::PedalLeft, ActionConfig::default()),
+                (IK::PedalMiddle, ActionConfig::default()),
+                (IK::PedalRight, ActionConfig::default()),
+            ]),
+            DeviceType::Unknown => HashMap::new(),
         }
-
-        c
     }
 }
 
-// todo: resolve redundancy here
-pub async fn get_icon_bytes_async(action_config: &ActionConfig) -> [u8; 32 * 32 * 2] {
+pub fn get_icon_cache<'a>() -> MutexGuard<'a, HashMap<String, Vec<u8>>> {
+    ICON_CACHE
+        .get_or_init(|| Mutex::new(HashMap::new()))
+        .blocking_lock()
+}
+
+pub async fn get_icon_cache_async<'a>() -> MutexGuard<'a, HashMap<String, Vec<u8>>> {
+    ICON_CACHE
+        .get_or_init(|| Mutex::new(HashMap::new()))
+        .lock()
+        .await
+}
+
+pub fn get_icon_bytes<'a>(
+    action_config: &ActionConfig,
+    icon_cache: &mut MutexGuard<'a, HashMap<String, Vec<u8>>>,
+) -> [u8; 32 * 32 * 2] {
     let b = match &action_config.icon {
         ActionIcon::ImageIcon(i) => {
-            let mut icon_cache = ICON_CACHE
-                .get_or_init(|| Mutex::new(HashMap::new()))
-                .lock()
-                .await;
-
             if !icon_cache.contains_key(i) {
                 // TODO: use fallback in cases where we can't read icon?
                 icon_cache.insert(
@@ -315,40 +284,6 @@ pub async fn get_icon_bytes_async(action_config: &ActionConfig) -> [u8; 32 * 32 
         },
     };
 
-    get_icon_bytes_internal(b)
-}
-
-pub fn get_icon_bytes(action_config: &ActionConfig) -> [u8; 32 * 32 * 2] {
-    let b = match &action_config.icon {
-        ActionIcon::ImageIcon(i) => {
-            let mut icon_cache = ICON_CACHE
-                .get_or_init(|| Mutex::new(HashMap::new()))
-                .blocking_lock();
-
-            if !icon_cache.contains_key(i) {
-                // TODO: use fallback in cases where we can't read icon?
-                icon_cache.insert(
-                    i.into(),
-                    std::fs::read(i).expect("failed to read icon data"),
-                );
-            }
-
-            icon_cache.get(i).unwrap().clone()
-        }
-        ActionIcon::DefaultActionIcon => match action_config.action.icon_source() {
-            ImageSource::Uri(_) => panic!(),
-            ImageSource::Texture(_) => panic!(),
-            ImageSource::Bytes { uri: _, bytes } => match bytes {
-                Bytes::Static(items) => items.to_vec(),
-                Bytes::Shared(items) => items.to_vec(),
-            },
-        },
-    };
-
-    get_icon_bytes_internal(b)
-}
-
-fn get_icon_bytes_internal(b: Vec<u8>) -> [u8; 32 * 32 * 2] {
     let (_, b) = b.split_at(0x7A);
 
     if b.len() != (32 * 32 * 2) {

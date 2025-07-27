@@ -14,7 +14,7 @@ use crate::{
     actions::{
         action::send_input_event,
         meta::AID_META_NO_ACTION,
-        types::{get_icon_bytes, ActionError},
+        types::{get_icon_bytes, get_icon_cache, ActionError},
     },
     config::{ActionConfig, ActionIcon, JukeBoxConfig},
     input::InputKey,
@@ -81,7 +81,7 @@ impl JukeBoxGui {
                 let txs = self.scmd_txs.blocking_lock();
                 if let Some(tx) = txs.get(device_uid) {
                     let slot = k.slot();
-                    let icon = get_icon_bytes(&a);
+                    let icon = get_icon_bytes(&a, &mut get_icon_cache());
                     let _ = tx.send(SerialCommand::SetScrIcon(slot, icon));
                 }
             }
@@ -138,7 +138,7 @@ impl JukeBoxGui {
                 .and_then(|d| d.get(device_uid))
                 .and_then(|p| p.key_map.get(&self.editing_key))
         } {
-            get_icon_bytes(action_config)
+            get_icon_bytes(action_config, &mut get_icon_cache())
         } else {
             return;
         };

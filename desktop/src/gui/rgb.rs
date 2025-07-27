@@ -41,10 +41,10 @@ impl JukeBoxGui {
                 Self::draw_rgb_preview(
                     ui,
                     Color32::from_rgb(color.0, color.1, color.2),
-                    vec2(52.0, 38.0),
+                    vec2(58.0, 38.0),
                 );
 
-                let r = ui.add(TextEdit::singleline(&mut hex).desired_width(45.0));
+                let r = ui.add(TextEdit::singleline(&mut hex).desired_width(50.0));
                 if r.changed() {
                     if let Some((r, g, b)) = Self::calculate_rgb888_from_hex_string(hex) {
                         color.0 = r;
@@ -171,13 +171,35 @@ impl JukeBoxGui {
                             ui.add(Slider::new(&mut brightness, 0..=100));
                             ui.label("");
 
-                            ui.label(t!("rgb.static_per_key.select_color"));
+                            ui.horizontal(|ui| {
+                                ui.label(t!("rgb.static_per_key.select_color"));
+                                ComboBox::from_id_salt("RGBSelectKey")
+                                    .selected_text(format!(
+                                        "Key {}",
+                                        self.editing_rgb_key_index + 1
+                                    ))
+                                    .width(75.0)
+                                    .truncate()
+                                    .show_ui(ui, |ui| {
+                                        for (i, _) in colors.iter().enumerate() {
+                                            if ui
+                                                .selectable_label(
+                                                    self.editing_rgb_key_index == i,
+                                                    format!("Key {}", i + 1),
+                                                )
+                                                .clicked()
+                                            {
+                                                self.editing_rgb_key_index = i;
+                                            }
+                                        }
+                                    })
+                                    .response
+                                    .on_hover_text_at_pointer(t!("help.rgb.select_key"));
+                            });
+
                             ui.label("");
-                            for (i, c) in colors.iter_mut().enumerate() {
-                                ui.label(format!("{}.", i + 1));
-                                Self::draw_rgb888_editor(ui, c);
-                                ui.label("");
-                            }
+
+                            Self::draw_rgb888_editor(ui, &mut colors[self.editing_rgb_key_index]);
 
                             self.editing_rgb = RgbProfile::StaticPerKey { brightness, colors }
                         }
@@ -390,7 +412,9 @@ impl JukeBoxGui {
                         ui.horizontal(|ui| {
                             ui.allocate_exact_size(vec2(3.0, 45.0), Sense::empty());
                             for x in 0..4 {
-                                let c = buf[x + y * 4];
+                                let i = x + y * 4;
+                                let c = buf[i];
+
                                 Self::draw_rgb_preview(
                                     ui,
                                     Color32::from_rgb(c.0, c.1, c.2),
