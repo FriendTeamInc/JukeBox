@@ -122,48 +122,74 @@ impl JukeBoxGui {
                             mut brightness,
                             background_color,
                             text_color,
+                            mut show_profile_name,
                         } => {
                             ui.label(t!("screen.brightness"));
                             ui.add(Slider::new(&mut brightness, 0..=100));
+
+                            ui.label("");
 
                             ui.label(t!("screen.select_background_color"));
                             let mut c = split_to_rgb565(background_color);
                             Self::draw_rgb565_editor(ui, &mut c);
                             let background_color = combine_to_rgb565(c.0, c.1, c.2);
 
+                            ui.label("");
+
                             ui.label(t!("screen.select_text_color"));
                             let mut c = split_to_rgb565(text_color);
                             Self::draw_rgb565_editor(ui, &mut c);
                             let text_color = combine_to_rgb565(c.0, c.1, c.2);
 
+                            ui.label("");
+
+                            ui.horizontal(|ui| {
+                                ui.label(t!("screen.show_profile_name"));
+                                ui.checkbox(&mut show_profile_name, "");
+                            });
+
                             self.editing_screen = ScreenProfile::DisplayKeys {
                                 brightness,
                                 background_color,
                                 text_color,
+                                show_profile_name,
                             };
                         }
                         ScreenProfile::DisplayStats {
                             mut brightness,
                             background_color,
                             text_color,
+                            mut show_profile_name,
                         } => {
                             ui.label(t!("screen.brightness"));
                             ui.add(Slider::new(&mut brightness, 0..=100));
+
+                            ui.label("");
 
                             ui.label(t!("screen.select_background_color"));
                             let mut c = split_to_rgb565(background_color);
                             Self::draw_rgb565_editor(ui, &mut c);
                             let background_color = combine_to_rgb565(c.0, c.1, c.2);
 
+                            ui.label("");
+
                             ui.label(t!("screen.select_text_color"));
                             let mut c = split_to_rgb565(text_color);
                             Self::draw_rgb565_editor(ui, &mut c);
                             let text_color = combine_to_rgb565(c.0, c.1, c.2);
 
+                            ui.label("");
+
+                            ui.horizontal(|ui| {
+                                ui.label(t!("screen.show_profile_name"));
+                                ui.checkbox(&mut show_profile_name, "");
+                            });
+
                             self.editing_screen = ScreenProfile::DisplayStats {
                                 brightness,
                                 background_color,
                                 text_color,
+                                show_profile_name,
                             };
                         }
                     }

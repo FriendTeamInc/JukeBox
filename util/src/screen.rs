@@ -21,11 +21,13 @@ pub enum ScreenProfile {
         brightness: u8,
         background_color: u16,
         text_color: u16,
+        show_profile_name: bool,
     },
     DisplayStats {
         brightness: u8,
         background_color: u16,
         text_color: u16,
+        show_profile_name: bool,
     },
 }
 impl ScreenProfile {
@@ -36,11 +38,13 @@ impl ScreenProfile {
                 brightness: _,
                 background_color: _,
                 text_color: _,
+                show_profile_name: _,
             } => SCREEN_PROFILE_DISPLAY_KEYS,
             Self::DisplayStats {
                 brightness: _,
                 background_color: _,
                 text_color: _,
+                show_profile_name: _,
             } => SCREEN_PROFILE_DISPLAY_STATS,
         }
     }
@@ -52,11 +56,13 @@ impl ScreenProfile {
                 brightness,
                 background_color: _,
                 text_color: _,
+                show_profile_name: _,
             } => *brightness,
             Self::DisplayStats {
                 brightness,
                 background_color: _,
                 text_color: _,
+                show_profile_name: _,
             } => *brightness,
         }
     }
@@ -68,11 +74,13 @@ impl ScreenProfile {
                 brightness: _,
                 background_color,
                 text_color: _,
+                show_profile_name: _,
             } => *background_color,
             Self::DisplayStats {
                 brightness: _,
                 background_color,
                 text_color: _,
+                show_profile_name: _,
             } => *background_color,
         }
     }
@@ -84,11 +92,13 @@ impl ScreenProfile {
                 brightness: _,
                 background_color: _,
                 text_color,
+                show_profile_name: _,
             } => *text_color,
             Self::DisplayStats {
                 brightness: _,
                 background_color: _,
                 text_color,
+                show_profile_name: _,
             } => *text_color,
         }
     }
@@ -115,6 +125,7 @@ impl ScreenProfile {
             brightness: 100,
             background_color: 0x01B3,
             text_color: 0xFFFF,
+            show_profile_name: true,
         }
     }
 
@@ -123,6 +134,7 @@ impl ScreenProfile {
             brightness: 255,
             background_color: 0x01B3,
             text_color: 0xFFFF,
+            show_profile_name: true,
         }
     }
 }

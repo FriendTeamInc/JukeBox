@@ -179,7 +179,7 @@ impl eframe::App for JukeBoxGui {
 }
 impl JukeBoxGui {
     fn new() -> Self {
-        let (config, config_failed_to_load) = JukeBoxConfig::load();
+        let (config, config_failed_to_parse) = JukeBoxConfig::load();
         config.save(); // Immediately save, in case the config was the loaded default
         let devices: HashMap<String, DeviceInfoExt> = config
             .devices
@@ -249,7 +249,7 @@ impl JukeBoxGui {
 
         let mut generic_errors = VecDeque::new();
 
-        if config_failed_to_load {
+        if config_failed_to_parse {
             generic_errors.push_back(
                 t!(
                     "help.generic.err.config_failed_to_load",
@@ -257,8 +257,12 @@ impl JukeBoxGui {
                 )
                 .into(),
             );
-        }
-        if !config_seen_intro_messages && !config_failed_to_load {
+
+            // this doesn't actually ensure the user sees all the messages
+            let mut conf = config.blocking_lock();
+            conf.seen_intro_messages = true;
+            conf.save();
+        } else if !config_seen_intro_messages {
             generic_errors.push_back(t!("help.intro.message_1").into());
             generic_errors.push_back(t!("help.intro.message_2").into());
             generic_errors.push_back(t!("help.intro.message_3").into());

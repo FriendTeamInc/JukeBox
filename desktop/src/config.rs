@@ -82,7 +82,6 @@ pub struct JukeBoxConfig {
     pub always_save_on_exit: bool,
     pub ignore_update_notifications: bool,
 
-    #[serde(default)]
     pub seen_intro_messages: bool,
 }
 impl Default for JukeBoxConfig {
@@ -99,7 +98,7 @@ impl Default for JukeBoxConfig {
             always_save_on_exit: false,
             ignore_update_notifications: false,
 
-            seen_intro_messages: false,
+            seen_intro_messages: true,
         }
     }
 }

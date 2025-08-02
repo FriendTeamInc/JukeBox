@@ -267,6 +267,7 @@ impl ScreenMod {
                 brightness: _,
                 background_color: _,
                 text_color: _,
+                show_profile_name,
             } => {
                 let font1_style = BitmapFontStyleBuilder::new()
                     .text_color(c)
@@ -308,19 +309,22 @@ impl ScreenMod {
 
                     self.rounded_rect(bgc, 26, 224 - 10, 16, 1);
                 } else {
-                    let _ = Text::with_text_style(
-                        self.profile_name.to_str(),
-                        Point::new(160 - 1, 224),
-                        font1_style.clone(),
-                        CENTER_TEXT_STYLE,
-                    )
-                    .draw(&mut self.fb);
+                    if show_profile_name {
+                        let _ = Text::with_text_style(
+                            self.profile_name.to_str(),
+                            Point::new(160 - 1, 224),
+                            font1_style.clone(),
+                            CENTER_TEXT_STYLE,
+                        )
+                        .draw(&mut self.fb);
+                    }
                 }
             }
             ScreenProfile::DisplayStats {
                 brightness: _,
                 background_color: _,
                 text_color: _,
+                show_profile_name,
             } => {
                 let font1_style = BitmapFontStyleBuilder::new()
                     .text_color(c)
@@ -503,16 +507,18 @@ impl ScreenMod {
                 }
 
                 // Profile name
-                let _ = Text::with_text_style(
-                    self.profile_name.to_str(),
-                    Point::new(160 - 1, 116),
-                    font1_style.clone(),
-                    TextStyleBuilder::new()
-                        .alignment(Alignment::Center)
-                        .baseline(Baseline::Middle)
-                        .build(),
-                )
-                .draw(&mut self.fb);
+                if show_profile_name {
+                    let _ = Text::with_text_style(
+                        self.profile_name.to_str(),
+                        Point::new(160 - 1, 116),
+                        font1_style.clone(),
+                        TextStyleBuilder::new()
+                            .alignment(Alignment::Center)
+                            .baseline(Baseline::Middle)
+                            .build(),
+                    )
+                    .draw(&mut self.fb);
+                }
             }
         }
     }
@@ -524,6 +530,7 @@ impl ScreenMod {
                 brightness: _,
                 background_color: _,
                 text_color: _,
+                show_profile_name: _,
             } => {
                 for y in 0..3 {
                     for x in 0..4 {
@@ -551,14 +558,15 @@ impl ScreenMod {
                 brightness: _,
                 background_color: _,
                 text_color: _,
+                show_profile_name: _,
             } => {
-                ICONS.with_mut_lock(|i| {
-                    for y in 0..3 {
-                        for x in 0..4 {
+                for y in 0..3 {
+                    for x in 0..4 {
+                        ICONS.with_mut_lock(|i| {
                             let idx = y * 4 + x;
 
                             if self.keys_status[idx] == self.keys_previous_frame[idx] && !i[idx].0 {
-                                continue;
+                                return;
                             }
 
                             self.draw_icon(
@@ -570,9 +578,9 @@ impl ScreenMod {
                             );
 
                             i[idx].0 = false;
-                        }
+                        });
                     }
-                });
+                }
             }
         }
     }

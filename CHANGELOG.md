@@ -1,5 +1,5 @@
 # v0.6.0 - Defaultized (TODO)
-- Added EEPROM support to firmware. Default, app-disconnected profiles can now be set.
+- Added EEPROM support to firmware. A default, app-disconnected profile can now be set. Support in GUI will be added at a later date.
 - Increase max number of colors for Wave and Breathe RGB patterns from 4 to 16.
 - Update Screen profile max size to be 256 bytes.
 - Update RGB Profile max size to be 64 bytes.
@@ -7,6 +7,8 @@
 - Update links to documentation for Windows and Linux setup intro messages.
 - Add a drop down select for RGB Static Per Key pattern.
 - Change default profile in software for keypad to the F13-24 keys.
+- Fix identify function having messed up offsets for the blinking LED.
+- Allow profile name to be hidden on screen.
 
 # v0.5.0 - Tut Trials (June 27, 2025)
 - Add a welcome message on very first startup with some important info for the user.

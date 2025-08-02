@@ -186,6 +186,7 @@ screen:
   brightness: "Screen Brightness:"
   select_background_color: "Background Color:"
   select_text_color: "Text Color:"
+  show_profile_name: "Show Profile Name:"
 
   off:
     title: "Off"

@@ -79,7 +79,7 @@ impl SerialMod {
 
                         // dequeue command type
                         let c = self.buffer.dequeue().unwrap();
-                        let cmd = Command::decode(c);
+                        let cmd = c.into();
 
                         let mut data = [0u8; MAX_PACKET_SIZE];
                         for i in 0..size - 1 {
