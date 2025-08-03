@@ -59,7 +59,13 @@ impl SerialMod {
         // TODO: its possible for write to drop some characters, if we're not careful.
         // we should probably handle that before we take on larger communications.
         while let Err(_) = serial.write(rsp) {
-            let _ = serial.flush();
+            match serial.flush() {
+                Ok(_) => {}
+                Err(usbd_serial::UsbError::WouldBlock) => {}
+                Err(e) => {
+                    defmt::error!("Failed to flush serial: {:?}", e);
+                }
+            };
         }
     }
 

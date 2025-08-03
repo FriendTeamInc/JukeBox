@@ -392,24 +392,18 @@ fn main() -> ! {
         if usb_dev.poll(&mut [&mut usb_hid, &mut usb_serial]) {
             // handle serial
             serial_mod.update(&mut usb_serial, ver, uid);
-            match usb_serial.flush() {
-                Ok(_) => {}
-                Err(usbd_serial::UsbError::WouldBlock) => {}
-                Err(e) => {
-                    defmt::error!("Failed to flush serial: {:?}", e);
-                }
-            };
+            let _ = usb_hid.device::<NKROBootKeyboard<'_, _>, _>().read_report();
         }
 
         USB_STATUS.with_mut_lock(|s| {
-            if *s != usb_dev.state() {
-                match usb_dev.state() {
-                    UsbDeviceState::Default => info!("usb state: default"),
-                    UsbDeviceState::Addressed => info!("usb state: addressed"),
-                    UsbDeviceState::Configured => info!("usb state: configured"),
-                    UsbDeviceState::Suspend => info!("usb state: suspend"),
-                }
-            }
+            // if *s != usb_dev.state() {
+            //     match usb_dev.state() {
+            //         UsbDeviceState::Default => info!("usb state: default"),
+            //         UsbDeviceState::Addressed => info!("usb state: addressed"),
+            //         UsbDeviceState::Configured => info!("usb state: configured"),
+            //         UsbDeviceState::Suspend => info!("usb state: suspend"),
+            //     }
+            // }
             *s = usb_dev.state();
         });
     }
