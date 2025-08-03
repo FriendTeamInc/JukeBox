@@ -10,7 +10,6 @@ use embedded_dma::Word;
 use embedded_graphics::{
     pixelcolor::{raw::RawU16, Bgr565, Gray4},
     prelude::*,
-    primitives::{PrimitiveStyle, Rectangle},
     text::{Alignment, Baseline, Text, TextStyle, TextStyleBuilder},
 };
 use embedded_graphics_framebuf::{backends::FrameBufferBackend, FrameBuf};
@@ -259,7 +258,13 @@ impl ScreenMod {
             c.into()
         };
 
-        self.st.set_backlight(self.screen_profile.brightness());
+        let brtns = if self.usb_state == UsbDeviceState::Suspend {
+            0
+        } else {
+            self.screen_profile.brightness()
+        };
+
+        self.st.set_backlight(brtns);
 
         match self.screen_profile {
             ScreenProfile::Off => {}
@@ -275,10 +280,7 @@ impl ScreenMod {
                     .font(&FONT1)
                     .build();
 
-                let mut serial_status = Connection::NotConnected(false);
-                CONNECTION_STATUS.with_lock(|c| {
-                    serial_status = *c;
-                });
+                let serial_status = CONNECTION_STATUS.with_lock(|c| *c);
 
                 if serial_status != Connection::Connected {
                     let _ = Text::with_text_style(
@@ -297,17 +299,18 @@ impl ScreenMod {
                     )
                     .draw(&mut self.fb);
 
-                    let usb_color = if self.usb_state != UsbDeviceState::Configured {
-                        Bgr565::new(8, 16, 31)
-                    } else {
-                        Bgr565::new(8, 63, 8)
-                    };
+                    // let usb_color = match self.usb_state {
+                    //     UsbDeviceState::Default => Bgr565::new(0, 0, 31),
+                    //     UsbDeviceState::Addressed => Bgr565::new(31, 16, 8),
+                    //     UsbDeviceState::Configured => Bgr565::new(8, 63, 8),
+                    //     UsbDeviceState::Suspend => Bgr565::new(0, 0, 0),
+                    // };
 
-                    let _ = Rectangle::new(Point::new(26, 224 - 10), Size::new(16, 16))
-                        .into_styled(PrimitiveStyle::with_fill(usb_color))
-                        .draw(&mut self.fb);
+                    // let _ = Rectangle::new(Point::new(26, 224 - 10), Size::new(16, 16))
+                    //     .into_styled(PrimitiveStyle::with_fill(usb_color))
+                    //     .draw(&mut self.fb);
 
-                    self.rounded_rect(bgc, 26, 224 - 10, 16, 1);
+                    // self.rounded_rect(bgc, 26, 224 - 10, 16, 1);
                 } else {
                     if show_profile_name {
                         let _ = Text::with_text_style(
@@ -620,12 +623,11 @@ impl ScreenMod {
             }
             p.0 = false;
         });
-        USB_STATUS.with_mut_lock(|p| {
-            if p.0 {
+        USB_STATUS.with_lock(|p| {
+            if self.usb_state != *p {
                 changed = true;
-                self.usb_state = p.1;
+                self.usb_state = *p;
             }
-            p.0 = false;
         });
 
         if changed {

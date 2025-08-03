@@ -64,7 +64,7 @@ type InputEvents = Mutex<7, [InputEvent; 16]>;
 type ProfileNameControl = Mutex<9, (bool, ProfileName)>;
 type ScreenSystemStats = Mutex<10, (bool, SystemStats)>;
 type ScreenControls = Mutex<11, (bool, ScreenProfile)>;
-type UsbStatus = Mutex<12, (bool, UsbDeviceState)>;
+type UsbStatus = Mutex<12, UsbDeviceState>;
 
 type DefaultInputEvents = Mutex<13, (bool, [InputEvent; 16])>;
 type DefaultRgbProfile = Mutex<14, (bool, RgbProfile)>;
@@ -91,7 +91,7 @@ pub static INPUT_EVENTS: InputEvents = Mutex::new(InputEvent::default_all());
 pub static PROFILE_NAME: ProfileNameControl = Mutex::new((true, DEFAULT_PROFILE_NAME));
 pub static SCREEN_SYSTEM_STATS: ScreenSystemStats = Mutex::new((false, DEFAULT_SYSTEM_STATS));
 pub static SCREEN_CONTROLS: ScreenControls = Mutex::new((false, ScreenProfile::default_profile()));
-pub static USB_STATUS: UsbStatus = Mutex::new((false, UsbDeviceState::Default));
+pub static USB_STATUS: UsbStatus = Mutex::new(UsbDeviceState::Default);
 
 #[macro_export]
 macro_rules! time_func {

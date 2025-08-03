@@ -49,9 +49,10 @@ where
         mut cs_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
         mut dc_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
         mut rst_pin: Pin<DynPinId, FunctionSioOutput, PullDown>,
-        backlight_pwm: PwmChannel<Slice<Pwm0, FreeRunning>, A>,
+        mut backlight_pwm: PwmChannel<Slice<Pwm0, FreeRunning>, A>,
         timer: CountDown,
     ) -> Self {
+        backlight_pwm.set_duty(0);
         dc_pin.set_low().unwrap();
         cs_pin.set_high().unwrap();
         rst_pin.set_high().unwrap();

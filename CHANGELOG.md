@@ -1,5 +1,6 @@
 # v0.6.0 - Defaultized (TODO)
 - Added EEPROM support to firmware. A default, app-disconnected profile can now be set. Support in GUI will be added at a later date.
+- Added "sleep mode" for when host computer goes to sleep (suspends USB), turning off the screen and RGB. This is incomplete due to an issue in the HAL crate, and will be fixed at a later date.
 - Increase max number of colors for Wave and Breathe RGB patterns from 4 to 16.
 - Update Screen profile max size to be 256 bytes.
 - Update RGB Profile max size to be 64 bytes.

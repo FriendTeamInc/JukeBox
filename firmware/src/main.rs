@@ -162,6 +162,8 @@ fn main() -> ! {
         .unwrap()
         .max_power(500)
         .unwrap()
+        .supports_remote_wakeup(true)
+        .device_release(0x0500)
         .composite_with_iads()
         .build();
 
@@ -351,8 +353,8 @@ fn main() -> ! {
                 Ok(_) => {}
                 Err(UsbHidError::Duplicate) => {}
                 Err(UsbHidError::WouldBlock) => {}
-                Err(_e) => {
-                    // defmt::error!("Failed to write keyboard report: {:?}", e);
+                Err(e) => {
+                    defmt::error!("Failed to write keyboard report: {:?}", e);
                 }
             }
 
@@ -368,8 +370,8 @@ fn main() -> ! {
                     }
                     Err(UsbHidError::Duplicate) => {}
                     Err(UsbHidError::WouldBlock) => {}
-                    Err(_e) => {
-                        // defmt::error!("Failed to write mouse report: {:?}", e);
+                    Err(e) => {
+                        defmt::error!("Failed to write mouse report: {:?}", e);
                     }
                 }
             }
@@ -380,8 +382,8 @@ fn main() -> ! {
             match usb_hid.tick() {
                 Ok(_) => {}
                 Err(UsbHidError::WouldBlock) => {}
-                Err(_e) => {
-                    // defmt::error!("Failed to process keyboard tick: {:?}", e);
+                Err(e) => {
+                    defmt::error!("Failed to process keyboard tick: {:?}", e);
                 }
             };
         }
@@ -393,17 +395,22 @@ fn main() -> ! {
             match usb_serial.flush() {
                 Ok(_) => {}
                 Err(usbd_serial::UsbError::WouldBlock) => {}
-                Err(_e) => {
-                    // defmt::error!("Failed to flush serial: {:?}", e);
+                Err(e) => {
+                    defmt::error!("Failed to flush serial: {:?}", e);
                 }
             };
         }
 
         USB_STATUS.with_mut_lock(|s| {
-            let new_status = usb_dev.state();
-            if s.1 != new_status {
-                *s = (true, new_status);
+            if *s != usb_dev.state() {
+                match usb_dev.state() {
+                    UsbDeviceState::Default => info!("usb state: default"),
+                    UsbDeviceState::Addressed => info!("usb state: addressed"),
+                    UsbDeviceState::Configured => info!("usb state: configured"),
+                    UsbDeviceState::Suspend => info!("usb state: suspend"),
+                }
             }
+            *s = usb_dev.state();
         });
     }
 }
