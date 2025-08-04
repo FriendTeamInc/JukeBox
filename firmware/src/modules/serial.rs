@@ -33,8 +33,8 @@ use crate::util::{
 
 type SerialPort<'a> = FullSerialPort<'a, UsbBus, [u8; SERIAL_READ_SIZE], [u8; SERIAL_WRITE_SIZE]>;
 
-pub const SERIAL_WRITE_SIZE: usize = 256;
-pub const SERIAL_READ_SIZE: usize = 512;
+pub const SERIAL_WRITE_SIZE: usize = 1024;
+pub const SERIAL_READ_SIZE: usize = 1024;
 const BUFFER_SIZE: usize = 4096;
 const KEEPALIVE: u32 = 1000;
 

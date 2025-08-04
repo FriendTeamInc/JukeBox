@@ -18,9 +18,7 @@ pub static PICOTOOL_ENTRIES: [binary_info::EntryAddr; 6] = [
     binary_info::rp_program_url!(c"https://jukebox.friendteam.biz"),
 ];
 
-use jukebox_util::peripheral::JBInputs;
-use mutually_exclusive_features::exactly_one_of;
-exactly_one_of!("keypad", "knobpad", "pedalpad");
+mutually_exclusive_features::exactly_one_of!("keypad", "knobpad", "pedalpad");
 
 mod mutex;
 mod st7789;
@@ -35,14 +33,9 @@ mod modules {
     pub mod screen;
     pub mod serial;
 }
-
-use modules::{
-    screen::{SCR_H, SCR_W},
-    *,
-};
+use modules::*;
 
 use embedded_hal::timer::CountDown as _;
-use panic_probe as _;
 
 use rp2040_hal::{
     binary_info,
@@ -54,15 +47,14 @@ use rp2040_hal::{
     gpio::{FunctionI2C, Pin, Pins},
     multicore::{Multicore, Stack},
     pac::Peripherals,
+    pio::PIOExt,
     pwm::Slices,
     rom_data::reset_to_usb_boot,
     sio::Sio,
     usb,
     watchdog::Watchdog,
-    Timer,
+    Clock, Timer,
 };
-#[allow(unused_imports)]
-use rp2040_hal::{pio::PIOExt, Clock};
 
 use usb_device::{class_prelude::*, prelude::*};
 use usbd_hid::prelude::*;
@@ -77,13 +69,9 @@ use usbd_serial::SerialPort;
 
 #[allow(unused_imports)]
 use defmt::*;
-use defmt_rtt as _;
-use util::{get_keyboard_events, reset_icons, PERIPHERAL_INPUTS, UPDATE_TRIGGER};
+use {defmt_rtt as _, panic_probe as _};
 
-use crate::{
-    modules::serial::{SERIAL_READ_SIZE, SERIAL_WRITE_SIZE},
-    util::{get_mouse_events, USB_STATUS},
-};
+use jukebox_util::peripheral::JBInputs;
 
 static CORE1_STACK: Stack<16384> = Stack::new();
 
@@ -108,8 +96,6 @@ fn main() -> ! {
 
     // set up timers
     let timer = Timer::new(pac.TIMER, &mut pac.RESETS, &clocks);
-    let mut serial_timer = timer.count_down();
-    serial_timer.start(100.millis());
     let mut hid_tick = timer.count_down();
     hid_tick.start(4.millis());
     let mut nkro_tick = timer.count_down();
@@ -132,8 +118,11 @@ fn main() -> ! {
         .add_device(usbd_hid::device::keyboard::NKROBootKeyboardConfig::default())
         .add_device(usbd_hid::device::mouse::WheelMouseConfig::default())
         .build(&usb_bus);
-    let mut usb_serial =
-        SerialPort::new_with_store(&usb_bus, [0u8; SERIAL_READ_SIZE], [0u8; SERIAL_WRITE_SIZE]);
+    let mut usb_serial = SerialPort::new_with_store(
+        &usb_bus,
+        [0u8; serial::SERIAL_READ_SIZE],
+        [0u8; serial::SERIAL_WRITE_SIZE],
+    );
     let usb_pid = if cfg!(feature = "keypad") {
         0xF20A
     } else if cfg!(feature = "knobpad") {
@@ -170,7 +159,7 @@ fn main() -> ! {
     // set up serial module
     let mut serial_mod = serial::SerialMod::new(timer.count_down());
     // set up icon buffers
-    reset_icons();
+    util::reset_icons();
 
     // set up peripherals we need
     let pins = Pins::new(
@@ -247,7 +236,7 @@ fn main() -> ! {
                     bl,
                     timer.count_down(),
                 );
-                st.init(SCR_W as u16, SCR_H as u16);
+                st.init(screen::SCR_W as u16, screen::SCR_H as u16);
                 screen::ScreenMod::new(st, dma.ch0, timer.count_down())
             };
 
@@ -306,7 +295,7 @@ fn main() -> ! {
                 }
 
                 // update mutexes
-                PERIPHERAL_INPUTS.with_mut_lock(|i| {
+                util::PERIPHERAL_INPUTS.with_mut_lock(|i| {
                     #[cfg(feature = "keypad")]
                     {
                         *i = JBInputs::KeyPad(keyboard_mod.get_pressed_keys().into());
@@ -318,7 +307,7 @@ fn main() -> ! {
                 });
 
                 // check if we need to shutdown "cleanly" for update
-                UPDATE_TRIGGER.with_lock(|u| {
+                util::UPDATE_TRIGGER.with_lock(|u| {
                     if *u {
                         #[cfg(feature = "keypad")]
                         screen_mod.clear();
@@ -348,7 +337,7 @@ fn main() -> ! {
             // handle keyboard
             match usb_hid
                 .device::<NKROBootKeyboard<'_, _>, _>()
-                .write_report(get_keyboard_events())
+                .write_report(util::get_keyboard_events())
             {
                 Ok(_) => {}
                 Err(UsbHidError::Duplicate) => {}
@@ -359,7 +348,7 @@ fn main() -> ! {
             }
 
             // handle mouse
-            let mouse_report = get_mouse_events();
+            let mouse_report = util::get_mouse_events();
             if mouse_report != prev_mouse_report {
                 match usb_hid
                     .device::<WheelMouse<'_, _>, _>()
@@ -392,10 +381,11 @@ fn main() -> ! {
         if usb_dev.poll(&mut [&mut usb_hid, &mut usb_serial]) {
             // handle serial
             serial_mod.update(&mut usb_serial, ver, uid);
+            // dequeue any incoming reports, so we can process suspend packets properly
             let _ = usb_hid.device::<NKROBootKeyboard<'_, _>, _>().read_report();
         }
 
-        USB_STATUS.with_mut_lock(|s| {
+        util::USB_STATUS.with_mut_lock(|s| {
             // if *s != usb_dev.state() {
             //     match usb_dev.state() {
             //         UsbDeviceState::Default => info!("usb state: default"),
