@@ -4,17 +4,18 @@
 use defmt::*;
 
 use embedded_graphics::pixelcolor::Bgr565;
-use embedded_hal::timer::{Cancel as _, CountDown as _};
+use embedded_hal::timer::CountDown as _;
 use jukebox_util::{
     color::split_to_rgb565,
-    input::{KeyboardEvent, MouseEvent},
+    input::InputEvent,
     peripheral::{
         Connection, JBInputs, IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT,
         IDENT_UNKNOWN_INPUT,
     },
     protocol::{
-        decode_packet_size, Command, MAX_PACKET_SIZE, RSP_ACK, RSP_DISCONNECTED, RSP_INPUT_HEADER,
-        RSP_LINK_DELIMITER, RSP_LINK_HEADER, RSP_UNKNOWN,
+        decode_packet_size, Command, MAX_PACKET_SIZE, RSP_ACK, RSP_DISCONNECTED, RSP_FULL_ACK,
+        RSP_FULL_DISCONNECTED, RSP_FULL_UNKNOWN, RSP_INPUT_HEADER, RSP_LINK_DELIMITER,
+        RSP_LINK_HEADER,
     },
     rgb::RgbProfile,
     screen::{ProfileName, ScreenProfile},
@@ -26,17 +27,16 @@ use rp2040_hal::{fugit::ExtU32, timer::CountDown, usb::UsbBus};
 use usbd_serial::SerialPort as FullSerialPort;
 
 use crate::util::{
-    reset_peripherals, CONNECTION_STATUS, DEFAULT_INPUTS, ICONS, IDENTIFY_TRIGGER, KEYBOARD_EVENTS,
-    MOUSE_EVENTS, PERIPHERAL_INPUTS, PROFILE_NAME, RGB_CONTROLS, SCREEN_CONTROLS,
-    SCREEN_SYSTEM_STATS, UPDATE_TRIGGER,
+    reset_peripherals, CONNECTION_STATUS, ICONS, IDENTIFY_TRIGGER, INPUT_EVENTS, PERIPHERAL_INPUTS,
+    PROFILE_NAME, RGB_CONTROLS, SCREEN_CONTROLS, SCREEN_SYSTEM_STATS, UPDATE_TRIGGER,
 };
 
 type SerialPort<'a> = FullSerialPort<'a, UsbBus, [u8; SERIAL_READ_SIZE], [u8; SERIAL_WRITE_SIZE]>;
 
-pub const SERIAL_WRITE_SIZE: usize = 256;
-pub const SERIAL_READ_SIZE: usize = 512;
+pub const SERIAL_WRITE_SIZE: usize = 1024;
+pub const SERIAL_READ_SIZE: usize = 1024;
 const BUFFER_SIZE: usize = 4096;
-const KEEPALIVE: u32 = 500;
+const KEEPALIVE: u32 = 1000;
 
 pub struct SerialMod {
     buffer: ConstGenericRingBuffer<u8, BUFFER_SIZE>,
@@ -59,7 +59,13 @@ impl SerialMod {
         // TODO: its possible for write to drop some characters, if we're not careful.
         // we should probably handle that before we take on larger communications.
         while let Err(_) = serial.write(rsp) {
-            let _ = serial.flush();
+            match serial.flush() {
+                Ok(_) => {}
+                Err(usbd_serial::UsbError::WouldBlock) => {}
+                Err(e) => {
+                    defmt::error!("Failed to flush serial: {:?}", e);
+                }
+            };
         }
     }
 
@@ -79,7 +85,7 @@ impl SerialMod {
 
                         // dequeue command type
                         let c = self.buffer.dequeue().unwrap();
-                        let cmd = Command::decode(c);
+                        let cmd = c.into();
 
                         let mut data = [0u8; MAX_PACKET_SIZE];
                         for i in 0..size - 1 {
@@ -136,7 +142,7 @@ impl SerialMod {
             Ok(s) => {
                 // copy read data to internal buffer
                 for b in 0..s {
-                    self.buffer.push(buf[b]);
+                    let _ = self.buffer.enqueue(buf[b]);
                 }
             }
         }
@@ -151,7 +157,7 @@ impl SerialMod {
         // process command
         let mut unknown = || {
             error!("unknown command: {}", data);
-            Self::send(serial, &[b'0', b'0', b'1', RSP_UNKNOWN]);
+            Self::send(serial, RSP_FULL_UNKNOWN);
             false
         };
         let valid = match self.state {
@@ -197,16 +203,10 @@ impl SerialMod {
             Connection::Connected => match decode {
                 Command::GetInputKeys => {
                     // copy peripherals and inputs out
-                    let inputs = {
-                        let mut inputs = DEFAULT_INPUTS;
-                        PERIPHERAL_INPUTS.with_lock(|i| {
-                            inputs = *i;
-                        });
-                        inputs
-                    };
+                    let inputs = PERIPHERAL_INPUTS.with_lock(|i| *i);
 
                     // write all the inputs out
-                    let _ = match inputs {
+                    match inputs {
                         JBInputs::KeyPad(i) => {
                             Self::send(serial, b"004");
                             Self::send(serial, &[RSP_INPUT_HEADER]);
@@ -226,47 +226,20 @@ impl SerialMod {
 
                     true
                 }
-                Command::SetKeyboardInput => {
+                Command::SetInputEvent => {
                     let slot = data[0];
-                    let new_input = &data[1..6 + 1];
-                    let new_input = KeyboardEvent::decode(new_input);
+                    let new_input = InputEvent::decode(&data[1..7 + 1]);
+                    INPUT_EVENTS.with_mut_lock(|e| e[slot as usize] = new_input);
 
-                    KEYBOARD_EVENTS.with_mut_lock(|e| {
-                        e[slot as usize] = new_input;
-                    });
-
-                    Self::send(serial, b"001");
-                    Self::send(serial, &[RSP_ACK]);
+                    Self::send(serial, RSP_FULL_ACK);
 
                     true
-                }
-                Command::SetMouseInput => {
-                    let slot = data[0];
-                    let new_input = &data[1..5 + 1];
-                    let new_input = MouseEvent::decode(new_input);
-
-                    MOUSE_EVENTS.with_mut_lock(|e| {
-                        e[slot as usize] = new_input;
-                    });
-
-                    Self::send(serial, b"001");
-                    Self::send(serial, &[RSP_ACK]);
-
-                    true
-                }
-                Command::SetGamepadInput => {
-                    // TODO:
-                    unknown()
                 }
                 Command::SetRgbMode => {
                     let rgb = RgbProfile::decode(&data);
-                    RGB_CONTROLS.with_mut_lock(|c| {
-                        c.0 = true;
-                        c.1 = rgb;
-                    });
+                    RGB_CONTROLS.with_mut_lock(|c| *c = (true, rgb));
 
-                    Self::send(serial, b"001");
-                    Self::send(serial, &[RSP_ACK]);
+                    Self::send(serial, RSP_FULL_ACK);
 
                     true
                 }
@@ -288,52 +261,38 @@ impl SerialMod {
                         scr_icon.0 = true;
                     });
 
-                    Self::send(serial, b"001");
-                    Self::send(serial, &[RSP_ACK]);
+                    Self::send(serial, RSP_FULL_ACK);
 
                     true
                 }
                 Command::SetScrMode => {
                     let profile = ScreenProfile::decode(&data);
 
-                    SCREEN_CONTROLS.with_mut_lock(|s| {
-                        s.0 = true;
-                        s.1 = profile;
-                    });
+                    SCREEN_CONTROLS.with_mut_lock(|p| *p = (true, profile));
 
-                    Self::send(serial, b"001");
-                    Self::send(serial, &[RSP_ACK]);
+                    Self::send(serial, RSP_FULL_ACK);
 
                     true
                 }
                 Command::SetSystemStats => {
                     let stats = SystemStats::decode(&data);
 
-                    SCREEN_SYSTEM_STATS.with_mut_lock(|s| {
-                        s.0 = true;
-                        s.1 = stats;
-                    });
+                    SCREEN_SYSTEM_STATS.with_mut_lock(|s| *s = (true, stats));
 
-                    Self::send(serial, b"001");
-                    Self::send(serial, &[RSP_ACK]);
+                    Self::send(serial, RSP_FULL_ACK);
 
                     true
                 }
                 Command::SetProfileName => {
                     let new_profile_name: ProfileName = SmallStr::decode(&data);
 
-                    PROFILE_NAME.with_mut_lock(|p| {
-                        p.0 = true;
-                        p.1 = new_profile_name;
-                    });
+                    PROFILE_NAME.with_mut_lock(|p| *p = (true, new_profile_name));
 
-                    Self::send(serial, b"001");
-                    Self::send(serial, &[RSP_ACK]);
+                    Self::send(serial, RSP_FULL_ACK);
 
                     true
                 }
                 Command::Identify => {
-                    // TODO: flash led for identifying
                     self.start_identify(serial);
                     true
                 }
@@ -342,7 +301,7 @@ impl SerialMod {
                     true
                 }
                 Command::Disconnect => {
-                    Self::send(serial, &[b'0', b'0', b'1', RSP_DISCONNECTED]);
+                    Self::send(serial, RSP_FULL_DISCONNECTED);
                     self.state = Connection::NotConnected(true);
                     reset_peripherals(true);
 
@@ -363,7 +322,6 @@ impl SerialMod {
 
         if valid {
             // info!("restarting keepalive for command: {}", decode);
-            let _ = self.keepalive_timer.cancel();
             self.keepalive_timer.start(KEEPALIVE.millis());
             // restart keepalive timer with valid command
         }

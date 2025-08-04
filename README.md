@@ -8,7 +8,7 @@ An affordable, adorable, powerful hotkey device to run macros, play funny sounds
 While this project is public, it is not ready for any sort of prime time. Any releases prior to 1.0 are considered beta.
 
 ## Docs
-If you are the proud owner of a new JukeBox, or are building your own, take a look at the [getting started doc](docs/getting-started.md).
+TODO
 
 ## Desktop Software
 Made with Rust and egui for Windows and Linux, curates the user experience with the JukeBox.

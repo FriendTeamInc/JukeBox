@@ -22,17 +22,19 @@ where
         }
     }
 
-    pub fn with_lock(&self, f: impl FnOnce(&T) -> ()) {
+    pub fn with_lock<R>(&self, f: impl FnOnce(&T) -> R) -> R {
         let _lock = Spinlock::<N>::claim();
         cortex_m::asm::dmb();
-        f(unsafe { &*self.data.get() });
+        let r = f(unsafe { &*self.data.get() });
         cortex_m::asm::dmb();
+        r
     }
 
-    pub fn with_mut_lock(&self, f: impl FnOnce(&mut T) -> ()) {
+    pub fn with_mut_lock<R>(&self, f: impl FnOnce(&mut T) -> R) -> R {
         let _lock = Spinlock::<N>::claim();
         cortex_m::asm::dmb();
-        f(unsafe { &mut *self.data.get() });
+        let r = f(unsafe { &mut *self.data.get() });
         cortex_m::asm::dmb();
+        r
     }
 }

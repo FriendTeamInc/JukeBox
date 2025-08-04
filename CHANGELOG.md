@@ -1,3 +1,29 @@
+# v0.6.0 - Defaultized (TODO)
+- Added EEPROM support to firmware. A default, app-disconnected profile can now be set. Support in GUI will be added at a later date.
+- Added "sleep mode" for when host computer goes to sleep (suspends USB), turning off the screen and RGB.
+- Increase max number of colors for Wave and Breathe RGB patterns from 4 to 16.
+- Update Screen profile max size to be 256 bytes.
+- Update RGB Profile max size to be 64 bytes.
+- Unify USB HID Events (keyboard and mouse) in code and protocol.
+- Update links to documentation for Windows and Linux setup intro messages.
+- Add a drop down select for RGB Static Per Key pattern.
+- Change default profile in software for keypad to the F13-24 keys.
+- Fix identify function having messed up offsets for the blinking LED.
+- Allow profile name to be hidden on screen.
+
+# v0.5.0 - Tut Trials (June 27, 2025)
+- Add a welcome message on very first startup with some important info for the user.
+- Remove donate "link".
+- Add "Breathe" RGB pattern configuration.
+- Add "Wave" RGB pattern configuration.
+- Fix RGB previews, specifically the rounded corners.
+- Enable NVIDIA GPU monitoring support. AMD support will be added later once cross compiling is sorted.
+- Update dependencies for desktop app and firmware.
+
+# v0.4.6 - I'm Blue (June 26, 2025)
+- Update default theme for device when not connected to application. This now includes an indicator of USB connection status (red if not connecting, green if connected with host), the device's UID, and its firmware version. It's also blue now.
+- Fix "N/A" temperature not displaying correctly on device.
+
 # v0.4.5 - Clock Forever (June 22, 2025)
 - Fix keyboard key requests being way too frequent.
 - Only send RGB and Screen packets to keypad devices, futureproofing.

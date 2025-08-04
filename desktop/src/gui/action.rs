@@ -6,17 +6,15 @@ use eframe::egui::{
 };
 use egui_phosphor::regular as phos;
 use image::EncodableLayout;
-use jukebox_util::{
-    input::{KeyboardEvent, MouseEvent},
-    peripheral::DeviceType,
-};
+use jukebox_util::peripheral::DeviceType;
 use rfd::FileDialog;
 use tokio::runtime::Handle;
 
 use crate::{
     actions::{
+        action::send_input_event,
         meta::AID_META_NO_ACTION,
-        types::{get_icon_bytes, Action, ActionError},
+        types::{get_icon_bytes, get_icon_cache, ActionError},
     },
     config::{ActionConfig, ActionIcon, JukeBoxConfig},
     input::InputKey,
@@ -83,7 +81,7 @@ impl JukeBoxGui {
                 let txs = self.scmd_txs.blocking_lock();
                 if let Some(tx) = txs.get(device_uid) {
                     let slot = k.slot();
-                    let icon = get_icon_bytes(&a);
+                    let icon = get_icon_bytes(&a, &mut get_icon_cache());
                     let _ = tx.send(SerialCommand::SetScrIcon(slot, icon));
                 }
             }
@@ -115,32 +113,7 @@ impl JukeBoxGui {
                 let txs = self.scmd_txs.blocking_lock();
                 if let Some(tx) = txs.get(device_uid) {
                     let slot = k.slot();
-                    match &a.action {
-                        Action::InputKeyboard(kb) => {
-                            let _ = tx.send(SerialCommand::SetKeyboardInput(
-                                slot,
-                                kb.get_keyboard_event(),
-                            ));
-                            let _ =
-                                tx.send(SerialCommand::SetMouseInput(slot, MouseEvent::default()));
-                        }
-                        Action::InputMouse(ms) => {
-                            let _ = tx.send(SerialCommand::SetKeyboardInput(
-                                slot,
-                                KeyboardEvent::empty_event(),
-                            ));
-                            let _ =
-                                tx.send(SerialCommand::SetMouseInput(slot, ms.get_mouse_event()));
-                        }
-                        _ => {
-                            let _ = tx.send(SerialCommand::SetKeyboardInput(
-                                slot,
-                                KeyboardEvent::empty_event(),
-                            ));
-                            let _ =
-                                tx.send(SerialCommand::SetMouseInput(slot, MouseEvent::default()));
-                        }
-                    }
+                    send_input_event(tx, slot, &a.action);
                 }
             }
         }
@@ -165,7 +138,7 @@ impl JukeBoxGui {
                 .and_then(|d| d.get(device_uid))
                 .and_then(|p| p.key_map.get(&self.editing_key))
         } {
-            get_icon_bytes(action_config)
+            get_icon_bytes(action_config, &mut get_icon_cache())
         } else {
             return;
         };
@@ -210,19 +183,7 @@ impl JukeBoxGui {
         {
             let txs = self.scmd_txs.blocking_lock();
             if let Some(tx) = txs.get(device_uid) {
-                let _ = match &action {
-                    Action::InputKeyboard(kb) => tx.send(SerialCommand::SetKeyboardInput(
-                        slot,
-                        kb.get_keyboard_event(),
-                    )),
-                    Action::InputMouse(ms) => {
-                        tx.send(SerialCommand::SetMouseInput(slot, ms.get_mouse_event()))
-                    }
-                    _ => tx.send(SerialCommand::SetKeyboardInput(
-                        slot,
-                        KeyboardEvent::empty_event(),
-                    )),
-                };
+                send_input_event(tx, slot, &action);
             }
         }
     }

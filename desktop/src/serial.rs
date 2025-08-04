@@ -13,23 +13,19 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, bail, Context, Result};
-use jukebox_util::peripheral::DeviceType;
-use jukebox_util::protocol::{CMD_SET_PROFILE_NAME, CMD_SET_SCR_MODE, CMD_SET_SYSTEM_STATS};
-use jukebox_util::screen::{ProfileName, ScreenProfile, PROFILE_NAME_CHAR_LEN};
-use jukebox_util::stats::SystemStats;
 use jukebox_util::{
-    input::{KeyboardEvent, MouseEvent},
+    input::InputEvent,
     peripheral::{
-        KeyInputs, KnobInputs, PedalInputs, IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT,
-        IDENT_UNKNOWN_INPUT,
+        DeviceType, KeyInputs, KnobInputs, PedalInputs, IDENT_KEY_INPUT, IDENT_KNOB_INPUT,
+        IDENT_PEDAL_INPUT, IDENT_UNKNOWN_INPUT,
     },
     protocol::{
-        decode_packet_size, encode_packet_size, CMD_DISCONNECT, CMD_GET_INPUT_KEYS, CMD_GREET,
-        CMD_IDENTIFY, CMD_NEGATIVE_ACK, CMD_SET_KEYBOARD_INPUT, CMD_SET_MOUSE_INPUT,
-        CMD_SET_RGB_MODE, CMD_SET_SCR_ICON, CMD_UPDATE, RSP_ACK, RSP_DISCONNECTED,
+        decode_packet_size, encode_packet_size, Command, RSP_ACK, RSP_DISCONNECTED,
         RSP_INPUT_HEADER, RSP_LINK_DELIMITER, RSP_LINK_HEADER, RSP_UNKNOWN,
     },
     rgb::RgbProfile,
+    screen::{ProfileName, ScreenProfile, PROFILE_NAME_CHAR_LEN},
+    stats::SystemStats,
 };
 use serialport::SerialPort;
 use tokio::{
@@ -43,7 +39,7 @@ use tokio::{
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct SerialConnectionDetails {
-    pub input_identifier: u8,
+    pub device_type: DeviceType,
     pub firmware_version: String,
     pub device_uid: String,
 }
@@ -51,8 +47,9 @@ pub struct SerialConnectionDetails {
 #[allow(unused)]
 pub enum SerialCommand {
     Identify,
-    SetKeyboardInput(u8, KeyboardEvent),
-    SetMouseInput(u8, MouseEvent),
+    SetInputEvent(u8, InputEvent),
+    // SetKeyboardInput(u8, KeyboardEvent),
+    // SetMouseInput(u8, MouseEvent),
     // SetGamepadInput(u8, [u8; 6]),
     SetRgbMode(RgbProfile),
     SetScrIcon(u8, [u8; 32 * 32 * 2]),
@@ -192,7 +189,7 @@ async fn send_expect(f: &mut Serial, send: &[u8], expect: &[u8]) -> Result<()> {
 // Tasks
 
 async fn send_negative_ack(f: &mut Serial) -> Result<()> {
-    send_cmd(f, CMD_NEGATIVE_ACK)
+    send_cmd(f, Command::NegativeAck.into())
         .await
         .context("failed to send nack")?;
     Ok(())
@@ -200,7 +197,7 @@ async fn send_negative_ack(f: &mut Serial) -> Result<()> {
 
 async fn greet_host(f: &mut Serial) -> Result<SerialConnectionDetails> {
     // Host confirms protocol is good, recieves "link established" with some info about the device
-    send_cmd(f, CMD_GREET)
+    send_cmd(f, Command::Greeting.into())
         .await
         .context("failed to send greet")?;
     let resp = get_serial_string(f).await.context("expected greeting")?;
@@ -215,7 +212,7 @@ async fn greet_host(f: &mut Serial) -> Result<SerialConnectionDetails> {
     let mut device_uid = None;
     for (i, s) in resp.split(|c| *c == RSP_LINK_DELIMITER).enumerate() {
         if i == 1 {
-            input_identifier = Some(s.get(0).unwrap_or(&IDENT_UNKNOWN_INPUT));
+            input_identifier = Some(s.get(0).unwrap_or(&IDENT_UNKNOWN_INPUT).to_owned());
         } else if i == 2 {
             firmware_version = Some(s);
         } else if i == 3 {
@@ -242,16 +239,17 @@ async fn greet_host(f: &mut Serial) -> Result<SerialConnectionDetails> {
             bail!("failed to parse device info (failed to convert device uid to utf-8)");
         }
     };
+    let device_type: DeviceType = input_identifier.unwrap().into();
 
     Ok(SerialConnectionDetails {
-        input_identifier: *input_identifier.unwrap(),
-        firmware_version: firmware_version,
-        device_uid: device_uid,
+        device_type,
+        firmware_version,
+        device_uid,
     })
 }
 
 async fn transmit_get_input_keys(f: &mut Serial) -> Result<HashSet<InputKey>> {
-    send_cmd(f, CMD_GET_INPUT_KEYS)
+    send_cmd(f, Command::GetInputKeys.into())
         .await
         .context("failed to send get input keys")?;
     let resp = get_serial_string(f).await.context("expected input keys")?;
@@ -304,22 +302,15 @@ async fn transmit_get_input_keys(f: &mut Serial) -> Result<HashSet<InputKey>> {
     Ok(result)
 }
 
-async fn transmit_set_keyboard_input(f: &mut Serial, slot: u8, event: KeyboardEvent) -> Result<()> {
-    let mut cmd = vec![CMD_SET_KEYBOARD_INPUT, slot];
-    cmd.extend_from_slice(&event.encode());
-
-    send_expect(f, &cmd, &[RSP_ACK]).await
-}
-
-async fn transmit_set_mouse_input(f: &mut Serial, slot: u8, event: MouseEvent) -> Result<()> {
-    let mut cmd = vec![CMD_SET_MOUSE_INPUT, slot];
+async fn transmit_set_input_event(f: &mut Serial, slot: u8, event: InputEvent) -> Result<()> {
+    let mut cmd = vec![Command::SetInputEvent.into(), slot];
     cmd.extend_from_slice(&event.encode());
 
     send_expect(f, &cmd, &[RSP_ACK]).await
 }
 
 async fn transmit_set_rgb_mode(f: &mut Serial, rgb_profile: RgbProfile) -> Result<()> {
-    let mut cmd = vec![CMD_SET_RGB_MODE];
+    let mut cmd = vec![Command::SetRgbMode.into()];
     cmd.extend_from_slice(&rgb_profile.encode());
 
     send_expect(f, &cmd, &[RSP_ACK]).await
@@ -330,14 +321,14 @@ async fn transmit_set_scr_icon(
     slot: u8,
     icon_data: [u8; 32 * 32 * 2],
 ) -> Result<()> {
-    let mut cmd = vec![CMD_SET_SCR_ICON, slot];
+    let mut cmd = vec![Command::SetScrIcon.into(), slot];
     cmd.extend_from_slice(&icon_data);
 
     send_expect(f, &cmd, &[RSP_ACK]).await
 }
 
 async fn transmit_set_screen_mode(f: &mut Serial, screen_profile: ScreenProfile) -> Result<()> {
-    let mut cmd = vec![CMD_SET_SCR_MODE];
+    let mut cmd = vec![Command::SetScrMode.into()];
     cmd.extend_from_slice(&screen_profile.encode());
 
     send_expect(f, &cmd, &[RSP_ACK]).await
@@ -347,29 +338,29 @@ async fn transmit_set_profile_name(f: &mut Serial, profile_name: String) -> Resu
     let profile_name =
         ProfileName::from_str(&profile_name[..min(profile_name.len(), PROFILE_NAME_CHAR_LEN)]);
 
-    let mut cmd = vec![CMD_SET_PROFILE_NAME];
+    let mut cmd = vec![Command::SetProfileName.into()];
     cmd.extend_from_slice(&profile_name.encode());
 
     send_expect(f, &cmd, &[RSP_ACK]).await
 }
 
 async fn transmit_set_system_stats(f: &mut Serial, system_stats: SystemStats) -> Result<()> {
-    let mut cmd = vec![CMD_SET_SYSTEM_STATS];
+    let mut cmd = vec![Command::SetSystemStats.into()];
     cmd.extend_from_slice(&system_stats.encode());
 
     send_expect(f, &cmd, &[RSP_ACK]).await
 }
 
 async fn transmit_identify_signal(f: &mut Serial) -> Result<()> {
-    send_expect(f, &[CMD_IDENTIFY], &[RSP_ACK]).await
+    send_expect(f, &[Command::Identify.into()], &[RSP_ACK]).await
 }
 
 async fn transmit_update_signal(f: &mut Serial) -> Result<()> {
-    send_expect(f, &[CMD_UPDATE], &[RSP_DISCONNECTED]).await
+    send_expect(f, &[Command::Update.into()], &[RSP_DISCONNECTED]).await
 }
 
 async fn transmit_disconnect_signal(f: &mut Serial) -> Result<()> {
-    send_expect(f, &[CMD_DISCONNECT], &[RSP_DISCONNECTED]).await
+    send_expect(f, &[Command::Disconnect.into()], &[RSP_DISCONNECTED]).await
 }
 
 pub fn serial_get_device(connected_uids: &HashSet<String>) -> Result<Serial> {
@@ -409,7 +400,7 @@ pub async fn serial_loop(
     system_stats: Arc<Mutex<SystemStats>>,
 ) -> Result<()> {
     let device_uid = device_info.device_uid;
-    let device_type: DeviceType = device_info.input_identifier.into();
+    let device_type = device_info.device_type;
 
     let mut keys_tick = Instant::now()
         .checked_add(Duration::from_millis(50))
@@ -420,6 +411,7 @@ pub async fn serial_loop(
         let now = Instant::now();
 
         if now >= keys_tick {
+            log::info!("key tick");
             keys_tick = Instant::now()
                 .checked_add(Duration::from_millis(50))
                 .unwrap();
@@ -452,11 +444,8 @@ pub async fn serial_loop(
                 SerialCommand::Identify => {
                     transmit_identify_signal(f).await?;
                 }
-                SerialCommand::SetKeyboardInput(slot, keyboard_event) => {
-                    transmit_set_keyboard_input(f, slot, keyboard_event).await?;
-                }
-                SerialCommand::SetMouseInput(slot, mouse_event) => {
-                    transmit_set_mouse_input(f, slot, mouse_event).await?;
+                SerialCommand::SetInputEvent(slot, input_event) => {
+                    transmit_set_input_event(f, slot, input_event).await?;
                 }
                 SerialCommand::SetRgbMode(rgb_profile) => {
                     if device_type == DeviceType::KeyPad {
@@ -519,7 +508,7 @@ pub async fn serial_loop(
 
 pub async fn build_config(config: Arc<Mutex<JukeBoxConfig>>, device_info: SerialConnectionDetails) {
     let device_uid = device_info.device_uid;
-    let device_type: DeviceType = device_info.input_identifier.into();
+    let device_type = device_info.device_type;
 
     let short_uid = device_uid[12..].to_string();
 
@@ -589,6 +578,7 @@ pub async fn build_config(config: Arc<Mutex<JukeBoxConfig>>, device_info: Serial
             }
         }
     }
+
     conf.save();
 }
 

@@ -275,7 +275,7 @@ impl SystemOpenApp {
         })
         .await;
 
-        // TODO: error handling
+        // error handling?
 
         Ok(())
     }
@@ -346,13 +346,20 @@ pub struct SystemOpenWeb {
 impl SystemOpenWeb {
     pub async fn on_press(
         &self,
-        _device_uid: &String,
-        _input_key: InputKey,
+        device_uid: &String,
+        input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(), ActionError> {
-        let _ = open::that(self.url.clone());
-        // TODO: error handling
-        Ok(())
+        open::that(self.url.clone()).map_err(|e| ActionError {
+            device_uid: device_uid.clone(),
+            input_key: input_key,
+            msg: t!(
+                "action.system.open_web.err",
+                webpage = self.url,
+                reason = e.to_string()
+            )
+            .into(),
+        })
     }
 
     pub async fn on_release(

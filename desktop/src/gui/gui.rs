@@ -30,6 +30,7 @@ use tokio::{
 use tray_icon::menu::{Menu, MenuEvent, MenuId, MenuItem, PredefinedMenuItem};
 use tray_icon::{TrayIcon, TrayIconBuilder, TrayIconEvent};
 
+use crate::actions::meta::AID_META_NO_ACTION;
 use crate::actions::types::ActionError;
 use crate::actions::{
     action::action_task,
@@ -93,6 +94,7 @@ pub struct JukeBoxGui {
     pub editing_action: Action,
 
     pub editing_rgb: RgbProfile,
+    pub editing_rgb_key_index: usize,
 
     pub editing_screen: ScreenProfile,
 
@@ -177,7 +179,7 @@ impl eframe::App for JukeBoxGui {
 }
 impl JukeBoxGui {
     fn new() -> Self {
-        let (config, config_failed_to_load) = JukeBoxConfig::load();
+        let (config, config_failed_to_parse) = JukeBoxConfig::load();
         config.save(); // Immediately save, in case the config was the loaded default
         let devices: HashMap<String, DeviceInfoExt> = config
             .devices
@@ -202,7 +204,8 @@ impl JukeBoxGui {
         let config_enable_splash = config.enable_splash;
         let config_always_save_on_exit = config.always_save_on_exit;
         let config_ignore_update_notifications = config.ignore_update_notifications;
-        let config = Arc::new(Mutex::new(JukeBoxConfig::load().0));
+        let config_seen_intro_messages = config.seen_intro_messages;
+        let config = Arc::new(Mutex::new(config));
 
         // when gui exits, we use these to signal the other threads to stop
         let thread_breaker = Arc::new(AtomicBool::new(false)); // ends other threads from gui
@@ -246,7 +249,7 @@ impl JukeBoxGui {
 
         let mut generic_errors = VecDeque::new();
 
-        if config_failed_to_load {
+        if config_failed_to_parse {
             generic_errors.push_back(
                 t!(
                     "help.generic.err.config_failed_to_load",
@@ -254,6 +257,25 @@ impl JukeBoxGui {
                 )
                 .into(),
             );
+
+            // this doesn't actually ensure the user sees all the messages
+            let mut conf = config.blocking_lock();
+            conf.seen_intro_messages = true;
+            conf.save();
+        } else if !config_seen_intro_messages {
+            generic_errors.push_back(t!("help.intro.message_1").into());
+            generic_errors.push_back(t!("help.intro.message_2").into());
+            generic_errors.push_back(t!("help.intro.message_3").into());
+            if cfg!(target_os = "windows") {
+                generic_errors.push_back(t!("help.intro.message_4_windows").into());
+            } else {
+                generic_errors.push_back(t!("help.intro.message_4_linux").into());
+            }
+
+            // this doesn't actually ensure the user sees all the messages
+            let mut conf = config.blocking_lock();
+            conf.seen_intro_messages = true;
+            conf.save();
         }
 
         JukeBoxGui {
@@ -278,10 +300,11 @@ impl JukeBoxGui {
 
             editing_key: InputKey::UnknownKey,
             editing_action_icon: ActionIcon::DefaultActionIcon,
-            editing_action_type: "MetaNoAction".into(),
+            editing_action_type: AID_META_NO_ACTION.into(),
             editing_action: Action::MetaNoAction(MetaNoAction::default()),
 
             editing_rgb: RgbProfile::default_gui_profile(),
+            editing_rgb_key_index: 0,
 
             editing_screen: ScreenProfile::default_profile(),
 
@@ -348,10 +371,8 @@ impl JukeBoxGui {
             let update_error = self.update_error.clone().unwrap();
             Modal::new(Id::new("UpdateErrorModal")).show(ui.ctx(), |ui| {
                 ui.set_width(400.0);
-
                 ui.heading(t!("help.update.error_modal_title"));
-
-                ui.add_space(10.0);
+                ui.separator();
 
                 ui.label(update_error.msg);
 
@@ -375,10 +396,8 @@ impl JukeBoxGui {
             let action = self.action_errors.get(0).unwrap().clone();
             Modal::new(Id::new("ActionErrorModal")).show(ui.ctx(), |ui| {
                 ui.set_width(400.0);
-
                 ui.heading(t!("help.action.modal_title"));
-
-                ui.add_space(10.0);
+                ui.separator();
 
                 ui.label(action.msg);
 
@@ -411,13 +430,13 @@ impl JukeBoxGui {
         if self.current_version != self.available_version && !self.dismissed_update_notif {
             Modal::new(Id::new("UpdateAvailableModal")).show(ui.ctx(), |ui| {
                 ui.set_width(400.0);
-                ui.set_height(200.0);
+                ui.set_height(300.0);
                 ui.heading(t!("help.update.modal_title"));
                 ui.label(format!(
                     "v{} -> v{}",
                     self.current_version, self.available_version
                 ));
-                ui.add_space(10.0);
+                ui.separator();
 
                 ScrollArea::vertical().max_height(150.0).show(ui, |ui| {
                     CommonMarkViewer::new().show(
@@ -454,12 +473,10 @@ impl JukeBoxGui {
 
         if self.generic_errors.len() > 0 {
             let generic_error = self.generic_errors.get(0).unwrap().clone();
-            Modal::new(Id::new("GenericErrorModal")).show(ui.ctx(), |ui| {
+            Modal::new(Id::new("GenericPopupModal")).show(ui.ctx(), |ui| {
                 ui.set_width(400.0);
-
-                ui.heading(t!("help.generic.modal_title"));
-
-                ui.add_space(10.0);
+                ui.heading("");
+                ui.separator();
 
                 CommonMarkViewer::new().show(ui, &mut self.commonmark_cache, &generic_error);
 
@@ -504,7 +521,7 @@ impl JukeBoxGui {
                 SerialEvent::Connected { device_info } => {
                     let device_uid = device_info.device_uid;
                     let firmware_version = device_info.firmware_version;
-                    let device_type = device_info.input_identifier;
+                    let device_type = device_info.device_type;
 
                     self.current_device = device_uid.clone();
 
@@ -516,7 +533,7 @@ impl JukeBoxGui {
 
                     if self.devices.contains_key(&device_uid) {
                         let v = self.devices.get_mut(&device_uid).unwrap();
-                        v.device_info.device_type = device_type.into();
+                        v.device_info.device_type = device_type;
                         // v.device_info.nickname = device_name;
                         v.firmware_version = Some(Version::parse(&firmware_version).unwrap());
                         v.connected = true;
@@ -526,7 +543,7 @@ impl JukeBoxGui {
                             device_uid.clone(),
                             DeviceInfoExt {
                                 device_info: DeviceInfo {
-                                    device_type: device_type.into(),
+                                    device_type: device_type,
                                     nickname: device_name,
                                 },
                                 firmware_version: Some(Version::parse(&firmware_version).unwrap()),

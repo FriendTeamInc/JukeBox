@@ -1,14 +1,14 @@
 // All the utilities for the input system
 
 use bitmatch::bitmatch;
+use serde::{Deserialize, Serialize};
 
 pub const IDENT_UNKNOWN_INPUT: u8 = b'?';
 pub const IDENT_KEY_INPUT: u8 = b'K';
 pub const IDENT_KNOB_INPUT: u8 = b'O';
 pub const IDENT_PEDAL_INPUT: u8 = b'P';
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum DeviceType {
     Unknown,
@@ -37,16 +37,14 @@ impl Into<u8> for DeviceType {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Connection {
     NotConnected(bool), // false - lost connection, true - clean disconnect
     Connected,
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum SwitchPosition {
     Up,
@@ -105,8 +103,7 @@ impl Into<bool> for SwitchPosition {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct KeyInputs {
     pub key1: SwitchPosition,
@@ -231,8 +228,7 @@ impl Into<KeyInputs> for [bool; 16] {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum KnobDirection {
     None,
@@ -277,8 +273,7 @@ impl Into<u8> for KnobDirection {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct KnobInputs {
     pub left_switch: SwitchPosition,
@@ -337,8 +332,7 @@ impl KnobInputs {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct PedalInputs {
     pub left: SwitchPosition,
@@ -396,8 +390,7 @@ impl Into<PedalInputs> for [bool; 3] {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum JBInputs {
     KeyPad(KeyInputs),

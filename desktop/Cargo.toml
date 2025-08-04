@@ -1,12 +1,12 @@
 [package]
 name = "jukebox_desktop"
-version = "0.4.5"
+version = "0.5.0"
 edition = "2021"
 build = "build.rs"
 license = "MIT"
 
 [dependencies]
-jukebox_util = { path = "../util", features = ["serde"] }
+jukebox_util = { path = "../util" }
 
 log = "0.4"
 env_logger = "0.11"
@@ -21,7 +21,7 @@ egui-theme-switch = "0.3"
 rfd = "0.15"
 open = "5.3"
 rust-i18n = "3"
-tray-icon = "0.20.0"
+tray-icon = "0.21"
 
 rand = "0.9"
 
@@ -45,7 +45,7 @@ sha1_smol = "1.0"
 
 sysinfo = { version = "0.35", features = ["multithread"] }
 rocm_smi_lib = { version = "0.3", features = ["device"], optional = true }
-nvml-wrapper = { version = "0.11", optional = true }
+nvml-wrapper = "0.11"
 semver = "1.0"
 egui_commonmark = "0.20"
 simple-logging = "2.0"
@@ -72,7 +72,7 @@ winresource = "0.1"
 [features]
 default = []
 discord = []
-gpu = ["dep:nvml-wrapper", "dep:rocm_smi_lib"]
+amd_gpu = ["dep:rocm_smi_lib"]
 
 [profile.release]
 strip = true

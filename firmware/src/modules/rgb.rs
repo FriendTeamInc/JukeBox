@@ -1,7 +1,5 @@
 //! RGB LEDs under the keys
 
-#![allow(dead_code)]
-
 use embedded_hal::timer::CountDown as _;
 use jukebox_util::rgb::RgbProfile;
 use rp2040_hal::{
@@ -13,9 +11,10 @@ use rp2040_hal::{
 };
 use smart_leds::brightness;
 use smart_leds_trait::{SmartLedsWrite, RGB8};
+use usb_device::device::UsbDeviceState;
 use ws2812_pio::Ws2812;
 
-use crate::util::{DEFAULT_RGB_PROFILE, RGB_CONTROLS};
+use crate::util::{DEFAULT_RGB_PROFILE, RGB_CONTROLS, USB_STATUS};
 
 const RGB_LEN: usize = 12;
 const FRAME_TIME: u32 = 33;
@@ -25,6 +24,7 @@ pub struct RgbMod {
     buffer: [RGB8; RGB_LEN],
     timer: CountDown,
     rgb_mode: RgbProfile,
+    usb_state: UsbDeviceState,
 }
 
 impl RgbMod {
@@ -34,11 +34,14 @@ impl RgbMod {
     ) -> Self {
         count_down.start(FRAME_TIME.millis());
 
+        let default_rgb_profile = DEFAULT_RGB_PROFILE.with_lock(|p| p.1.clone());
+
         RgbMod {
             ws: ws,
             buffer: [(0, 0, 0).into(); RGB_LEN],
             timer: count_down,
-            rgb_mode: DEFAULT_RGB_PROFILE,
+            rgb_mode: default_rgb_profile,
+            usb_state: UsbDeviceState::Default,
         }
     }
 
@@ -55,15 +58,21 @@ impl RgbMod {
 
         let t = t.duration_since_epoch().ticks();
 
-        RGB_CONTROLS.with_lock(|c| {
+        RGB_CONTROLS.with_mut_lock(|c| {
             if c.0 {
                 self.rgb_mode = c.1.clone();
             }
+            c.0 = false;
         });
+        self.usb_state = USB_STATUS.with_lock(|p| *p);
 
         let buffer = self.rgb_mode.calculate_matrix(t);
 
-        let brtns = self.rgb_mode.brightness();
+        let brtns = if self.usb_state == UsbDeviceState::Suspend {
+            0
+        } else {
+            self.rgb_mode.brightness()
+        };
 
         // transform zigzag into appropriate grid
         self.buffer = [

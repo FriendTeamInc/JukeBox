@@ -1,6 +1,6 @@
 [package]
 name = "jukebox_firmware"
-version = "0.4.5"
+version = "0.5.0"
 edition = "2021"
 license = "MIT"
 
@@ -10,7 +10,7 @@ jukebox_util = { path = "../util", features = ["defmt"] }
 rp2040-hal = { version = "0.11", features = [
     "binary-info",
     "critical-section-impl",
-    # "defmt",
+    "defmt",
     # "rom-func-cache",
     "rt",
 ] }
@@ -28,12 +28,13 @@ usb-device = { version = "0.3", features = ["control-buffer-256"] }
 usbd-human-interface-device = { version = "0.6", features = ["defmt"] }
 usbd-serial = "0.2"
 
-ringbuffer = { version = "0.15", default-features = false }
+ringbuffer = { version = "0.16", default-features = false }
 
 pio = "0.2"
 ws2812-pio = "0.9"
 smart-leds = "0.4"
 smart-leds-trait = "0.3"
+eeprom24x = { version = "0.7.2", features = ["defmt-03"] }
 
 mutually_exclusive_features = "0.1"
 

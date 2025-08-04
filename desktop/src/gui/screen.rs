@@ -1,6 +1,5 @@
 use eframe::egui::{
-    color_picker::show_color_at, vec2, Align, Color32, ComboBox, Layout, Response, RichText,
-    ScrollArea, Sense, Slider, StrokeKind, TextEdit, Ui, Vec2,
+    vec2, Align, Color32, ComboBox, Layout, RichText, ScrollArea, Sense, Slider, TextEdit, Ui,
 };
 use egui_phosphor::regular as phos;
 use jukebox_util::{
@@ -23,29 +22,6 @@ impl JukeBoxGui {
         }
     }
 
-    fn draw_rgb565_preview(ui: &mut Ui, color: Color32, size: Vec2) -> Response {
-        let (rect, response) = ui.allocate_exact_size(size, Sense::empty());
-
-        if ui.is_rect_visible(rect) {
-            let visuals = ui.visuals().widgets.noninteractive;
-            let rect = rect.expand(visuals.expansion);
-
-            let stroke_width = 0.5;
-            show_color_at(ui.painter(), color, rect.shrink(stroke_width));
-
-            // TODO: deal with exposed corners
-            let corner_radius = visuals.corner_radius.at_least(8);
-            ui.painter().rect_stroke(
-                rect,
-                corner_radius,
-                (2.0, visuals.bg_fill),
-                StrokeKind::Inside,
-            );
-        }
-
-        response
-    }
-
     fn draw_rgb565_editor(ui: &mut Ui, color: &mut (u8, u8, u8)) {
         let mut hex = format!("#{:04X}", combine_to_rgb565(color.0, color.1, color.2));
 
@@ -59,11 +35,7 @@ impl JukeBoxGui {
             ui.with_layout(Layout::top_down(Align::Min), |ui| {
                 let c2 = map_565_to_888(*color);
 
-                Self::draw_rgb565_preview(
-                    ui,
-                    Color32::from_rgb(c2.0, c2.1, c2.2),
-                    vec2(52.0, 38.0),
-                );
+                Self::draw_rgb_preview(ui, Color32::from_rgb(c2.0, c2.1, c2.2), vec2(52.0, 38.0));
 
                 let r = ui.add(TextEdit::singleline(&mut hex).desired_width(45.0));
                 if r.changed() {
@@ -82,26 +54,18 @@ impl JukeBoxGui {
         let screen_defaults = [
             (
                 ScreenProfile::Off,
-                t!("screen.profile.off.title"),
-                t!("screen.profile.off.description"),
+                t!("screen.off.title"),
+                t!("screen.off.description"),
             ),
             (
-                ScreenProfile::DisplayKeys {
-                    brightness: 255,
-                    background_color: 0x4208,
-                    text_color: 0xFFFF,
-                },
-                t!("screen.profile.display_keys.title"),
-                t!("screen.profile.display_keys.description"),
+                ScreenProfile::default_display_keys(),
+                t!("screen.display_keys.title"),
+                t!("screen.display_keys.description"),
             ),
             (
-                ScreenProfile::DisplayStats {
-                    brightness: 255,
-                    background_color: 0x4208,
-                    text_color: 0xFFFF,
-                },
-                t!("screen.profile.display_stats.title"),
-                t!("screen.profile.display_stats.description"),
+                ScreenProfile::default_display_stats(),
+                t!("screen.display_stats.title"),
+                t!("screen.display_stats.description"),
             ),
         ];
 
@@ -158,48 +122,74 @@ impl JukeBoxGui {
                             mut brightness,
                             background_color,
                             text_color,
+                            mut show_profile_name,
                         } => {
                             ui.label(t!("screen.brightness"));
                             ui.add(Slider::new(&mut brightness, 0..=100));
 
-                            ui.label(t!("screen.profile.display_keys.select_background_color"));
+                            ui.label("");
+
+                            ui.label(t!("screen.select_background_color"));
                             let mut c = split_to_rgb565(background_color);
                             Self::draw_rgb565_editor(ui, &mut c);
                             let background_color = combine_to_rgb565(c.0, c.1, c.2);
 
-                            ui.label(t!("screen.profile.display_keys.select_text_color"));
+                            ui.label("");
+
+                            ui.label(t!("screen.select_text_color"));
                             let mut c = split_to_rgb565(text_color);
                             Self::draw_rgb565_editor(ui, &mut c);
                             let text_color = combine_to_rgb565(c.0, c.1, c.2);
+
+                            ui.label("");
+
+                            ui.horizontal(|ui| {
+                                ui.label(t!("screen.show_profile_name"));
+                                ui.checkbox(&mut show_profile_name, "");
+                            });
 
                             self.editing_screen = ScreenProfile::DisplayKeys {
                                 brightness,
                                 background_color,
                                 text_color,
+                                show_profile_name,
                             };
                         }
                         ScreenProfile::DisplayStats {
                             mut brightness,
                             background_color,
                             text_color,
+                            mut show_profile_name,
                         } => {
                             ui.label(t!("screen.brightness"));
                             ui.add(Slider::new(&mut brightness, 0..=100));
 
-                            ui.label(t!("screen.profile.display_keys.select_background_color"));
+                            ui.label("");
+
+                            ui.label(t!("screen.select_background_color"));
                             let mut c = split_to_rgb565(background_color);
                             Self::draw_rgb565_editor(ui, &mut c);
                             let background_color = combine_to_rgb565(c.0, c.1, c.2);
 
-                            ui.label(t!("screen.profile.display_keys.select_text_color"));
+                            ui.label("");
+
+                            ui.label(t!("screen.select_text_color"));
                             let mut c = split_to_rgb565(text_color);
                             Self::draw_rgb565_editor(ui, &mut c);
                             let text_color = combine_to_rgb565(c.0, c.1, c.2);
+
+                            ui.label("");
+
+                            ui.horizontal(|ui| {
+                                ui.label(t!("screen.show_profile_name"));
+                                ui.checkbox(&mut show_profile_name, "");
+                            });
 
                             self.editing_screen = ScreenProfile::DisplayStats {
                                 brightness,
                                 background_color,
                                 text_color,
+                                show_profile_name,
                             };
                         }
                     }

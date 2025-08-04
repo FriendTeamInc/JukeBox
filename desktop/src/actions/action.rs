@@ -8,10 +8,7 @@ use std::{
 use anyhow::Result;
 use futures::future::{join, join_all};
 use jukebox_util::{
-    input::{KeyboardEvent, MouseEvent},
-    peripheral::DeviceType,
-    rgb::RgbProfile,
-    screen::ScreenProfile,
+    input::InputEvent, peripheral::DeviceType, rgb::RgbProfile, screen::ScreenProfile,
 };
 use tokio::sync::{
     mpsc::{UnboundedReceiver, UnboundedSender},
@@ -19,7 +16,7 @@ use tokio::sync::{
 };
 
 use crate::{
-    actions::types::{get_icon_bytes_async, Action, ActionError},
+    actions::types::{get_icon_bytes, get_icon_cache_async, Action, ActionError},
     config::{ActionConfig, JukeBoxConfig},
     input::InputKey,
     serial::{SerialCommand, SerialEvent},
@@ -54,43 +51,25 @@ async fn update_device_configs(
 
         // set icons on screen
         for (k, a) in &keys {
-            let bytes = get_icon_bytes_async(a).await;
+            let bytes = get_icon_bytes(a, &mut get_icon_cache_async().await);
             let _ = tx.send(SerialCommand::SetScrIcon(k.slot(), bytes));
         }
     }
 
     for (k, a) in keys {
         let slot = k.slot();
-        match a.action {
-            Action::InputKeyboard(kb) => {
-                tx.send(SerialCommand::SetKeyboardInput(
-                    slot,
-                    kb.get_keyboard_event(),
-                ))
-                .unwrap();
-                tx.send(SerialCommand::SetMouseInput(slot, MouseEvent::default()))
-                    .unwrap();
-            }
-            Action::InputMouse(ms) => {
-                tx.send(SerialCommand::SetKeyboardInput(
-                    slot,
-                    KeyboardEvent::empty_event(),
-                ))
-                .unwrap();
-                tx.send(SerialCommand::SetMouseInput(slot, ms.get_mouse_event()))
-                    .unwrap();
-            }
-            _ => {
-                tx.send(SerialCommand::SetKeyboardInput(
-                    slot,
-                    KeyboardEvent::empty_event(),
-                ))
-                .unwrap();
-                tx.send(SerialCommand::SetMouseInput(slot, MouseEvent::default()))
-                    .unwrap();
-            }
-        }
+        send_input_event(tx, slot, &a.action);
     }
+}
+
+pub fn send_input_event(tx: &UnboundedSender<SerialCommand>, slot: u8, action: &Action) {
+    let _ = match action {
+        Action::InputKeyboard(kb) => {
+            tx.send(SerialCommand::SetInputEvent(slot, kb.get_input_event()))
+        }
+        Action::InputMouse(ms) => tx.send(SerialCommand::SetInputEvent(slot, ms.get_input_event())),
+        _ => tx.send(SerialCommand::SetInputEvent(slot, InputEvent::default())),
+    };
 }
 
 pub async fn action_task(
@@ -132,7 +111,7 @@ pub async fn action_task(
             .unwrap_or(DeviceType::Unknown)
             .clone();
 
-        (device_type, profile, c.current_profile.clone(), rgb, scr) // TODO: add hardware input info
+        (device_type, profile, c.current_profile.clone(), rgb, scr)
     };
 
     while let Some(evnt) = s_evnt_rx.recv().await {
@@ -142,7 +121,6 @@ pub async fn action_task(
 
                 clear_set(&mut prevkeys, device_uid).await;
 
-                // TODO: set hardware inputs here
                 let (device_type, keys, profile_name, rgb_profile, screen_profile) =
                     get_profile_info(&config, device_uid).await;
                 update_device_configs(

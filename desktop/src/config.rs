@@ -81,6 +81,8 @@ pub struct JukeBoxConfig {
     pub enable_splash: bool,
     pub always_save_on_exit: bool,
     pub ignore_update_notifications: bool,
+
+    pub seen_intro_messages: bool,
 }
 impl Default for JukeBoxConfig {
     fn default() -> Self {
@@ -95,6 +97,8 @@ impl Default for JukeBoxConfig {
             enable_splash: true,
             always_save_on_exit: false,
             ignore_update_notifications: false,
+
+            seen_intro_messages: true,
         }
     }
 }

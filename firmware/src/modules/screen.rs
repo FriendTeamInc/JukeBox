@@ -15,6 +15,7 @@ use embedded_graphics::{
 use embedded_graphics_framebuf::{backends::FrameBufferBackend, FrameBuf};
 use embedded_hal::timer::CountDown as _;
 use jukebox_util::{
+    peripheral::Connection,
     screen::{ProfileName, ScreenProfile},
     stats::SystemStats,
 };
@@ -28,12 +29,13 @@ use rp2040_hal::{
     timer::CountDown,
     Timer,
 };
+use usb_device::device::UsbDeviceState;
 
 use crate::{
     st7789::St7789,
     util::{
-        DEFAULT_PROFILE_NAME, DEFAULT_SCREEN_PROFILE, DEFAULT_SYSTEM_STATS, ICONS, PROFILE_NAME,
-        SCREEN_CONTROLS, SCREEN_SYSTEM_STATS,
+        CONNECTION_STATUS, DEFAULT_PROFILE_NAME, DEFAULT_SCREEN_PROFILE, DEFAULT_SYSTEM_STATS,
+        ICONS, PROFILE_NAME, SCREEN_CONTROLS, SCREEN_SYSTEM_STATS, USB_STATUS,
     },
 };
 
@@ -99,8 +101,16 @@ static FONT1: BitmapFont<'static, Gray4, 1> = mplus!(
     'a'..'z',
     [" ", "-", ".", "%", "°", "/", ":"]
 );
-static FONT2: BitmapFont<'static, Gray4, 1> =
-    mplus!(code(100), 500, 32, false, 1, 4, '0'..='9', [".", " "]);
+static FONT2: BitmapFont<'static, Gray4, 1> = mplus!(
+    code(100),
+    500,
+    32,
+    false,
+    1,
+    4,
+    '0'..='9',
+    ["A", "N", ".", " ", "/"]
+);
 
 const LEFT_TEXT_STYLE: TextStyle = TextStyleBuilder::new()
     .alignment(Alignment::Left)
@@ -123,6 +133,7 @@ pub struct ScreenMod {
     profile_name: ProfileName,
     screen_profile: ScreenProfile,
     system_stats: SystemStats,
+    usb_state: UsbDeviceState,
 
     dma_ch0: Channel<CH0>,
     timer: CountDown,
@@ -139,6 +150,8 @@ impl ScreenMod {
     ) -> Self {
         timer.start(REFRESH_RATE.millis());
 
+        let default_screen_profile = DEFAULT_SCREEN_PROFILE.with_lock(|p| p.1.clone());
+
         ScreenMod {
             st,
 
@@ -146,8 +159,9 @@ impl ScreenMod {
             fb: FrameBuf::new(FBBackEnd {t: unsafe { &mut FBDATA }}, SCR_W, SCR_H),
 
             profile_name: DEFAULT_PROFILE_NAME,
-            screen_profile: DEFAULT_SCREEN_PROFILE,
+            screen_profile: default_screen_profile,
             system_stats: DEFAULT_SYSTEM_STATS,
+            usb_state: UsbDeviceState::Default,
 
             dma_ch0,
             timer,
@@ -233,9 +247,7 @@ impl ScreenMod {
         }
     }
 
-    fn draw_pre_tick(&mut self) {
-        // TODO: brightness control? via pwm?
-
+    fn draw_pre_tick(&mut self, uid: &'static str, ver: &'static str) {
         let c: Bgr565 = {
             let c: RawU16 = self.screen_profile.text_color().into();
             c.into()
@@ -246,7 +258,13 @@ impl ScreenMod {
             c.into()
         };
 
-        self.st.set_backlight(self.screen_profile.brightness());
+        let brtns = if self.usb_state == UsbDeviceState::Suspend {
+            0
+        } else {
+            self.screen_profile.brightness()
+        };
+
+        self.st.set_backlight(brtns);
 
         match self.screen_profile {
             ScreenProfile::Off => {}
@@ -254,6 +272,7 @@ impl ScreenMod {
                 brightness: _,
                 background_color: _,
                 text_color: _,
+                show_profile_name,
             } => {
                 let font1_style = BitmapFontStyleBuilder::new()
                     .text_color(c)
@@ -261,18 +280,54 @@ impl ScreenMod {
                     .font(&FONT1)
                     .build();
 
-                let _ = Text::with_text_style(
-                    self.profile_name.to_str(),
-                    Point::new(160 - 1, 224),
-                    font1_style.clone(),
-                    CENTER_TEXT_STYLE,
-                )
-                .draw(&mut self.fb);
+                let serial_status = CONNECTION_STATUS.with_lock(|c| *c);
+
+                if serial_status != Connection::Connected {
+                    let _ = Text::with_text_style(
+                        uid,
+                        Point::new(160 - 1, 224),
+                        font1_style.clone(),
+                        CENTER_TEXT_STYLE,
+                    )
+                    .draw(&mut self.fb);
+
+                    let _ = Text::with_text_style(
+                        ver,
+                        Point::new(255, 224),
+                        font1_style.clone(),
+                        LEFT_TEXT_STYLE,
+                    )
+                    .draw(&mut self.fb);
+
+                    // let usb_color = match self.usb_state {
+                    //     UsbDeviceState::Default => Bgr565::new(0, 0, 31),
+                    //     UsbDeviceState::Addressed => Bgr565::new(31, 16, 8),
+                    //     UsbDeviceState::Configured => Bgr565::new(8, 63, 8),
+                    //     UsbDeviceState::Suspend => Bgr565::new(0, 0, 0),
+                    // };
+
+                    // let _ = Rectangle::new(Point::new(26, 224 - 10), Size::new(16, 16))
+                    //     .into_styled(PrimitiveStyle::with_fill(usb_color))
+                    //     .draw(&mut self.fb);
+
+                    // self.rounded_rect(bgc, 26, 224 - 10, 16, 1);
+                } else {
+                    if show_profile_name {
+                        let _ = Text::with_text_style(
+                            self.profile_name.to_str(),
+                            Point::new(160 - 1, 224),
+                            font1_style.clone(),
+                            CENTER_TEXT_STYLE,
+                        )
+                        .draw(&mut self.fb);
+                    }
+                }
             }
             ScreenProfile::DisplayStats {
                 brightness: _,
                 background_color: _,
                 text_color: _,
+                show_profile_name,
             } => {
                 let font1_style = BitmapFontStyleBuilder::new()
                     .text_color(c)
@@ -361,7 +416,6 @@ impl ScreenMod {
                     .draw(&mut self.fb);
 
                     // CPU name
-                    // TODO: color appropriately
                     let _ = Text::with_text_style(
                         self.system_stats.cpu_name.to_str(),
                         Point::new(3, 10),
@@ -446,7 +500,6 @@ impl ScreenMod {
                     .draw(&mut self.fb);
 
                     // GPU name
-                    // TODO: color appropriately
                     let _ = Text::with_text_style(
                         self.system_stats.gpu_name.to_str(),
                         Point::new(320 - 2 - 2, 10),
@@ -457,16 +510,18 @@ impl ScreenMod {
                 }
 
                 // Profile name
-                let _ = Text::with_text_style(
-                    self.profile_name.to_str(),
-                    Point::new(160 - 1, 116),
-                    font1_style.clone(),
-                    TextStyleBuilder::new()
-                        .alignment(Alignment::Center)
-                        .baseline(Baseline::Middle)
-                        .build(),
-                )
-                .draw(&mut self.fb);
+                if show_profile_name {
+                    let _ = Text::with_text_style(
+                        self.profile_name.to_str(),
+                        Point::new(160 - 1, 116),
+                        font1_style.clone(),
+                        TextStyleBuilder::new()
+                            .alignment(Alignment::Center)
+                            .baseline(Baseline::Middle)
+                            .build(),
+                    )
+                    .draw(&mut self.fb);
+                }
             }
         }
     }
@@ -478,6 +533,7 @@ impl ScreenMod {
                 brightness: _,
                 background_color: _,
                 text_color: _,
+                show_profile_name: _,
             } => {
                 for y in 0..3 {
                     for x in 0..4 {
@@ -505,14 +561,15 @@ impl ScreenMod {
                 brightness: _,
                 background_color: _,
                 text_color: _,
+                show_profile_name: _,
             } => {
-                ICONS.with_mut_lock(|i| {
-                    for y in 0..3 {
-                        for x in 0..4 {
+                for y in 0..3 {
+                    for x in 0..4 {
+                        ICONS.with_mut_lock(|i| {
                             let idx = y * 4 + x;
 
                             if self.keys_status[idx] == self.keys_previous_frame[idx] && !i[idx].0 {
-                                continue;
+                                return;
                             }
 
                             self.draw_icon(
@@ -524,14 +581,20 @@ impl ScreenMod {
                             );
 
                             i[idx].0 = false;
-                        }
+                        });
                     }
-                });
+                }
             }
         }
     }
 
-    pub fn update(mut self, keys: &[bool], _t: &Timer) -> Self {
+    pub fn update(
+        mut self,
+        keys: &[bool],
+        _t: &Timer,
+        uid: &'static str,
+        ver: &'static str,
+    ) -> Self {
         for i in 0..12 {
             if keys[i] {
                 self.keys_status[i] = 4;
@@ -560,6 +623,12 @@ impl ScreenMod {
             }
             p.0 = false;
         });
+        USB_STATUS.with_lock(|p| {
+            if self.usb_state != *p {
+                changed = true;
+                self.usb_state = *p;
+            }
+        });
 
         if changed {
             // using multiple channels did not meaningfully improve performance.
@@ -578,8 +647,7 @@ impl ScreenMod {
                 dma_ch0
             };
 
-            self.draw_pre_tick();
-
+            self.draw_pre_tick(uid, ver);
             self.keys_previous_frame = [2; 12];
             self.draw_post_tick();
         }

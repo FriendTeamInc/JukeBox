@@ -144,7 +144,6 @@ async fn create_client(
         config.discord_oauth_access = Some(oauth);
         config.save();
     } else {
-        // TODO: refresh with refresh token
         let oauth = discord_refresh_access_token(
             &config.discord_oauth_access.as_ref().unwrap().refresh_token,
             DISCORD_CLIENT_ID.unwrap(),
