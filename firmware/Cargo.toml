@@ -1,5 +1,5 @@
 [package]
-name = "jukebox_firmware"
+name = "jukebox-firmware"
 version = "0.5.0"
 edition = "2021"
 license = "MIT"
@@ -7,78 +7,56 @@ license = "MIT"
 [dependencies]
 jukebox_util = { path = "../util", features = ["defmt"] }
 
-rp2040-hal = { version = "0.11", features = [
-    "binary-info",
-    "critical-section-impl",
+embassy-embedded-hal = { version = "0.4.0", features = ["defmt"] }
+embassy-sync = { version = "0.7.0", features = ["defmt"] }
+embassy-executor = { version = "0.8.0", features = [
+    "arch-cortex-m",
+    "executor-thread",
     "defmt",
-    # "rom-func-cache",
-    "rt",
 ] }
-rp2040-boot2 = "0.3"
-rp2040-flash = "0.6"
+embassy-time = { version = "0.4.0", features = [
+    "defmt",
+    "defmt-timestamp-uptime",
+] }
+embassy-rp = { version = "0.7.0", features = [
+    "defmt",
+    "time-driver",
+    "critical-section-impl",
+    "binary-info",
+
+    "rp235xa",
+    "imagedef-nonsecure-exe",
+] }
+embassy-usb = { version = "0.5.0", features = ["defmt"] }
+embassy-futures = { version = "0.1.0" }
 
 cortex-m = "0.7"
 cortex-m-rt = "0.7"
-embedded-hal = "0.2"
 defmt = "1"
 defmt-rtt = { version = "1", features = ["disable-blocking-mode"] }
 panic-probe = { version = "1", features = ["print-defmt"] }
+static_cell = "2"
 
-usb-device = { version = "0.3", features = ["control-buffer-256"] }
-usbd-human-interface-device = { version = "0.6", features = ["defmt"] }
+usbd-human-interface-device = "0.6"
 usbd-serial = "0.2"
 
-ringbuffer = { version = "0.16", default-features = false }
+# ringbuffer = { version = "0.16", default-features = false }
 
-pio = "0.2"
-ws2812-pio = "0.9"
-smart-leds = "0.4"
-smart-leds-trait = "0.3"
-eeprom24x = { version = "0.7.2", features = ["defmt-03"] }
+# pio = "0.2"
+# ws2812-pio = "0.9"
+# smart-leds = "0.4"
+# smart-leds-trait = "0.3"
+# eeprom24x = { version = "0.7.2", features = ["defmt-03"] }
 
-mutually_exclusive_features = "0.1"
+# mutually_exclusive_features = "0.1"
 
-embedded-dma = "0.2"
-embedded-graphics = { version = "0.8", features = ["fixed_point"] }
-embedded-graphics-framebuf = "0.5"
-mplusfonts = "0.2"
+# embedded-dma = "0.2"
+# embedded-graphics = { version = "0.8", features = ["fixed_point"] }
+# embedded-graphics-framebuf = "0.5"
+# mplusfonts = "0.2"
 
-[features]
-default = ["keypad"]
-keypad = []
-knobpad = []
-pedalpad = []
-
-# cargo build/run
-[profile.dev]
-codegen-units = 1
-debug = 2
-debug-assertions = true
-incremental = false
-opt-level = 3
-overflow-checks = true
-
-# cargo build/run --release
-[profile.release]
-codegen-units = 1
-debug = 2
-debug-assertions = false
-incremental = false
-lto = 'fat'
-opt-level = 3
-overflow-checks = false
-
-# do not optimize proc-macro crates = faster builds from scratch
-[profile.dev.build-override]
-codegen-units = 8
-debug = false
-debug-assertions = false
-opt-level = 0
-overflow-checks = false
-
-[profile.release.build-override]
-codegen-units = 8
-debug = false
-debug-assertions = false
-opt-level = 0
-overflow-checks = false
+# [features]
+# default = ["keypad"]
+# keypad = []
+# knobpad = []
+# pedalpad = []

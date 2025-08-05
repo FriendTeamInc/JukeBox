@@ -1,64 +1,43 @@
-/* https://github.com/rp-rs/rp-hal/blob/main/rp2040-hal-examples/memory.x */
-
 MEMORY {
-    BOOT2 : ORIGIN = 0x10000000, LENGTH = 0x100
-    FLASH : ORIGIN = 0x10000100, LENGTH = 2048K - 0x100
     /*
-     * RAM consists of 4 banks, SRAM0-SRAM3, with a striped mapping.
+     * The RP2350 has either external or internal flash.
+     *
+     * 2 MiB is a safe default here, although a Pico 2 has 4 MiB.
+     */
+    FLASH : ORIGIN = 0x10000000, LENGTH = 2048K
+    /*
+     * RAM consists of 8 banks, SRAM0-SRAM7, with a striped mapping.
      * This is usually good for performance, as it distributes load on
      * those banks evenly.
      */
-    RAM : ORIGIN = 0x20000000, LENGTH = 256K
+    RAM : ORIGIN = 0x20000000, LENGTH = 512K
     /*
-     * RAM banks 4 and 5 use a direct mapping. They can be used to have
+     * RAM banks 8 and 9 use a direct mapping. They can be used to have
      * memory areas dedicated for some specific job, improving predictability
      * of access times.
      * Example: Separate stacks for core0 and core1.
      */
-    SRAM4 : ORIGIN = 0x20040000, LENGTH = 4k
-    SRAM5 : ORIGIN = 0x20041000, LENGTH = 4k
-
-    /* SRAM banks 0-3 can also be accessed directly. However, those ranges
-       alias with the RAM mapping, above. So don't use them at the same time!
-    SRAM0 : ORIGIN = 0x21000000, LENGTH = 64k
-    SRAM1 : ORIGIN = 0x21010000, LENGTH = 64k
-    SRAM2 : ORIGIN = 0x21020000, LENGTH = 64k
-    SRAM3 : ORIGIN = 0x21030000, LENGTH = 64k
-    */
+    SRAM8 : ORIGIN = 0x20080000, LENGTH = 4K
+    SRAM9 : ORIGIN = 0x20081000, LENGTH = 4K
 }
-
-EXTERN(BOOT2_FIRMWARE)
-
-SECTIONS {
-    /* ### Boot loader
-     *
-     * An executable block of code which sets up the QSPI interface for
-     * 'Execute-In-Place' (or XIP) mode. Also sends chip-specific commands to
-     * the external flash chip.
-     *
-     * Must go at the start of external flash, where the Boot ROM expects it.
-     */
-    .boot2 ORIGIN(BOOT2) :
-    {
-        KEEP(*(.boot2));
-    } > BOOT2
-} INSERT BEFORE .text;
 
 SECTIONS {
     /* ### Boot ROM info
      *
-     * Goes after .vector_table, to keep it in the first 512 bytes of flash,
-     * where picotool can find it
+     * Goes after .vector_table, to keep it in the first 4K of flash
+     * where the Boot ROM (and picotool) can find it
      */
-    .boot_info : ALIGN(4)
+    .start_block : ALIGN(4)
     {
+        __start_block_addr = .;
+        KEEP(*(.start_block));
         KEEP(*(.boot_info));
     } > FLASH
 
 } INSERT AFTER .vector_table;
 
 /* move .text to start /after/ the boot info */
-_stext = ADDR(.boot_info) + SIZEOF(.boot_info);
+_stext = ADDR(.start_block) + SIZEOF(.start_block);
 
 SECTIONS {
     /* ### Picotool 'Binary Info' Entries
@@ -78,3 +57,19 @@ SECTIONS {
         __bi_entries_end = .;
     } > FLASH
 } INSERT AFTER .text;
+
+SECTIONS {
+    /* ### Boot ROM extra info
+     *
+     * Goes after everything in our program, so it can contain a signature.
+     */
+    .end_block : ALIGN(4)
+    {
+        __end_block_addr = .;
+        KEEP(*(.end_block));
+    } > FLASH
+
+} INSERT AFTER .uninit;
+
+PROVIDE(start_to_end = __end_block_addr - __start_block_addr);
+PROVIDE(end_to_start = __start_block_addr - __end_block_addr);
