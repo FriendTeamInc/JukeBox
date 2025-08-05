@@ -22,10 +22,10 @@ embassy-rp = { version = "0.7.0", features = [
     "defmt",
     "time-driver",
     "critical-section-impl",
-    "binary-info",
 
     "rp235xa",
-    "imagedef-nonsecure-exe",
+    "imagedef-secure-exe",
+    "binary-info",
 ] }
 embassy-usb = { version = "0.5.0", features = ["defmt"] }
 embassy-futures = { version = "0.1.0" }
