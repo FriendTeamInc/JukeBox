@@ -55,8 +55,8 @@ usbd-serial = "0.2"
 # embedded-graphics-framebuf = "0.5"
 # mplusfonts = "0.2"
 
-# [features]
-# default = ["keypad"]
-# keypad = []
-# knobpad = []
-# pedalpad = []
+[features]
+default = ["keypad"]
+keypad = []
+knobpad = []
+pedalpad = []

@@ -3,7 +3,11 @@
 #![no_std]
 #![no_main]
 
+mod uid;
+mod usb;
+
 use defmt::*;
+
 use {defmt_rtt as _, panic_probe as _};
 
 use embassy_executor::Executor;
@@ -30,6 +34,9 @@ enum LedState {
 fn main() -> ! {
     // Hello, world!
     let p = embassy_rp::init(Default::default());
+
+    // Set up the UID
+    uid::setup_uid();
 
     // Break out pins for peripherals
     // EEPROM
@@ -68,7 +75,8 @@ fn main() -> ! {
     let scr_bl = Pwm::new_output_a(p.PWM_SLICE0, p.PIN_16, Config::default());
     let scr_rst = Output::new(p.PIN_13, Level::Low);
 
-    // Set up peripherals
+    // Set up peripherals for tasks
+    let usb = usb::build_usb(p.USB);
     // TODO!
 
     // Run all peripherals on core1
