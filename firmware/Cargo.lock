@@ -873,7 +873,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "jukebox-firmware"
+name = "jukebox_firmware"
 version = "0.5.0"
 dependencies = [
  "cortex-m",
@@ -888,6 +888,7 @@ dependencies = [
  "embassy-time",
  "embassy-usb",
  "jukebox_util",
+ "packed_struct",
  "panic-probe",
  "static_cell",
  "usbd-human-interface-device",

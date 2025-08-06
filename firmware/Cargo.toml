@@ -1,5 +1,5 @@
 [package]
-name = "jukebox-firmware"
+name = "jukebox_firmware"
 version = "0.5.0"
 edition = "2024"
 license = "MIT"
@@ -7,18 +7,18 @@ license = "MIT"
 [dependencies]
 jukebox_util = { path = "../util", features = ["defmt"] }
 
-embassy-embedded-hal = { version = "0.4.0", features = ["defmt"] }
-embassy-sync = { version = "0.7.0", features = ["defmt"] }
-embassy-executor = { version = "0.8.0", features = [
+embassy-embedded-hal = { version = "0.4", features = ["defmt"] }
+embassy-sync = { version = "0.7", features = ["defmt"] }
+embassy-executor = { version = "0.8", features = [
     "arch-cortex-m",
     "executor-thread",
     "defmt",
 ] }
-embassy-time = { version = "0.4.0", features = [
+embassy-time = { version = "0.4", features = [
     "defmt",
     "defmt-timestamp-uptime",
 ] }
-embassy-rp = { version = "0.7.0", features = [
+embassy-rp = { version = "0.7", features = [
     "defmt",
     "time-driver",
     "critical-section-impl",
@@ -27,8 +27,8 @@ embassy-rp = { version = "0.7.0", features = [
     "imagedef-secure-exe",
     "binary-info",
 ] }
-embassy-usb = { version = "0.5.0", features = ["defmt"] }
-embassy-futures = { version = "0.1.0" }
+embassy-usb = { version = "0.5", features = ["defmt"] }
+embassy-futures = "0.1"
 
 cortex-m = "0.7"
 cortex-m-rt = "0.7"
@@ -39,6 +39,7 @@ static_cell = "2"
 
 usbd-human-interface-device = "0.6"
 usbd-serial = "0.2"
+packed_struct = { version = "0.10.1", default-features = false }
 
 # ringbuffer = { version = "0.16", default-features = false }
 

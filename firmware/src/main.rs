@@ -97,7 +97,6 @@ fn main() -> ! {
     let executor0 = EXECUTOR0.init(Executor::new());
     executor0.run(|spawner| {
         usb.run(&spawner);
-        // unwrap!(spawner.spawn(core0_task()));
     });
 }
 

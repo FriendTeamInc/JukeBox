@@ -10,27 +10,34 @@ use embassy_rp::{
     peripherals::USB,
     usb::{Driver, InterruptHandler},
 };
+use embassy_time::Timer;
 use embassy_usb::{
     UsbDevice,
     class::{
         cdc_acm::{CdcAcmClass, State as SerialState},
-        hid::{Config as HidConfig, HidReaderWriter, State as HidState},
+        hid::{
+            Config as HidConfig, HidReader, HidReaderWriter, HidWriter, ReportId, RequestHandler,
+            State as HidState,
+        },
     },
+    control::OutResponse,
     driver::EndpointError,
 };
+use packed_struct::PackedStruct;
 use static_cell::StaticCell;
 use usbd_human_interface_device::device::{
-    keyboard::NKRO_BOOT_KEYBOARD_REPORT_DESCRIPTOR, mouse::WHEEL_MOUSE_REPORT_DESCRIPTOR,
+    keyboard::{NKRO_BOOT_KEYBOARD_REPORT_DESCRIPTOR, NKROBootKeyboardReport},
+    mouse::{WHEEL_MOUSE_REPORT_DESCRIPTOR, WheelMouseReport},
 };
 
 embassy_rp::bind_interrupts!(struct Irqs {
     USBCTRL_IRQ => InterruptHandler<USB>;
 });
 
-const KEYBOARD_READ_N: usize = 1;
-const KEYBOARD_WRITE_N: usize = 8;
-const MOUSE_READ_N: usize = 1;
-const MOUSE_WRITE_N: usize = 8;
+const KEYBOARD_READ_N: usize = 64;
+const KEYBOARD_WRITE_N: usize = 64;
+const MOUSE_READ_N: usize = 64;
+const MOUSE_WRITE_N: usize = 64;
 
 type UsbDriver = Driver<'static, USB>;
 type UsbDev = UsbDevice<'static, UsbDriver>;
@@ -149,14 +156,20 @@ impl UsbMod {
 
         // start USB serial loop
         unwrap!(spawner.spawn(usb_serial_run(self.serial)));
-        // start USB keyboard HID loop
-        // todo!();
-        // start USB mouse HID loop
-        // todo!();
+        // start USB HID loops
+        let (keyboard_reader, keyboard_writer) = self.keyboard.split();
+        let (mouse_reader, mouse_writer) = self.mouse.split();
+        unwrap!(spawner.spawn(usb_keyboard_in_run(keyboard_writer)));
+        unwrap!(spawner.spawn(usb_keyboard_out_run(keyboard_reader)));
+        unwrap!(spawner.spawn(usb_mouse_in_run(mouse_writer)));
+        unwrap!(spawner.spawn(usb_mouse_out_run(mouse_reader)));
     }
 }
 
 static USB_SUSPENDED: AtomicBool = AtomicBool::new(false);
+pub fn usb_suspended() -> bool {
+    USB_SUSPENDED.load(core::sync::atomic::Ordering::Relaxed)
+}
 
 #[embassy_executor::task]
 async fn usb_run(mut usb_dev: UsbDevice<'static, Driver<'static, USB>>) -> ! {
@@ -168,10 +181,6 @@ async fn usb_run(mut usb_dev: UsbDevice<'static, Driver<'static, USB>>) -> ! {
         USB_SUSPENDED.store(false, core::sync::atomic::Ordering::Relaxed);
         info!("USB Resumed");
     }
-}
-
-pub fn usb_suspended() -> bool {
-    USB_SUSPENDED.load(core::sync::atomic::Ordering::Relaxed)
 }
 
 #[embassy_executor::task]
@@ -191,7 +200,7 @@ async fn usb_serial_run(mut usb_serial: UsbSerial) -> ! {
                 },
             };
             let data = &buf[..n];
-            info!("data: {:x}", data);
+            info!("USB Serial Data: {:x}", data);
             match usb_serial.write_packet(data).await {
                 Ok(_) => (),
                 Err(e) => match e {
@@ -202,5 +211,61 @@ async fn usb_serial_run(mut usb_serial: UsbSerial) -> ! {
                 },
             };
         }
+    }
+}
+
+#[embassy_executor::task]
+async fn usb_keyboard_out_run(
+    keyboard_reader: HidReader<'static, UsbDriver, KEYBOARD_READ_N>,
+) -> ! {
+    let mut keyboard_hid_handler = HidHandler {};
+    keyboard_reader.run(false, &mut keyboard_hid_handler).await;
+}
+#[embassy_executor::task]
+async fn usb_keyboard_in_run(
+    mut keyboard_writer: HidWriter<'static, UsbDriver, KEYBOARD_WRITE_N>,
+) -> ! {
+    loop {
+        Timer::after_millis(10).await;
+        // TODO: build full report with NKROBootKeyboardReport::new(keys)
+        let report = NKROBootKeyboardReport::default().pack().unwrap();
+        match keyboard_writer.write(&report).await {
+            Ok(_) => (),
+            Err(e) => warn!("failed to send keyboard report: {:?}", e),
+        }
+    }
+}
+
+#[embassy_executor::task]
+async fn usb_mouse_out_run(mouse_reader: HidReader<'static, UsbDriver, MOUSE_READ_N>) -> ! {
+    let mut mouse_hid_handler = HidHandler {};
+    mouse_reader.run(false, &mut mouse_hid_handler).await;
+}
+#[embassy_executor::task]
+async fn usb_mouse_in_run(mut mouse_writer: HidWriter<'static, UsbDriver, MOUSE_WRITE_N>) -> ! {
+    loop {
+        Timer::after_millis(10).await;
+        let report = WheelMouseReport::default().pack().unwrap();
+        match mouse_writer.write(&report).await {
+            Ok(_) => (),
+            Err(e) => warn!("failed to send mouse report: {:?}", e),
+        }
+    }
+}
+
+struct HidHandler;
+impl RequestHandler for HidHandler {
+    fn get_report(&mut self, _id: ReportId, _buf: &mut [u8]) -> Option<usize> {
+        None
+    }
+
+    fn set_report(&mut self, _id: ReportId, _data: &[u8]) -> OutResponse {
+        OutResponse::Accepted
+    }
+
+    fn set_idle_ms(&mut self, _id: Option<ReportId>, _dur: u32) {}
+
+    fn get_idle_ms(&mut self, _id: Option<ReportId>) -> Option<u32> {
+        None
     }
 }
