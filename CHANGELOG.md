@@ -1,4 +1,4 @@
-# v0.6.0 - Defaultized (TODO)
+# v0.6.0 - Defaultized (August 5, 2025)
 - Added EEPROM support to firmware. A default, app-disconnected profile can now be set. Support in GUI will be added at a later date.
 - Added "sleep mode" for when host computer goes to sleep (suspends USB), turning off the screen and RGB.
 - Increase max number of colors for Wave and Breathe RGB patterns from 4 to 16.
