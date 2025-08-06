@@ -10,6 +10,7 @@
 - Change default profile in software for keypad to the F13-24 keys.
 - Fix identify function having messed up offsets for the blinking LED.
 - Allow profile name to be hidden on screen.
+- Update dependencies for desktop app and firmware.
 
 # v0.5.0 - Tut Trials (June 27, 2025)
 - Add a welcome message on very first startup with some important info for the user.
