@@ -1,3 +1,8 @@
+# v0.6.1 - But Not Serialized (August 5, 2025)
+- Fix firmware having too big of a serial buffer, causing a crash on startup.
+- Fix versioning issue with firmware and software.
+- Fix action icon size in software.
+
 # v0.6.0 - Defaultized (August 5, 2025)
 - Added EEPROM support to firmware. A default, app-disconnected profile can now be set. Support in GUI will be added at a later date.
 - Added "sleep mode" for when host computer goes to sleep (suspends USB), turning off the screen and RGB.

@@ -67,8 +67,10 @@ use usbd_human_interface_device::{
 };
 use usbd_serial::SerialPort;
 
+use crate::util::USB_SUSPENDED;
 #[allow(unused_imports)]
 use defmt::*;
+
 use {defmt_rtt as _, panic_probe as _};
 
 use jukebox_util::peripheral::JBInputs;
@@ -385,16 +387,12 @@ fn main() -> ! {
             let _ = usb_hid.device::<NKROBootKeyboard<'_, _>, _>().read_report();
         }
 
-        util::USB_STATUS.with_mut_lock(|s| {
-            // if *s != usb_dev.state() {
-            //     match usb_dev.state() {
-            //         UsbDeviceState::Default => info!("usb state: default"),
-            //         UsbDeviceState::Addressed => info!("usb state: addressed"),
-            //         UsbDeviceState::Configured => info!("usb state: configured"),
-            //         UsbDeviceState::Suspend => info!("usb state: suspend"),
-            //     }
-            // }
-            *s = usb_dev.state();
-        });
+        USB_SUSPENDED.store(
+            match usb_dev.state() {
+                UsbDeviceState::Configured => false,
+                _ => true,
+            },
+            core::sync::atomic::Ordering::Relaxed,
+        );
     }
 }

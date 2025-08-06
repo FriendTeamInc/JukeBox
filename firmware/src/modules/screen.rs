@@ -29,13 +29,12 @@ use rp2040_hal::{
     timer::CountDown,
     Timer,
 };
-use usb_device::device::UsbDeviceState;
 
 use crate::{
     st7789::St7789,
     util::{
-        CONNECTION_STATUS, DEFAULT_PROFILE_NAME, DEFAULT_SCREEN_PROFILE, DEFAULT_SYSTEM_STATS,
-        ICONS, PROFILE_NAME, SCREEN_CONTROLS, SCREEN_SYSTEM_STATS, USB_STATUS,
+        usb_suspended, CONNECTION_STATUS, DEFAULT_PROFILE_NAME, DEFAULT_SCREEN_PROFILE,
+        DEFAULT_SYSTEM_STATS, ICONS, PROFILE_NAME, SCREEN_CONTROLS, SCREEN_SYSTEM_STATS,
     },
 };
 
@@ -133,7 +132,7 @@ pub struct ScreenMod {
     profile_name: ProfileName,
     screen_profile: ScreenProfile,
     system_stats: SystemStats,
-    usb_state: UsbDeviceState,
+    usb_suspended: bool,
 
     dma_ch0: Channel<CH0>,
     timer: CountDown,
@@ -161,7 +160,7 @@ impl ScreenMod {
             profile_name: DEFAULT_PROFILE_NAME,
             screen_profile: default_screen_profile,
             system_stats: DEFAULT_SYSTEM_STATS,
-            usb_state: UsbDeviceState::Default,
+            usb_suspended: true,
 
             dma_ch0,
             timer,
@@ -258,7 +257,7 @@ impl ScreenMod {
             c.into()
         };
 
-        let brtns = if self.usb_state == UsbDeviceState::Suspend {
+        let brtns = if self.usb_suspended {
             0
         } else {
             self.screen_profile.brightness()
@@ -623,12 +622,10 @@ impl ScreenMod {
             }
             p.0 = false;
         });
-        USB_STATUS.with_lock(|p| {
-            if self.usb_state != *p {
-                changed = true;
-                self.usb_state = *p;
-            }
-        });
+        if self.usb_suspended != usb_suspended() {
+            changed = true;
+            self.usb_suspended = usb_suspended();
+        }
 
         if changed {
             // using multiple channels did not meaningfully improve performance.

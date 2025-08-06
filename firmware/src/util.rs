@@ -1,6 +1,7 @@
 use core::{
     cmp::{max, min},
     i8,
+    sync::atomic::AtomicBool,
 };
 
 use embedded_graphics::{pixelcolor::Bgr565, prelude::RgbColor};
@@ -14,7 +15,6 @@ use jukebox_util::{
     stats::SystemStats,
 };
 // use rp2040_hal::dma::{single_buffer, Channel, CH1};
-use usb_device::device::UsbDeviceState;
 use usbd_human_interface_device::{device::mouse::WheelMouseReport, page::Keyboard};
 
 use crate::mutex::Mutex;
@@ -64,7 +64,6 @@ type InputEvents = Mutex<7, [InputEvent; 16]>;
 type ProfileNameControl = Mutex<9, (bool, ProfileName)>;
 type ScreenSystemStats = Mutex<10, (bool, SystemStats)>;
 type ScreenControls = Mutex<11, (bool, ScreenProfile)>;
-type UsbStatus = Mutex<12, UsbDeviceState>;
 
 type DefaultInputEvents = Mutex<13, (bool, [InputEvent; 16])>;
 type DefaultRgbProfile = Mutex<14, (bool, RgbProfile)>;
@@ -91,7 +90,11 @@ pub static INPUT_EVENTS: InputEvents = Mutex::new(InputEvent::default_all());
 pub static PROFILE_NAME: ProfileNameControl = Mutex::new((true, DEFAULT_PROFILE_NAME));
 pub static SCREEN_SYSTEM_STATS: ScreenSystemStats = Mutex::new((false, DEFAULT_SYSTEM_STATS));
 pub static SCREEN_CONTROLS: ScreenControls = Mutex::new((false, ScreenProfile::default_profile()));
-pub static USB_STATUS: UsbStatus = Mutex::new(UsbDeviceState::Default);
+
+pub static USB_SUSPENDED: AtomicBool = AtomicBool::new(true);
+pub fn usb_suspended() -> bool {
+    USB_SUSPENDED.load(core::sync::atomic::Ordering::Relaxed)
+}
 
 #[macro_export]
 macro_rules! time_func {

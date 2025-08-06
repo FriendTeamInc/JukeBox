@@ -11,10 +11,9 @@ use rp2040_hal::{
 };
 use smart_leds::brightness;
 use smart_leds_trait::{SmartLedsWrite, RGB8};
-use usb_device::device::UsbDeviceState;
 use ws2812_pio::Ws2812;
 
-use crate::util::{DEFAULT_RGB_PROFILE, RGB_CONTROLS, USB_STATUS};
+use crate::util::{usb_suspended, DEFAULT_RGB_PROFILE, RGB_CONTROLS};
 
 const RGB_LEN: usize = 12;
 const FRAME_TIME: u32 = 33;
@@ -24,7 +23,6 @@ pub struct RgbMod {
     buffer: [RGB8; RGB_LEN],
     timer: CountDown,
     rgb_mode: RgbProfile,
-    usb_state: UsbDeviceState,
 }
 
 impl RgbMod {
@@ -41,7 +39,6 @@ impl RgbMod {
             buffer: [(0, 0, 0).into(); RGB_LEN],
             timer: count_down,
             rgb_mode: default_rgb_profile,
-            usb_state: UsbDeviceState::Default,
         }
     }
 
@@ -64,11 +61,10 @@ impl RgbMod {
             }
             c.0 = false;
         });
-        self.usb_state = USB_STATUS.with_lock(|p| *p);
 
         let buffer = self.rgb_mode.calculate_matrix(t);
 
-        let brtns = if self.usb_state == UsbDeviceState::Suspend {
+        let brtns = if usb_suspended() {
             0
         } else {
             self.rgb_mode.brightness()

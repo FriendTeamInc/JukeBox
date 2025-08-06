@@ -7,7 +7,7 @@ use std::{
 };
 
 use eframe::egui::{
-    load::Bytes, vec2, Image, ImageSource, TextureFilter, TextureOptions, TextureWrapMode, Ui,
+    load::Bytes, Image, ImageSource, TextureFilter, TextureOptions, TextureWrapMode, Ui,
 };
 use jukebox_util::peripheral::DeviceType;
 use serde::{Deserialize, Serialize};
@@ -111,7 +111,6 @@ macro_rules! create_actions {
                         mipmap_mode: None,
                     })
                     .corner_radius(2.0)
-                    .max_size(vec2(64.0, 64.0))
             }
         }
     };
