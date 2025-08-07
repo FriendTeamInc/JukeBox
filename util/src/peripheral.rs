@@ -39,13 +39,6 @@ impl Into<u8> for DeviceType {
 
 #[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
-pub enum Connection {
-    NotConnected(bool), // false - lost connection, true - clean disconnect
-    Connected,
-}
-
-#[derive(Debug, PartialEq, Clone, Copy, Serialize, Deserialize)]
-#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum SwitchPosition {
     Up,
     Down,

@@ -890,6 +890,7 @@ dependencies = [
  "jukebox_util",
  "packed_struct",
  "panic-probe",
+ "ringbuffer",
  "static_cell",
  "usbd-human-interface-device",
  "usbd-serial",
@@ -1304,6 +1305,12 @@ checksum = "a457e416a0f90d246a4c3288bd7a25b2304ca727f253f95be383dd17af56be8f"
 dependencies = [
  "bytemuck",
 ]
+
+[[package]]
+name = "ringbuffer"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57b0b88a509053cbfd535726dcaaceee631313cef981266119527a1d110f6d2b"
 
 [[package]]
 name = "rp-binary-info"

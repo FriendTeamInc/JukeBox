@@ -1,10 +1,16 @@
 //! JukeBox Async Firmware
+//!
+//! Built with Embassy
 
 #![no_std]
 #![no_main]
 
+mod serial;
 mod uid;
 mod usb;
+mod util;
+
+use crate::serial::serial_task;
 
 use defmt::*;
 use {defmt_rtt as _, panic_probe as _};
@@ -73,7 +79,7 @@ fn main() -> ! {
     // let scr_bl = Pwm::new_output_a(p.PWM_SLICE0, p.PIN_16, Config::default());
     // let scr_rst = Output::new(p.PIN_13, Level::Low);
 
-    // Set up peripherals for tasks
+    // Set up tasks
     let usb = usb::UsbMod::new(p.USB);
     // TODO!
 
@@ -97,6 +103,7 @@ fn main() -> ! {
     let executor0 = EXECUTOR0.init(Executor::new());
     executor0.run(|spawner| {
         usb.run(&spawner);
+        unwrap!(spawner.spawn(serial_task()));
     });
 }
 

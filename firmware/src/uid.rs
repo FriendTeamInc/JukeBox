@@ -1,4 +1,8 @@
-//! Handles flash Unique ID
+//! Unique ID
+//!
+//! The UID is defined as part of the MCU's OTP, meant to "uniquely" identify
+//! one device from another. This UID is used as the USB serial number, as
+//! well as the the ID for distinguishing devices in the desktop software.
 
 use core::ptr::addr_of;
 
@@ -8,7 +12,7 @@ use embassy_rp::otp::get_chipid;
 
 static mut UID_BYTES: [u8; 16] = [0u8; 16];
 
-fn num_to_hex(x: u8) -> u8 {
+const fn num_to_hex(x: u8) -> u8 {
     match x {
         0x0 => b'0',
         0x1 => b'1',

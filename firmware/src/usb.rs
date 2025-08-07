@@ -1,3 +1,7 @@
+//! USB Comms
+//!
+//! Defines and handles all the USB communication through interrupts and async.
+
 use core::sync::atomic::AtomicBool;
 
 use crate::uid;
