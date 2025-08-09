@@ -10,13 +10,13 @@ use embassy_time::{Duration, Instant};
 use jukebox_util::{
     peripheral::{IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT, IDENT_UNKNOWN_INPUT},
     protocol::{
-        Command, MAX_PACKET_SIZE, RSP_FULL_DISCONNECTED, RSP_FULL_UNKNOWN, RSP_LINK_DELIMITER,
-        RSP_LINK_HEADER, decode_packet_size,
+        Command, MAX_PACKET_SIZE, RSP_FULL_ACK, RSP_FULL_DISCONNECTED, RSP_FULL_UNKNOWN,
+        RSP_LINK_DELIMITER, RSP_LINK_HEADER, decode_packet_size,
     },
 };
 use ringbuffer::{ConstGenericRingBuffer, RingBuffer};
 
-use crate::{uid::get_uid, util::bootsel};
+use crate::{identify::start_identify, uid::get_uid, util::bootsel};
 
 type InternalBuf = ConstGenericRingBuffer<u8, 4096>;
 
@@ -249,8 +249,8 @@ impl SerialMod {
                         true
                     }
                     Command::Identify => {
-                        // self.start_identify(serial);
-                        defmt::todo!();
+                        start_identify().await;
+                        SERIAL_TO_USB.write_all(RSP_FULL_ACK).await;
                         true
                     }
                     Command::Update => self.start_update().await,
