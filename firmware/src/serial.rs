@@ -98,6 +98,14 @@ impl SerialMod {
         // TODO
     }
 
+    async fn start_update(&mut self) -> bool {
+        info!("Command Update");
+        SERIAL_TO_USB.write_all(RSP_FULL_DISCONNECTED).await;
+        bootsel();
+
+        true
+    }
+
     async fn task(&mut self) -> ! {
         loop {
             if self.connected && self.keep_alive_end <= Instant::now() {
@@ -122,12 +130,7 @@ impl SerialMod {
             };
             let keep_connection_alive = match self.connected {
                 false => match cmd {
-                    Command::Update => {
-                        info!("Command Update");
-                        SERIAL_TO_USB.write_all(RSP_FULL_DISCONNECTED).await;
-                        bootsel();
-                        true
-                    }
+                    Command::Update => self.start_update().await,
                     Command::Greeting => {
                         let device_type = if cfg!(feature = "keypad") {
                             IDENT_KEY_INPUT
@@ -250,11 +253,7 @@ impl SerialMod {
                         defmt::todo!();
                         true
                     }
-                    Command::Update => {
-                        // self.start_update(serial);
-                        defmt::todo!();
-                        true
-                    }
+                    Command::Update => self.start_update().await,
                     Command::Disconnect => {
                         info!("Serial Disconnected");
                         SERIAL_TO_USB.write_all(RSP_FULL_DISCONNECTED).await;

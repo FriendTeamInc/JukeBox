@@ -19,6 +19,8 @@ ioHS = 10;
 ioHO = cS-cmO-17.5;
 // Case connector hole buffer
 ioHB = 0.125;
+// Debug Port
+dbgPort = false;
 
 /* [Case top settings] */
 // Case top height
@@ -151,30 +153,24 @@ module case_top() {
                     translate([-1, ioHO-ioHS, -1]) cube([ctW+2, ioHS, ctH+1]);
                     // Interior
                     translate([ctW, ctW, -1]) roundedsquare(cS-ctW*2, cS-ctW*2, ctH+1, cR);
-                    // Screen cutout
-                    translate([SOX, SOY, 0]) union() {
-                        // Screen Window
-                        translate([ctW+(csScrCW-csScrWW)/2, ctW+(csScrCH-csScrWH)/2, ctH]) cube([csScrWW, csScrWH, 1]);
-                        // Inset
-                        translate([ctW+(csScrCW+csScrWW)/2+2-52, 2.5, 0]) cube([52, csScrCH, 8.8]);
-                    }
-
-                    // // reset button cutout
-                    // translate([cS-11, cS-25, ctH]) cylinder(h=1, d=6);
 
                     // identify led cutout
-                    translate([cS-25, cS-10, ctH]) cylinder(h=1, d=2);
+                    translate([cS-21.5-4, cS-13.5-4, ctH]) cylinder(h=1, d=2);
+                    // reset button cutout
+                    translate([cS-23.5-6, cS-28.75-8, ctH]) cube([4, 4, 1]);
                 }
             }
 
             h = ctH-ctMH;
+            ctMW = ctM+ctW;
 
             // Mounting plates
-            square4(0, cS-ctM-ctW, h) roundedsquare(ctM+ctW, ctM+ctW, ctMH, cpR);
-            translate([cmO, 0, h]) cube([cS - cmO*2, ctM+1.5, ctMH]);
-            translate([0,          0, h]) roundedsquare(ctM+ctW+4, ctM+ctW+60, ctMH, cpR);
-            translate([cS-ctM-ctW-4, 0, h]) roundedsquare(ctM+ctW+4, ctM+ctW+60, ctMH, cpR);
-            translate([0, cS-ctM-ctW-12, h]) roundedsquare(ctM+ctW, ctM+ctW+12, ctMH, cpR);
+            square4(0, cS-ctMW, h) roundedsquare(ctMW, ctMW, ctMH, cpR);
+            translate([    cmO,           0, h]) cube([cS - cmO*2, ctM+1.5, ctMH]);
+            translate([    cmO,      cS-cmO-4, h]) cube([cS - cmO*2, ctM+1.5, ctMH]);
+            translate([      0,           0, h]) roundedsquare(ctMW, ctMW+60, ctMH, cpR);
+            translate([cS-ctMW,           0, h]) roundedsquare(ctMW, ctMW+60, ctMH, cpR);
+            translate([      0,  cS-ctMW-12, h]) roundedsquare(ctMW, ctMW+12, ctMH, cpR);
 
             // Supports (screen)
             translate([SOX, SOY, 0]) union() {
@@ -205,9 +201,23 @@ module case_top() {
                 cylinder(d=cmB, h=5);
                 translate([0, 0, 2]) cylinder(d2=6, d1=2, h=3);
             }
+
+
+            // Screen cutout
+            translate([SOX, SOY, 0]) union() {
+                // Screen Window
+                translate([ctW+(csScrCW-csScrWW)/2, ctW+(csScrCH-csScrWH)/2, ctH]) cube([csScrWW, csScrWH, 1]);
+                // Inset
+                translate([ctW+(csScrCW+csScrWW)/2+2-52, 2.5, 0]) cube([52, csScrCH, 8.8]);
+            }
             
             // Jukebox logo
             // case_detail();
+
+            // Debug port cutout
+            if (dbgPort) {
+                translate([cS-ctW, cS-17.5-4-18, 0]) cube([ctW, 18, ctH-ctMH]);
+            }
         }
     }
 }
@@ -243,6 +253,11 @@ module case_bottom() {
 
             // cutout for through hole components
             translate([clS, ioHO-ioHS+ioHB, clH]) cube([10, ioHS-ioHB*2, cpH]);
+
+            // Debug port cutout
+            if (dbgPort) {
+                translate([cS-ctW-20, cS-17.5-4-18, clH]) cube([ctW+20, 18, ctH]);
+            }
         }
     }
 }

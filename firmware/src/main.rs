@@ -45,9 +45,8 @@ fn main() -> ! {
     // // EEPROM
     // let eeprom_sda = Output::new(p.PIN_4, Level::Low);
     // let eeprom_scl = Output::new(p.PIN_5, Level::Low);
-    // // LED
-    // let led_pin = Pwm::new_output_b(p.PWM_SLICE6, p.PIN_29, Config::default());
-    let led_pin = Pwm::new_output_b(p.PWM_SLICE4, p.PIN_25, Config::default());
+    // LED
+    let led_pin = Pwm::new_output_b(p.PWM_SLICE6, p.PIN_29, Config::default());
     // // Keys
     // let kb_rows = [
     //     Output::new(p.PIN_6, Level::Low),
