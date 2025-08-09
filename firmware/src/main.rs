@@ -5,19 +5,20 @@
 #![no_std]
 #![no_main]
 
+mod keypad;
 mod serial;
 mod uid;
 mod usb;
 mod util;
 
-use crate::serial::serial_task;
+use crate::{keypad::keypad_task, serial::serial_task};
 
 use defmt::*;
 use {defmt_rtt as _, panic_probe as _};
 
 use embassy_executor::Executor;
 use embassy_rp::{
-    // gpio::{Input, Level, Output, Pull},
+    gpio::{Input, Level, Output, Pull},
     multicore::{Stack, spawn_core1},
     pwm::{Config, Pwm, SetDutyCycle},
 };
@@ -47,18 +48,18 @@ fn main() -> ! {
     // let eeprom_scl = Output::new(p.PIN_5, Level::Low);
     // LED
     let led_pin = Pwm::new_output_b(p.PWM_SLICE6, p.PIN_29, Config::default());
-    // // Keys
-    // let kb_rows = [
-    //     Output::new(p.PIN_6, Level::Low),
-    //     Output::new(p.PIN_7, Level::Low),
-    //     Output::new(p.PIN_8, Level::Low),
-    // ];
-    // let kb_cols = [
-    //     Input::new(p.PIN_9, Pull::Up),
-    //     Input::new(p.PIN_10, Pull::Up),
-    //     Input::new(p.PIN_11, Pull::Up),
-    //     Input::new(p.PIN_12, Pull::Up),
-    // ];
+    // Keypad
+    let kp_rows = [
+        Output::new(p.PIN_6, Level::Low),
+        Output::new(p.PIN_7, Level::Low),
+        Output::new(p.PIN_8, Level::Low),
+    ];
+    let kp_cols = [
+        Input::new(p.PIN_9, Pull::Up),
+        Input::new(p.PIN_10, Pull::Up),
+        Input::new(p.PIN_11, Pull::Up),
+        Input::new(p.PIN_12, Pull::Up),
+    ];
     // // RGB
     // let rgb_pin = Output::new(p.PIN_2, Level::Low);
     // // Screen
@@ -92,6 +93,7 @@ fn main() -> ! {
             let executor1 = EXECUTOR1.init(Executor::new());
             executor1.run(|spawner| {
                 unwrap!(spawner.spawn(core1_task(led_pin)));
+                unwrap!(spawner.spawn(keypad_task(kp_rows, kp_cols)));
             });
         },
     );

@@ -31,7 +31,7 @@ struct SerialMod {
     keep_alive_end: Instant,
 }
 impl SerialMod {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             buf: ConstGenericRingBuffer::new(),
             connected: false,
