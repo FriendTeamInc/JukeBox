@@ -5,17 +5,15 @@
 #![no_std]
 #![no_main]
 
+mod eeprom;
 mod identify;
 mod keypad;
 mod rgb;
+mod screen;
 mod serial;
 mod uid;
 mod usb;
 mod util;
-
-use crate::{
-    identify::identify_task, keypad::keypad_task, rgb::rgb_task, serial::serial_task, usb::usb_task,
-};
 
 use defmt::*;
 use {defmt_rtt as _, panic_probe as _};
@@ -94,9 +92,9 @@ fn main() -> ! {
         move || {
             let executor1 = EXECUTOR1.init(Executor::new());
             executor1.run(|spawner| {
-                unwrap!(spawner.spawn(identify_task(led_pin)));
-                unwrap!(spawner.spawn(rgb_task(rgb_pio, rgb_dma, rgb_pin)));
-                unwrap!(spawner.spawn(keypad_task(kp_rows, kp_cols)));
+                unwrap!(spawner.spawn(identify::identify_task(led_pin)));
+                unwrap!(spawner.spawn(rgb::rgb_task(rgb_pio, rgb_dma, rgb_pin)));
+                unwrap!(spawner.spawn(keypad::keypad_task(kp_rows, kp_cols)));
             });
         },
     );
@@ -106,7 +104,7 @@ fn main() -> ! {
     // Serial task processes all commands and sends relevant data to the other core for use
     let executor0 = EXECUTOR0.init(Executor::new());
     executor0.run(|spawner| {
-        unwrap!(usb_task(p.USB, &spawner));
-        unwrap!(spawner.spawn(serial_task()));
+        unwrap!(usb::usb_task(p.USB, &spawner));
+        unwrap!(spawner.spawn(serial::serial_task()));
     });
 }

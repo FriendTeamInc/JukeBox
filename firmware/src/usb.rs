@@ -7,6 +7,7 @@ use core::sync::atomic::AtomicBool;
 use crate::{
     serial::{SERIAL_TO_USB, USB_TO_SERIAL},
     uid,
+    util::{DefaultInputEventsMutex, InputEventsMutex, get_keyboard_events, get_mouse_events},
 };
 
 use defmt::*;
@@ -17,6 +18,7 @@ use embassy_rp::{
     peripherals::USB,
     usb::{Driver, InterruptHandler},
 };
+use embassy_sync::mutex::Mutex;
 use embassy_time::Timer;
 use embassy_usb::{
     UsbDevice,
@@ -30,16 +32,20 @@ use embassy_usb::{
     control::OutResponse,
     driver::EndpointError,
 };
+use jukebox_util::input::InputEvent;
 use packed_struct::PackedStruct;
 use static_cell::StaticCell;
 use usbd_human_interface_device::device::{
-    keyboard::{NKRO_BOOT_KEYBOARD_REPORT_DESCRIPTOR, NKROBootKeyboardReport},
-    mouse::{WHEEL_MOUSE_REPORT_DESCRIPTOR, WheelMouseReport},
+    keyboard::NKRO_BOOT_KEYBOARD_REPORT_DESCRIPTOR, mouse::WHEEL_MOUSE_REPORT_DESCRIPTOR,
 };
 
 embassy_rp::bind_interrupts!(struct Irqs {
     USBCTRL_IRQ => InterruptHandler<USB>;
 });
+
+pub static INPUT_EVENTS: InputEventsMutex = Mutex::new(InputEvent::default_all());
+pub static DEFAULT_INPUT_EVENTS: DefaultInputEventsMutex =
+    Mutex::new((false, InputEvent::default_all()));
 
 const KEYBOARD_READ_N: usize = 64;
 const KEYBOARD_WRITE_N: usize = 64;
@@ -255,8 +261,7 @@ async fn usb_keyboard_out_run(
 ) -> ! {
     loop {
         Timer::after_millis(10).await;
-        // TODO: build full report with NKROBootKeyboardReport::new(keys)
-        let report = NKROBootKeyboardReport::default().pack().unwrap();
+        let report = get_keyboard_events().await.pack().unwrap();
         match keyboard_writer.write(&report).await {
             Ok(_) => (),
             Err(e) => warn!("failed to send keyboard report: {:?}", e),
@@ -273,7 +278,7 @@ async fn usb_mouse_in_run(mouse_reader: HidReader<'static, UsbDriver, MOUSE_READ
 async fn usb_mouse_out_run(mut mouse_writer: HidWriter<'static, UsbDriver, MOUSE_WRITE_N>) -> ! {
     loop {
         Timer::after_millis(10).await;
-        let report = WheelMouseReport::default().pack().unwrap();
+        let report = get_mouse_events().await.pack().unwrap();
         match mouse_writer.write(&report).await {
             Ok(_) => (),
             Err(e) => warn!("failed to send mouse report: {:?}", e),

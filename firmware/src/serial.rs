@@ -16,10 +16,17 @@ use jukebox_util::{
         RSP_FULL_KP_INPUT_HEADER, RSP_FULL_PP_INPUT_HEADER, RSP_FULL_UNKNOWN, RSP_LINK_DELIMITER,
         RSP_LINK_HEADER, decode_packet_size,
     },
+    rgb::RgbProfile,
 };
 use ringbuffer::{ConstGenericRingBuffer, RingBuffer};
 
-use crate::{identify::start_identify, keypad::get_inputs, uid::get_uid, util::bootsel};
+use crate::{
+    identify::start_identify,
+    keypad::get_inputs,
+    rgb::{DEFAULT_RGB_PROFILE, RGB_PROFILE},
+    uid::get_uid,
+    util::bootsel,
+};
 
 type InternalBuf = ConstGenericRingBuffer<u8, 4096>;
 
@@ -99,6 +106,9 @@ impl SerialMod {
 
     async fn reset_peripherals(&mut self) {
         // TODO
+        // *INPUT_EVENTS.lock().await = DEFAULT_INPUT_EVENTS.lock().await.1.clone();
+        *RGB_PROFILE.lock().await = DEFAULT_RGB_PROFILE.lock().await.1.clone();
+        // *SCREEN_PROFILE.lock().await = DEFAULT_SCREEN_PROFILE.lock().await.1.clone();
     }
 
     async fn start_update(&mut self) -> bool {
@@ -197,9 +207,8 @@ impl SerialMod {
                         true
                     }
                     Command::SetRgbMode => {
-                        // let rgb = RgbProfile::decode(&data);
-                        // RGB_CONTROLS.with_mut_lock(|c| *c = (true, rgb));
-                        // defmt::todo!();
+                        let rgb = RgbProfile::decode(&data);
+                        *RGB_PROFILE.lock().await = rgb;
                         SERIAL_TO_USB.write_all(RSP_FULL_ACK).await;
                         true
                     }

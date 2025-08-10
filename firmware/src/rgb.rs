@@ -15,7 +15,10 @@ use embassy_sync::mutex::Mutex;
 use embassy_time::{Duration, Instant};
 use jukebox_util::rgb::RgbProfile;
 
-use crate::{usb::usb_suspended, util::RgbProfileMutex};
+use crate::{
+    usb::usb_suspended,
+    util::{DefaultRgbProfileMutex, RgbProfileMutex},
+};
 
 bind_interrupts!(struct Irqs {
     PIO0_IRQ_0 => InterruptHandler<PIO0>;
@@ -23,7 +26,9 @@ bind_interrupts!(struct Irqs {
 
 const POLL_TIME: Duration = Duration::from_millis(10);
 
-static RGB_PROFILE: RgbProfileMutex = Mutex::new(RgbProfile::default_device_profile());
+pub static RGB_PROFILE: RgbProfileMutex = Mutex::new(RgbProfile::default_device_profile());
+pub static DEFAULT_RGB_PROFILE: DefaultRgbProfileMutex =
+    Mutex::new((false, RgbProfile::default_device_profile()));
 
 type RgbPio = Peri<'static, PIO0>;
 type RgbDma = Peri<'static, DMA_CH0>;
