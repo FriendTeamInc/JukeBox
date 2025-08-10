@@ -9,8 +9,16 @@ use defmt::*;
 use embassy_futures::yield_now;
 use embassy_rp::gpio::{Input, Output};
 use embassy_time::{Duration, Instant};
+use jukebox_util::peripheral::{JBInputs, KeyInputs};
 
 pub static KEYPAD_KEYS: [AtomicBool; 12] = [const { AtomicBool::new(false) }; 12];
+pub fn get_inputs() -> JBInputs {
+    let mut inputs = [false; 16];
+    KEYPAD_KEYS.iter().enumerate().for_each(|(i, k)| {
+        inputs[i] = k.load(core::sync::atomic::Ordering::Relaxed);
+    });
+    JBInputs::KeyPad(inputs.into())
+}
 
 const POLL_TIME: Duration = Duration::from_millis(10);
 

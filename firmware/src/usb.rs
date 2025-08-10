@@ -4,7 +4,10 @@
 
 use core::sync::atomic::AtomicBool;
 
-use crate::uid;
+use crate::{
+    serial::{SERIAL_TO_USB, USB_TO_SERIAL},
+    uid,
+};
 
 use defmt::*;
 
@@ -18,7 +21,7 @@ use embassy_time::Timer;
 use embassy_usb::{
     UsbDevice,
     class::{
-        cdc_acm::{CdcAcmClass, State as SerialState},
+        cdc_acm::{CdcAcmClass, Receiver, Sender, State as SerialState},
         hid::{
             Config as HidConfig, HidReader, HidReaderWriter, HidWriter, ReportId, RequestHandler,
             State as HidState,
@@ -159,18 +162,21 @@ impl UsbMod {
         unwrap!(spawner.spawn(usb_run(self.usb_dev)));
 
         // start USB serial loop
-        unwrap!(spawner.spawn(usb_serial_run(self.serial)));
+        let (serial_writer, serial_reader) = self.serial.split();
+        unwrap!(spawner.spawn(usb_serial_out_run(serial_writer)));
+        unwrap!(spawner.spawn(usb_serial_in_run(serial_reader)));
         // start USB HID loops
         let (keyboard_reader, keyboard_writer) = self.keyboard.split();
         let (mouse_reader, mouse_writer) = self.mouse.split();
-        unwrap!(spawner.spawn(usb_keyboard_in_run(keyboard_writer)));
-        unwrap!(spawner.spawn(usb_keyboard_out_run(keyboard_reader)));
-        unwrap!(spawner.spawn(usb_mouse_in_run(mouse_writer)));
-        unwrap!(spawner.spawn(usb_mouse_out_run(mouse_reader)));
+        unwrap!(spawner.spawn(usb_keyboard_out_run(keyboard_writer)));
+        unwrap!(spawner.spawn(usb_keyboard_in_run(keyboard_reader)));
+        unwrap!(spawner.spawn(usb_mouse_out_run(mouse_writer)));
+        unwrap!(spawner.spawn(usb_mouse_in_run(mouse_reader)));
     }
 }
 
 static USB_SUSPENDED: AtomicBool = AtomicBool::new(false);
+#[allow(unused)]
 pub fn usb_suspended() -> bool {
     USB_SUSPENDED.load(core::sync::atomic::Ordering::Relaxed)
 }
@@ -188,45 +194,66 @@ async fn usb_run(mut usb_dev: UsbDevice<'static, Driver<'static, USB>>) -> ! {
 }
 
 #[embassy_executor::task]
-async fn usb_serial_run(mut usb_serial: UsbSerial) -> ! {
-    // TODO: better control flow for serial processing. This just echoes right now.
+async fn usb_serial_in_run(mut serial_reader: Receiver<'static, Driver<'static, USB>>) -> ! {
+    // Reads in any and all bytes and sends them to the serial task.
+    let mut buf = [0; 64];
     loop {
-        usb_serial.wait_connection().await;
-        let mut buf = [0; 64];
+        serial_reader.wait_connection().await;
         loop {
-            let n = match usb_serial.read_packet(&mut buf).await {
+            let n = match serial_reader.read_packet(&mut buf).await {
                 Ok(n) => n,
                 Err(e) => match e {
                     EndpointError::BufferOverflow => {
+                        // This should never happen.
                         defmt::panic!("Buffer overflow from serial read!")
                     }
-                    EndpointError::Disabled => break,
-                },
-            };
-            let data = &buf[..n];
-            info!("USB Serial Data: {:x}", data);
-            match usb_serial.write_packet(data).await {
-                Ok(_) => (),
-                Err(e) => match e {
-                    EndpointError::BufferOverflow => {
-                        defmt::panic!("Buffer overflow from serial write!")
+                    EndpointError::Disabled => {
+                        // We end up dropping data here, which is fine if we're disconnected.
+                        USB_TO_SERIAL.clear();
+                        SERIAL_TO_USB.clear();
+                        break;
                     }
-                    EndpointError::Disabled => break,
                 },
             };
+            USB_TO_SERIAL.write_all(&buf[..n]).await;
         }
     }
 }
 
 #[embassy_executor::task]
-async fn usb_keyboard_out_run(
-    keyboard_reader: HidReader<'static, UsbDriver, KEYBOARD_READ_N>,
-) -> ! {
+async fn usb_serial_out_run(mut serial_writer: Sender<'static, Driver<'static, USB>>) -> ! {
+    // Reads in any and all bytes and sends them to the serial task.
+    let mut buf = [0; 64];
+    loop {
+        serial_writer.wait_connection().await;
+        loop {
+            let n = SERIAL_TO_USB.read(&mut buf).await;
+            match serial_writer.write_packet(&buf[..n]).await {
+                Ok(_) => {}
+                Err(e) => match e {
+                    EndpointError::BufferOverflow => {
+                        // This should never happen.
+                        defmt::panic!("Buffer overflow from serial read!")
+                    }
+                    EndpointError::Disabled => {
+                        // We end up dropping data here, which is fine if we're disconnected.
+                        USB_TO_SERIAL.clear();
+                        SERIAL_TO_USB.clear();
+                        break;
+                    }
+                },
+            }
+        }
+    }
+}
+
+#[embassy_executor::task]
+async fn usb_keyboard_in_run(keyboard_reader: HidReader<'static, UsbDriver, KEYBOARD_READ_N>) -> ! {
     let mut keyboard_hid_handler = HidHandler {};
     keyboard_reader.run(false, &mut keyboard_hid_handler).await;
 }
 #[embassy_executor::task]
-async fn usb_keyboard_in_run(
+async fn usb_keyboard_out_run(
     mut keyboard_writer: HidWriter<'static, UsbDriver, KEYBOARD_WRITE_N>,
 ) -> ! {
     loop {
@@ -241,12 +268,12 @@ async fn usb_keyboard_in_run(
 }
 
 #[embassy_executor::task]
-async fn usb_mouse_out_run(mouse_reader: HidReader<'static, UsbDriver, MOUSE_READ_N>) -> ! {
+async fn usb_mouse_in_run(mouse_reader: HidReader<'static, UsbDriver, MOUSE_READ_N>) -> ! {
     let mut mouse_hid_handler = HidHandler {};
     mouse_reader.run(false, &mut mouse_hid_handler).await;
 }
 #[embassy_executor::task]
-async fn usb_mouse_in_run(mut mouse_writer: HidWriter<'static, UsbDriver, MOUSE_WRITE_N>) -> ! {
+async fn usb_mouse_out_run(mut mouse_writer: HidWriter<'static, UsbDriver, MOUSE_WRITE_N>) -> ! {
     loop {
         Timer::after_millis(10).await;
         let report = WheelMouseReport::default().pack().unwrap();

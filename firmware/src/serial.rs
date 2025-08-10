@@ -8,20 +8,23 @@ use embassy_futures::yield_now;
 use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, pipe::Pipe};
 use embassy_time::{Duration, Instant};
 use jukebox_util::{
-    peripheral::{IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT, IDENT_UNKNOWN_INPUT},
+    peripheral::{
+        IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT, IDENT_UNKNOWN_INPUT, JBInputs,
+    },
     protocol::{
-        Command, MAX_PACKET_SIZE, RSP_FULL_ACK, RSP_FULL_DISCONNECTED, RSP_FULL_UNKNOWN,
+        Command, MAX_PACKET_SIZE, RSP_FULL_ACK, RSP_FULL_DISCONNECTED, RSP_FULL_KB_INPUT_HEADER,
+        RSP_FULL_KP_INPUT_HEADER, RSP_FULL_PP_INPUT_HEADER, RSP_FULL_UNKNOWN, RSP_INPUT_HEADER,
         RSP_LINK_DELIMITER, RSP_LINK_HEADER, decode_packet_size,
     },
 };
 use ringbuffer::{ConstGenericRingBuffer, RingBuffer};
 
-use crate::{identify::start_identify, uid::get_uid, util::bootsel};
+use crate::{identify::start_identify, keypad::get_inputs, uid::get_uid, util::bootsel};
 
 type InternalBuf = ConstGenericRingBuffer<u8, 4096>;
 
-static USB_TO_SERIAL: Pipe<ThreadModeRawMutex, 2048> = Pipe::new();
-static SERIAL_TO_USB: Pipe<ThreadModeRawMutex, 512> = Pipe::new();
+pub static USB_TO_SERIAL: Pipe<ThreadModeRawMutex, 2048> = Pipe::new();
+pub static SERIAL_TO_USB: Pipe<ThreadModeRawMutex, 512> = Pipe::new();
 
 const KEEPALIVE_TIME: Duration = Duration::from_secs(1);
 
@@ -168,27 +171,20 @@ impl SerialMod {
                 },
                 true => match cmd {
                     Command::GetInputKeys => {
-                        // // copy peripherals and inputs out
-                        // let inputs = PERIPHERAL_INPUTS.with_lock(|i| *i);
-                        // // write all the inputs out
-                        // match inputs {
-                        //     JBInputs::KeyPad(i) => {
-                        //         Self::send(serial, b"004");
-                        //         Self::send(serial, &[RSP_INPUT_HEADER]);
-                        //         Self::send(serial, &i.encode());
-                        //     }
-                        //     JBInputs::KnobPad(i) => {
-                        //         Self::send(serial, b"003");
-                        //         Self::send(serial, &[RSP_INPUT_HEADER]);
-                        //         Self::send(serial, &i.encode());
-                        //     }
-                        //     JBInputs::PedalPad(i) => {
-                        //         Self::send(serial, b"003");
-                        //         Self::send(serial, &[RSP_INPUT_HEADER]);
-                        //         Self::send(serial, &i.encode());
-                        //     }
-                        // };
-                        defmt::todo!();
+                        match get_inputs() {
+                            JBInputs::KeyPad(i) => {
+                                SERIAL_TO_USB.write_all(RSP_FULL_KB_INPUT_HEADER).await;
+                                SERIAL_TO_USB.write_all(&i.encode()).await;
+                            }
+                            JBInputs::KnobPad(i) => {
+                                SERIAL_TO_USB.write_all(RSP_FULL_KP_INPUT_HEADER).await;
+                                SERIAL_TO_USB.write_all(&i.encode()).await;
+                            }
+                            JBInputs::PedalPad(i) => {
+                                SERIAL_TO_USB.write_all(RSP_FULL_PP_INPUT_HEADER).await;
+                                SERIAL_TO_USB.write_all(&i.encode()).await;
+                            }
+                        }
                         true
                     }
 
