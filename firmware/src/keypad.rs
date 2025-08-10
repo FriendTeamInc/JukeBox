@@ -9,9 +9,9 @@ use defmt::*;
 use embassy_futures::yield_now;
 use embassy_rp::gpio::{Input, Output};
 use embassy_time::{Duration, Instant};
-use jukebox_util::peripheral::{JBInputs, KeyInputs};
+use jukebox_util::peripheral::JBInputs;
 
-pub static KEYPAD_KEYS: [AtomicBool; 12] = [const { AtomicBool::new(false) }; 12];
+static KEYPAD_KEYS: [AtomicBool; 12] = [const { AtomicBool::new(false) }; 12];
 pub fn get_inputs() -> JBInputs {
     let mut inputs = [false; 16];
     KEYPAD_KEYS.iter().enumerate().for_each(|(i, k)| {
@@ -50,21 +50,20 @@ impl KeypadMod {
 
             for row in 0..3 {
                 self.row_pins[row].set_high();
-                nop_loop(30);
+                nop_loop(100);
 
                 for col in 0..4 {
-                    let i = row * 3 + col;
-                    if self.col_pins[col].is_high() {
-                        KEYPAD_KEYS[i].store(true, core::sync::atomic::Ordering::Relaxed);
-                    } else {
-                        KEYPAD_KEYS[i].store(false, core::sync::atomic::Ordering::Relaxed);
-                    }
+                    let i = row * 4 + col;
+                    KEYPAD_KEYS[i].store(
+                        self.col_pins[col].is_high(),
+                        core::sync::atomic::Ordering::Relaxed,
+                    );
                 }
 
                 self.row_pins[row].set_low();
             }
 
-            self.poll_time = unwrap!(Instant::now().checked_add(POLL_TIME));
+            self.poll_time = unwrap!(now.checked_add(POLL_TIME));
         }
     }
 }

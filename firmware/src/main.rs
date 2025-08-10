@@ -56,10 +56,10 @@ fn main() -> ! {
         Output::new(p.PIN_8, Level::Low),
     ];
     let kp_cols = [
-        Input::new(p.PIN_9, Pull::Up),
-        Input::new(p.PIN_10, Pull::Up),
-        Input::new(p.PIN_11, Pull::Up),
-        Input::new(p.PIN_12, Pull::Up),
+        Input::new(p.PIN_9, Pull::Down),
+        Input::new(p.PIN_10, Pull::Down),
+        Input::new(p.PIN_11, Pull::Down),
+        Input::new(p.PIN_12, Pull::Down),
     ];
     // // RGB
     // let rgb_pin = Output::new(p.PIN_2, Level::Low);

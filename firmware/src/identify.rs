@@ -61,7 +61,7 @@ impl IdentifyMod {
                 }
             }
 
-            self.poll_time = unwrap!(Instant::now().checked_add(POLL_TIME));
+            self.poll_time = unwrap!(now.checked_add(POLL_TIME));
         }
     }
 }

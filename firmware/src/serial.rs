@@ -13,8 +13,8 @@ use jukebox_util::{
     },
     protocol::{
         Command, MAX_PACKET_SIZE, RSP_FULL_ACK, RSP_FULL_DISCONNECTED, RSP_FULL_KB_INPUT_HEADER,
-        RSP_FULL_KP_INPUT_HEADER, RSP_FULL_PP_INPUT_HEADER, RSP_FULL_UNKNOWN, RSP_INPUT_HEADER,
-        RSP_LINK_DELIMITER, RSP_LINK_HEADER, decode_packet_size,
+        RSP_FULL_KP_INPUT_HEADER, RSP_FULL_PP_INPUT_HEADER, RSP_FULL_UNKNOWN, RSP_LINK_DELIMITER,
+        RSP_LINK_HEADER, decode_packet_size,
     },
 };
 use ringbuffer::{ConstGenericRingBuffer, RingBuffer};
@@ -192,15 +192,15 @@ impl SerialMod {
                         // let slot = data[0];
                         // let new_input = InputEvent::decode(&data[1..7 + 1]);
                         // INPUT_EVENTS.with_mut_lock(|e| e[slot as usize] = new_input);
-                        // Self::send(serial, RSP_FULL_ACK);
-                        defmt::todo!();
+                        // defmt::todo!();
+                        SERIAL_TO_USB.write_all(RSP_FULL_ACK).await;
                         true
                     }
                     Command::SetRgbMode => {
                         // let rgb = RgbProfile::decode(&data);
                         // RGB_CONTROLS.with_mut_lock(|c| *c = (true, rgb));
-                        // Self::send(serial, RSP_FULL_ACK);
-                        defmt::todo!();
+                        // defmt::todo!();
+                        SERIAL_TO_USB.write_all(RSP_FULL_ACK).await;
                         true
                     }
                     Command::SetScrIcon => {
@@ -219,29 +219,29 @@ impl SerialMod {
                         //     }
                         //     scr_icon.0 = true;
                         // });
-                        // Self::send(serial, RSP_FULL_ACK);
-                        defmt::todo!();
+                        // defmt::todo!();
+                        SERIAL_TO_USB.write_all(RSP_FULL_ACK).await;
                         true
                     }
                     Command::SetScrMode => {
                         // let profile = ScreenProfile::decode(&data);
                         // SCREEN_CONTROLS.with_mut_lock(|p| *p = (true, profile));
-                        // Self::send(serial, RSP_FULL_ACK);
-                        defmt::todo!();
+                        // defmt::todo!();
+                        SERIAL_TO_USB.write_all(RSP_FULL_ACK).await;
                         true
                     }
                     Command::SetSystemStats => {
                         // let stats = SystemStats::decode(&data);
                         // SCREEN_SYSTEM_STATS.with_mut_lock(|s| *s = (true, stats));
-                        // Self::send(serial, RSP_FULL_ACK);
-                        defmt::todo!();
+                        // defmt::todo!();
+                        SERIAL_TO_USB.write_all(RSP_FULL_ACK).await;
                         true
                     }
                     Command::SetProfileName => {
                         // let new_profile_name: ProfileName = SmallStr::decode(&data);
                         // PROFILE_NAME.with_mut_lock(|p| *p = (true, new_profile_name));
-                        // Self::send(serial, RSP_FULL_ACK);
-                        defmt::todo!();
+                        // defmt::todo!();
+                        SERIAL_TO_USB.write_all(RSP_FULL_ACK).await;
                         true
                     }
                     Command::Identify => {
@@ -251,7 +251,6 @@ impl SerialMod {
                     }
                     Command::Update => self.start_update().await,
                     Command::Disconnect => {
-                        info!("Serial Disconnected");
                         SERIAL_TO_USB.write_all(RSP_FULL_DISCONNECTED).await;
                         self.connected = false;
                         self.reset_peripherals().await;
