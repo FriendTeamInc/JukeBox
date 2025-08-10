@@ -12,7 +12,7 @@ mod uid;
 mod usb;
 mod util;
 
-use crate::{identify::identify_task, keypad::keypad_task, serial::serial_task};
+use crate::{identify::identify_task, keypad::keypad_task, serial::serial_task, usb::usb_task};
 
 use defmt::*;
 use {defmt_rtt as _, panic_probe as _};
@@ -43,7 +43,7 @@ fn main() -> ! {
         info!("ver:{}, uid:{}", ver, uid);
     }
 
-    // // Break out pins for peripherals
+    // Break out pins for peripherals
     // // EEPROM
     // let eeprom_sda = Output::new(p.PIN_4, Level::Low);
     // let eeprom_scl = Output::new(p.PIN_5, Level::Low);
@@ -56,10 +56,10 @@ fn main() -> ! {
         Output::new(p.PIN_8, Level::Low),
     ];
     let kp_cols = [
-        Input::new(p.PIN_9, Pull::Down),
-        Input::new(p.PIN_10, Pull::Down),
-        Input::new(p.PIN_11, Pull::Down),
-        Input::new(p.PIN_12, Pull::Down),
+        Input::new(p.PIN_9, Pull::None),
+        Input::new(p.PIN_10, Pull::None),
+        Input::new(p.PIN_11, Pull::None),
+        Input::new(p.PIN_12, Pull::None),
     ];
     // // RGB
     // let rgb_pin = Output::new(p.PIN_2, Level::Low);
@@ -79,10 +79,6 @@ fn main() -> ! {
     // let scr_dc = Output::new(p.PIN_15, Level::Low);
     // let scr_bl = Pwm::new_output_a(p.PWM_SLICE0, p.PIN_16, Config::default());
     // let scr_rst = Output::new(p.PIN_13, Level::Low);
-
-    // Set up tasks
-    let usb = usb::UsbMod::new(p.USB);
-    // TODO!
 
     // Run all peripherals on core1
     // Peripheral tasks recieve data from the serial task
@@ -104,7 +100,7 @@ fn main() -> ! {
     // Serial task processes all commands and sends relevant data to the other core for use
     let executor0 = EXECUTOR0.init(Executor::new());
     executor0.run(|spawner| {
-        usb.run(&spawner);
+        unwrap!(usb_task(p.USB, &spawner));
         unwrap!(spawner.spawn(serial_task()));
     });
 }

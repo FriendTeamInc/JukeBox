@@ -11,7 +11,7 @@ use crate::{
 
 use defmt::*;
 
-use embassy_executor::Spawner;
+use embassy_executor::{SpawnError, Spawner};
 use embassy_rp::{
     Peri,
     peripherals::USB,
@@ -59,29 +59,20 @@ pub struct UsbMod {
     mouse: UsbMouse,
 }
 impl UsbMod {
-    pub fn new(p_usb: Peri<'static, USB>) -> Self {
+    fn new(p_usb: Peri<'static, USB>) -> Self {
         // Create the driver, from the HAL.
         let driver = Driver::new(p_usb, Irqs);
 
         // Create embassy-usb Config
         let config = {
-            let usb_pid = if cfg!(feature = "keypad") {
-                0xF20A
+            let (usb_pid, usb_product) = if cfg!(feature = "keypad") {
+                (0xF20A, "JukeBox KeyPad")
             } else if cfg!(feature = "knobpad") {
-                0xF20B
+                (0xF20B, "JukeBox KnobPad")
             } else if cfg!(feature = "pedalpad") {
-                0xF20C
+                (0xF20C, "JukeBox PedalPad")
             } else {
-                0xF209
-            };
-            let usb_product = if cfg!(feature = "keypad") {
-                "JukeBox KeyPad"
-            } else if cfg!(feature = "knobpad") {
-                "JukeBox KnobPad"
-            } else if cfg!(feature = "pedalpad") {
-                "JukeBox PedalPad"
-            } else {
-                "JukeBox Unknown Device"
+                (0xF209, "JukeBox Unknown Device")
             };
 
             let mut config = embassy_usb::Config::new(0x1209, usb_pid);
@@ -157,22 +148,28 @@ impl UsbMod {
         }
     }
 
-    pub fn run(self, spawner: &Spawner) {
+    fn run(self, spawner: &Spawner) -> Result<(), SpawnError> {
         // start USB control loop
-        unwrap!(spawner.spawn(usb_run(self.usb_dev)));
+        spawner.spawn(usb_run(self.usb_dev))?;
 
         // start USB serial loop
         let (serial_writer, serial_reader) = self.serial.split();
-        unwrap!(spawner.spawn(usb_serial_out_run(serial_writer)));
-        unwrap!(spawner.spawn(usb_serial_in_run(serial_reader)));
+        spawner.spawn(usb_serial_out_run(serial_writer))?;
+        spawner.spawn(usb_serial_in_run(serial_reader))?;
         // start USB HID loops
         let (keyboard_reader, keyboard_writer) = self.keyboard.split();
         let (mouse_reader, mouse_writer) = self.mouse.split();
-        unwrap!(spawner.spawn(usb_keyboard_out_run(keyboard_writer)));
-        unwrap!(spawner.spawn(usb_keyboard_in_run(keyboard_reader)));
-        unwrap!(spawner.spawn(usb_mouse_out_run(mouse_writer)));
-        unwrap!(spawner.spawn(usb_mouse_in_run(mouse_reader)));
+        spawner.spawn(usb_keyboard_out_run(keyboard_writer))?;
+        spawner.spawn(usb_keyboard_in_run(keyboard_reader))?;
+        spawner.spawn(usb_mouse_out_run(mouse_writer))?;
+        spawner.spawn(usb_mouse_in_run(mouse_reader))?;
+
+        Ok(())
     }
+}
+
+pub fn usb_task(p_usb: Peri<'static, USB>, spawner: &Spawner) -> Result<(), SpawnError> {
+    UsbMod::new(p_usb).run(spawner)
 }
 
 static USB_SUSPENDED: AtomicBool = AtomicBool::new(false);
