@@ -42,7 +42,7 @@ impl KeypadMod {
     async fn task(mut self) -> ! {
         loop {
             let now = Instant::now();
-            if self.poll_time < now {
+            if self.poll_time > now {
                 yield_now().await;
                 // TODO: sleep?
                 continue;
