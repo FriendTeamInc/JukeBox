@@ -7,12 +7,15 @@
 
 mod identify;
 mod keypad;
+mod rgb;
 mod serial;
 mod uid;
 mod usb;
 mod util;
 
-use crate::{identify::identify_task, keypad::keypad_task, serial::serial_task, usb::usb_task};
+use crate::{
+    identify::identify_task, keypad::keypad_task, rgb::rgb_task, serial::serial_task, usb::usb_task,
+};
 
 use defmt::*;
 use {defmt_rtt as _, panic_probe as _};
@@ -61,8 +64,10 @@ fn main() -> ! {
         Input::new(p.PIN_11, Pull::None),
         Input::new(p.PIN_12, Pull::None),
     ];
-    // // RGB
-    // let rgb_pin = Output::new(p.PIN_2, Level::Low);
+    // RGB
+    let rgb_pio = p.PIO0;
+    let rgb_dma = p.DMA_CH0;
+    let rgb_pin = p.PIN_2;
     // // Screen
     // let scr_data = [
     //     Output::new(p.PIN_19, Level::Low),
@@ -90,6 +95,7 @@ fn main() -> ! {
             let executor1 = EXECUTOR1.init(Executor::new());
             executor1.run(|spawner| {
                 unwrap!(spawner.spawn(identify_task(led_pin)));
+                unwrap!(spawner.spawn(rgb_task(rgb_pio, rgb_dma, rgb_pin)));
                 unwrap!(spawner.spawn(keypad_task(kp_rows, kp_cols)));
             });
         },

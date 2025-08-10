@@ -3,19 +3,18 @@
 //! Software can trigger this LED to flash, making it easy to identify where
 //! your device is.
 
+use crate::util::IdentifyMutex;
+
 use defmt::*;
 
 use embassy_futures::yield_now;
-use embassy_rp::{
-    pwm::{Pwm, SetDutyCycle},
-    spinlock_mutex::SpinlockRawMutex,
-};
+use embassy_rp::pwm::{Pwm, SetDutyCycle};
 use embassy_sync::mutex::Mutex;
 use embassy_time::{Duration, Instant};
 
 const POLL_TIME: Duration = Duration::from_millis(10);
 
-static IDENTIFY_GOAL: Mutex<SpinlockRawMutex<1>, Instant> = Mutex::new(Instant::MIN);
+static IDENTIFY_GOAL: IdentifyMutex = Mutex::new(Instant::MIN);
 const BLINK_TIME: Duration = Duration::from_secs(3);
 const BLINK_PERIOD: u64 = 1_000_000;
 

@@ -42,11 +42,9 @@ usbd-serial = "0.2"
 packed_struct = { version = "0.10.1", default-features = false }
 
 ringbuffer = { version = "0.16", default-features = false }
+rgb = "0.8.52"
 
 # pio = "0.2"
-# ws2812-pio = "0.9"
-# smart-leds = "0.4"
-# smart-leds-trait = "0.3"
 # eeprom24x = { version = "0.7.2", features = ["defmt-03"] }
 
 # mutually_exclusive_features = "0.1"

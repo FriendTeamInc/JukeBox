@@ -1,4 +1,5 @@
 use bincode::{decode_from_slice, encode_into_slice, Decode, Encode};
+use rgb::RGB8;
 use serde::{Deserialize, Serialize};
 
 use crate::color::hsv2rgb;
@@ -159,7 +160,7 @@ impl RgbProfile {
             .0
     }
 
-    pub fn calculate_matrix(&self, t: u64) -> [(u8, u8, u8); 12] {
+    pub fn calculate_matrix(&self, t: u64) -> [RGB8; 12] {
         let mut buffer = [(0u8, 0u8, 0u8); 12];
 
         match self {
@@ -295,7 +296,7 @@ impl RgbProfile {
             }
         };
 
-        buffer
+        into_rgb(rgb_brightness(rgb_zigzag(buffer), self.brightness()))
     }
 
     pub const fn default_device_profile() -> Self {
@@ -430,4 +431,38 @@ impl RgbProfile {
             value: 100,
         }
     }
+}
+
+fn rgb_zigzag(rgb: [(u8, u8, u8); 12]) -> [(u8, u8, u8); 12] {
+    [
+        rgb[0], rgb[1], rgb[2], rgb[3], rgb[7], rgb[6], rgb[5], rgb[4], rgb[8], rgb[9], rgb[10],
+        rgb[11],
+    ]
+}
+
+fn rgb_brightness(mut rgb: [(u8, u8, u8); 12], brightness: u8) -> [(u8, u8, u8); 12] {
+    let brightness = (brightness as f32) / 255f32;
+    rgb.iter_mut().for_each(|(r, g, b)| {
+        *r = ((*r as f32) * brightness) as u8;
+        *g = ((*g as f32) * brightness) as u8;
+        *b = ((*b as f32) * brightness) as u8;
+    });
+    rgb
+}
+
+fn into_rgb(rgb: [(u8, u8, u8); 12]) -> [RGB8; 12] {
+    [
+        rgb[0].into(),
+        rgb[1].into(),
+        rgb[2].into(),
+        rgb[3].into(),
+        rgb[4].into(),
+        rgb[5].into(),
+        rgb[6].into(),
+        rgb[7].into(),
+        rgb[8].into(),
+        rgb[9].into(),
+        rgb[10].into(),
+        rgb[11].into(),
+    ]
 }

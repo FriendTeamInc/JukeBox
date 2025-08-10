@@ -1,6 +1,6 @@
 //! Keypad
 //!
-//!
+//! Push buttons get money (maybe)
 
 use core::sync::atomic::AtomicBool;
 
