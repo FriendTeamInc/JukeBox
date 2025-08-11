@@ -890,7 +890,6 @@ dependencies = [
  "jukebox_util",
  "packed_struct",
  "panic-probe",
- "rgb",
  "ringbuffer",
  "static_cell",
  "usbd-human-interface-device",

@@ -44,6 +44,7 @@ impl RgbMod {
             mut common, sm0, ..
         } = Pio::new(pio, Irqs);
         let program = PioWs2812Program::new(&mut common);
+
         Self {
             ws2812: PioWs2812::new(&mut common, sm0, dma, pin, &program),
             poll_time: unwrap!(Instant::now().checked_add(POLL_TIME)),
