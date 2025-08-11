@@ -25,6 +25,7 @@ use crate::{
     keypad::get_inputs,
     rgb::{DEFAULT_RGB_PROFILE, RGB_PROFILE},
     uid::get_uid,
+    usb::{DEFAULT_INPUT_EVENTS, INPUT_EVENTS},
     util::bootsel,
 };
 
@@ -106,7 +107,7 @@ impl SerialMod {
 
     async fn reset_peripherals(&mut self) {
         // TODO
-        // *INPUT_EVENTS.lock().await = DEFAULT_INPUT_EVENTS.lock().await.1.clone();
+        *INPUT_EVENTS.lock().await = DEFAULT_INPUT_EVENTS.lock().await.1.clone();
         *RGB_PROFILE.lock().await = DEFAULT_RGB_PROFILE.lock().await.1.clone();
         // *SCREEN_PROFILE.lock().await = DEFAULT_SCREEN_PROFILE.lock().await.1.clone();
     }
@@ -114,6 +115,7 @@ impl SerialMod {
     async fn start_update(&mut self) -> bool {
         info!("Command Update");
         SERIAL_TO_USB.write_all(RSP_FULL_DISCONNECTED).await;
+        // TODO: shutdown rgb and screen
         bootsel();
 
         true

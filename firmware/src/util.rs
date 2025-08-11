@@ -6,7 +6,11 @@ use embassy_rp::spinlock_mutex::SpinlockRawMutex;
 use embassy_sync::mutex::Mutex;
 use embassy_time::Instant;
 use jukebox_util::{
-    input::InputEvent, peripheral::JBInputs, rgb::RgbProfile, screen::ScreenProfile,
+    input::InputEvent,
+    peripheral::JBInputs,
+    rgb::RgbProfile,
+    screen::{ProfileName, ScreenProfile},
+    stats::SystemStats,
 };
 use usbd_human_interface_device::{
     device::{keyboard::NKROBootKeyboardReport, mouse::WheelMouseReport},
@@ -30,6 +34,8 @@ pub type RgbProfileMutex = Mutex<SpinlockRawMutex<4>, RgbProfile>;
 pub type DefaultRgbProfileMutex = Mutex<SpinlockRawMutex<5>, (bool, RgbProfile)>;
 pub type ScreenProfileMutex = Mutex<SpinlockRawMutex<6>, ScreenProfile>;
 pub type DefaultScreenProfileMutex = Mutex<SpinlockRawMutex<7>, (bool, ScreenProfile)>;
+pub type ScreenProfileNameMutex = Mutex<SpinlockRawMutex<8>, (bool, ProfileName)>;
+pub type ScreenSystemStatsMutex = Mutex<SpinlockRawMutex<9>, (bool, SystemStats)>;
 
 pub async fn get_keyboard_events() -> NKROBootKeyboardReport {
     let mut keys = [Keyboard::NoEventIndicated; 16 * 6];

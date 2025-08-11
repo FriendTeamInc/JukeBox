@@ -66,22 +66,17 @@ fn main() -> ! {
     let rgb_pio = p.PIO0;
     let rgb_dma = p.DMA_CH0;
     let rgb_pin = p.PIN_2;
-    // // Screen
-    // let scr_data = [
-    //     Output::new(p.PIN_19, Level::Low),
-    //     Output::new(p.PIN_20, Level::Low),
-    //     Output::new(p.PIN_21, Level::Low),
-    //     Output::new(p.PIN_22, Level::Low),
-    //     Output::new(p.PIN_23, Level::Low),
-    //     Output::new(p.PIN_24, Level::Low),
-    //     Output::new(p.PIN_25, Level::Low),
-    //     Output::new(p.PIN_26, Level::Low),
-    // ];
-    // let scr_clk = Output::new(p.PIN_27, Level::Low);
-    // let scr_cs = Output::new(p.PIN_14, Level::Low);
-    // let scr_dc = Output::new(p.PIN_15, Level::Low);
-    // let scr_bl = Pwm::new_output_a(p.PWM_SLICE0, p.PIN_16, Config::default());
-    // let scr_rst = Output::new(p.PIN_13, Level::Low);
+    // Screen
+    let scr_pio = p.PIO1;
+    let scr_dma = p.DMA_CH1;
+    let scr_data = (
+        p.PIN_19, p.PIN_20, p.PIN_21, p.PIN_22, p.PIN_23, p.PIN_24, p.PIN_25, p.PIN_26,
+    );
+    let scr_clk = p.PIN_27;
+    let scr_cs = Output::new(p.PIN_14, Level::Low);
+    let scr_dc = Output::new(p.PIN_15, Level::Low);
+    let scr_bl = Pwm::new_output_a(p.PWM_SLICE0, p.PIN_16, Config::default());
+    let scr_rst = Output::new(p.PIN_13, Level::Low);
 
     // Run all peripherals on core1
     // Peripheral tasks recieve data from the serial task
@@ -94,6 +89,9 @@ fn main() -> ! {
             executor1.run(|spawner| {
                 unwrap!(spawner.spawn(identify::identify_task(led_pin)));
                 unwrap!(spawner.spawn(rgb::rgb_task(rgb_pio, rgb_dma, rgb_pin)));
+                unwrap!(spawner.spawn(screen::screen_task(
+                    scr_pio, scr_dma, scr_data, scr_clk, scr_cs, scr_dc, scr_bl, scr_rst
+                )));
                 unwrap!(spawner.spawn(keypad::keypad_task(kp_rows, kp_cols)));
             });
         },
