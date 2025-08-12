@@ -23,6 +23,8 @@ embassy-rp = { version = "0.7", features = [
     "time-driver",
     "critical-section-impl",
 
+    "unstable-pac",
+
     "rp235xa",
     "imagedef-secure-exe",
     "binary-info",
@@ -47,10 +49,10 @@ ringbuffer = { version = "0.16", default-features = false }
 
 # mutually_exclusive_features = "0.1"
 
-# embedded-dma = "0.2"
-# embedded-graphics = { version = "0.8", features = ["fixed_point"] }
-# embedded-graphics-framebuf = "0.5"
-# mplusfonts = "0.2"
+embedded-dma = "0.2"
+embedded-graphics = { version = "0.8", features = ["fixed_point"] }
+embedded-graphics-framebuf = "0.5"
+mplusfonts = "0.2"
 
 [features]
 default = ["keypad"]

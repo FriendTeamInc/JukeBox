@@ -69,6 +69,7 @@ fn main() -> ! {
     // Screen
     let scr_pio = p.PIO1;
     let scr_dma = p.DMA_CH1;
+    let fb_dma = p.DMA_CH2;
     let scr_data = (
         p.PIN_19, p.PIN_20, p.PIN_21, p.PIN_22, p.PIN_23, p.PIN_24, p.PIN_25, p.PIN_26,
     );
@@ -90,7 +91,7 @@ fn main() -> ! {
                 unwrap!(spawner.spawn(identify::identify_task(led_pin)));
                 unwrap!(spawner.spawn(rgb::rgb_task(rgb_pio, rgb_dma, rgb_pin)));
                 unwrap!(spawner.spawn(screen::screen_task(
-                    scr_pio, scr_dma, scr_data, scr_clk, scr_cs, scr_dc, scr_bl, scr_rst
+                    scr_pio, scr_dma, scr_data, scr_clk, scr_cs, scr_dc, scr_bl, scr_rst, fb_dma
                 )));
                 unwrap!(spawner.spawn(keypad::keypad_task(kp_rows, kp_cols)));
             });
