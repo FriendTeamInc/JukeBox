@@ -7,7 +7,7 @@ use defmt::*;
 use embassy_futures::yield_now;
 use embassy_rp::{
     Peri, bind_interrupts,
-    dma::{copy, write_repeated},
+    dma::write_repeated,
     gpio::Output,
     peripherals::{
         DMA_CH1, DMA_CH2, PIN_19, PIN_20, PIN_21, PIN_22, PIN_23, PIN_24, PIN_25, PIN_26, PIN_27,
@@ -21,7 +21,7 @@ use embassy_time::{Duration, Instant, Timer};
 use embedded_graphics::{
     pixelcolor::{Bgr565, Gray4, raw::RawU16},
     primitives::{PrimitiveStyle, Rectangle},
-    text::{Alignment, Baseline, TextStyle},
+    text::{Alignment, Baseline, Text, TextStyle},
 };
 use embedded_graphics::{prelude::*, text::TextStyleBuilder};
 use embedded_graphics_framebuf::{FrameBuf, backends::FrameBufferBackend};
@@ -29,12 +29,15 @@ use jukebox_util::{
     screen::{ProfileName, ScreenProfile},
     stats::SystemStats,
 };
-use mplusfonts::{BitmapFont, mplus};
+use mplusfonts::{BitmapFont, mplus, style::BitmapFontStyleBuilder};
 
 use crate::{
+    keypad::get_raw_inputs,
+    serial::SERIAL_CONNECTED,
+    uid::get_uid,
     usb::usb_suspended,
     util::{
-        DefaultScreenProfileMutex, ScreenProfileMutex, ScreenProfileNameMutex,
+        DefaultScreenProfileMutex, ScreenIconsMutex, ScreenProfileMutex, ScreenProfileNameMutex,
         ScreenSystemStatsMutex,
     },
 };
@@ -83,10 +86,10 @@ impl St7789_8080 {
         mut bl: ScrBlPin,
         mut rst: ScrRstPin,
     ) -> Self {
-        bl.set_duty_cycle_percent(0).unwrap();
-        dc.set_low();
-        cs.set_high();
         rst.set_high();
+        bl.set_duty_cycle_percent(100).unwrap();
+        dc.set_high();
+        cs.set_low();
 
         let Pio {
             mut common,
@@ -128,7 +131,7 @@ impl St7789_8080 {
         sm0.set_pin_dirs(embassy_rp::pio::Direction::Out, &[&clk]);
         sm0.set_pin_dirs(embassy_rp::pio::Direction::Out, &datas);
 
-        sm0.set_enable(true);
+        // sm0.set_enable(true);
 
         Self {
             sm: sm0,
@@ -189,6 +192,8 @@ impl St7789_8080 {
     }
 
     pub async fn init(&mut self, w: u16, h: u16) {
+        self.sm.set_enable(true);
+
         // init sequence
         // 16bit startup sequence
         self.write_cmd(&[0x0001]).await; // Software reset
@@ -209,7 +214,7 @@ impl St7789_8080 {
 
     pub async fn push_framebuffer(&mut self, fb: &'static [u16]) {
         self.start_pixels().await;
-        self.sm.tx().dma_push(self.dma.reborrow(), fb, false).await;
+        self.sm.tx().dma_push(self.dma.reborrow(), fb, true).await;
     }
 }
 
@@ -218,6 +223,7 @@ pub static DEFAULT_SCREEN_PROFILE: DefaultScreenProfileMutex =
     Mutex::new((false, ScreenProfile::default_profile()));
 pub static SCREEN_PROFILE_NAME: ScreenProfileNameMutex = Mutex::new(ProfileName::default());
 pub static SCREEN_SYSTEM_STATS: ScreenSystemStatsMutex = Mutex::new(SystemStats::default());
+pub static SCREEN_ICONS: ScreenIconsMutex = Mutex::new([[0u16; 32 * 32]; 12]);
 
 const POLL_TIME: Duration = Duration::from_millis(100);
 pub const SCR_W: usize = 320;
@@ -298,6 +304,8 @@ struct ScreenMod {
     screen_profile_name: ProfileName,
     screen_system_stats: SystemStats,
 
+    keys_status: [u8; 12],
+
     poll_time: Instant,
 }
 impl ScreenMod {
@@ -331,6 +339,8 @@ impl ScreenMod {
             screen_profile: ScreenProfile::default_profile(),
             screen_profile_name: ProfileName::default(),
             screen_system_stats: SystemStats::default(),
+
+            keys_status: [0; 12],
 
             poll_time: unwrap!(Instant::now().checked_add(POLL_TIME)),
         }
@@ -405,6 +415,283 @@ impl ScreenMod {
         }
     }
 
+    async fn draw_system_stats(&mut self) {
+        let text_color: Bgr565 = RawU16::new(self.screen_profile.text_color()).into();
+        let bgc: Bgr565 = RawU16::new(self.screen_profile.background_color()).into();
+
+        let font1_style = BitmapFontStyleBuilder::new()
+            .text_color(text_color)
+            .background_color(bgc)
+            .font(&FONT1)
+            .build();
+
+        let font2_style = BitmapFontStyleBuilder::new()
+            .text_color(text_color)
+            .background_color(bgc)
+            .font(&FONT2)
+            .build();
+
+        // Left side
+        {
+            // Memory Total
+            let _ = Text::with_text_style(
+                self.screen_system_stats.memory_total.to_str(),
+                Point::new(24, 167 + 60),
+                font1_style.clone(),
+                LEFT_TEXT_STYLE,
+            )
+            .draw(&mut self.fb);
+            let _ = Text::with_text_style(
+                self.screen_system_stats.memory_unit.to_str(),
+                Point::new(66, 167 + 60),
+                font1_style.clone(),
+                LEFT_TEXT_STYLE,
+            )
+            .draw(&mut self.fb);
+            let _ = Text::with_text_style(
+                " /",
+                Point::new(4, 167 + 60),
+                font1_style.clone(),
+                LEFT_TEXT_STYLE,
+            )
+            .draw(&mut self.fb);
+
+            // Memory Used
+            let _ = Text::with_text_style(
+                self.screen_system_stats.memory_used.to_str(),
+                Point::new(4, 142 + 60),
+                font2_style.clone(),
+                LEFT_TEXT_STYLE,
+            )
+            .draw(&mut self.fb);
+
+            let _ = Text::with_text_style(
+                "RAM:",
+                Point::new(45, 167 + 10),
+                font1_style.clone(),
+                CENTER_TEXT_STYLE,
+            )
+            .draw(&mut self.fb);
+
+            // CPU Temperature
+            let _ = Text::with_text_style(
+                self.screen_system_stats.cpu_temperature.to_str(),
+                Point::new(26, 82),
+                font2_style.clone(),
+                LEFT_TEXT_STYLE,
+            )
+            .draw(&mut self.fb);
+            let _ = Text::with_text_style(
+                "°C",
+                Point::new(108, 86),
+                font1_style.clone(),
+                LEFT_TEXT_STYLE,
+            )
+            .draw(&mut self.fb);
+
+            // CPU Usage
+            let _ = Text::with_text_style(
+                self.screen_system_stats.cpu_usage.to_str(),
+                Point::new(26, 42),
+                font2_style.clone(),
+                LEFT_TEXT_STYLE,
+            )
+            .draw(&mut self.fb);
+            let _ = Text::with_text_style(
+                "%",
+                Point::new(108, 46),
+                font1_style.clone(),
+                LEFT_TEXT_STYLE,
+            )
+            .draw(&mut self.fb);
+
+            // CPU name
+            let _ = Text::with_text_style(
+                self.screen_system_stats.cpu_name.to_str(),
+                Point::new(3, 10),
+                font1_style.clone(),
+                LEFT_TEXT_STYLE,
+            )
+            .draw(&mut self.fb);
+        }
+
+        // Right side
+        {
+            // VRAM Total
+            let _ = Text::with_text_style(
+                self.screen_system_stats.vram_total.to_str(),
+                Point::new(230 + 24, 167 + 60),
+                font1_style.clone(),
+                LEFT_TEXT_STYLE,
+            )
+            .draw(&mut self.fb);
+            let _ = Text::with_text_style(
+                self.screen_system_stats.vram_unit.to_str(),
+                Point::new(230 + 66, 167 + 60),
+                font1_style.clone(),
+                LEFT_TEXT_STYLE,
+            )
+            .draw(&mut self.fb);
+            let _ = Text::with_text_style(
+                " /",
+                Point::new(230 + 4, 167 + 60),
+                font1_style.clone(),
+                LEFT_TEXT_STYLE,
+            )
+            .draw(&mut self.fb);
+
+            // VRAM Used
+            let _ = Text::with_text_style(
+                self.screen_system_stats.vram_used.to_str(),
+                Point::new(230 + 4, 142 + 60),
+                font2_style.clone(),
+                LEFT_TEXT_STYLE,
+            )
+            .draw(&mut self.fb);
+
+            let _ = Text::with_text_style(
+                "VRAM:",
+                Point::new(230 + 45, 167 + 10),
+                font1_style.clone(),
+                CENTER_TEXT_STYLE,
+            )
+            .draw(&mut self.fb);
+
+            // GPU Temperature
+            let _ = Text::with_text_style(
+                self.screen_system_stats.gpu_temperature.to_str(),
+                Point::new(160 + 26, 82),
+                font2_style.clone(),
+                LEFT_TEXT_STYLE,
+            )
+            .draw(&mut self.fb);
+            let _ = Text::with_text_style(
+                "°C",
+                Point::new(160 + 108, 86),
+                font1_style.clone(),
+                LEFT_TEXT_STYLE,
+            )
+            .draw(&mut self.fb);
+
+            // GPU Usage
+            let _ = Text::with_text_style(
+                self.screen_system_stats.gpu_usage.to_str(),
+                Point::new(160 + 26, 42),
+                font2_style.clone(),
+                LEFT_TEXT_STYLE,
+            )
+            .draw(&mut self.fb);
+            let _ = Text::with_text_style(
+                "%",
+                Point::new(160 + 108, 46),
+                font1_style.clone(),
+                LEFT_TEXT_STYLE,
+            )
+            .draw(&mut self.fb);
+
+            // GPU name
+            let _ = Text::with_text_style(
+                self.screen_system_stats.gpu_name.to_str(),
+                Point::new(320 - 2 - 2, 10),
+                font1_style.clone(),
+                RIGHT_TEXT_STYLE,
+            )
+            .draw(&mut self.fb);
+        }
+    }
+
+    async fn draw(&mut self) {
+        let text_color: Bgr565 = RawU16::new(self.screen_profile.text_color()).into();
+        let bgc: Bgr565 = RawU16::new(self.screen_profile.background_color()).into();
+        let show_profile_name = self.screen_profile.show_profile_name();
+
+        let font1_style = BitmapFontStyleBuilder::new()
+            .text_color(text_color)
+            .background_color(bgc)
+            .font(&FONT1)
+            .build();
+
+        match self.screen_profile {
+            ScreenProfile::Off => {}
+            ScreenProfile::DisplayKeys { .. } => {
+                let serial_connected = SERIAL_CONNECTED.load(core::sync::atomic::Ordering::Relaxed);
+
+                // if serial_connected {
+                //     if show_profile_name {
+                //         let _ = Text::with_text_style(
+                //             self.screen_profile_name.to_str(),
+                //             Point::new(160 - 1, 224),
+                //             font1_style.clone(),
+                //             CENTER_TEXT_STYLE,
+                //         )
+                //         .draw(&mut self.fb);
+                //     }
+                // } else {
+                //     let _ = Text::with_text_style(
+                //         get_uid(),
+                //         Point::new(160 - 1, 224),
+                //         font1_style.clone(),
+                //         CENTER_TEXT_STYLE,
+                //     )
+                //     .draw(&mut self.fb);
+
+                //     let _ = Text::with_text_style(
+                //         env!("CARGO_PKG_VERSION"),
+                //         Point::new(255, 224),
+                //         font1_style.clone(),
+                //         LEFT_TEXT_STYLE,
+                //     )
+                //     .draw(&mut self.fb);
+                // }
+
+                for y in 0..3 {
+                    for x in 0..4 {
+                        let i = SCREEN_ICONS.lock().await;
+                        let idx = y * 4 + x;
+                        self.draw_icon(
+                            &i[idx],
+                            self.keys_status[idx],
+                            23 + (64 + 6) * x,
+                            4 + (64 + 6) * y,
+                            2,
+                        );
+                    }
+                }
+            }
+            ScreenProfile::DisplayStats { .. } => {
+                self.draw_system_stats().await;
+
+                // Profile name
+                if show_profile_name {
+                    let _ = Text::with_text_style(
+                        self.screen_profile_name.to_str(),
+                        Point::new(160 - 1, 116),
+                        font1_style.clone(),
+                        TextStyleBuilder::new()
+                            .alignment(Alignment::Center)
+                            .baseline(Baseline::Middle)
+                            .build(),
+                    )
+                    .draw(&mut self.fb);
+                }
+
+                for y in 0..3 {
+                    for x in 0..4 {
+                        let i = SCREEN_ICONS.lock().await;
+                        let idx = y * 4 + x;
+                        self.draw_icon(
+                            &i[idx],
+                            self.keys_status[idx],
+                            90 + (32 + 4) * x,
+                            130 + (32 + 4) * y,
+                            1,
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     async fn task(mut self) -> ! {
         loop {
             let now = Instant::now();
@@ -416,27 +703,37 @@ impl ScreenMod {
 
             // Before we do anything, we exit early if the device is supposed to be asleep
             if usb_suspended() {
-                self.scr.set_backlight(0);
+                // self.scr.set_backlight(0);
                 yield_now().await;
                 continue;
             }
 
-            // First, clone out all the data we need to build the screen frame
+            let start_draw = Instant::now();
+
+            // First, clone out all the data we need to build the screen frame and update some animations
             self.screen_profile = SCREEN_PROFILE.lock().await.clone();
             self.screen_profile_name = SCREEN_PROFILE_NAME.lock().await.clone();
             self.screen_system_stats = SCREEN_SYSTEM_STATS.lock().await.clone();
+            let keys = get_raw_inputs();
+            for i in 0..12 {
+                if keys[i] {
+                    self.keys_status[i] = 4;
+                } else {
+                    self.keys_status[i] -= 1;
+                }
+            }
 
             // Second, clear the screen to the background color using a DMA
             // TODO: We actually can't do the background color right now because of embassy limitations...
-            unsafe {
-                write_repeated(
-                    self.fb_dma.reborrow(),
-                    &mut *core::ptr::addr_of_mut!(FBDATA[0]),
-                    SCR_W * SCR_H,
-                    embassy_rp::pac::dma::vals::TreqSel::PERMANENT,
-                )
-                .await;
-            };
+            // unsafe {
+            //     write_repeated(
+            //         self.fb_dma.reborrow(),
+            //         &mut *core::ptr::addr_of_mut!(FBDATA[0]),
+            //         SCR_W * SCR_H,
+            //         embassy_rp::pac::dma::vals::TreqSel::PERMANENT,
+            //     )
+            //     .await;
+            // };
             // TODO: dont do this.
             let _ = Rectangle::new(Point::new(0, 0), Size::new(SCR_W as u32, SCR_H as u32))
                 .into_styled(PrimitiveStyle::with_fill(
@@ -445,12 +742,16 @@ impl ScreenMod {
                 .draw(&mut self.fb);
 
             // Third, draw everything on the screen
+            // self.draw().await;
 
             // Finally, push the frame to the screen using the driver
             self.scr
                 .push_framebuffer(unsafe { &mut *core::ptr::addr_of_mut!(FBDATA) })
                 .await;
-            self.scr.set_backlight(100);
+            self.scr.set_backlight(self.screen_profile.brightness());
+
+            let end_draw = Instant::now();
+            info!("draw_time: {} us", (end_draw - start_draw).as_micros());
 
             self.poll_time = unwrap!(now.checked_add(POLL_TIME));
         }

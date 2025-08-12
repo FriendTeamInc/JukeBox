@@ -36,6 +36,7 @@ pub type ScreenProfileMutex = Mutex<SpinlockRawMutex<6>, ScreenProfile>;
 pub type DefaultScreenProfileMutex = Mutex<SpinlockRawMutex<7>, (bool, ScreenProfile)>;
 pub type ScreenProfileNameMutex = Mutex<SpinlockRawMutex<8>, ProfileName>;
 pub type ScreenSystemStatsMutex = Mutex<SpinlockRawMutex<9>, SystemStats>;
+pub type ScreenIconsMutex = Mutex<SpinlockRawMutex<10>, [[u16; 32 * 32]; 12]>;
 
 pub async fn get_keyboard_events() -> NKROBootKeyboardReport {
     let mut keys = [Keyboard::NoEventIndicated; 16 * 6];
@@ -133,3 +134,35 @@ pub async fn get_mouse_events() -> WheelMouseReport {
         horizontal_wheel: min(max(scroll_x, i8::MIN as isize), i8::MAX as isize) as i8,
     }
 }
+
+macro_rules! load_bmp {
+    ($path:literal) => {{
+        let (_, bmp) = include_bytes!($path).split_at(0x7A);
+        if bmp.len() != (32 * 32 * 2) {
+            core::panic!()
+        }
+        let mut bytes = [0u16; 32 * 32];
+
+        let mut i = 0;
+        while i < (32 * 32) {
+            bytes[i] = ((bmp[i * 2 + 1] as u16) << 8) | (bmp[i * 2] as u16);
+            i += 1;
+        }
+        bytes
+    }};
+}
+
+const DEFAULT_ICONS: &[[u16; 32 * 32]] = &[
+    load_bmp!("../../assets/action-icons/F13.bmp"),
+    load_bmp!("../../assets/action-icons/F14.bmp"),
+    load_bmp!("../../assets/action-icons/F15.bmp"),
+    load_bmp!("../../assets/action-icons/F16.bmp"),
+    load_bmp!("../../assets/action-icons/F17.bmp"),
+    load_bmp!("../../assets/action-icons/F18.bmp"),
+    load_bmp!("../../assets/action-icons/F19.bmp"),
+    load_bmp!("../../assets/action-icons/F20.bmp"),
+    load_bmp!("../../assets/action-icons/F21.bmp"),
+    load_bmp!("../../assets/action-icons/F22.bmp"),
+    load_bmp!("../../assets/action-icons/F23.bmp"),
+    load_bmp!("../../assets/action-icons/F24.bmp"),
+];

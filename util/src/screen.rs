@@ -103,6 +103,18 @@ impl ScreenProfile {
         }
     }
 
+    pub fn show_profile_name(&self) -> bool {
+        match self {
+            ScreenProfile::Off => false,
+            ScreenProfile::DisplayKeys {
+                show_profile_name, ..
+            } => *show_profile_name,
+            ScreenProfile::DisplayStats {
+                show_profile_name, ..
+            } => *show_profile_name,
+        }
+    }
+
     pub fn encode(self) -> [u8; SCREEN_PROFILE_SIZE] {
         let mut data = [0u8; SCREEN_PROFILE_SIZE];
         let _ = encode_into_slice(self, &mut data, bincode::config::standard()).unwrap();

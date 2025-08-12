@@ -12,12 +12,15 @@ use embassy_time::{Duration, Instant};
 use jukebox_util::peripheral::JBInputs;
 
 static KEYPAD_KEYS: [AtomicBool; 12] = [const { AtomicBool::new(false) }; 12];
-pub fn get_inputs() -> JBInputs {
+pub fn get_raw_inputs() -> [bool; 16] {
     let mut inputs = [false; 16];
     KEYPAD_KEYS.iter().enumerate().for_each(|(i, k)| {
         inputs[i] = k.load(core::sync::atomic::Ordering::Relaxed);
     });
-    JBInputs::KeyPad(inputs.into())
+    inputs
+}
+pub fn get_inputs() -> JBInputs {
+    JBInputs::KeyPad(get_raw_inputs().into())
 }
 
 const POLL_TIME: Duration = Duration::from_millis(10);

@@ -2,6 +2,8 @@
 //!
 //! The protocol processor for JukeBox.
 
+use core::sync::atomic::AtomicBool;
+
 use defmt::*;
 
 use embassy_futures::yield_now;
@@ -24,6 +26,7 @@ use crate::{
     identify::start_identify,
     keypad::get_inputs,
     rgb::{DEFAULT_RGB_PROFILE, RGB_PROFILE},
+    screen::{DEFAULT_SCREEN_PROFILE, SCREEN_PROFILE},
     uid::get_uid,
     usb::{DEFAULT_INPUT_EVENTS, INPUT_EVENTS},
     util::bootsel,
@@ -33,6 +36,7 @@ type InternalBuf = ConstGenericRingBuffer<u8, 4096>;
 
 pub static USB_TO_SERIAL: Pipe<ThreadModeRawMutex, 2048> = Pipe::new();
 pub static SERIAL_TO_USB: Pipe<ThreadModeRawMutex, 512> = Pipe::new();
+pub static SERIAL_CONNECTED: AtomicBool = AtomicBool::new(false);
 
 const KEEPALIVE_TIME: Duration = Duration::from_secs(1);
 
@@ -109,7 +113,7 @@ impl SerialMod {
         // TODO
         *INPUT_EVENTS.lock().await = DEFAULT_INPUT_EVENTS.lock().await.1.clone();
         *RGB_PROFILE.lock().await = DEFAULT_RGB_PROFILE.lock().await.1.clone();
-        // *SCREEN_PROFILE.lock().await = DEFAULT_SCREEN_PROFILE.lock().await.1.clone();
+        *SCREEN_PROFILE.lock().await = DEFAULT_SCREEN_PROFILE.lock().await.1.clone();
     }
 
     async fn start_update(&mut self) -> bool {
@@ -126,6 +130,7 @@ impl SerialMod {
             if self.connected && self.keep_alive_end <= Instant::now() {
                 warn!("Keepalive triggered, disconnecting.");
                 self.connected = false;
+                SERIAL_CONNECTED.store(false, core::sync::atomic::Ordering::Relaxed);
                 self.buf.clear();
                 self.reset_peripherals().await;
             }
@@ -176,6 +181,7 @@ impl SerialMod {
                         SERIAL_TO_USB.write_all(&[RSP_LINK_DELIMITER]).await;
 
                         self.connected = true;
+                        SERIAL_CONNECTED.store(true, core::sync::atomic::Ordering::Relaxed);
 
                         true
                     }
@@ -264,6 +270,8 @@ impl SerialMod {
                     Command::Disconnect => {
                         SERIAL_TO_USB.write_all(RSP_FULL_DISCONNECTED).await;
                         self.connected = false;
+                        SERIAL_CONNECTED.store(false, core::sync::atomic::Ordering::Relaxed);
+
                         self.reset_peripherals().await;
                         true
                     }
