@@ -13,7 +13,9 @@ use embassy_rp::{
         DMA_CH1, DMA_CH2, PIN_19, PIN_20, PIN_21, PIN_22, PIN_23, PIN_24, PIN_25, PIN_26, PIN_27,
         PIO1,
     },
-    pio::{Config, InterruptHandler, Pio, StateMachine, program::pio_asm},
+    pio::{
+        Common, Config, InterruptHandler, LoadedProgram, Pin, Pio, StateMachine, program::pio_asm,
+    },
     pwm::{Pwm, SetDutyCycle},
 };
 use embassy_sync::mutex::Mutex;
@@ -43,6 +45,8 @@ use crate::{
 };
 
 type ScrPio = Peri<'static, PIO1>;
+// type ScrPioCommon = Common<'static, PIO1>;
+// type ScrPioProgram = LoadedProgram<'static, PIO1>;
 type ScrPioSm = StateMachine<'static, PIO1, 0>;
 type ScrDma = Peri<'static, DMA_CH1>;
 type FbDma = Peri<'static, DMA_CH2>;
@@ -56,6 +60,16 @@ type ScrDataPins = (
     Peri<'static, PIN_25>,
     Peri<'static, PIN_26>,
 );
+// type ScrPioPins = (
+//     Pin<'static, PIO1>,
+//     Pin<'static, PIO1>,
+//     Pin<'static, PIO1>,
+//     Pin<'static, PIO1>,
+//     Pin<'static, PIO1>,
+//     Pin<'static, PIO1>,
+//     Pin<'static, PIO1>,
+//     Pin<'static, PIO1>,
+// );
 
 type ScrClkPin = Peri<'static, PIN_27>;
 type ScrCsPin = Output<'static>;
@@ -69,11 +83,14 @@ bind_interrupts!(struct Irqs {
 
 struct St7789_8080 {
     sm: ScrPioSm,
+    // common: ScrPioCommon,
+    // program: ScrPioProgram,
+    // data: ScrPioPins,
     dma: ScrDma,
     cs: ScrCsPin,
     dc: ScrDcPin,
     bl: ScrBlPin,
-    _rst: ScrRstPin,
+    // rst: ScrRstPin,
 }
 impl St7789_8080 {
     pub fn new(
@@ -86,16 +103,15 @@ impl St7789_8080 {
         mut bl: ScrBlPin,
         mut rst: ScrRstPin,
     ) -> Self {
+        bl.set_duty_cycle_percent(0).unwrap();
+        dc.set_low();
+        cs.set_high();
         rst.set_high();
-        bl.set_duty_cycle_percent(100).unwrap();
-        dc.set_high();
-        cs.set_low();
 
         let Pio {
-            mut common,
-            mut sm0,
-            ..
+            mut common, sm0, ..
         } = Pio::new(pio, Irqs);
+        let mut sm = sm0;
 
         let program = pio_asm!(
             // ".pio_version 1"
@@ -109,37 +125,44 @@ impl St7789_8080 {
 
         let mut cfg = Config::default();
         let clk = common.make_pio_pin(clk);
-        let datas = [
-            &common.make_pio_pin(data.0),
-            &common.make_pio_pin(data.1),
-            &common.make_pio_pin(data.2),
-            &common.make_pio_pin(data.3),
-            &common.make_pio_pin(data.4),
-            &common.make_pio_pin(data.5),
-            &common.make_pio_pin(data.6),
-            &common.make_pio_pin(data.7),
+        let data = (
+            common.make_pio_pin(data.0),
+            common.make_pio_pin(data.1),
+            common.make_pio_pin(data.2),
+            common.make_pio_pin(data.3),
+            common.make_pio_pin(data.4),
+            common.make_pio_pin(data.5),
+            common.make_pio_pin(data.6),
+            common.make_pio_pin(data.7),
+        );
+
+        let pins = [
+            &data.0, &data.1, &data.2, &data.3, &data.4, &data.5, &data.6, &data.7,
         ];
-        cfg.set_out_pins(&datas);
+        cfg.set_out_pins(&pins);
         cfg.fifo_join = embassy_rp::pio::FifoJoin::TxOnly;
         cfg.shift_out.threshold = 16;
         cfg.shift_out.direction = embassy_rp::pio::ShiftDirection::Left;
         cfg.shift_out.auto_fill = true;
         cfg.clock_divider = 4u8.into();
-        cfg.use_program(&common.load_program(&program.program), &[&clk]);
+        let program = common.load_program(&program.program);
+        cfg.use_program(&program, &[&clk]);
 
-        sm0.set_config(&cfg);
-        sm0.set_pin_dirs(embassy_rp::pio::Direction::Out, &[&clk]);
-        sm0.set_pin_dirs(embassy_rp::pio::Direction::Out, &datas);
-
-        // sm0.set_enable(true);
+        sm.set_config(&cfg);
+        sm.set_pin_dirs(embassy_rp::pio::Direction::Out, &pins);
+        sm.set_pin_dirs(embassy_rp::pio::Direction::Out, &[&clk]);
+        sm.set_enable(true);
 
         Self {
-            sm: sm0,
+            sm,
+            // common,
+            // program,
+            // data,
             dma,
             cs,
             dc,
             bl,
-            _rst: rst,
+            // rst,
         }
     }
 
@@ -148,19 +171,9 @@ impl St7789_8080 {
     }
 
     async fn set_dc_cs(&mut self, dc: bool, cs: bool) {
-        Timer::after_micros(1).await;
-
-        if dc {
-            self.dc.set_high();
-        } else {
-            self.dc.set_low();
-        }
-        if cs {
-            self.cs.set_high();
-        } else {
-            self.cs.set_low();
-        }
-
+        // Timer::after_micros(1).await;
+        self.dc.set_level(dc.into());
+        self.cs.set_level(cs.into());
         Timer::after_micros(1).await;
     }
 
@@ -192,8 +205,6 @@ impl St7789_8080 {
     }
 
     pub async fn init(&mut self, w: u16, h: u16) {
-        self.sm.set_enable(true);
-
         // init sequence
         // 16bit startup sequence
         self.write_cmd(&[0x0001]).await; // Software reset
@@ -207,13 +218,9 @@ impl St7789_8080 {
         self.write_cmd(&[0x0029]).await; // Main screen turn on
     }
 
-    async fn start_pixels(&mut self) {
+    pub async fn push_framebuffer(&mut self, fb: &'static [u16]) {
         self.write_cmd(&[0x002C]).await;
         self.set_dc_cs(true, false).await;
-    }
-
-    pub async fn push_framebuffer(&mut self, fb: &'static [u16]) {
-        self.start_pixels().await;
         self.sm.tx().dma_push(self.dma.reborrow(), fb, true).await;
     }
 }
@@ -742,7 +749,7 @@ impl ScreenMod {
                 .draw(&mut self.fb);
 
             // Third, draw everything on the screen
-            // self.draw().await;
+            self.draw().await;
 
             // Finally, push the frame to the screen using the driver
             self.scr

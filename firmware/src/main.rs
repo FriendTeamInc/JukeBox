@@ -20,9 +20,9 @@ use {defmt_rtt as _, panic_probe as _};
 
 use embassy_executor::Executor;
 use embassy_rp::{
-    gpio::{Input, Level, Output, Pull},
+    gpio,
     multicore::{Stack, spawn_core1},
-    pwm::{Config, Pwm},
+    pwm,
 };
 use static_cell::StaticCell;
 
@@ -49,18 +49,18 @@ fn main() -> ! {
     // let eeprom_sda = Output::new(p.PIN_4, Level::Low);
     // let eeprom_scl = Output::new(p.PIN_5, Level::Low);
     // LED
-    let led_pin = Pwm::new_output_b(p.PWM_SLICE6, p.PIN_29, Config::default());
+    let led_pin = pwm::Pwm::new_output_b(p.PWM_SLICE6, p.PIN_29, pwm::Config::default());
     // Keypad
     let kp_rows = [
-        Output::new(p.PIN_6, Level::Low),
-        Output::new(p.PIN_7, Level::Low),
-        Output::new(p.PIN_8, Level::Low),
+        gpio::Output::new(p.PIN_6, gpio::Level::Low),
+        gpio::Output::new(p.PIN_7, gpio::Level::Low),
+        gpio::Output::new(p.PIN_8, gpio::Level::Low),
     ];
     let kp_cols = [
-        Input::new(p.PIN_9, Pull::None),
-        Input::new(p.PIN_10, Pull::None),
-        Input::new(p.PIN_11, Pull::None),
-        Input::new(p.PIN_12, Pull::None),
+        gpio::Input::new(p.PIN_9, gpio::Pull::None),
+        gpio::Input::new(p.PIN_10, gpio::Pull::None),
+        gpio::Input::new(p.PIN_11, gpio::Pull::None),
+        gpio::Input::new(p.PIN_12, gpio::Pull::None),
     ];
     // RGB
     let rgb_pio = p.PIO0;
@@ -74,10 +74,10 @@ fn main() -> ! {
         p.PIN_19, p.PIN_20, p.PIN_21, p.PIN_22, p.PIN_23, p.PIN_24, p.PIN_25, p.PIN_26,
     );
     let scr_clk = p.PIN_27;
-    let scr_cs = Output::new(p.PIN_14, Level::Low);
-    let scr_dc = Output::new(p.PIN_15, Level::Low);
-    let scr_bl = Pwm::new_output_a(p.PWM_SLICE0, p.PIN_16, Config::default());
-    let scr_rst = Output::new(p.PIN_13, Level::Low);
+    let scr_cs = gpio::Output::new(p.PIN_14, gpio::Level::Low);
+    let scr_dc = gpio::Output::new(p.PIN_15, gpio::Level::Low);
+    let scr_bl = pwm::Pwm::new_output_a(p.PWM_SLICE0, p.PIN_16, pwm::Config::default());
+    let scr_rst = gpio::Output::new(p.PIN_13, gpio::Level::Low);
 
     // Run all peripherals on core1
     // Peripheral tasks recieve data from the serial task

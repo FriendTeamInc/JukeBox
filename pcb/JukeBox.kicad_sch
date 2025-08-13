@@ -6020,10 +6020,6 @@
 		(uuid "fada63d1-0c3d-41c2-b710-6c6ccc2ce1af")
 	)
 	(no_connect
-		(at 341.63 80.01)
-		(uuid "8dbe90f1-a329-48a2-9676-1e33a2238c83")
-	)
-	(no_connect
 		(at 55.88 66.04)
 		(uuid "9fd5ff1b-e5fd-4eb0-bebe-9e7b113a9684")
 	)
@@ -8178,6 +8174,16 @@
 			(type default)
 		)
 		(uuid "91ca4e0d-d8d5-4040-8ae6-c568fafabc57")
+	)
+	(wire
+		(pts
+			(xy 341.63 80.01) (xy 353.06 80.01)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "922ce6f4-5ffc-4033-8f76-0c3cf5c13f29")
 	)
 	(wire
 		(pts
@@ -15605,6 +15611,73 @@
 			(project "JukeBox"
 				(path "/6328db6d-b3ae-4344-8bbe-195d6ec45eb3"
 					(reference "L1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:+3V3")
+		(at 353.06 80.01 270)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "786c272c-2fc2-4138-b2bb-3996d699027c")
+		(property "Reference" "#PWR16"
+			(at 349.25 80.01 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "+3V3"
+			(at 356.87 80.0099 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 353.06 80.01 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 353.06 80.01 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" ""
+			(at 353.06 80.01 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "944d1949-663d-467d-8176-e3b0655ac704")
+		)
+		(instances
+			(project "JukeBox"
+				(path "/6328db6d-b3ae-4344-8bbe-195d6ec45eb3"
+					(reference "#PWR16")
 					(unit 1)
 				)
 			)
