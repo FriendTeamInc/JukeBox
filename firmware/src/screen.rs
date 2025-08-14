@@ -749,7 +749,7 @@ impl ScreenMod {
                 .draw(&mut self.fb);
 
             // Third, draw everything on the screen
-            self.draw().await;
+            // self.draw().await;
 
             // Finally, push the frame to the screen using the driver
             self.scr

@@ -6967,7 +6967,7 @@
 	)
 	(wire
 		(pts
-			(xy 226.06 222.25) (xy 240.03 222.25)
+			(xy 226.06 222.25) (xy 246.38 222.25)
 		)
 		(stroke
 			(width 0)
@@ -8177,16 +8177,6 @@
 	)
 	(wire
 		(pts
-			(xy 341.63 80.01) (xy 353.06 80.01)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "922ce6f4-5ffc-4033-8f76-0c3cf5c13f29")
-	)
-	(wire
-		(pts
 			(xy 124.46 39.37) (xy 124.46 40.64)
 		)
 		(stroke
@@ -9004,6 +8994,16 @@
 			(type default)
 		)
 		(uuid "d4e4684d-f55b-4032-98f8-b7858b2b6871")
+	)
+	(wire
+		(pts
+			(xy 341.63 80.01) (xy 351.79 80.01)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d56d8283-b52c-401a-a920-0c6c21afc000")
 	)
 	(wire
 		(pts
@@ -10378,6 +10378,16 @@
 		)
 		(uuid "9990dbab-d3a2-466b-9069-e5a1cb9078e3")
 	)
+	(label "SCRRD"
+		(at 351.79 80.01 180)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify right bottom)
+		)
+		(uuid "9c635e71-0407-4495-8056-c6dd1143a326")
+	)
 	(label "KBCOL1"
 		(at 246.38 199.39 0)
 		(effects
@@ -10608,16 +10618,6 @@
 		)
 		(uuid "d623898b-da2e-4c04-afd3-3189280d7296")
 	)
-	(label "GPIO18"
-		(at 240.03 222.25 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right bottom)
-		)
-		(uuid "d9659bfe-8055-4d74-94b7-b68d3df5bde0")
-	)
 	(label "SCRD2"
 		(at 246.38 229.87 0)
 		(effects
@@ -10637,6 +10637,16 @@
 			(justify left bottom)
 		)
 		(uuid "da9069f8-b90a-4b49-ba5f-5d816c880644")
+	)
+	(label "SCRRD"
+		(at 246.38 222.25 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(justify left bottom)
+		)
+		(uuid "de843069-96d4-42b0-a3ea-8e26bb9166a1")
 	)
 	(label "KBROW1"
 		(at 246.38 191.77 0)
@@ -15611,73 +15621,6 @@
 			(project "JukeBox"
 				(path "/6328db6d-b3ae-4344-8bbe-195d6ec45eb3"
 					(reference "L1")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "power:+3V3")
-		(at 353.06 80.01 270)
-		(unit 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "786c272c-2fc2-4138-b2bb-3996d699027c")
-		(property "Reference" "#PWR16"
-			(at 349.25 80.01 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Value" "+3V3"
-			(at 356.87 80.0099 90)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
-			)
-		)
-		(property "Footprint" ""
-			(at 353.06 80.01 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Datasheet" ""
-			(at 353.06 80.01 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(property "Description" ""
-			(at 353.06 80.01 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(hide yes)
-			)
-		)
-		(pin "1"
-			(uuid "944d1949-663d-467d-8176-e3b0655ac704")
-		)
-		(instances
-			(project "JukeBox"
-				(path "/6328db6d-b3ae-4344-8bbe-195d6ec45eb3"
-					(reference "#PWR16")
 					(unit 1)
 				)
 			)
