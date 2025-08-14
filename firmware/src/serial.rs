@@ -113,7 +113,7 @@ impl SerialMod {
         // TODO
         *INPUT_EVENTS.lock().await = DEFAULT_INPUT_EVENTS.lock().await.1.clone();
         *RGB_PROFILE.lock().await = DEFAULT_RGB_PROFILE.lock().await.1.clone();
-        *SCREEN_PROFILE.lock().await = DEFAULT_SCREEN_PROFILE.lock().await.1.clone();
+        SCREEN_PROFILE.lock().await.1 = DEFAULT_SCREEN_PROFILE.lock().await.1.clone();
     }
 
     async fn start_update(&mut self) -> bool {

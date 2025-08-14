@@ -32,10 +32,10 @@ pub type InputEventsMutex = Mutex<SpinlockRawMutex<2>, [InputEvent; 16]>;
 pub type DefaultInputEventsMutex = Mutex<SpinlockRawMutex<3>, (bool, [InputEvent; 16])>;
 pub type RgbProfileMutex = Mutex<SpinlockRawMutex<4>, RgbProfile>;
 pub type DefaultRgbProfileMutex = Mutex<SpinlockRawMutex<5>, (bool, RgbProfile)>;
-pub type ScreenProfileMutex = Mutex<SpinlockRawMutex<6>, ScreenProfile>;
+pub type ScreenProfileMutex = Mutex<SpinlockRawMutex<6>, (bool, ScreenProfile)>;
 pub type DefaultScreenProfileMutex = Mutex<SpinlockRawMutex<7>, (bool, ScreenProfile)>;
-pub type ScreenProfileNameMutex = Mutex<SpinlockRawMutex<8>, ProfileName>;
-pub type ScreenSystemStatsMutex = Mutex<SpinlockRawMutex<9>, SystemStats>;
+pub type ScreenProfileNameMutex = Mutex<SpinlockRawMutex<8>, (bool, ProfileName)>;
+pub type ScreenSystemStatsMutex = Mutex<SpinlockRawMutex<9>, (bool, SystemStats)>;
 pub type ScreenIconsMutex = Mutex<SpinlockRawMutex<10>, [[u16; 32 * 32]; 12]>;
 
 pub async fn get_keyboard_events() -> NKROBootKeyboardReport {
@@ -152,7 +152,7 @@ macro_rules! load_bmp {
     }};
 }
 
-const DEFAULT_ICONS: &[[u16; 32 * 32]] = &[
+const _DEFAULT_ICONS: &[[u16; 32 * 32]] = &[
     load_bmp!("../../assets/action-icons/F13.bmp"),
     load_bmp!("../../assets/action-icons/F14.bmp"),
     load_bmp!("../../assets/action-icons/F15.bmp"),
