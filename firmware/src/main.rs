@@ -22,7 +22,7 @@ use embassy_executor::Executor;
 use embassy_rp::{
     gpio,
     multicore::{Stack, spawn_core1},
-    pwm,
+    pwm::{self, SetDutyCycle},
 };
 use static_cell::StaticCell;
 
@@ -74,10 +74,11 @@ fn main() -> ! {
         p.PIN_19, p.PIN_20, p.PIN_21, p.PIN_22, p.PIN_23, p.PIN_24, p.PIN_25, p.PIN_26,
     );
     let scr_clk = p.PIN_27;
-    let scr_cs = gpio::Output::new(p.PIN_14, gpio::Level::Low);
+    let scr_rd = gpio::Output::new(p.PIN_18, gpio::Level::High);
+    let scr_cs = gpio::Output::new(p.PIN_14, gpio::Level::High);
     let scr_dc = gpio::Output::new(p.PIN_15, gpio::Level::Low);
     let scr_bl = pwm::Pwm::new_output_a(p.PWM_SLICE0, p.PIN_16, pwm::Config::default());
-    let scr_rst = gpio::Output::new(p.PIN_13, gpio::Level::Low);
+    let scr_rst = gpio::Output::new(p.PIN_13, gpio::Level::High);
 
     // Run all peripherals on core1
     // Peripheral tasks recieve data from the serial task
@@ -91,7 +92,8 @@ fn main() -> ! {
                 unwrap!(spawner.spawn(identify::identify_task(led_pin)));
                 unwrap!(spawner.spawn(rgb::rgb_task(rgb_pio, rgb_dma, rgb_pin)));
                 unwrap!(spawner.spawn(screen::screen_task(
-                    scr_pio, scr_dma, scr_data, scr_clk, scr_cs, scr_dc, scr_bl, scr_rst, fb_dma
+                    scr_pio, scr_dma, scr_data, scr_clk, scr_rd, scr_cs, scr_dc, scr_bl, scr_rst,
+                    fb_dma
                 )));
                 unwrap!(spawner.spawn(keypad::keypad_task(kp_rows, kp_cols)));
             });

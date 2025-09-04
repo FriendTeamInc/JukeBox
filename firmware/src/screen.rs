@@ -69,6 +69,7 @@ type ScrDataPins = (
 // );
 
 type ScrClkPin = Peri<'static, PIN_27>;
+type ScrRdPin = Output<'static>;
 type ScrCsPin = Output<'static>;
 type ScrDcPin = Output<'static>;
 type ScrBlPin = Pwm<'static>;
@@ -84,10 +85,11 @@ struct St7789_8080 {
     // program: ScrPioProgram,
     // data: ScrPioPins,
     dma: ScrDma,
+    _rd: ScrRdPin,
     cs: ScrCsPin,
     dc: ScrDcPin,
     bl: ScrBlPin,
-    // rst: ScrRstPin,
+    _rst: ScrRstPin,
 }
 impl St7789_8080 {
     pub fn new(
@@ -95,6 +97,7 @@ impl St7789_8080 {
         dma: ScrDma,
         data: ScrDataPins,
         clk: ScrClkPin,
+        mut rd: ScrRdPin,
         mut cs: ScrCsPin,
         mut dc: ScrDcPin,
         mut bl: ScrBlPin,
@@ -103,6 +106,7 @@ impl St7789_8080 {
         bl.set_duty_cycle_percent(0).unwrap();
         dc.set_low();
         cs.set_high();
+        rd.set_high();
         rst.set_high();
 
         let Pio {
@@ -156,10 +160,11 @@ impl St7789_8080 {
             // program,
             // data,
             dma,
+            _rd: rd,
             cs,
             dc,
             bl,
-            // rst,
+            _rst: rst,
         }
     }
 
@@ -235,7 +240,7 @@ pub static SCREEN_ICONS: ScreenIconsMutex = Mutex::new([[0u16; 32 * 32]; 12]);
 const POLL_TIME: Duration = Duration::from_millis(100);
 pub const SCR_W: usize = 320;
 pub const SCR_H: usize = 240;
-static mut FBDATA: [u16; SCR_W * SCR_H] = [0xFFFF; SCR_W * SCR_H];
+static mut FBDATA: [u16; SCR_W * SCR_H] = [0x0; SCR_W * SCR_H];
 struct FBBackEnd {
     t: &'static mut [u16; SCR_W * SCR_H],
 }
@@ -321,13 +326,14 @@ impl ScreenMod {
         dma: ScrDma,
         data: ScrDataPins,
         clk: ScrClkPin,
+        rd: ScrRdPin,
         cs: ScrCsPin,
         dc: ScrDcPin,
         bl: ScrBlPin,
         rst: ScrRstPin,
         fb_dma: FbDma,
     ) -> Self {
-        let mut scr = St7789_8080::new(pio, dma, data, clk, cs, dc, bl, rst);
+        let mut scr = St7789_8080::new(pio, dma, data, clk, rd, cs, dc, bl, rst);
 
         scr.init(SCR_W as u16, SCR_H as u16).await;
 
@@ -807,13 +813,14 @@ pub async fn screen_task(
     dma: ScrDma,
     data: ScrDataPins,
     clk: ScrClkPin,
+    rd: ScrRdPin,
     cs: ScrCsPin,
     dc: ScrDcPin,
     bl: ScrBlPin,
     rst: ScrRstPin,
     fb_dma: FbDma,
 ) -> ! {
-    ScreenMod::new(pio, dma, data, clk, cs, dc, bl, rst, fb_dma)
+    ScreenMod::new(pio, dma, data, clk, rd, cs, dc, bl, rst, fb_dma)
         .await
         .task()
         .await;
