@@ -22,7 +22,7 @@ use embassy_executor::Executor;
 use embassy_rp::{
     gpio,
     multicore::{Stack, spawn_core1},
-    pwm::{self, SetDutyCycle},
+    pwm,
 };
 use static_cell::StaticCell;
 
