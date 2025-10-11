@@ -327,7 +327,7 @@ impl ScreenMod {
 
         scr.init(SCR_W as u16, SCR_H as u16).await;
 
-        Self {
+        let mut s = Self {
             scr,
 
             _fb_dma: fb_dma,
@@ -346,7 +346,11 @@ impl ScreenMod {
             keys_status: [1; 12],
 
             poll_time: unwrap!(Instant::now().checked_add(POLL_TIME)),
-        }
+        };
+
+        s.draw_pre_tick().await;
+
+        s
     }
 
     fn put_pixel(&mut self, color: Bgr565, x: usize, y: usize) {
