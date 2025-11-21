@@ -17,7 +17,7 @@ use usbd_human_interface_device::{
     page::Keyboard,
 };
 
-use crate::{keypad::get_inputs, usb::INPUT_EVENTS};
+use crate::{keypad::get_inputs, screen::SCREEN_ICONS, usb::INPUT_EVENTS};
 
 pub fn bootsel() {
     // TODO: make peripherals go dark before rebooting.
@@ -152,7 +152,7 @@ macro_rules! load_bmp {
     }};
 }
 
-const _DEFAULT_ICONS: &[[u16; 32 * 32]] = &[
+const DEFAULT_ICONS: &[[u16; 32 * 32]] = &[
     load_bmp!("../../assets/action-icons/F13.bmp"),
     load_bmp!("../../assets/action-icons/F14.bmp"),
     load_bmp!("../../assets/action-icons/F15.bmp"),
@@ -166,3 +166,23 @@ const _DEFAULT_ICONS: &[[u16; 32 * 32]] = &[
     load_bmp!("../../assets/action-icons/F23.bmp"),
     load_bmp!("../../assets/action-icons/F24.bmp"),
 ];
+
+pub async fn reset_icons() {
+    let mut icons = SCREEN_ICONS.lock().await;
+
+    let mut i = 0;
+    let len = icons.len();
+    while i < len {
+        let mut y = 0;
+        while y < 32 {
+            let mut x = 0;
+            while x < 32 {
+                // TODO: use dma to swap out the icons
+                icons[i][32 * y + x] = DEFAULT_ICONS[i][32 * y + x];
+                x += 1;
+            }
+            y += 1;
+        }
+        i += 1;
+    }
+}
