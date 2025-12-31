@@ -106,7 +106,7 @@ impl InputKeyboard {
         t!("action.input.keyboard.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_KEYBOARD
     }
 
@@ -229,7 +229,7 @@ impl InputMouse {
         t!("action.input.mouse.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_MOUSE
     }
 

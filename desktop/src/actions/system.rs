@@ -334,7 +334,7 @@ impl SystemOpenApp {
         t!("action.system.open_app.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_OPEN_APP
     }
 }
@@ -390,7 +390,7 @@ impl SystemOpenWeb {
         t!("action.system.open_web.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_OPEN_WEB
     }
 }
@@ -474,7 +474,7 @@ impl SystemSndInCtrl {
         t!("action.system.snd_in_ctrl.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_INPUT_CONTROL
     }
 }
@@ -558,7 +558,7 @@ impl SystemSndOutCtrl {
         t!("action.system.snd_out_ctrl.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_OUTPUT_CONTROL
     }
 }

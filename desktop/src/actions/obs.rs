@@ -299,7 +299,7 @@ impl ObsStream {
         t!("action.obs.toggle_stream.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_STREAM
     }
 }
@@ -351,7 +351,7 @@ impl ObsRecord {
         t!("action.obs.toggle_record.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_RECORD
     }
 }
@@ -403,7 +403,7 @@ impl ObsPauseRecord {
         t!("action.obs.pause_record.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_PAUSE_RECORD
     }
 }
@@ -459,7 +459,7 @@ impl ObsReplayBuffer {
         t!("action.obs.toggle_replay_buffer.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_REPLAY_BUFFER
     }
 }
@@ -515,7 +515,7 @@ impl ObsSaveReplay {
         t!("action.obs.save_replay_buffer.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_SAVE_REPLAY
     }
 }
@@ -695,7 +695,7 @@ impl ObsSource {
         t!("action.obs.toggle_source.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_SOURCE
     }
 }
@@ -802,7 +802,7 @@ impl ObsMute {
         t!("action.obs.toggle_mute.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_MUTE
     }
 }
@@ -908,7 +908,7 @@ impl ObsSceneSwitch {
         t!("action.obs.switch_scene.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_SWITCH_SCENE
     }
 }
@@ -1017,7 +1017,7 @@ impl ObsPreviewSceneSwitch {
         t!("action.obs.switch_preview_scene.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_SWITCH_PREVIEW
     }
 }
@@ -1076,7 +1076,7 @@ impl ObsPreviewScenePush {
         t!("action.obs.push_preview_scene.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_PUSH_PREVIEW
     }
 }
@@ -1186,7 +1186,7 @@ impl ObsSceneCollectionSwitch {
         t!("action.obs.switch_scene_collection.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_SWITCH_COLLECTION
     }
 }
@@ -1245,7 +1245,7 @@ impl ObsChapterMarker {
         t!("action.obs.add_chapter_marker.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_CHAPTER_MARKER
     }
 }

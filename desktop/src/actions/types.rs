@@ -96,13 +96,13 @@ macro_rules! create_actions {
                 }
             }
 
-            pub fn icon_source(&self) -> ImageSource {
+            pub fn icon_source(&'_ self) -> ImageSource<'_> {
                 match self {
                     $(Self::$item(x) => x.icon_source(),)*
                 }
             }
 
-            pub fn icon(&self) -> Image {
+            pub fn icon(&'_ self) -> Image<'_> {
                 Image::new(self.icon_source())
                     .texture_options(TextureOptions {
                         magnification: TextureFilter::Nearest,

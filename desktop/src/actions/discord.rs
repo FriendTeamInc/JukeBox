@@ -269,7 +269,7 @@ impl DiscordToggleMute {
         t!("action.discord.toggle_mute.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_MUTE
     }
 }
@@ -343,7 +343,7 @@ impl DiscordToggleDeafen {
         t!("action.discord.toggle_deafen.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_DEAFEN
     }
 }
@@ -435,7 +435,7 @@ impl DiscordPushToTalk {
         t!("action.discord.push_to_talk.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_PUSH_TO_TALK
     }
 }
@@ -527,7 +527,7 @@ impl DiscordPushToMute {
         t!("action.discord.push_to_mute.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_PUSH_TO_MUTE
     }
 }
@@ -621,7 +621,7 @@ impl DiscordPushToDeafen {
         t!("action.discord.push_to_deafen.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_PUSH_TO_DEAFEN
     }
 }

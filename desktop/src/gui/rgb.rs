@@ -417,7 +417,7 @@ impl JukeBoxGui {
 
                                 Self::draw_rgb_preview(
                                     ui,
-                                    Color32::from_rgb(c.0, c.1, c.2),
+                                    Color32::from_rgb(c.r, c.g, c.b),
                                     vec2(40.0, 40.0),
                                 );
                             }

@@ -188,7 +188,7 @@ impl SoundboardPlaySound {
         t!("action.soundboard.play_sound.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_PLAY_SOUND
     }
 }

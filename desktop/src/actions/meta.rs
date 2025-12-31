@@ -82,7 +82,7 @@ impl MetaNoAction {
         t!("action.meta.no_action.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_NO_ACTION
     }
 }
@@ -164,7 +164,7 @@ impl MetaSwitchProfile {
         t!("action.meta.switch_profile.help").into()
     }
 
-    pub fn icon_source(&self) -> ImageSource {
+    pub fn icon_source(&'_ self) -> ImageSource<'_> {
         ICON_SWITCH_PROFILE
     }
 }
@@ -275,7 +275,7 @@ impl MetaSwitchProfile {
 //         t!("action.meta.copy_from_profile.help").into()
 //     }
 
-//     pub fn icon_source(&self) -> ImageSource {
+//     pub fn icon_source(&'_ self) -> ImageSource<'_> {
 //         ICON_COPY_FROM_PROFILE
 //     }
 // }
