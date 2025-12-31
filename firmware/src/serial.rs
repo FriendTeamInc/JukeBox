@@ -29,7 +29,7 @@ use crate::{
     screen::{DEFAULT_SCREEN_PROFILE, SCREEN_PROFILE},
     uid::get_uid,
     usb::{DEFAULT_INPUT_EVENTS, INPUT_EVENTS},
-    util::bootsel,
+    util::{bootsel, reset_icons},
 };
 
 type InternalBuf = ConstGenericRingBuffer<u8, 4096>;
@@ -111,6 +111,7 @@ impl SerialMod {
 
     async fn reset_peripherals(&mut self) {
         // TODO
+        reset_icons().await;
         *INPUT_EVENTS.lock().await = DEFAULT_INPUT_EVENTS.lock().await.1.clone();
         *RGB_PROFILE.lock().await = DEFAULT_RGB_PROFILE.lock().await.1.clone();
         SCREEN_PROFILE.lock().await.1 = DEFAULT_SCREEN_PROFILE.lock().await.1.clone();
@@ -126,6 +127,8 @@ impl SerialMod {
     }
 
     async fn task(&mut self) -> ! {
+        self.reset_peripherals().await;
+
         loop {
             if self.connected && self.keep_alive_end <= Instant::now() {
                 warn!("Keepalive triggered, disconnecting.");

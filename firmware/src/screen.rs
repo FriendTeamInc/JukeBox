@@ -6,8 +6,9 @@ use defmt::*;
 
 use embassy_futures::yield_now;
 use embassy_rp::{
-    Peri, bind_interrupts,
-    dma::write_repeated,
+    Peri,
+    bind_interrupts,
+    // dma::write_repeated,
     gpio::Output,
     peripherals::{
         DMA_CH1, DMA_CH2, PIN_19, PIN_20, PIN_21, PIN_22, PIN_23, PIN_24, PIN_25, PIN_26, PIN_27,
@@ -18,11 +19,12 @@ use embassy_rp::{
 };
 use embassy_sync::mutex::Mutex;
 use embassy_time::{Duration, Instant, Timer};
+use embedded_graphics::prelude::*;
 use embedded_graphics::{
     pixelcolor::{Bgr565, Gray4, raw::RawU16},
-    text::{Alignment, Baseline, Text, TextStyle},
+    primitives::{PrimitiveStyle, Rectangle},
+    text::{Alignment, Baseline, Text, TextStyle, TextStyleBuilder},
 };
-use embedded_graphics::{prelude::*, text::TextStyleBuilder};
 use embedded_graphics_framebuf::{FrameBuf, backends::FrameBufferBackend};
 use jukebox_util::{
     screen::{ProfileName, ScreenProfile},
@@ -42,8 +44,6 @@ use crate::{
 };
 
 type ScrPio = Peri<'static, PIO1>;
-// type ScrPioCommon = Common<'static, PIO1>;
-// type ScrPioProgram = LoadedProgram<'static, PIO1>;
 type ScrPioSm = StateMachine<'static, PIO1, 0>;
 type ScrDma = Peri<'static, DMA_CH1>;
 type FbDma = Peri<'static, DMA_CH2>;
@@ -57,16 +57,6 @@ type ScrDataPins = (
     Peri<'static, PIN_25>,
     Peri<'static, PIN_26>,
 );
-// type ScrPioPins = (
-//     Pin<'static, PIO1>,
-//     Pin<'static, PIO1>,
-//     Pin<'static, PIO1>,
-//     Pin<'static, PIO1>,
-//     Pin<'static, PIO1>,
-//     Pin<'static, PIO1>,
-//     Pin<'static, PIO1>,
-//     Pin<'static, PIO1>,
-// );
 
 type ScrClkPin = Peri<'static, PIN_27>;
 type ScrRdPin = Output<'static>;
@@ -237,7 +227,7 @@ pub static SCREEN_SYSTEM_STATS: ScreenSystemStatsMutex =
     Mutex::new((false, SystemStats::default()));
 pub static SCREEN_ICONS: ScreenIconsMutex = Mutex::new([[0u16; 32 * 32]; 12]);
 
-const POLL_TIME: Duration = Duration::from_millis(100);
+const POLL_TIME: Duration = Duration::from_millis(50);
 pub const SCR_W: usize = 320;
 pub const SCR_H: usize = 240;
 static mut FBDATA: [u16; SCR_W * SCR_H] = [0x0; SCR_W * SCR_H];
@@ -309,7 +299,7 @@ const RIGHT_TEXT_STYLE: TextStyle = TextStyleBuilder::new()
 struct ScreenMod {
     scr: St7789_8080,
 
-    fb_dma: FbDma,
+    _fb_dma: FbDma,
     fb: FrameBuf<Bgr565, FBBackEnd>,
 
     screen_profile: ScreenProfile,
@@ -337,10 +327,10 @@ impl ScreenMod {
 
         scr.init(SCR_W as u16, SCR_H as u16).await;
 
-        Self {
+        let mut s = Self {
             scr,
 
-            fb_dma,
+            _fb_dma: fb_dma,
             fb: FrameBuf::new(
                 FBBackEnd {
                     t: unsafe { &mut *core::ptr::addr_of_mut!(FBDATA) },
@@ -353,10 +343,14 @@ impl ScreenMod {
             screen_profile_name: ProfileName::default(),
             screen_system_stats: SystemStats::default(),
 
-            keys_status: [0; 12],
+            keys_status: [1; 12],
 
             poll_time: unwrap!(Instant::now().checked_add(POLL_TIME)),
-        }
+        };
+
+        s.draw_pre_tick().await;
+
+        s
     }
 
     fn put_pixel(&mut self, color: Bgr565, x: usize, y: usize) {
@@ -429,12 +423,13 @@ impl ScreenMod {
     }
 
     async fn draw_post_tick(&mut self) {
+        let i = SCREEN_ICONS.lock().await.clone();
+
         match self.screen_profile {
             ScreenProfile::Off => {}
             ScreenProfile::DisplayKeys { .. } => {
                 for y in 0..3 {
                     for x in 0..4 {
-                        let i = SCREEN_ICONS.lock().await;
                         let idx = y * 4 + x;
                         self.draw_icon(
                             &i[idx],
@@ -449,7 +444,6 @@ impl ScreenMod {
             ScreenProfile::DisplayStats { .. } => {
                 for y in 0..3 {
                     for x in 0..4 {
-                        let i = SCREEN_ICONS.lock().await;
                         let idx = y * 4 + x;
                         self.draw_icon(
                             &i[idx],
@@ -471,21 +465,21 @@ impl ScreenMod {
 
         // Clear the screen to the background color using a DMA
         // TODO: We actually can't do the background color right now because of embassy limitations...
-        unsafe {
-            write_repeated(
-                self.fb_dma.reborrow(),
-                &mut *core::ptr::addr_of_mut!(FBDATA[0]),
-                SCR_W * SCR_H,
-                embassy_rp::pac::dma::vals::TreqSel::PERMANENT,
-            )
-            .await;
-        };
+        // unsafe {
+        //     write_repeated(
+        //         self.fb_dma.reborrow(),
+        //         &mut *core::ptr::addr_of_mut!(FBDATA[0]),
+        //         SCR_W * SCR_H,
+        //         embassy_rp::pac::dma::vals::TreqSel::PERMANENT,
+        //     )
+        //     .await;
+        // };
         // TODO: dont do this.
-        // let _ = Rectangle::new(Point::new(0, 0), Size::new(SCR_W as u32, SCR_H as u32))
-        //     .into_styled(PrimitiveStyle::with_fill(
-        //         RawU16::new(self.screen_profile.background_color()).into(),
-        //     ))
-        //     .draw(&mut self.fb);
+        let _ = Rectangle::new(Point::new(0, 0), Size::new(SCR_W as u32, SCR_H as u32))
+            .into_styled(PrimitiveStyle::with_fill(
+                RawU16::new(self.screen_profile.background_color()).into(),
+            ))
+            .draw(&mut self.fb);
 
         let font1_style = BitmapFontStyleBuilder::new()
             .text_color(text_color)
@@ -757,15 +751,14 @@ impl ScreenMod {
                 continue;
             }
 
-            if self.update_components().await {
+            let draw_pre_tick_time = if self.update_components().await {
                 let draw_pre_tick_start = Instant::now();
                 self.draw_pre_tick().await;
                 let draw_pre_tick_end = Instant::now();
-                debug!(
-                    "pre-tick-draw time: {} us",
-                    (draw_pre_tick_end - draw_pre_tick_start).as_micros()
-                );
-            }
+                (draw_pre_tick_end - draw_pre_tick_start).as_micros()
+            } else {
+                0
+            };
 
             // We only push frames on refresh rate
             if self.poll_time > now {
@@ -778,29 +771,37 @@ impl ScreenMod {
             for i in 0..12 {
                 if keys[i] {
                     self.keys_status[i] = 4;
-                } else {
+                } else if self.keys_status[i] > 1 {
                     self.keys_status[i] -= 1;
                 }
             }
 
-            let draw_post_tick_start = Instant::now();
-            self.draw_post_tick().await;
-            let draw_post_tick_end = Instant::now();
-            debug!(
-                "post-tick-draw time: {} us",
+            let draw_post_tick_time = {
+                let draw_post_tick_start = Instant::now();
+                self.draw_post_tick().await;
+                let draw_post_tick_end = Instant::now();
                 (draw_post_tick_end - draw_post_tick_start).as_micros()
-            );
+            };
 
-            let frame_push_start = Instant::now();
-            self.scr
-                .push_framebuffer(unsafe { &mut *core::ptr::addr_of_mut!(FBDATA) })
-                .await;
-            self.scr.set_backlight(self.screen_profile.brightness());
-            let frame_push_end = Instant::now();
-            debug!(
-                "frame-push time: {} us",
+            let frame_push_time = {
+                let frame_push_start = Instant::now();
+                self.scr
+                    .push_framebuffer(unsafe { &mut *core::ptr::addr_of_mut!(FBDATA) })
+                    .await;
+                self.scr.set_backlight(self.screen_profile.brightness());
+                let frame_push_end = Instant::now();
                 (frame_push_end - frame_push_start).as_micros()
+            };
+
+            let total_time = draw_pre_tick_time + draw_post_tick_time + frame_push_time;
+
+            info!(
+                "(pre, post, push, total): ({}, {}, {}, {}) us",
+                draw_pre_tick_time, draw_post_tick_time, frame_push_time, total_time
             );
+            if total_time >= POLL_TIME.as_micros() {
+                warn!("!!! FRAME OVERTIME !!!");
+            }
 
             self.poll_time = unwrap!(now.checked_add(POLL_TIME));
         }
