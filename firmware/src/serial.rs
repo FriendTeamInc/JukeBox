@@ -29,7 +29,10 @@ use crate::{
     identify::start_identify,
     keypad::get_inputs,
     rgb::{DEFAULT_RGB_PROFILE, RGB_PROFILE},
-    screen::{DEFAULT_SCREEN_PROFILE, SCREEN_PROFILE, SCREEN_PROFILE_NAME, SCREEN_SYSTEM_STATS},
+    screen::{
+        DEFAULT_SCREEN_PROFILE, SCREEN_ICONS, SCREEN_PROFILE, SCREEN_PROFILE_NAME,
+        SCREEN_SYSTEM_STATS,
+    },
     uid::get_uid,
     usb::{DEFAULT_INPUT_EVENTS, INPUT_EVENTS},
     util::{bootsel, reset_icons},
@@ -227,22 +230,18 @@ impl SerialMod {
                         true
                     }
                     Command::SetScrIcon => {
-                        // let slot = data[0];
-                        // let new_icon = &data[1..32 * 32 * 2 + 1];
-                        // ICONS.with_mut_lock(|icons| {
-                        //     let scr_icon = &mut icons[slot as usize];
-                        //     let mut i = 0;
-                        //     while i < 32 * 32 {
-                        //         let (r, g, b) = split_to_rgb565(
-                        //             ((new_icon[i * 2 + 1] as u16) << 8) | (new_icon[i * 2] as u16),
-                        //         );
-                        //         let c = Bgr565::new(b, g, r);
-                        //         scr_icon.1[i] = c;
-                        //         i += 1;
-                        //     }
-                        //     scr_icon.0 = true;
-                        // });
-                        // defmt::todo!();
+                        let mut icons = SCREEN_ICONS.lock().await;
+                        let slot = data[0];
+                        let new_icon = &data[1..32 * 32 * 2 + 1];
+
+                        let scr_icon = &mut icons[slot as usize];
+                        let mut i = 0;
+                        while i < 32 * 32 {
+                            scr_icon[i] =
+                                ((new_icon[i * 2 + 1] as u16) << 8) | (new_icon[i * 2] as u16);
+                            i += 1;
+                        }
+
                         SERIAL_TO_USB.write_all(RSP_FULL_ACK).await;
                         true
                     }
