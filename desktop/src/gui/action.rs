@@ -241,13 +241,12 @@ impl JukeBoxGui {
                                 wrap_mode: TextureWrapMode::ClampToEdge,
                                 mipmap_mode: None,
                             })
-                            .corner_radius(2.0)
-                            .max_size(vec2(64.0, 64.0));
-                        Button::image(i)
+                            .corner_radius(2.0);
+                        Button::new(i)
                     }
                     ActionIcon::DefaultActionIcon => {
                         let i = self.editing_action.icon();
-                        Button::image(i)
+                        Button::new(i)
                     }
                 };
                 let test_btn = ui

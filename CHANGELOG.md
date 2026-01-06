@@ -1,4 +1,9 @@
-# v0.6.0 - Defaultized (TODO)
+# v0.6.1 - But Not Serialized (August 5, 2025)
+- Fix firmware having too big of a serial buffer, causing a crash on startup.
+- Fix versioning issue with firmware and software.
+- Fix action icon size in software.
+
+# v0.6.0 - Defaultized (August 5, 2025)
 - Added EEPROM support to firmware. A default, app-disconnected profile can now be set. Support in GUI will be added at a later date.
 - Added "sleep mode" for when host computer goes to sleep (suspends USB), turning off the screen and RGB.
 - Increase max number of colors for Wave and Breathe RGB patterns from 4 to 16.
@@ -10,6 +15,7 @@
 - Change default profile in software for keypad to the F13-24 keys.
 - Fix identify function having messed up offsets for the blinking LED.
 - Allow profile name to be hidden on screen.
+- Update dependencies for desktop app and firmware.
 
 # v0.5.0 - Tut Trials (June 27, 2025)
 - Add a welcome message on very first startup with some important info for the user.

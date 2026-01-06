@@ -16,6 +16,7 @@ mod usb;
 mod util;
 
 use defmt::*;
+
 use {defmt_rtt as _, panic_probe as _};
 
 use embassy_executor::Executor;
