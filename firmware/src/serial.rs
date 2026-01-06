@@ -19,6 +19,9 @@ use jukebox_util::{
         RSP_LINK_HEADER, decode_packet_size,
     },
     rgb::RgbProfile,
+    screen::ScreenProfile,
+    smallstr::SmallStr,
+    stats::SystemStats,
 };
 use ringbuffer::{ConstGenericRingBuffer, RingBuffer};
 
@@ -26,7 +29,7 @@ use crate::{
     identify::start_identify,
     keypad::get_inputs,
     rgb::{DEFAULT_RGB_PROFILE, RGB_PROFILE},
-    screen::{DEFAULT_SCREEN_PROFILE, SCREEN_PROFILE},
+    screen::{DEFAULT_SCREEN_PROFILE, SCREEN_PROFILE, SCREEN_PROFILE_NAME, SCREEN_SYSTEM_STATS},
     uid::get_uid,
     usb::{DEFAULT_INPUT_EVENTS, INPUT_EVENTS},
     util::{bootsel, reset_icons},
@@ -114,7 +117,7 @@ impl SerialMod {
         reset_icons().await;
         *INPUT_EVENTS.lock().await = DEFAULT_INPUT_EVENTS.lock().await.1.clone();
         *RGB_PROFILE.lock().await = DEFAULT_RGB_PROFILE.lock().await.1.clone();
-        SCREEN_PROFILE.lock().await.1 = DEFAULT_SCREEN_PROFILE.lock().await.1.clone();
+        *SCREEN_PROFILE.lock().await = (true, DEFAULT_SCREEN_PROFILE.lock().await.1.clone());
     }
 
     async fn start_update(&mut self) -> bool {
@@ -244,23 +247,17 @@ impl SerialMod {
                         true
                     }
                     Command::SetScrMode => {
-                        // let profile = ScreenProfile::decode(&data);
-                        // SCREEN_CONTROLS.with_mut_lock(|p| *p = (true, profile));
-                        // defmt::todo!();
+                        *SCREEN_PROFILE.lock().await = (true, ScreenProfile::decode(&data));
                         SERIAL_TO_USB.write_all(RSP_FULL_ACK).await;
                         true
                     }
                     Command::SetSystemStats => {
-                        // let stats = SystemStats::decode(&data);
-                        // SCREEN_SYSTEM_STATS.with_mut_lock(|s| *s = (true, stats));
-                        // defmt::todo!();
+                        *SCREEN_SYSTEM_STATS.lock().await = (true, SystemStats::decode(&data));
                         SERIAL_TO_USB.write_all(RSP_FULL_ACK).await;
                         true
                     }
                     Command::SetProfileName => {
-                        // let new_profile_name: ProfileName = SmallStr::decode(&data);
-                        // PROFILE_NAME.with_mut_lock(|p| *p = (true, new_profile_name));
-                        // defmt::todo!();
+                        *SCREEN_PROFILE_NAME.lock().await = (true, SmallStr::decode(&data));
                         SERIAL_TO_USB.write_all(RSP_FULL_ACK).await;
                         true
                     }
@@ -272,9 +269,8 @@ impl SerialMod {
                     Command::Update => self.start_update().await,
                     Command::Disconnect => {
                         SERIAL_TO_USB.write_all(RSP_FULL_DISCONNECTED).await;
-                        self.connected = false;
                         SERIAL_CONNECTED.store(false, core::sync::atomic::Ordering::Relaxed);
-
+                        self.connected = false;
                         self.reset_peripherals().await;
                         true
                     }
