@@ -7,11 +7,13 @@ edition = "2021"
 bitmatch = "0.1"
 defmt = { version = "1", optional = true }
 serde = { version = "1", default-features = false, features = ["derive"] }
+rgb = "0.8.52"
+
+# bincode is no longer maintained. replace with postcard or rkyv?
 bincode = { version = "2", default-features = false, features = [
     "derive",
     "serde",
 ] }
-rgb = "0.8.52"
 
 [features]
 default = []

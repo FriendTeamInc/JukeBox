@@ -10,6 +10,7 @@ use embassy_futures::yield_now;
 use embassy_sync::{blocking_mutex::raw::ThreadModeRawMutex, pipe::Pipe};
 use embassy_time::{Duration, Instant};
 use jukebox_util::{
+    input::InputEvent,
     peripheral::{
         IDENT_KEY_INPUT, IDENT_KNOB_INPUT, IDENT_PEDAL_INPUT, IDENT_UNKNOWN_INPUT, JBInputs,
     },
@@ -216,10 +217,9 @@ impl SerialMod {
                     }
 
                     Command::SetInputEvent => {
-                        // let slot = data[0];
-                        // let new_input = InputEvent::decode(&data[1..7 + 1]);
-                        // INPUT_EVENTS.with_mut_lock(|e| e[slot as usize] = new_input);
-                        // defmt::todo!();
+                        let slot = data[0] as usize;
+                        let new_input = InputEvent::decode(&data[1..7 + 1]);
+                        INPUT_EVENTS.lock().await[slot] = new_input;
                         SERIAL_TO_USB.write_all(RSP_FULL_ACK).await;
                         true
                     }
