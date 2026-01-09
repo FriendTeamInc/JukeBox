@@ -1,4 +1,3 @@
-use bincode::{decode_from_slice, encode_into_slice, Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 pub const KEYBOARD_SCAN_CODES: [(u8, &str); 169] = [
@@ -175,7 +174,7 @@ pub const KEYBOARD_SCAN_CODES: [(u8, &str); 169] = [
     (0xE7, "Right Super"), // aka GUI
 ]; //0xE8-0xFFFF Reserved
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Encode, Decode)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum InputEvent {
     Keyboard(KeyboardEvent),
@@ -188,14 +187,12 @@ impl InputEvent {
 
     pub fn encode(self) -> [u8; 7] {
         let mut data = [0u8; 7];
-        let _ = encode_into_slice(self, &mut data, bincode::config::standard()).unwrap();
+        let _ = postcard::to_slice(&self, &mut data).unwrap();
         data
     }
 
     pub fn decode(data: &[u8]) -> Self {
-        decode_from_slice(data, bincode::config::standard())
-            .unwrap()
-            .0
+        postcard::from_bytes(data).unwrap()
     }
 
     const fn keyboard_key(key: u8) -> Self {
@@ -227,18 +224,16 @@ impl InputEvent {
 
     pub fn encode_all(events: [Self; 16]) -> [u8; 112] {
         let mut data = [0u8; 112];
-        let _ = encode_into_slice(events, &mut data, bincode::config::standard()).unwrap();
+        let _ = postcard::to_slice(&events, &mut data).unwrap();
         data
     }
 
     pub fn decode_all(events: &[u8]) -> [Self; 16] {
-        decode_from_slice(events, bincode::config::standard())
-            .unwrap()
-            .0
+        postcard::from_bytes(events).unwrap()
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Encode, Decode)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct KeyboardEvent {
     pub keys: [u8; 6],
@@ -260,7 +255,7 @@ impl KeyboardEvent {
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Encode, Decode)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct MouseEvent {
     pub buttons: u8,

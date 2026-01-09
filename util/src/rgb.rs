@@ -1,4 +1,3 @@
-use bincode::{decode_from_slice, encode_into_slice, Decode, Encode};
 use rgb::RGB8;
 use serde::{Deserialize, Serialize};
 
@@ -18,7 +17,7 @@ pub const RGB_STATIC_PER_KEY_COUNT: usize = 12;
 pub const RGB_WAVE_COLOR_COUNT_MAX: usize = 16;
 pub const RGB_BREATHE_COLOR_COUNT_MAX: usize = 16;
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Encode, Decode)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum RgbProfile {
     Off,
@@ -149,15 +148,12 @@ impl RgbProfile {
 
     pub fn encode(self) -> [u8; RGB_PROFILE_SIZE] {
         let mut data = [0u8; RGB_PROFILE_SIZE];
-        let _ = encode_into_slice(self, &mut data, bincode::config::standard()).unwrap();
-
+        let _ = postcard::to_slice(&self, &mut data).unwrap();
         data
     }
 
     pub fn decode(data: &[u8]) -> Self {
-        decode_from_slice(data, bincode::config::standard())
-            .unwrap()
-            .0
+        postcard::from_bytes(data).unwrap()
     }
 
     pub fn calculate_matrix(&self, t: u64) -> [RGB8; 12] {

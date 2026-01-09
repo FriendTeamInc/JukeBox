@@ -1,4 +1,3 @@
-use bincode::{decode_from_slice, encode_into_slice, Decode, Encode};
 use serde::{Deserialize, Serialize};
 
 use crate::smallstr::SmallStr;
@@ -13,7 +12,7 @@ pub const SCREEN_PROFILE_OFF: u8 = 0;
 pub const SCREEN_PROFILE_DISPLAY_KEYS: u8 = 1;
 pub const SCREEN_PROFILE_DISPLAY_STATS: u8 = 2;
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, Encode, Decode)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum ScreenProfile {
     Off,
@@ -117,15 +116,12 @@ impl ScreenProfile {
 
     pub fn encode(self) -> [u8; SCREEN_PROFILE_SIZE] {
         let mut data = [0u8; SCREEN_PROFILE_SIZE];
-        let _ = encode_into_slice(self, &mut data, bincode::config::standard()).unwrap();
-
+        let _ = postcard::to_slice(&self, &mut data).unwrap();
         data
     }
 
     pub fn decode(data: &[u8]) -> Self {
-        decode_from_slice(data, bincode::config::standard())
-            .unwrap()
-            .0
+        postcard::from_bytes(data).unwrap()
     }
 
     pub const fn default_profile() -> Self {
