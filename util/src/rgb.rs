@@ -296,7 +296,7 @@ impl RgbProfile {
             }
         };
 
-        into_rgb(rgb_brightness(rgb_zigzag(buffer), self.brightness()))
+        rgb_zigzag(into_rgb(buffer))
     }
 
     pub const fn default_device_profile() -> Self {
@@ -433,19 +433,19 @@ impl RgbProfile {
     }
 }
 
-fn rgb_zigzag(rgb: [(u8, u8, u8); 12]) -> [(u8, u8, u8); 12] {
+pub fn rgb_zigzag(rgb: [RGB8; 12]) -> [RGB8; 12] {
     [
         rgb[0], rgb[1], rgb[2], rgb[3], rgb[7], rgb[6], rgb[5], rgb[4], rgb[8], rgb[9], rgb[10],
         rgb[11],
     ]
 }
 
-fn rgb_brightness(mut rgb: [(u8, u8, u8); 12], brightness: u8) -> [(u8, u8, u8); 12] {
+pub fn rgb_brightness(mut rgb: [RGB8; 12], brightness: u8) -> [RGB8; 12] {
     let brightness = (brightness as f32) / 255f32;
-    rgb.iter_mut().for_each(|(r, g, b)| {
-        *r = ((*r as f32) * brightness) as u8;
-        *g = ((*g as f32) * brightness) as u8;
-        *b = ((*b as f32) * brightness) as u8;
+    rgb.iter_mut().for_each(|rgb| {
+        rgb.r = ((rgb.r as f32) * brightness) as u8;
+        rgb.g = ((rgb.g as f32) * brightness) as u8;
+        rgb.b = ((rgb.b as f32) * brightness) as u8;
     });
     rgb
 }

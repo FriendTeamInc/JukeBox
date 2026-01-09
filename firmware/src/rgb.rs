@@ -13,7 +13,7 @@ use embassy_rp::{
 };
 use embassy_sync::mutex::Mutex;
 use embassy_time::{Duration, Instant};
-use jukebox_util::rgb::RgbProfile;
+use jukebox_util::rgb::{RgbProfile, rgb_brightness};
 
 use crate::{
     usb::usb_suspended,
@@ -63,7 +63,7 @@ impl RgbMod {
             if !usb_suspended() {
                 let t = Instant::now().as_ticks();
                 let profile = RGB_PROFILE.lock().await.clone();
-                let buffer = profile.calculate_matrix(t);
+                let buffer = rgb_brightness(profile.calculate_matrix(t), profile.brightness());
                 self.ws2812.write(&buffer).await;
             } else {
                 let buffer = RgbProfile::Off.calculate_matrix(0);
