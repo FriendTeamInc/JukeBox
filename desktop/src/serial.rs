@@ -411,7 +411,6 @@ pub async fn serial_loop(
         let now = Instant::now();
 
         if now >= keys_tick {
-            log::info!("key tick");
             keys_tick = Instant::now()
                 .checked_add(Duration::from_millis(50))
                 .unwrap();

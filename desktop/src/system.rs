@@ -162,9 +162,9 @@ impl StatReport {
 pub fn system_task(system_stats: Arc<Mutex<SystemStats>>) -> Result<()> {
     let mut sys = System::new();
     let mut cmps = Components::new_with_refreshed_list();
-    log::info!("components:");
+    log::debug!("components:");
     for c in &cmps {
-        log::info!("{c:?}");
+        log::debug!("\t{c:?}");
     }
 
     // heuristic to figure out which gpu stats to get
@@ -231,7 +231,7 @@ pub fn system_task(system_stats: Arc<Mutex<SystemStats>>) -> Result<()> {
         for c in &cmps {
             // TODO: find more cpu temp labels
             match c.label() {
-                "Tctl" => {
+                "Tctl" | "k10temp Tctl" => {
                     cpu_temperature = c.temperature().unwrap();
                 }
                 _ => (),
