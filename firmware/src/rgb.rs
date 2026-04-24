@@ -6,10 +6,9 @@ use defmt::*;
 
 use embassy_futures::yield_now;
 use embassy_rp::{
-    Peri, bind_interrupts,
-    dma::InterruptHandler as DmaInterruptHandler,
+    Peri,
     peripherals::{DMA_CH0, PIN_2, PIO0},
-    pio::{InterruptHandler as PioInterruptHandler, Pio},
+    pio::Pio,
     pio_programs::ws2812::{Grb, PioWs2812, PioWs2812Program},
 };
 use embassy_sync::mutex::Mutex;
@@ -18,13 +17,8 @@ use jukebox_util::rgb::{RgbProfile, rgb_brightness};
 
 use crate::{
     usb::usb_suspended,
-    util::{DefaultRgbProfileMutex, RgbProfileMutex},
+    util::{DefaultRgbProfileMutex, Irqs, RgbProfileMutex},
 };
-
-bind_interrupts!(struct Irqs {
-    PIO0_IRQ_0 => PioInterruptHandler<PIO0>;
-    DMA_IRQ_0 => DmaInterruptHandler<DMA_CH0>;
-});
 
 const POLL_TIME: Duration = Duration::from_millis(10);
 

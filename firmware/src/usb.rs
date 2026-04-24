@@ -7,17 +7,15 @@ use core::sync::atomic::AtomicBool;
 use crate::{
     serial::{SERIAL_TO_USB, USB_TO_SERIAL},
     uid,
-    util::{DefaultInputEventsMutex, InputEventsMutex, get_keyboard_events, get_mouse_events},
+    util::{
+        DefaultInputEventsMutex, InputEventsMutex, Irqs, get_keyboard_events, get_mouse_events,
+    },
 };
 
 use defmt::*;
 
 use embassy_executor::{SpawnError, Spawner};
-use embassy_rp::{
-    Peri,
-    peripherals::USB,
-    usb::{Driver, InterruptHandler},
-};
+use embassy_rp::{Peri, peripherals::USB, usb::Driver};
 use embassy_sync::mutex::Mutex;
 use embassy_time::Timer;
 use embassy_usb::{
@@ -38,10 +36,6 @@ use static_cell::StaticCell;
 use usbd_human_interface_device::device::{
     keyboard::NKRO_BOOT_KEYBOARD_REPORT_DESCRIPTOR, mouse::WHEEL_MOUSE_REPORT_DESCRIPTOR,
 };
-
-embassy_rp::bind_interrupts!(struct Irqs {
-    USBCTRL_IRQ => InterruptHandler<USB>;
-});
 
 pub static INPUT_EVENTS: InputEventsMutex = Mutex::new(InputEvent::default_all());
 pub static DEFAULT_INPUT_EVENTS: DefaultInputEventsMutex =

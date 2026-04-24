@@ -2,7 +2,13 @@
 
 use core::cmp::{max, min};
 
-use embassy_rp::spinlock_mutex::SpinlockRawMutex;
+use embassy_rp::{
+    dma::InterruptHandler as DmaInterruptHandler,
+    peripherals::{DMA_CH0, DMA_CH1, PIO0, PIO1, USB},
+    pio::InterruptHandler as PioInterruptHandler,
+    spinlock_mutex::SpinlockRawMutex,
+    usb::InterruptHandler as UsbInterruptHandler,
+};
 use embassy_sync::mutex::Mutex;
 use embassy_time::Instant;
 use jukebox_util::{
@@ -23,6 +29,13 @@ pub fn bootsel() {
     // TODO: make peripherals go dark before rebooting.
     embassy_rp::rom_data::reboot(0x0002, 0, 0x01, 0);
 }
+
+embassy_rp::bind_interrupts!(pub struct Irqs {
+    PIO0_IRQ_0 => PioInterruptHandler<PIO0>;
+    PIO1_IRQ_0 => PioInterruptHandler<PIO1>;
+    DMA_IRQ_0 => DmaInterruptHandler<DMA_CH0>, DmaInterruptHandler<DMA_CH1>;
+    USBCTRL_IRQ => UsbInterruptHandler<USB>;
+});
 
 // Spinlock Mutexes
 // We keep them here so we don't accidentally overlap spinlocks.

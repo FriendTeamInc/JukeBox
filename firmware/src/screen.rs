@@ -7,15 +7,14 @@ use defmt::*;
 use embassy_futures::yield_now;
 use embassy_rp::{
     Peri,
-    bind_interrupts,
-    dma::{Channel, InterruptHandler as DmaInterruptHandler},
+    dma::Channel,
     // dma::write_repeated,
     gpio::Output,
     peripherals::{
         DMA_CH1, DMA_CH2, PIN_19, PIN_20, PIN_21, PIN_22, PIN_23, PIN_24, PIN_25, PIN_26, PIN_27,
         PIO1,
     },
-    pio::{Config, InterruptHandler as PioInterruptHandler, Pio, StateMachine, program::pio_asm},
+    pio::{Config, Pio, StateMachine, program::pio_asm},
     pwm::{Pwm, SetDutyCycle},
 };
 use embassy_sync::mutex::Mutex;
@@ -39,8 +38,8 @@ use crate::{
     uid::get_uid,
     usb::usb_suspended,
     util::{
-        DefaultScreenProfileMutex, ScreenIconsMutex, ScreenProfileMutex, ScreenProfileNameMutex,
-        ScreenSystemStatsMutex,
+        DefaultScreenProfileMutex, Irqs, ScreenIconsMutex, ScreenProfileMutex,
+        ScreenProfileNameMutex, ScreenSystemStatsMutex,
     },
 };
 
@@ -66,11 +65,6 @@ type ScrCsPin = Output<'static>;
 type ScrDcPin = Output<'static>;
 type ScrBlPin = Pwm<'static>;
 type ScrRstPin = Output<'static>;
-
-bind_interrupts!(struct Irqs {
-    PIO1_IRQ_0 => PioInterruptHandler<PIO1>;
-    DMA_IRQ_0 => DmaInterruptHandler<DMA_CH1>;
-});
 
 struct St7789_8080 {
     sm: ScrPioSm,
