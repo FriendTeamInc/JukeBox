@@ -8,13 +8,14 @@ use embassy_futures::yield_now;
 use embassy_rp::{
     Peri,
     bind_interrupts,
+    dma::{Channel, InterruptHandler as DmaInterruptHandler},
     // dma::write_repeated,
     gpio::Output,
     peripherals::{
         DMA_CH1, DMA_CH2, PIN_19, PIN_20, PIN_21, PIN_22, PIN_23, PIN_24, PIN_25, PIN_26, PIN_27,
         PIO1,
     },
-    pio::{Config, InterruptHandler, Pio, StateMachine, program::pio_asm},
+    pio::{Config, InterruptHandler as PioInterruptHandler, Pio, StateMachine, program::pio_asm},
     pwm::{Pwm, SetDutyCycle},
 };
 use embassy_sync::mutex::Mutex;
@@ -46,6 +47,7 @@ use crate::{
 type ScrPio = Peri<'static, PIO1>;
 type ScrPioSm = StateMachine<'static, PIO1, 0>;
 type ScrDma = Peri<'static, DMA_CH1>;
+type ScrDmaChannel = Channel<'static>;
 type FbDma = Peri<'static, DMA_CH2>;
 type ScrDataPins = (
     Peri<'static, PIN_19>,
@@ -66,7 +68,8 @@ type ScrBlPin = Pwm<'static>;
 type ScrRstPin = Output<'static>;
 
 bind_interrupts!(struct Irqs {
-    PIO1_IRQ_0 => InterruptHandler<PIO1>;
+    PIO1_IRQ_0 => PioInterruptHandler<PIO1>;
+    DMA_IRQ_0 => DmaInterruptHandler<DMA_CH1>;
 });
 
 struct St7789_8080 {
@@ -74,7 +77,7 @@ struct St7789_8080 {
     // common: ScrPioCommon,
     // program: ScrPioProgram,
     // data: ScrPioPins,
-    dma: ScrDma,
+    dma: ScrDmaChannel,
     _rd: ScrRdPin,
     cs: ScrCsPin,
     dc: ScrDcPin,
@@ -149,7 +152,7 @@ impl St7789_8080 {
             // common,
             // program,
             // data,
-            dma,
+            dma: Channel::new(dma, Irqs),
             _rd: rd,
             cs,
             dc,
@@ -213,7 +216,7 @@ impl St7789_8080 {
     pub async fn push_framebuffer(&mut self, fb: &'static [u16]) {
         self.write_cmd(&[0x002C]).await;
         self.set_dc_cs(true, false).await;
-        self.sm.tx().dma_push(self.dma.reborrow(), fb, true).await;
+        self.sm.tx().dma_push(&mut self.dma, fb, true).await;
     }
 }
 

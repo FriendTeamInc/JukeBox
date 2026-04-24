@@ -7,8 +7,8 @@ license = "MIT"
 [dependencies]
 jukebox_util = { path = "../util", features = ["defmt"] }
 
-embassy-embedded-hal = { version = "0.5", features = ["defmt"] }
-embassy-sync = { version = "0.7", features = ["defmt"] }
+embassy-embedded-hal = { version = "0.6", features = ["defmt"] }
+embassy-sync = { version = "0.8", features = ["defmt"] }
 embassy-executor = { version = "0.9", features = [
     "arch-cortex-m",
     "executor-thread",
@@ -18,7 +18,7 @@ embassy-time = { version = "0.5", features = [
     "defmt",
     "defmt-timestamp-uptime",
 ] }
-embassy-rp = { version = "0.8", features = [
+embassy-rp = { version = "0.10", features = [
     "defmt",
     "time-driver",
     "critical-section-impl",
@@ -29,7 +29,7 @@ embassy-rp = { version = "0.8", features = [
     "imagedef-secure-exe",
     "binary-info",
 ] }
-embassy-usb = { version = "0.5", features = ["defmt"] }
+embassy-usb = { version = "0.6", features = ["defmt"] }
 embassy-futures = "0.1"
 
 cortex-m = "0.7"

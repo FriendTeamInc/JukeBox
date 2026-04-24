@@ -125,6 +125,10 @@ pub struct JukeBoxGui {
     pub action_errors: VecDeque<ActionError>,
 }
 impl eframe::App for JukeBoxGui {
+    fn ui(&mut self, ui: &mut Ui, _frame: &mut Frame) {
+        CentralPanel::default().show_inside(ui, |ui| self.ui(ui));
+    }
+
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         // Call a new frame every frame, bypassing the limited updates.
         // NOTE: This is a bad idea, we should probably change this later
@@ -173,8 +177,6 @@ impl eframe::App for JukeBoxGui {
                 ctx.send_viewport_cmd(ViewportCommand::Visible(false));
             }
         }
-
-        CentralPanel::default().show(ctx, |ui| self.ui(ui));
     }
 }
 impl JukeBoxGui {

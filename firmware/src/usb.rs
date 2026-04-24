@@ -123,6 +123,8 @@ impl UsbMod {
                 request_handler: None,
                 poll_ms: 10,
                 max_packet_size: 64,
+                hid_subclass: embassy_usb::class::hid::HidSubclass::Boot,
+                hid_boot_protocol: embassy_usb::class::hid::HidBootProtocol::Keyboard,
             };
             HidReaderWriter::<_, KEYBOARD_READ_N, KEYBOARD_WRITE_N>::new(
                 &mut builder,
@@ -137,6 +139,8 @@ impl UsbMod {
                 request_handler: None,
                 poll_ms: 10,
                 max_packet_size: 64,
+                hid_subclass: embassy_usb::class::hid::HidSubclass::Boot,
+                hid_boot_protocol: embassy_usb::class::hid::HidBootProtocol::Mouse,
             };
             HidReaderWriter::<_, MOUSE_READ_N, MOUSE_WRITE_N>::new(
                 &mut builder,

@@ -7,9 +7,10 @@ use defmt::*;
 use embassy_futures::yield_now;
 use embassy_rp::{
     Peri, bind_interrupts,
+    dma::InterruptHandler as DmaInterruptHandler,
     peripherals::{DMA_CH0, PIN_2, PIO0},
-    pio::{InterruptHandler, Pio},
-    pio_programs::ws2812::{PioWs2812, PioWs2812Program},
+    pio::{InterruptHandler as PioInterruptHandler, Pio},
+    pio_programs::ws2812::{Grb, PioWs2812, PioWs2812Program},
 };
 use embassy_sync::mutex::Mutex;
 use embassy_time::{Duration, Instant};
@@ -21,7 +22,8 @@ use crate::{
 };
 
 bind_interrupts!(struct Irqs {
-    PIO0_IRQ_0 => InterruptHandler<PIO0>;
+    PIO0_IRQ_0 => PioInterruptHandler<PIO0>;
+    DMA_IRQ_0 => DmaInterruptHandler<DMA_CH0>;
 });
 
 const POLL_TIME: Duration = Duration::from_millis(10);
@@ -35,7 +37,7 @@ type RgbDma = Peri<'static, DMA_CH0>;
 type RgbPin = Peri<'static, PIN_2>;
 
 struct RgbMod {
-    ws2812: PioWs2812<'static, PIO0, 0, 12>,
+    ws2812: PioWs2812<'static, PIO0, 0, 12, Grb>,
     poll_time: Instant,
 }
 impl RgbMod {
@@ -46,7 +48,7 @@ impl RgbMod {
         let program = PioWs2812Program::new(&mut common);
 
         Self {
-            ws2812: PioWs2812::new(&mut common, sm0, dma, pin, &program),
+            ws2812: PioWs2812::new(&mut common, sm0, dma, Irqs, pin, &program),
             poll_time: unwrap!(Instant::now().checked_add(POLL_TIME)),
         }
     }
