@@ -132,7 +132,7 @@ impl St7789_8080 {
         cfg.shift_out.threshold = 16;
         cfg.shift_out.direction = embassy_rp::pio::ShiftDirection::Left;
         cfg.shift_out.auto_fill = true;
-        cfg.clock_divider = 4u8.into();
+        cfg.clock_divider = 5u8.into();
         let program = common.load_program(&program.program);
         cfg.use_program(&program, &[&clk]);
 
@@ -160,7 +160,6 @@ impl St7789_8080 {
     }
 
     async fn set_dc_cs(&mut self, dc: bool, cs: bool) {
-        // Timer::after_micros(1).await;
         self.dc.set_level(dc.into());
         self.cs.set_level(cs.into());
         Timer::after_micros(1).await;
@@ -305,6 +304,9 @@ struct ScreenMod {
 
     keys_status: [u8; 12],
 
+    brightness: f32,
+    brightness_target: f32,
+
     poll_time: Instant,
 }
 impl ScreenMod {
@@ -342,8 +344,16 @@ impl ScreenMod {
 
             keys_status: [1; 12],
 
+            brightness: 0f32,
+            brightness_target: 0f32,
+
             poll_time: unwrap!(Instant::now().checked_add(POLL_TIME)),
         };
+
+        // black out the screen
+        s.scr
+            .push_framebuffer(unsafe { &mut *core::ptr::addr_of_mut!(FBDATA) })
+            .await;
 
         s.draw_pre_tick().await;
 
@@ -737,13 +747,31 @@ impl ScreenMod {
         changed
     }
 
+    fn update_brightness(&mut self) {
+        let diff = self.brightness_target - self.brightness;
+        if diff < 1.0 {
+            self.brightness = self.brightness_target;
+        } else {
+            self.brightness += diff / 30000.0;
+        }
+
+        self.scr.set_backlight(self.brightness as u8);
+    }
+
+    fn set_brightness_target(&mut self, new_brightness: u8) {
+        self.brightness_target = new_brightness as f32;
+    }
+
     async fn task(mut self) -> ! {
         loop {
+            // Update brightness
+            self.update_brightness();
+
             // Refresh Rate timer
             let now = Instant::now();
             // Before we do anything, we exit early if the device is supposed to be asleep
             if usb_suspended() {
-                self.scr.set_backlight(0);
+                self.set_brightness_target(0);
                 yield_now().await;
                 continue;
             }
@@ -785,19 +813,19 @@ impl ScreenMod {
                 self.scr
                     .push_framebuffer(unsafe { &mut *core::ptr::addr_of_mut!(FBDATA) })
                     .await;
-                self.scr.set_backlight(self.screen_profile.brightness());
+                self.set_brightness_target(self.screen_profile.brightness());
                 let frame_push_end = Instant::now();
                 (frame_push_end - frame_push_start).as_micros()
             };
 
             let total_time = draw_pre_tick_time + draw_post_tick_time + frame_push_time;
 
-            info!(
+            debug!(
                 "(pre, post, push, total): ({}, {}, {}, {}) us",
                 draw_pre_tick_time, draw_post_tick_time, frame_push_time, total_time
             );
             if total_time >= POLL_TIME.as_micros() {
-                warn!("!!! FRAME OVERTIME !!!");
+                warn!("!!! FRAME OVERTIME !!! -- {} us", total_time);
             }
 
             self.poll_time = unwrap!(now.checked_add(POLL_TIME));

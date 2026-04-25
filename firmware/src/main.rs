@@ -21,9 +21,11 @@ use {defmt_rtt as _, panic_probe as _};
 
 use embassy_executor::Executor;
 use embassy_rp::{
+    clocks::{ClockConfig, CoreVoltage, clk_sys_freq, core_voltage},
+    config::Config,
     gpio,
     multicore::{Stack, spawn_core1},
-    pwm,
+    pwm::{self, SetDutyCycle},
 };
 use static_cell::StaticCell;
 
@@ -34,16 +36,24 @@ static EXECUTOR1: StaticCell<Executor> = StaticCell::new();
 #[cortex_m_rt::entry]
 fn main() -> ! {
     // Hello, world!
-    let p = embassy_rp::init(Default::default());
 
-    // Set up the UID
+    // Overclock to 300MHz
+    let clock_config = {
+        let mut c = ClockConfig::system_freq(200_000_000).unwrap();
+        c.core_voltage = CoreVoltage::V1_20;
+        Config::new(c)
+    };
+
+    // Initialize peripherals
+    let p = embassy_rp::init(clock_config);
+
+    // Set up the UID and print some system info
     uid::setup_uid();
-    {
-        info!("Hello, world!");
-        let uid = uid::get_uid();
-        let ver = env!("CARGO_PKG_VERSION");
-        info!("ver:{}, uid:{}", ver, uid);
-    }
+    info!("Hey, all! JukeBox here!");
+    info!("Version: {}", env!("CARGO_PKG_VERSION"));
+    info!("UID: {}", uid::get_uid());
+    info!("Core Clock: {} MHz", clk_sys_freq() / 1_000_000);
+    info!("Core Voltage: {} V", core_voltage().unwrap());
 
     // Break out pins for peripherals
     // // EEPROM
@@ -78,7 +88,8 @@ fn main() -> ! {
     let scr_rd = gpio::Output::new(p.PIN_18, gpio::Level::High);
     let scr_cs = gpio::Output::new(p.PIN_14, gpio::Level::High);
     let scr_dc = gpio::Output::new(p.PIN_15, gpio::Level::Low);
-    let scr_bl = pwm::Pwm::new_output_a(p.PWM_SLICE0, p.PIN_16, pwm::Config::default());
+    let mut scr_bl = pwm::Pwm::new_output_a(p.PWM_SLICE0, p.PIN_16, pwm::Config::default());
+    scr_bl.set_duty_cycle_percent(0).unwrap();
     let scr_rst = gpio::Output::new(p.PIN_13, gpio::Level::High);
 
     // Run all peripherals on core1

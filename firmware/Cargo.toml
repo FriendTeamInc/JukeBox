@@ -26,6 +26,7 @@ embassy-rp = { version = "0.10", features = [
     "unstable-pac",
 
     "rp235xa",
+    "boot2-w25q080",
     "imagedef-secure-exe",
     "binary-info",
 ] }

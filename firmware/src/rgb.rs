@@ -32,6 +32,10 @@ type RgbPin = Peri<'static, PIN_2>;
 
 struct RgbMod {
     ws2812: PioWs2812<'static, PIO0, 0, 12, Grb>,
+
+    brightness: f32,
+    brightness_target: f32,
+
     poll_time: Instant,
 }
 impl RgbMod {
@@ -43,12 +47,31 @@ impl RgbMod {
 
         Self {
             ws2812: PioWs2812::new(&mut common, sm0, dma, Irqs, pin, &program),
+
+            brightness: 0f32,
+            brightness_target: 0f32,
+
             poll_time: unwrap!(Instant::now().checked_add(POLL_TIME)),
         }
     }
 
+    fn update_brightness(&mut self) {
+        let diff = self.brightness_target - self.brightness;
+        if diff < 1.0 {
+            self.brightness = self.brightness_target;
+        } else {
+            self.brightness += diff / 30000.0;
+        }
+    }
+
+    fn set_brightness_target(&mut self, new_brightness: u8) {
+        self.brightness_target = new_brightness as f32;
+    }
+
     async fn task(mut self) -> ! {
         loop {
+            self.update_brightness();
+
             let now = Instant::now();
             if self.poll_time > now {
                 yield_now().await;
@@ -56,13 +79,21 @@ impl RgbMod {
                 continue;
             }
 
-            if !usb_suspended() {
-                let t = Instant::now().as_ticks();
-                let profile = RGB_PROFILE.lock().await.clone();
-                let buffer = rgb_brightness(profile.calculate_matrix(t), profile.brightness());
+            let profile = RGB_PROFILE.lock().await.clone();
+
+            if usb_suspended() {
+                self.set_brightness_target(0);
+            } else {
+                self.set_brightness_target(profile.brightness());
+            }
+
+            let b = self.brightness as u8;
+            if b == 0 {
+                let buffer = RgbProfile::Off.calculate_matrix(0);
                 self.ws2812.write(&buffer).await;
             } else {
-                let buffer = RgbProfile::Off.calculate_matrix(0);
+                let t = Instant::now().as_ticks();
+                let buffer = rgb_brightness(profile.calculate_matrix(t), self.brightness as u8);
                 self.ws2812.write(&buffer).await;
             }
 
