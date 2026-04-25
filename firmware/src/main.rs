@@ -25,7 +25,7 @@ use embassy_rp::{
     config::Config,
     gpio,
     multicore::{Stack, spawn_core1},
-    pwm::{self, SetDutyCycle},
+    pwm,
 };
 use static_cell::StaticCell;
 
@@ -88,8 +88,7 @@ fn main() -> ! {
     let scr_rd = gpio::Output::new(p.PIN_18, gpio::Level::High);
     let scr_cs = gpio::Output::new(p.PIN_14, gpio::Level::High);
     let scr_dc = gpio::Output::new(p.PIN_15, gpio::Level::Low);
-    let mut scr_bl = pwm::Pwm::new_output_a(p.PWM_SLICE0, p.PIN_16, pwm::Config::default());
-    scr_bl.set_duty_cycle_percent(0).unwrap();
+    let scr_bl = pwm::Pwm::new_output_a(p.PWM_SLICE0, p.PIN_16, pwm::Config::default());
     let scr_rst = gpio::Output::new(p.PIN_13, gpio::Level::High);
 
     // Run all peripherals on core1

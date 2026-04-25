@@ -8,8 +8,7 @@ use embassy_futures::yield_now;
 use embassy_rp::{
     Peri,
     dma::Channel,
-    // dma::write_repeated,
-    gpio::Output,
+    gpio::{Drive, Output, SlewRate},
     peripherals::{
         DMA_CH1, DMA_CH2, PIN_19, PIN_20, PIN_21, PIN_22, PIN_23, PIN_24, PIN_25, PIN_26, PIN_27,
         PIO1,
@@ -91,9 +90,21 @@ impl St7789_8080 {
         mut rst: ScrRstPin,
     ) -> Self {
         bl.set_duty_cycle_percent(0).unwrap();
+
+        dc.set_drive_strength(Drive::_2mA);
+        dc.set_slew_rate(SlewRate::Fast);
         dc.set_low();
+
+        cs.set_drive_strength(Drive::_2mA);
+        cs.set_slew_rate(SlewRate::Fast);
         cs.set_high();
+
+        rd.set_drive_strength(Drive::_2mA);
+        rd.set_slew_rate(SlewRate::Fast);
         rd.set_high();
+
+        rst.set_drive_strength(Drive::_2mA);
+        rst.set_slew_rate(SlewRate::Fast);
         rst.set_high();
 
         let Pio {
@@ -112,8 +123,11 @@ impl St7789_8080 {
         );
 
         let mut cfg = Config::default();
-        let clk = common.make_pio_pin(clk);
-        let data = (
+        let mut clk = common.make_pio_pin(clk);
+        clk.set_drive_strength(Drive::_2mA);
+        clk.set_slew_rate(SlewRate::Fast);
+
+        let mut data = (
             common.make_pio_pin(data.0),
             common.make_pio_pin(data.1),
             common.make_pio_pin(data.2),
@@ -124,6 +138,25 @@ impl St7789_8080 {
             common.make_pio_pin(data.7),
         );
 
+        {
+            data.0.set_drive_strength(Drive::_2mA);
+            data.0.set_slew_rate(SlewRate::Fast);
+            data.1.set_drive_strength(Drive::_2mA);
+            data.1.set_slew_rate(SlewRate::Fast);
+            data.2.set_drive_strength(Drive::_2mA);
+            data.2.set_slew_rate(SlewRate::Fast);
+            data.3.set_drive_strength(Drive::_2mA);
+            data.3.set_slew_rate(SlewRate::Fast);
+            data.4.set_drive_strength(Drive::_2mA);
+            data.4.set_slew_rate(SlewRate::Fast);
+            data.5.set_drive_strength(Drive::_2mA);
+            data.5.set_slew_rate(SlewRate::Fast);
+            data.6.set_drive_strength(Drive::_2mA);
+            data.6.set_slew_rate(SlewRate::Fast);
+            data.7.set_drive_strength(Drive::_2mA);
+            data.7.set_slew_rate(SlewRate::Fast);
+        }
+
         let pins = [
             &data.0, &data.1, &data.2, &data.3, &data.4, &data.5, &data.6, &data.7,
         ];
@@ -132,7 +165,7 @@ impl St7789_8080 {
         cfg.shift_out.threshold = 16;
         cfg.shift_out.direction = embassy_rp::pio::ShiftDirection::Left;
         cfg.shift_out.auto_fill = true;
-        cfg.clock_divider = 6u8.into();
+        cfg.clock_divider = 6u8.into(); // 41_666_666 Hz
         let program = common.load_program(&program.program);
         cfg.use_program(&program, &[&clk]);
 
