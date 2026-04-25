@@ -17,7 +17,7 @@ use embassy_rp::{
     pwm::{Pwm, SetDutyCycle},
 };
 use embassy_sync::mutex::Mutex;
-use embassy_time::{Duration, Instant, Timer};
+use embassy_time::{Duration, Instant};
 use embedded_graphics::prelude::*;
 use embedded_graphics::{
     pixelcolor::{Bgr565, Gray4, raw::RawU16},
@@ -195,7 +195,7 @@ impl St7789_8080 {
     async fn set_dc_cs(&mut self, dc: bool, cs: bool) {
         self.dc.set_level(dc.into());
         self.cs.set_level(cs.into());
-        Timer::after_micros(1).await;
+        // Timer::after_micros(1).await;
     }
 
     async fn write(&mut self, word: u16) {
@@ -231,9 +231,9 @@ impl St7789_8080 {
         self.write_cmd(&[0x0001]).await; // Software reset
         self.write_cmd(&[0x0011]).await; // Exit sleep mode
         self.write_cmd(&[0x003A, 0x5500]).await; // Set color mode to 16 bit
-        self.write_cmd(&[0x0036, 0x0000]).await; // Set MADCTL: bottom to top, left to right, refresh is bottom to top // 0b111101_10
-        self.write_cmd(&[0x002A, 0x0000, h]).await; // CASET: column addresses
-        self.write_cmd(&[0x002B, 0x0000, w]).await; // RASET: row addresses
+        self.write_cmd(&[0x0036, 0b101001_00 << 8]).await; // Set MADCTL
+        self.write_cmd(&[0x002A, 0x0000, w]).await; // CASET: column addresses
+        self.write_cmd(&[0x002B, 0x0000, h]).await; // RASET: row addresses
         self.write_cmd(&[0x0021]).await; // Inversion on
         self.write_cmd(&[0x0013]).await; // Normal display on
         self.write_cmd(&[0x0029]).await; // Main screen turn on
@@ -263,23 +263,15 @@ static mut FBDATA: [u16; SCR_W * SCR_H] = [0x0; SCR_W * SCR_H];
 struct FBBackEnd {
     t: &'static mut [u16; SCR_W * SCR_H],
 }
-impl FBBackEnd {
-    const fn transpose(idx: usize) -> usize {
-        let x = SCR_W - (idx % SCR_W) - 1;
-        let y = idx / SCR_W;
-
-        y + x * SCR_H
-    }
-}
 impl FrameBufferBackend for FBBackEnd {
     type Color = Bgr565;
 
     fn set(&mut self, index: usize, color: Self::Color) {
-        self.t[Self::transpose(index)] = color.into_storage();
+        self.t[index] = color.into_storage();
     }
 
     fn get(&self, index: usize) -> Self::Color {
-        let i: RawU16 = self.t[Self::transpose(index)].into();
+        let i: RawU16 = self.t[index].into();
         i.into()
     }
 
@@ -843,6 +835,7 @@ impl ScreenMod {
 
             let frame_push_time = {
                 let frame_push_start = Instant::now();
+                // in an ideal world we would double buffer and work on the next frame while transferring the current frame
                 self.scr
                     .push_framebuffer(unsafe { &mut *core::ptr::addr_of_mut!(FBDATA) })
                     .await;
@@ -853,7 +846,7 @@ impl ScreenMod {
 
             let total_time = draw_pre_tick_time + draw_post_tick_time + frame_push_time;
 
-            debug!(
+            info!(
                 "(pre, post, push, total): ({}, {}, {}, {}) us",
                 draw_pre_tick_time, draw_post_tick_time, frame_push_time, total_time
             );
