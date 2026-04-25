@@ -39,7 +39,7 @@ fn main() -> ! {
 
     // Overclock to 300MHz
     let clock_config = {
-        let mut c = ClockConfig::system_freq(200_000_000).unwrap();
+        let mut c = ClockConfig::system_freq(250_000_000).unwrap();
         c.core_voltage = CoreVoltage::V1_20;
         Config::new(c)
     };

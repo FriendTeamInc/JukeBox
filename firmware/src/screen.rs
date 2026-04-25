@@ -132,7 +132,7 @@ impl St7789_8080 {
         cfg.shift_out.threshold = 16;
         cfg.shift_out.direction = embassy_rp::pio::ShiftDirection::Left;
         cfg.shift_out.auto_fill = true;
-        cfg.clock_divider = 5u8.into();
+        cfg.clock_divider = 6u8.into();
         let program = common.load_program(&program.program);
         cfg.use_program(&program, &[&clk]);
 
@@ -752,7 +752,7 @@ impl ScreenMod {
         if diff.abs() < 1.0 {
             self.brightness = self.brightness_target;
         } else {
-            self.brightness += diff / 30000.0;
+            self.brightness += diff / 5000.0;
         }
 
         self.scr.set_backlight(self.brightness as u8);

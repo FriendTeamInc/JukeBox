@@ -60,7 +60,7 @@ impl RgbMod {
         if diff.abs() < 1.0 {
             self.brightness = self.brightness_target;
         } else {
-            self.brightness += diff / 30000.0;
+            self.brightness += diff / 5000.0;
         }
     }
 
