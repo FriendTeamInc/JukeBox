@@ -57,7 +57,7 @@ impl RgbMod {
 
     fn update_brightness(&mut self) {
         let diff = self.brightness_target - self.brightness;
-        if diff < 1.0 {
+        if diff.abs() < 1.0 {
             self.brightness = self.brightness_target;
         } else {
             self.brightness += diff / 30000.0;
