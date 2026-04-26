@@ -162,8 +162,8 @@ module case_top() {
             }
 
             difference() {
-                translate([cS-25.5, cS-17.5, ctH-3]) cylinder(h=3, d=4);
-                translate([cS-25.5, cS-17.5, ctH-3]) cylinder(h=3, d=2);
+                translate([cS-25.5, cS-17.5, ctH-2.8]) cylinder(h=2.8, d=4);
+                translate([cS-25.5, cS-17.5, ctH-2.8]) cylinder(h=2.8, d=2);
             }
 
             h = ctH-ctMH;

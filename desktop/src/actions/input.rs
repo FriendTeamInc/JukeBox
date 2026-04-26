@@ -24,7 +24,7 @@ const ICON_MOUSE: ImageSource = include_image!("../../../assets/action-icons/inp
 static KEY_MAP: OnceLock<HashMap<u8, &str>> = OnceLock::new();
 
 #[rustfmt::skip]
-pub fn input_action_list() -> (String, Vec<(String, Action, String)>) {
+pub fn init_actions_input(_config: Arc<Mutex<JukeBoxConfig>>) -> (String, Vec<(String, Action, String)>) {
     (
         t!("action.input.title", icon = phos::CURSOR_CLICK).into(),
         vec![

@@ -23,7 +23,7 @@ const ICON_COPY_FROM_PROFILE: ImageSource =
     include_image!("../../../assets/action-icons/meta-copyfromprofile.bmp");
 
 #[rustfmt::skip]
-pub fn meta_action_list() -> (String, Vec<(String, Action, String)>) {
+pub fn init_actions_meta(_config: Arc<Mutex<JukeBoxConfig>>) -> (String, Vec<(String, Action, String)>) {
     (
         t!("action.meta.title", icon = phos::GEAR).into(),
         vec![

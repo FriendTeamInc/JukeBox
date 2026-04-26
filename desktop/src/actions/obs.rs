@@ -72,7 +72,11 @@ static OBS_GET_SCENE_COLLECTIONS: OnceLock<AtomicBool> = OnceLock::new();
 static OBS_SCENE_COLLECTIONS: OnceLock<Mutex<Option<Vec<String>>>> = OnceLock::new();
 
 #[rustfmt::skip]
-pub fn obs_action_list() -> (String, Vec<(String, Action, String)>) {
+pub fn init_actions_obs(config: Arc<Mutex<JukeBoxConfig>>) -> (String, Vec<(String, Action, String)>) {
+    OBS_HOST_ADDRESS.get_or_init(|| Mutex::new("localhost".into()));
+    OBS_HOST_PORT.get_or_init(|| Mutex::new("4455".into()));
+    OBS_PASSWORD.get_or_init(|| Mutex::new("".into()));
+    
     OBS_GET_SCENES.get_or_init(|| true.into());
     OBS_SCENES.get_or_init(|| Mutex::new(None));
     OBS_GET_SOURCES.get_or_init(|| true.into());
@@ -81,6 +85,10 @@ pub fn obs_action_list() -> (String, Vec<(String, Action, String)>) {
     OBS_INPUTS.get_or_init(|| Mutex::new(None));
     OBS_GET_SCENE_COLLECTIONS.get_or_init(|| true.into());
     OBS_SCENE_COLLECTIONS.get_or_init(|| Mutex::new(None));
+
+    // init obs websocket (if we have a saved config for it)
+    let _ = tokio::runtime::Handle::current()
+        .block_on(async move { create_client(config).await });
 
     (
         t!("action.obs.title", icon = phos::VINYL_RECORD).into(),
@@ -252,7 +260,6 @@ async fn check_client(
     }
 }
 
-
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsStream {}
 impl ObsStream {
@@ -303,7 +310,6 @@ impl ObsStream {
         ICON_STREAM
     }
 }
-
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsRecord {}
@@ -356,7 +362,6 @@ impl ObsRecord {
     }
 }
 
-
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsPauseRecord {}
 impl ObsPauseRecord {
@@ -407,7 +412,6 @@ impl ObsPauseRecord {
         ICON_PAUSE_RECORD
     }
 }
-
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsReplayBuffer {}
@@ -464,7 +468,6 @@ impl ObsReplayBuffer {
     }
 }
 
-
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsSaveReplay {}
 impl ObsSaveReplay {
@@ -519,7 +522,6 @@ impl ObsSaveReplay {
         ICON_SAVE_REPLAY
     }
 }
-
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsSource {
@@ -700,7 +702,6 @@ impl ObsSource {
     }
 }
 
-
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsMute {
     input: Option<(Uuid, String)>,
@@ -807,7 +808,6 @@ impl ObsMute {
     }
 }
 
-
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsSceneSwitch {
     scene: Option<(Uuid, String)>,
@@ -912,7 +912,6 @@ impl ObsSceneSwitch {
         ICON_SWITCH_SCENE
     }
 }
-
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsPreviewSceneSwitch {
@@ -1022,7 +1021,6 @@ impl ObsPreviewSceneSwitch {
     }
 }
 
-
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsPreviewScenePush {}
 impl ObsPreviewScenePush {
@@ -1080,7 +1078,6 @@ impl ObsPreviewScenePush {
         ICON_PUSH_PREVIEW
     }
 }
-
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsSceneCollectionSwitch {
@@ -1190,7 +1187,6 @@ impl ObsSceneCollectionSwitch {
         ICON_SWITCH_COLLECTION
     }
 }
-
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct ObsChapterMarker {}

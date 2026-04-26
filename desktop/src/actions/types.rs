@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::{Mutex, MutexGuard};
 
 use crate::{
-    actions::{discord::*, input::*, meta::*, obs::*, soundboard::*, system::*},
+    actions::{discord::*, input::*, meta::*, obs::*, system::*},
     config::{ActionConfig, ActionIcon, JukeBoxConfig},
     input::InputKey,
 };
@@ -23,15 +23,22 @@ pub static ICON_CACHE: OnceLock<Mutex<HashMap<String, Vec<u8>>>> = OnceLock::new
 
 #[derive(Debug, Clone)]
 pub struct ActionError {
-    pub device_uid: String,
-    pub input_key: InputKey,
+    pub device_uid: Option<String>,
+    pub input_key: Option<InputKey>,
     pub msg: String,
 }
 impl ActionError {
     pub fn new(device_uid: impl Into<String>, input_key: InputKey, msg: impl Into<String>) -> Self {
         Self {
-            device_uid: device_uid.into(),
-            input_key: input_key,
+            device_uid: Some(device_uid.into()),
+            input_key: Some(input_key),
+            msg: msg.into(),
+        }
+    }
+    pub fn msg(msg: impl Into<String>) -> Self {
+        Self {
+            device_uid: None,
+            input_key: None,
             msg: msg.into(),
         }
     }
@@ -126,8 +133,6 @@ create_actions! {
     SystemSndInCtrl,
     SystemSndOutCtrl,
 
-    SoundboardPlaySound,
-
     InputKeyboard,
     InputMouse,
     // InputGamepad,
@@ -159,18 +164,17 @@ pub struct ActionMap {
     enum_map: HashMap<String, Action>,
 }
 impl ActionMap {
-    pub fn new() -> Self {
+    pub fn new(config: Arc<Mutex<JukeBoxConfig>>) -> Self {
         // this function is only safe to call once!
         // TODO: we should probably fix that...
 
         let l = vec![
-            meta_action_list(),
-            input_action_list(),
-            system_action_list(),
-            // soundboard_action_list(),
+            init_actions_meta(config.clone()),
+            init_actions_input(config.clone()),
+            init_actions_system(config.clone()),
             #[cfg(feature = "discord")]
-            discord_action_list(),
-            obs_action_list(),
+            init_actions_discord(config.clone()),
+            init_actions_obs(config.clone()),
         ];
 
         let ui_list = l

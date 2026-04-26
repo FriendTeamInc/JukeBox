@@ -289,7 +289,7 @@ impl JukeBoxGui {
             current_device: current_device,
             devices: devices,
 
-            config: config,
+            config: config.clone(),
             config_enable_splash: config_enable_splash,
             config_always_save_on_exit: config_always_save_on_exit,
             config_ignore_update_notifications: config_ignore_update_notifications,
@@ -332,7 +332,7 @@ impl JukeBoxGui {
 
             generic_errors: generic_errors,
 
-            action_map: ActionMap::new(),
+            action_map: ActionMap::new(config),
             ae_rx: ae_rx,
             action_errors: VecDeque::new(),
         }
@@ -412,19 +412,20 @@ impl JukeBoxGui {
 
                     ui.add_space(10.0);
 
-                    ui.label(t!(
-                        "help.action.modal_input_key",
-                        input_key = action.input_key
-                    ));
+                    if let Some(input_key) = action.input_key {
+                        ui.label(t!("help.action.modal_input_key", input_key = input_key));
+                    }
 
                     ui.add_space(10.0);
 
-                    let device = if let Some(d) = self.devices.get(&action.device_uid) {
-                        &d.device_info.nickname
-                    } else {
-                        &action.device_uid
-                    };
-                    ui.label(t!("help.action.modal_device", device = device));
+                    if let Some(device_uid) = &action.device_uid {
+                        let device = if let Some(d) = self.devices.get(device_uid) {
+                            &d.device_info.nickname
+                        } else {
+                            &device_uid
+                        };
+                        ui.label(t!("help.action.modal_device", device = device));
+                    }
                 });
             });
         }

@@ -233,7 +233,7 @@ fn system_audio_control_loop(mut cmd_rx: UnboundedReceiver<AudioCommand>) {
 }
 
 #[rustfmt::skip]
-pub fn system_action_list() -> (String, Vec<(String, Action, String)>) {
+pub fn init_actions_system(_config: Arc<Mutex<JukeBoxConfig>>) -> (String, Vec<(String, Action, String)>) {
     let (cmd_tx, cmd_rx) = unbounded_channel();
     SYSTEM_AUDIO_CMD_TX.get_or_init(|| cmd_tx);
     SYSTEM_SOURCES.get_or_init(|| Mutex::new(None));
@@ -350,15 +350,16 @@ impl SystemOpenWeb {
         input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(), ActionError> {
-        open::that(self.url.clone()).map_err(|e| ActionError {
-            device_uid: device_uid.clone(),
-            input_key: input_key,
-            msg: t!(
-                "action.system.open_web.err",
-                webpage = self.url,
-                reason = e.to_string()
+        open::that(self.url.clone()).map_err(|e| {
+            ActionError::new(
+                device_uid.clone(),
+                input_key,
+                t!(
+                    "action.system.open_web.err",
+                    webpage = self.url,
+                    reason = e.to_string()
+                ),
             )
-            .into(),
         })
     }
 
