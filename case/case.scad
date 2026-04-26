@@ -155,10 +155,15 @@ module case_top() {
                     translate([ctW, ctW, -1]) roundedsquare(cS-ctW*2, cS-ctW*2, ctH+1, cR);
 
                     // identify led cutout
-                    translate([cS-21.5-4, cS-13.5-4, ctH]) cylinder(h=1, d=2);
+                    translate([cS-25.5, cS-17.5, ctH]) cylinder(h=1, d=2);
                     // reset button cutout
-                    translate([cS-23.5-6, cS-28.75-8, ctH]) cube([4, 4, 1]);
+                    translate([cS-29.25, cS-36.75, ctH]) cube([2.5, 5, 1]);
                 }
+            }
+
+            difference() {
+                translate([cS-25.5, cS-17.5, ctH-3]) cylinder(h=3, d=4);
+                translate([cS-25.5, cS-17.5, ctH-3]) cylinder(h=3, d=2);
             }
 
             h = ctH-ctMH;
