@@ -73,9 +73,16 @@ static OBS_SCENE_COLLECTIONS: OnceLock<Mutex<Option<Vec<String>>>> = OnceLock::n
 
 #[rustfmt::skip]
 pub fn init_actions_obs(config: Arc<Mutex<JukeBoxConfig>>) -> (String, Vec<(String, Action, String)>) {
-    OBS_HOST_ADDRESS.get_or_init(|| Mutex::new("localhost".into()));
-    OBS_HOST_PORT.get_or_init(|| Mutex::new("4455".into()));
-    OBS_PASSWORD.get_or_init(|| Mutex::new("".into()));
+    let c = config.blocking_lock().obs_access.clone();
+    let (host, port, password) = if let Some(obs_access) = &c {
+        (obs_access.host.clone(), obs_access.port.to_string(), obs_access.password.clone().unwrap_or_default())
+    } else {
+        ("localhost".to_string(), "4455".to_string(), "".to_string())
+    };
+
+    OBS_HOST_ADDRESS.get_or_init(|| Mutex::new(host));
+    OBS_HOST_PORT.get_or_init(|| Mutex::new(port));
+    OBS_PASSWORD.get_or_init(|| Mutex::new(password));
     
     OBS_GET_SCENES.get_or_init(|| true.into());
     OBS_SCENES.get_or_init(|| Mutex::new(None));
@@ -230,7 +237,7 @@ fn account_warning(ui: &mut Ui, config: Arc<Mutex<JukeBoxConfig>>) -> Option<()>
             let mut obs_password = OBS_PASSWORD.get().unwrap().blocking_lock();
             ui.add(
                 TextEdit::singleline(&mut *obs_password)
-                    .hint_text("Password")
+                    .hint_text("password")
                     .password(true),
             );
         }
