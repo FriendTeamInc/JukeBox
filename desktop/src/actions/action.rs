@@ -23,22 +23,13 @@ use crate::{
 };
 
 async fn update_device_configs(
-    scmd_txs: Arc<Mutex<HashMap<String, UnboundedSender<SerialCommand>>>>,
-    device_uid: &String,
+    tx: UnboundedSender<SerialCommand>,
     device_type: DeviceType,
     keys: HashMap<InputKey, ActionConfig>,
     profile_name: String,
     rgb_profile: RgbProfile,
     screen_profile: ScreenProfile,
 ) {
-    let txs = scmd_txs.lock().await;
-    let tx = if let Some(tx) = txs.get(device_uid) {
-        tx
-    } else {
-        log::warn!("failed to find serial command sender for {}", device_uid);
-        return;
-    };
-
     if device_type == DeviceType::KeyPad {
         // send profile name
         let _ = tx.send(SerialCommand::SetProfileName(profile_name));
@@ -51,15 +42,23 @@ async fn update_device_configs(
 
         // set icons on screen
         for (k, a) in &keys {
-            let bytes = get_icon_bytes(a, &mut get_icon_cache_async().await);
-            let _ = tx.send(SerialCommand::SetScrIcon(k.slot(), bytes));
+            send_scr_icon(&tx, a, k).await;
         }
     }
 
     for (k, a) in keys {
         let slot = k.slot();
-        send_input_event(tx, slot, &a.action);
+        send_input_event(&tx, slot, &a.action);
     }
+}
+
+async fn send_scr_icon(
+    tx: &UnboundedSender<SerialCommand>,
+    action_config: &ActionConfig,
+    input_key: &InputKey,
+) {
+    let bytes = get_icon_bytes(action_config, &mut get_icon_cache_async().await);
+    let _ = tx.send(SerialCommand::SetScrIcon(input_key.slot(), bytes));
 }
 
 pub fn send_input_event(tx: &UnboundedSender<SerialCommand>, slot: u8, action: &Action) {
@@ -121,11 +120,19 @@ pub async fn action_task(
 
                 clear_set(&mut prevkeys, device_uid).await;
 
+                let scmd_tx = {
+                    if let Some(tx) = scmd_txs.lock().await.get(device_uid) {
+                        tx.clone()
+                    } else {
+                        log::warn!("failed to find serial command sender for {}", device_uid);
+                        continue;
+                    }
+                };
+
                 let (device_type, keys, profile_name, rgb_profile, screen_profile) =
                     get_profile_info(&config, device_uid).await;
                 update_device_configs(
-                    scmd_txs.clone(),
-                    device_uid,
+                    scmd_tx,
                     device_type,
                     keys,
                     profile_name,
@@ -141,7 +148,14 @@ pub async fn action_task(
                 let prevkeys = prevkeys.get(&device_uid).unwrap().clone();
 
                 let config = config.clone();
-                let scmd_txs = scmd_txs.clone();
+                let scmd_tx = {
+                    if let Some(tx) = scmd_txs.lock().await.get(&device_uid) {
+                        tx.clone()
+                    } else {
+                        log::warn!("failed to find serial command sender for {}", device_uid);
+                        continue;
+                    }
+                };
                 let ae_tx = ae_tx.clone();
 
                 tokio::spawn(async move {
@@ -181,7 +195,13 @@ pub async fn action_task(
 
                     for res in pressed {
                         match res {
-                            Ok(_) => {}
+                            Ok((k, c)) => {
+                                if c {
+                                    if let Some(a) = current_profile.get(&k) {
+                                        send_scr_icon(&scmd_tx, a, &k).await;
+                                    }
+                                }
+                            }
                             Err(e) => {
                                 let _ = ae_tx.send(e);
                             }
@@ -189,7 +209,13 @@ pub async fn action_task(
                     }
                     for res in released {
                         match res {
-                            Ok(_) => {}
+                            Ok((k, c)) => {
+                                if c {
+                                    if let Some(a) = current_profile.get(&k) {
+                                        send_scr_icon(&scmd_tx, a, &k).await;
+                                    }
+                                }
+                            }
                             Err(e) => {
                                 let _ = ae_tx.send(e);
                             }
@@ -208,8 +234,7 @@ pub async fn action_task(
 
                     if current_profile_name != new_profile_name {
                         update_device_configs(
-                            scmd_txs.clone(),
-                            &device_uid,
+                            scmd_tx,
                             device_type,
                             new_keys,
                             new_profile_name,

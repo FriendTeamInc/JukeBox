@@ -209,7 +209,7 @@ impl DiscordToggleMute {
         device_uid: &String,
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
+    ) -> Result<(InputKey, bool), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
             create_client(c).await?;
@@ -230,22 +230,22 @@ impl DiscordToggleMute {
                         // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::VoiceActivity))
                         .mute(muted),
                 )
-                .map(|_| Ok(()))
+                .map(|_| (input_key, true))
                 .map_err(|_| {
                     ActionError::new(device_uid, input_key, t!("action.discord.toggle_mute.err"))
                 })
         })
         .await
-        .unwrap()?
+        .unwrap()
     }
 
     pub async fn on_release(
         &self,
         _device_uid: &String,
-        _input_key: InputKey,
+        input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
-        Ok(())
+    ) -> Result<(InputKey, bool), ActionError> {
+        Ok((input_key, false))
     }
 
     pub fn get_type(&self) -> String {
@@ -283,7 +283,7 @@ impl DiscordToggleDeafen {
         device_uid: &String,
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
+    ) -> Result<(InputKey, bool), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
             create_client(c).await?;
@@ -302,7 +302,7 @@ impl DiscordToggleDeafen {
                         .mute(deafened)
                         .deaf(deafened),
                 )
-                .map(|_| Ok(()))
+                .map(|_| (input_key, true))
                 .map_err(|_| {
                     ActionError::new(
                         device_uid,
@@ -312,16 +312,16 @@ impl DiscordToggleDeafen {
                 })
         })
         .await
-        .unwrap()?
+        .unwrap()
     }
 
     pub async fn on_release(
         &self,
         _device_uid: &String,
-        _input_key: InputKey,
+        input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
-        Ok(())
+    ) -> Result<(InputKey, bool), ActionError> {
+        Ok((input_key, false))
     }
 
     pub fn get_type(&self) -> String {
@@ -359,7 +359,7 @@ impl DiscordPushToTalk {
         device_uid: &String,
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
+    ) -> Result<(InputKey, bool), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
             create_client(c).await?;
@@ -374,7 +374,7 @@ impl DiscordPushToTalk {
                         // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
                         .mute(false),
                 )
-                .map(|_| Ok(()))
+                .map(|_| (input_key, true))
                 .map_err(|_| {
                     ActionError::new(
                         device_uid,
@@ -384,7 +384,7 @@ impl DiscordPushToTalk {
                 })
         })
         .await
-        .unwrap()?
+        .unwrap()
     }
 
     pub async fn on_release(
@@ -392,7 +392,7 @@ impl DiscordPushToTalk {
         device_uid: &String,
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
+    ) -> Result<(InputKey, bool), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
             create_client(c).await?;
@@ -407,7 +407,7 @@ impl DiscordPushToTalk {
                         // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
                         .mute(true),
                 )
-                .map(|_| Ok(()))
+                .map(|_| (input_key, true))
                 .map_err(|_| {
                     ActionError::new(
                         device_uid,
@@ -417,7 +417,7 @@ impl DiscordPushToTalk {
                 })
         })
         .await
-        .unwrap()?
+        .unwrap()
     }
 
     pub fn get_type(&self) -> String {
@@ -451,7 +451,7 @@ impl DiscordPushToMute {
         device_uid: &String,
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
+    ) -> Result<(InputKey, bool), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
             create_client(c).await?;
@@ -466,7 +466,7 @@ impl DiscordPushToMute {
                         // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
                         .mute(true),
                 )
-                .map(|_| Ok(()))
+                .map(|_| (input_key, true))
                 .map_err(|_| {
                     ActionError::new(
                         device_uid,
@@ -476,7 +476,7 @@ impl DiscordPushToMute {
                 })
         })
         .await
-        .unwrap()?
+        .unwrap()
     }
 
     pub async fn on_release(
@@ -484,7 +484,7 @@ impl DiscordPushToMute {
         device_uid: &String,
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
+    ) -> Result<(InputKey, bool), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
             create_client(c).await?;
@@ -499,7 +499,7 @@ impl DiscordPushToMute {
                         // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
                         .mute(false),
                 )
-                .map(|_| Ok(()))
+                .map(|_| (input_key, true))
                 .map_err(|_| {
                     ActionError::new(
                         device_uid,
@@ -509,7 +509,7 @@ impl DiscordPushToMute {
                 })
         })
         .await
-        .unwrap()?
+        .unwrap()
     }
 
     pub fn get_type(&self) -> String {
@@ -543,7 +543,7 @@ impl DiscordPushToDeafen {
         device_uid: &String,
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
+    ) -> Result<(InputKey, bool), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
             create_client(c).await?;
@@ -559,7 +559,7 @@ impl DiscordPushToDeafen {
                         .mute(true)
                         .deaf(true),
                 )
-                .map(|_| Ok(()))
+                .map(|_| (input_key, true))
                 .map_err(|_| {
                     ActionError::new(
                         device_uid,
@@ -569,7 +569,7 @@ impl DiscordPushToDeafen {
                 })
         })
         .await
-        .unwrap()?
+        .unwrap()
     }
 
     pub async fn on_release(
@@ -577,7 +577,7 @@ impl DiscordPushToDeafen {
         device_uid: &String,
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
+    ) -> Result<(InputKey, bool), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
             create_client(c).await?;
@@ -593,7 +593,7 @@ impl DiscordPushToDeafen {
                         .mute(false)
                         .deaf(false),
                 )
-                .map(|_| Ok(()))
+                .map(|_| (input_key, true))
                 .map_err(|_| {
                     ActionError::new(
                         device_uid,
@@ -603,7 +603,7 @@ impl DiscordPushToDeafen {
                 })
         })
         .await
-        .unwrap()?
+        .unwrap()
     }
 
     pub fn get_type(&self) -> String {

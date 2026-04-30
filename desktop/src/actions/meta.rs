@@ -42,13 +42,13 @@ impl MetaNoAction {
         device_uid: &String,
         input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
+    ) -> Result<(InputKey, bool), ActionError> {
         log::info!(
             "META NO ACTION: Device {} Pressed {:?} !",
             device_uid,
             input_key
         );
-        Ok(())
+        Ok((input_key, false))
     }
 
     pub async fn on_release(
@@ -56,13 +56,13 @@ impl MetaNoAction {
         device_uid: &String,
         input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
+    ) -> Result<(InputKey, bool), ActionError> {
         log::info!(
             "META NO ACTION: Device {} Released {:?} !",
             device_uid,
             input_key
         );
-        Ok(())
+        Ok((input_key, false))
     }
 
     pub fn get_type(&self) -> String {
@@ -95,10 +95,10 @@ impl MetaSwitchProfile {
     pub async fn on_press(
         &self,
         _device_uid: &String,
-        _input_key: InputKey,
+        input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
-        Ok(())
+    ) -> Result<(InputKey, bool), ActionError> {
+        Ok((input_key, false))
     }
 
     pub async fn on_release(
@@ -106,11 +106,11 @@ impl MetaSwitchProfile {
         device_uid: &String,
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
+    ) -> Result<(InputKey, bool), ActionError> {
         let mut config = config.lock().await;
         if config.profiles.contains_key(&self.profile) {
             config.current_profile = self.profile.clone();
-            Ok(())
+            Ok((input_key, false))
         } else {
             if self.profile.len() == 0 {
                 Err(ActionError::new(
@@ -179,7 +179,7 @@ impl MetaSwitchProfile {
 //         device_uid: &String,
 //         input_key: InputKey,
 //         config: Arc<Mutex<JukeBoxConfig>>,
-//     ) -> Result<(), ActionError> {
+//     ) -> Result<(InputKey, bool), ActionError> {
 //         let k = config
 //             .lock()
 //             .await
@@ -207,7 +207,7 @@ impl MetaSwitchProfile {
 //         device_uid: &String,
 //         input_key: InputKey,
 //         config: Arc<Mutex<JukeBoxConfig>>,
-//     ) -> Result<(), ActionError> {
+//     ) -> Result<(InputKey, bool), ActionError> {
 //         let k = config
 //             .lock()
 //             .await

@@ -57,23 +57,26 @@ macro_rules! create_actions {
         }
 
         impl Action {
+            // Ok(bool) = change icon if true
+            // Err(ActionError) = error to display in gui if something went wrong
             pub async fn on_press(
                 &self,
                 device_uid: &String,
                 input_key: InputKey,
                 config: Arc<Mutex<JukeBoxConfig>>,
-            ) -> Result<(), ActionError> {
+            ) -> Result<(InputKey, bool), ActionError> {
                 match self {
                     $(Self::$item(x) => x.on_press(device_uid, input_key, config).await,)*
                 }
             }
 
+            // same as on_press()
             pub async fn on_release(
                 &self,
                 device_uid: &String,
                 input_key: InputKey,
                 config: Arc<Mutex<JukeBoxConfig>>,
-            ) -> Result<(), ActionError> {
+            ) -> Result<(InputKey, bool), ActionError> {
                 match self {
                     $(Self::$item(x) => x.on_release(device_uid, input_key, config).await,)*
                 }

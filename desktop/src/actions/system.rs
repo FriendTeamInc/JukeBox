@@ -265,9 +265,9 @@ impl SystemOpenApp {
     pub async fn on_press(
         &self,
         _device_uid: &String,
-        _input_key: InputKey,
+        input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
+    ) -> Result<(InputKey, bool), ActionError> {
         let filepath = self.filepath.clone();
         let arguments = self.arguments.clone();
         let _ = spawn_blocking(move || {
@@ -277,16 +277,16 @@ impl SystemOpenApp {
 
         // error handling?
 
-        Ok(())
+        Ok((input_key, false))
     }
 
     pub async fn on_release(
         &self,
         _device_uid: &String,
-        _input_key: InputKey,
+        input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
-        Ok(())
+    ) -> Result<(InputKey, bool), ActionError> {
+        Ok((input_key, false))
     }
 
     pub fn get_type(&self) -> String {
@@ -349,27 +349,29 @@ impl SystemOpenWeb {
         device_uid: &String,
         input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
-        open::that(self.url.clone()).map_err(|e| {
-            ActionError::new(
-                device_uid.clone(),
-                input_key,
-                t!(
-                    "action.system.open_web.err",
-                    webpage = self.url,
-                    reason = e.to_string()
-                ),
-            )
-        })
+    ) -> Result<(InputKey, bool), ActionError> {
+        open::that(self.url.clone())
+            .map(|_| (input_key, false))
+            .map_err(|e| {
+                ActionError::new(
+                    device_uid.clone(),
+                    input_key,
+                    t!(
+                        "action.system.open_web.err",
+                        webpage = self.url,
+                        reason = e.to_string()
+                    ),
+                )
+            })
     }
 
     pub async fn on_release(
         &self,
         _device_uid: &String,
-        _input_key: InputKey,
+        input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
-        Ok(())
+    ) -> Result<(InputKey, bool), ActionError> {
+        Ok((input_key, false))
     }
 
     pub fn get_type(&self) -> String {
@@ -405,9 +407,9 @@ impl SystemSndInCtrl {
     pub async fn on_press(
         &self,
         _device_uid: &String,
-        _input_key: InputKey,
+        input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
+    ) -> Result<(InputKey, bool), ActionError> {
         // TODO: error handling
         if let Some(input_device) = self.input_device.clone() {
             let adjust = self.vol_adjust;
@@ -416,16 +418,17 @@ impl SystemSndInCtrl {
                 .unwrap()
                 .send(AudioCommand::AdjustInputDevice(input_device, adjust));
         }
-        Ok(())
+
+        Ok((input_key, false))
     }
 
     pub async fn on_release(
         &self,
         _device_uid: &String,
-        _input_key: InputKey,
+        input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
-        Ok(())
+    ) -> Result<(InputKey, bool), ActionError> {
+        Ok((input_key, false))
     }
 
     pub fn get_type(&self) -> String {
@@ -489,9 +492,9 @@ impl SystemSndOutCtrl {
     pub async fn on_press(
         &self,
         _device_uid: &String,
-        _input_key: InputKey,
+        input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
+    ) -> Result<(InputKey, bool), ActionError> {
         // TODO: error handling
         if let Some(output_device) = self.output_device.clone() {
             let adjust = self.vol_adjust;
@@ -500,16 +503,17 @@ impl SystemSndOutCtrl {
                 .unwrap()
                 .send(AudioCommand::AdjustOutputDevice(output_device, adjust));
         }
-        Ok(())
+
+        Ok((input_key, false))
     }
 
     pub async fn on_release(
         &self,
         _device_uid: &String,
-        _input_key: InputKey,
+        input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
-        Ok(())
+    ) -> Result<(InputKey, bool), ActionError> {
+        Ok((input_key, false))
     }
 
     pub fn get_type(&self) -> String {

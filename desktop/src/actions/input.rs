@@ -43,21 +43,21 @@ impl InputKeyboard {
     pub async fn on_press(
         &self,
         _device_uid: &String,
-        _input_key: InputKey,
+        input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
+    ) -> Result<(InputKey, bool), ActionError> {
         // TODO: trigger on test input from gui?
-        Ok(())
+        Ok((input_key, false))
     }
 
     pub async fn on_release(
         &self,
         _device_uid: &String,
-        _input_key: InputKey,
+        input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
+    ) -> Result<(InputKey, bool), ActionError> {
         // TODO: trigger on test input from gui?
-        Ok(())
+        Ok((input_key, false))
     }
 
     pub fn get_type(&self) -> String {
@@ -132,21 +132,21 @@ impl InputMouse {
     pub async fn on_press(
         &self,
         _device_uid: &String,
-        _input_key: InputKey,
+        input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
+    ) -> Result<(InputKey, bool), ActionError> {
         // TODO: trigger on test input from gui?
-        Ok(())
+        Ok((input_key, false))
     }
 
     pub async fn on_release(
         &self,
         _device_uid: &String,
-        _input_key: InputKey,
+        input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(), ActionError> {
+    ) -> Result<(InputKey, bool), ActionError> {
         // TODO: trigger on test input from gui?
-        Ok(())
+        Ok((input_key, false))
     }
 
     pub fn get_type(&self) -> String {
