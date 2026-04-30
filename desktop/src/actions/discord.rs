@@ -1,6 +1,9 @@
 use std::{
     collections::HashMap,
-    sync::{Arc, OnceLock},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, OnceLock,
+    },
 };
 
 use discord_rich_presence::{voice_settings::VoiceSettings, DiscordIpc, DiscordIpcClient};
@@ -24,9 +27,14 @@ pub const AID_DISCORD_PUSH_TO_MUTE: &str = "DiscordPushToMute";
 pub const AID_DISCORD_PUSH_TO_DEAFEN: &str = "DiscordPushToDeafen";
 
 const ICON_MUTE: ImageSource =
+    include_image!("../../../assets/action-icons/discord-microphone-1.bmp");
+const ICON_MUTED: ImageSource =
     include_image!("../../../assets/action-icons/discord-microphone-2.bmp");
 const ICON_DEAFEN: ImageSource =
+    include_image!("../../../assets/action-icons/discord-headphones-1.bmp");
+const ICON_DEAFENED: ImageSource =
     include_image!("../../../assets/action-icons/discord-headphones-2.bmp");
+
 const ICON_PUSH_TO_TALK: ImageSource =
     include_image!("../../../assets/action-icons/discord-talking-1.bmp");
 const ICON_PUSH_TO_MUTE: ImageSource =
@@ -37,8 +45,8 @@ const ICON_PUSH_TO_DEAFEN: ImageSource =
 const DISCORD_CLIENT_ID: Option<&str> = option_env!("DISCORD_CLIENT_ID");
 const DISCORD_CLIENT_SECRET: Option<&str> = option_env!("DISCORD_CLIENT_SECRET");
 static DISCORD_CLIENT: OnceLock<Mutex<DiscordIpcClient>> = OnceLock::new();
-static DISCORD_MUTED: OnceLock<Mutex<bool>> = OnceLock::new();
-static DISCORD_DEAFENED: OnceLock<Mutex<bool>> = OnceLock::new();
+static DISCORD_MUTED: AtomicBool = AtomicBool::new(false);
+static DISCORD_DEAFENED: AtomicBool = AtomicBool::new(false);
 
 #[rustfmt::skip]
 #[allow(dead_code)]
@@ -148,6 +156,19 @@ async fn create_client(config: Arc<Mutex<JukeBoxConfig>>) -> Result<(), ActionEr
         .authenticate(&config.discord_oauth_access.clone().unwrap().access_token)
         .map_err(|_| ActionError::msg(t!("action.discord.err.authenticate")))?;
 
+    if let Ok(v) = client.get_voice_settings() {
+        let deaf = if let Some(deaf) = v.deaf {
+            DISCORD_DEAFENED.store(deaf, Ordering::Relaxed);
+            DISCORD_MUTED.store(deaf, Ordering::Relaxed);
+            deaf
+        } else {
+            false
+        };
+        if let Some(mute) = v.mute {
+            DISCORD_MUTED.store(mute || deaf, Ordering::Relaxed);
+        }
+    }
+
     DISCORD_CLIENT
         .set(Mutex::new(client))
         .expect("failed to set DISCORD_CLIENT");
@@ -196,17 +217,18 @@ impl DiscordToggleMute {
         let device_uid: String = device_uid.into();
         spawn_blocking(move || {
             let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
-            let mut muted = DISCORD_MUTED
-                .get_or_init(|| Mutex::new(false))
-                .blocking_lock();
+            let muted = !DISCORD_MUTED.load(Ordering::Relaxed);
+            DISCORD_MUTED.store(muted, Ordering::Relaxed);
 
-            *muted = !*muted;
+            if !muted {
+                DISCORD_DEAFENED.store(false, Ordering::Relaxed);
+            }
 
             client
                 .set_voice_settings(
                     VoiceSettings::new()
                         // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::VoiceActivity))
-                        .mute(*muted),
+                        .mute(muted),
                 )
                 .map(|_| Ok(()))
                 .map_err(|_| {
@@ -245,7 +267,11 @@ impl DiscordToggleMute {
     }
 
     pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_MUTE
+        if DISCORD_MUTED.load(Ordering::Relaxed) {
+            ICON_MUTED
+        } else {
+            ICON_MUTE
+        }
     }
 }
 
@@ -265,18 +291,16 @@ impl DiscordToggleDeafen {
         let device_uid: String = device_uid.into();
         spawn_blocking(move || {
             let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
-            let mut deafened = DISCORD_DEAFENED
-                .get_or_init(|| Mutex::new(false))
-                .blocking_lock();
-
-            *deafened = !*deafened;
+            let deafened = !DISCORD_DEAFENED.load(Ordering::Relaxed);
+            DISCORD_DEAFENED.store(deafened, Ordering::Relaxed);
+            DISCORD_MUTED.store(deafened, Ordering::Relaxed);
 
             client
                 .set_voice_settings(
                     VoiceSettings::new()
                         // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::VoiceActivity))
-                        .mute(*deafened)
-                        .deaf(*deafened),
+                        .mute(deafened)
+                        .deaf(deafened),
                 )
                 .map(|_| Ok(()))
                 .map_err(|_| {
@@ -319,7 +343,11 @@ impl DiscordToggleDeafen {
     }
 
     pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_DEAFEN
+        if DISCORD_DEAFENED.load(Ordering::Relaxed) {
+            ICON_DEAFENED
+        } else {
+            ICON_DEAFEN
+        }
     }
 }
 
