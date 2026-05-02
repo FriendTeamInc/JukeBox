@@ -89,7 +89,7 @@ pub struct JukeBoxGui {
     pub device_name_entry: String,
 
     pub editing_key: InputKey,
-    pub editing_action_icon: ActionIcon,
+    pub editing_action_icons: Vec<ActionIcon>,
     pub editing_action_type: String,
     pub editing_action: Action,
 
@@ -301,7 +301,7 @@ impl JukeBoxGui {
             device_name_entry: String::new(),
 
             editing_key: InputKey::UnknownKey,
-            editing_action_icon: ActionIcon::DefaultActionIcon,
+            editing_action_icons: Vec::new(),
             editing_action_type: AID_META_NO_ACTION.into(),
             editing_action: Action::MetaNoAction(MetaNoAction::default()),
 

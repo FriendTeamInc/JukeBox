@@ -78,12 +78,24 @@ impl MetaNoAction {
     ) {
     }
 
-    pub fn help(&self) -> String {
-        t!("action.meta.no_action.help").into()
+    pub fn help(&self) -> &str {
+        "action.meta.no_action.help"
     }
 
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_NO_ACTION
+    pub fn icon_state(&self) -> u8 {
+        0
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_NO_ACTION]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        1
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
     }
 }
 
@@ -160,12 +172,24 @@ impl MetaSwitchProfile {
             });
     }
 
-    pub fn help(&self) -> String {
-        t!("action.meta.switch_profile.help").into()
+    pub fn help(&self) -> &str {
+        "action.meta.switch_profile.help"
     }
 
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_SWITCH_PROFILE
+    pub fn icon_state(&self) -> u8 {
+        0
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_SWITCH_PROFILE]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        1
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
     }
 }
 
@@ -271,7 +295,7 @@ impl MetaSwitchProfile {
 //             });
 //     }
 
-//     pub fn help(&self) -> String {
+//     pub fn help(&self) -> &str {
 //         t!("action.meta.copy_from_profile.help").into()
 //     }
 

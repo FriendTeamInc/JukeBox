@@ -2,7 +2,8 @@ use std::path::PathBuf;
 
 use eframe::egui::{
     scroll_area::ScrollBarVisibility, vec2, Align, Button, CollapsingHeader, Grid, Image,
-    ImageSource, Layout, RichText, ScrollArea, TextureFilter, TextureOptions, TextureWrapMode, Ui,
+    ImageSource, Layout, Popup, RichText, ScrollArea, TextureFilter, TextureOptions,
+    TextureWrapMode, Ui,
 };
 use egui_phosphor::regular as phos;
 use image::EncodableLayout;
@@ -45,13 +46,13 @@ impl JukeBoxGui {
                 .and_then(|p| p.get(&self.current_device))
                 .and_then(|d| d.key_map.get(&self.editing_key))
             {
-                self.editing_action_icon = r.icon.clone();
+                self.editing_action_icons = r.icons.clone();
                 self.editing_action_type = r.action.get_type();
                 self.editing_action = r.action.clone();
             } else {
                 self.editing_action_type = AID_META_NO_ACTION.into();
                 self.editing_action = self.action_map.enum_new(self.editing_action_type.clone());
-                self.editing_action_icon = ActionIcon::default();
+                self.editing_action_icons = vec![ActionIcon::DefaultActionIcon];
             }
         };
     }
@@ -197,7 +198,7 @@ impl JukeBoxGui {
         if let Some(old_action) = d.key_map.get(&self.editing_key) {
             let new_action = ActionConfig {
                 action: self.editing_action.clone(),
-                icon: self.editing_action_icon.clone(),
+                icons: self.editing_action_icons.clone(),
             };
             new_action != *old_action
         } else {
@@ -217,7 +218,7 @@ impl JukeBoxGui {
                 self.editing_key.clone(),
                 ActionConfig {
                     action: self.editing_action.clone(),
-                    icon: self.editing_action_icon.clone(),
+                    icons: self.editing_action_icons.clone(),
                 },
             );
             c.save();
@@ -231,24 +232,22 @@ impl JukeBoxGui {
     pub fn draw_edit_action(&mut self, ui: &mut Ui) {
         ui.columns_const(|[c1, c2]| {
             c1.horizontal(|ui| {
-                let test_btn = match &self.editing_action_icon {
-                    ActionIcon::ImageIcon(s) => {
-                        let p = String::new() + "file://" + s;
-                        let i = Image::new(ImageSource::Uri(p.into()))
-                            .texture_options(TextureOptions {
-                                magnification: TextureFilter::Nearest,
-                                minification: TextureFilter::Nearest,
-                                wrap_mode: TextureWrapMode::ClampToEdge,
-                                mipmap_mode: None,
-                            })
-                            .corner_radius(2.0);
-                        Button::new(i)
-                    }
-                    ActionIcon::DefaultActionIcon => {
-                        let i = self.editing_action.icon();
-                        Button::new(i)
-                    }
-                };
+                let test_btn =
+                    match &self.editing_action_icons[self.editing_action.icon_state() as usize] {
+                        ActionIcon::ImageIcon(s) => {
+                            let p = String::new() + "file://" + s;
+                            let i = Image::new(ImageSource::Uri(p.into()))
+                                .texture_options(TextureOptions {
+                                    magnification: TextureFilter::Nearest,
+                                    minification: TextureFilter::Nearest,
+                                    wrap_mode: TextureWrapMode::ClampToEdge,
+                                    mipmap_mode: None,
+                                })
+                                .corner_radius(2.0);
+                            Button::new(i)
+                        }
+                        ActionIcon::DefaultActionIcon => Button::new(self.editing_action.icon()),
+                    };
                 let test_btn = ui
                     .add_sized([60.0, 60.0], test_btn)
                     .on_hover_text_at_pointer(t!("help.action.test_input"));
@@ -279,33 +278,34 @@ impl JukeBoxGui {
                             self.save_action();
                         }
                     });
-                    if ui
+                    let icon_btn = ui
                         .button(RichText::new(phos::FOLDER_OPEN))
-                        .on_hover_text_at_pointer(t!("help.action.image_icon"))
-                        .clicked()
-                    {
-                        if let Some(f) = FileDialog::new()
-                            .add_filter("PNG Image", &["png"])
-                            .pick_file()
-                        {
-                            match self.load_custom_icon(f) {
-                                Ok(i) => {
-                                    self.editing_action_icon =
-                                        ActionIcon::ImageIcon(i.to_string_lossy().to_string())
-                                }
-                                Err(e) => self.action_errors.push_back(e),
-                            }
+                        .on_hover_text_at_pointer(t!("help.action.image_icon"));
+                    if self.editing_action.icon_state_count() == 1 {
+                        if icon_btn.clicked() {
+                            self.store_editing_action_icon(0);
                         }
+                    } else {
+                        Popup::menu(&icon_btn).show(|ui| {
+                            for i in 0..(self.editing_action.icon_state_count() as usize) {
+                                let desc = self.editing_action.icon_state_descriptions()[i];
+                                if ui.button(t!(desc)).clicked() {
+                                    self.store_editing_action_icon(i);
+                                }
+                            }
+                        });
                     }
                     ui.add_enabled_ui(
-                        self.editing_action_icon != ActionIcon::DefaultActionIcon,
+                        self.editing_action_icons
+                            .iter()
+                            .any(|a| *a != ActionIcon::DefaultActionIcon),
                         |ui| {
                             if ui
                                 .button(RichText::new(phos::ARROW_COUNTER_CLOCKWISE))
                                 .on_hover_text_at_pointer(t!("help.action.reset_icon"))
                                 .clicked()
                             {
-                                self.editing_action_icon = ActionIcon::DefaultActionIcon;
+                                self.reset_editing_action_icons();
                             }
                         },
                     );
@@ -314,7 +314,7 @@ impl JukeBoxGui {
                     Layout::centered_and_justified(eframe::egui::Direction::TopDown)
                         .with_cross_justify(false),
                     |ui| {
-                        ui.label(RichText::new(self.editing_action.help()).size(10.0));
+                        ui.label(RichText::new(t!(self.editing_action.help())).size(10.0));
                     },
                 );
             });
@@ -375,6 +375,27 @@ impl JukeBoxGui {
 
     fn reset_editing_action(&mut self) {
         self.editing_action = self.action_map.enum_new(self.editing_action_type.clone());
+        self.reset_editing_action_icons();
+    }
+
+    fn reset_editing_action_icons(&mut self) {
+        self.editing_action_icons =
+            vec![ActionIcon::DefaultActionIcon; self.editing_action.icon_state_count() as usize];
+    }
+
+    fn store_editing_action_icon(&mut self, slot: usize) {
+        if let Some(f) = FileDialog::new()
+            .add_filter("PNG Image", &["png"])
+            .pick_file()
+        {
+            match self.load_custom_icon(f) {
+                Ok(i) => {
+                    self.editing_action_icons[slot] =
+                        ActionIcon::ImageIcon(i.to_string_lossy().to_string())
+                }
+                Err(e) => self.action_errors.push_back(e),
+            }
+        }
     }
 
     fn load_custom_icon(&mut self, f: PathBuf) -> Result<PathBuf, ActionError> {

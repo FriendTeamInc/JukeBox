@@ -330,12 +330,24 @@ impl SystemOpenApp {
         }
     }
 
-    pub fn help(&self) -> String {
-        t!("action.system.open_app.help").into()
+    pub fn help(&self) -> &str {
+        "action.system.open_app.help"
     }
 
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_OPEN_APP
+    pub fn icon_state(&self) -> u8 {
+        0
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_OPEN_APP]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        1
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
     }
 }
 
@@ -389,12 +401,24 @@ impl SystemOpenWeb {
         ui.text_edit_singleline(&mut self.url);
     }
 
-    pub fn help(&self) -> String {
-        t!("action.system.open_web.help").into()
+    pub fn help(&self) -> &str {
+        "action.system.open_web.help"
     }
 
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_OPEN_WEB
+    pub fn icon_state(&self) -> u8 {
+        0
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_OPEN_WEB]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        1
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
     }
 }
 
@@ -474,12 +498,24 @@ impl SystemSndInCtrl {
         ui.add(Slider::new(&mut self.vol_adjust, -100..=100));
     }
 
-    pub fn help(&self) -> String {
-        t!("action.system.snd_in_ctrl.help").into()
+    pub fn help(&self) -> &str {
+        "action.system.snd_in_ctrl.help"
     }
 
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_INPUT_CONTROL
+    pub fn icon_state(&self) -> u8 {
+        0
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_INPUT_CONTROL]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        1
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
     }
 }
 
@@ -559,11 +595,23 @@ impl SystemSndOutCtrl {
         ui.add(Slider::new(&mut self.vol_adjust, -100..=100));
     }
 
-    pub fn help(&self) -> String {
-        t!("action.system.snd_out_ctrl.help").into()
+    pub fn help(&self) -> &str {
+        "action.system.snd_out_ctrl.help"
     }
 
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_OUTPUT_CONTROL
+    pub fn icon_state(&self) -> u8 {
+        0
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_OUTPUT_CONTROL]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        1
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
     }
 }

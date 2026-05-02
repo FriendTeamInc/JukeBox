@@ -268,28 +268,6 @@ action:
       volume_adjust: "Volume Adjust:"
       loading: "Loading Output Devices..."
   
-  soundboard:
-    title: "%{icon} Soundboard"
-    play_sound:
-      title: "Play Sound"
-      help: "Plays a sound file to an output audio device on press."
-      choose_file: "Choose File"
-      volume: "Volume:"
-      play_method:
-        title: "Play Method:"
-        play_stop: "Play / Stop"
-        play_overlap: "Play / Overlap"
-        play_restart: "Play / Restart"
-        loop_stop: "Loop / Stop"
-      fade_method:
-        title: "Fade Method:"
-        no_fade: "No Fade"
-        fade_in: "Fade In"
-        fade_out: "Fade Out"
-        fade_in_and_out: "Fade In and Out"
-      fade_time: "Fade Time (Seconds):"
-      output_device: "Output Device:"
-  
   discord:
     title: "%{icon} Discord"
     warning:
@@ -307,10 +285,14 @@ action:
       title: "Toggle Mute"
       help: "Toggle mutes your microphone on Discord when pressed."
       err: "Failed to set Discord mute state for Toggle Mute."
+      icon_state_0: "Unmuted Icon"
+      icon_state_1: "Muted Icon"
     toggle_deafen:
       title: "Toggle Deafen"
       help: "Toggle deafens your audio on Discord when pressed."
       err: "Failed to set Discord deafen state for Toggle Deafen."
+      icon_state_0: "Undeafened Icon"
+      icon_state_1: "Deafened Icon"
     push_to_talk:
       title: "Push to Talk"
       help: "Unmutes your microphone on Discord while held."

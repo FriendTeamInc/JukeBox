@@ -100,16 +100,14 @@ macro_rules! create_actions {
                 }
             }
 
-            pub fn help(&self) -> String {
+            pub fn help(&self) -> &str {
                 match self {
                     $(Self::$item(x) => x.help(),)*
                 }
             }
 
             pub fn icon_source(&'_ self) -> ImageSource<'_> {
-                match self {
-                    $(Self::$item(x) => x.icon_source(),)*
-                }
+                self.icon_state_icons()[self.icon_state() as usize].clone()
             }
 
             pub fn icon(&'_ self) -> Image<'_> {
@@ -121,6 +119,30 @@ macro_rules! create_actions {
                         mipmap_mode: None,
                     })
                     .corner_radius(2.0)
+            }
+
+            pub fn icon_state(&self) -> u8 {
+                match self {
+                    $(Self::$item(x) => x.icon_state(),)*
+                }
+            }
+
+            pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+                match self {
+                    $(Self::$item(x) => x.icon_state_icons(),)*
+                }
+            }
+
+            pub fn icon_state_count(&self) -> u8 {
+                match self {
+                    $(Self::$item(x) => x.icon_state_count(),)*
+                }
+            }
+
+            pub fn icon_state_descriptions(&self) -> &[&str] {
+                match self {
+                    $(Self::$item(x) => x.icon_state_descriptions(),)*
+                }
             }
         }
     };
@@ -211,7 +233,7 @@ impl ActionMap {
     fn keyboard_key(key: u8) -> ActionConfig {
         ActionConfig {
             action: Action::InputKeyboard(InputKeyboard { keys: vec![key] }),
-            icon: ActionIcon::DefaultActionIcon,
+            icons: vec![ActionIcon::DefaultActionIcon],
         }
     }
 
@@ -268,7 +290,10 @@ pub fn get_icon_bytes<'a>(
     action_config: &ActionConfig,
     icon_cache: &mut MutexGuard<'a, HashMap<String, Vec<u8>>>,
 ) -> [u8; 32 * 32 * 2] {
-    let b = match &action_config.icon {
+    let icon_state = action_config.action.icon_state();
+    let icon = &action_config.icons[icon_state as usize];
+
+    let b = match icon {
         ActionIcon::ImageIcon(i) => {
             if !icon_cache.contains_key(i) {
                 // TODO: use fallback in cases where we can't read icon?

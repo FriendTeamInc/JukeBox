@@ -102,12 +102,8 @@ impl InputKeyboard {
         }
     }
 
-    pub fn help(&self) -> String {
-        t!("action.input.keyboard.help").into()
-    }
-
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_KEYBOARD
+    pub fn help(&self) -> &str {
+        "action.input.keyboard.help"
     }
 
     pub fn get_input_event(&self) -> InputEvent {
@@ -117,6 +113,22 @@ impl InputKeyboard {
         }
 
         InputEvent::Keyboard(KeyboardEvent { keys })
+    }
+
+    pub fn icon_state(&self) -> u8 {
+        0
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_KEYBOARD]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        1
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
     }
 }
 
@@ -225,12 +237,8 @@ impl InputMouse {
         });
     }
 
-    pub fn help(&self) -> String {
-        t!("action.input.mouse.help").into()
-    }
-
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_MOUSE
+    pub fn help(&self) -> &str {
+        "action.input.mouse.help"
     }
 
     pub fn get_input_event(&self) -> InputEvent {
@@ -241,5 +249,21 @@ impl InputMouse {
             scroll_y: self.scroll_y,
             scroll_x: self.scroll_x,
         })
+    }
+
+    pub fn icon_state(&self) -> u8 {
+        0
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_MOUSE]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        1
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
     }
 }

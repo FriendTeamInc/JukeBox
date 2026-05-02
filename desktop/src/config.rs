@@ -32,22 +32,17 @@ pub enum ActionIcon {
     ImageIcon(String),
     DefaultActionIcon,
 }
-impl Default for ActionIcon {
-    fn default() -> Self {
-        Self::DefaultActionIcon
-    }
-}
 
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub struct ActionConfig {
     pub action: Action,
-    pub icon: ActionIcon,
+    pub icons: Vec<ActionIcon>,
 }
 impl Default for ActionConfig {
     fn default() -> Self {
         Self {
             action: Action::MetaNoAction(MetaNoAction::default()),
-            icon: Default::default(),
+            icons: Default::default(),
         }
     }
 }

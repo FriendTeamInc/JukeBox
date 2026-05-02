@@ -304,12 +304,24 @@ impl ObsStream {
         account_warning(ui, config);
     }
 
-    pub fn help(&self) -> String {
-        t!("action.obs.toggle_stream.help").into()
+    pub fn help(&self) -> &str {
+        "action.obs.toggle_stream.help"
     }
 
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_STREAM
+    pub fn icon_state(&self) -> u8 {
+        0
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_STREAM]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        1
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
     }
 }
 
@@ -358,12 +370,24 @@ impl ObsRecord {
         account_warning(ui, config);
     }
 
-    pub fn help(&self) -> String {
-        t!("action.obs.toggle_record.help").into()
+    pub fn help(&self) -> &str {
+        "action.obs.toggle_record.help"
     }
 
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_RECORD
+    pub fn icon_state(&self) -> u8 {
+        0
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_RECORD]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        1
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
     }
 }
 
@@ -410,12 +434,24 @@ impl ObsPauseRecord {
         account_warning(ui, config);
     }
 
-    pub fn help(&self) -> String {
-        t!("action.obs.pause_record.help").into()
+    pub fn help(&self) -> &str {
+        "action.obs.pause_record.help"
     }
 
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_PAUSE_RECORD
+    pub fn icon_state(&self) -> u8 {
+        0
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_PAUSE_RECORD]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        1
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
     }
 }
 
@@ -468,12 +504,24 @@ impl ObsReplayBuffer {
         account_warning(ui, config);
     }
 
-    pub fn help(&self) -> String {
-        t!("action.obs.toggle_replay_buffer.help").into()
+    pub fn help(&self) -> &str {
+        "action.obs.toggle_replay_buffer.help"
     }
 
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_REPLAY_BUFFER
+    pub fn icon_state(&self) -> u8 {
+        0
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_REPLAY_BUFFER]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        1
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
     }
 }
 
@@ -526,12 +574,24 @@ impl ObsSaveReplay {
         account_warning(ui, config);
     }
 
-    pub fn help(&self) -> String {
-        t!("action.obs.save_replay_buffer.help").into()
+    pub fn help(&self) -> &str {
+        "action.obs.save_replay_buffer.help"
     }
 
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_SAVE_REPLAY
+    pub fn icon_state(&self) -> u8 {
+        0
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_SAVE_REPLAY]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        1
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
     }
 }
 
@@ -705,12 +765,24 @@ impl ObsSource {
         });
     }
 
-    pub fn help(&self) -> String {
-        t!("action.obs.toggle_source.help").into()
+    pub fn help(&self) -> &str {
+        "action.obs.toggle_source.help"
     }
 
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_SOURCE
+    pub fn icon_state(&self) -> u8 {
+        0
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_SOURCE]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        1
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
     }
 }
 
@@ -811,12 +883,24 @@ impl ObsMute {
         });
     }
 
-    pub fn help(&self) -> String {
-        t!("action.obs.toggle_mute.help").into()
+    pub fn help(&self) -> &str {
+        "action.obs.toggle_mute.help"
     }
 
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_MUTE
+    pub fn icon_state(&self) -> u8 {
+        0
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_MUTE]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        1
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
     }
 }
 
@@ -916,12 +1000,24 @@ impl ObsSceneSwitch {
         });
     }
 
-    pub fn help(&self) -> String {
-        t!("action.obs.switch_scene.help").into()
+    pub fn help(&self) -> &str {
+        "action.obs.switch_scene.help"
     }
 
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_SWITCH_SCENE
+    pub fn icon_state(&self) -> u8 {
+        0
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_SWITCH_SCENE]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        1
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
     }
 }
 
@@ -1024,12 +1120,24 @@ impl ObsPreviewSceneSwitch {
         });
     }
 
-    pub fn help(&self) -> String {
-        t!("action.obs.switch_preview_scene.help").into()
+    pub fn help(&self) -> &str {
+        "action.obs.switch_preview_scene.help"
     }
 
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_SWITCH_PREVIEW
+    pub fn icon_state(&self) -> u8 {
+        0
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_SWITCH_PREVIEW]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        1
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
     }
 }
 
@@ -1082,12 +1190,24 @@ impl ObsPreviewScenePush {
         account_warning(ui, config);
     }
 
-    pub fn help(&self) -> String {
-        t!("action.obs.push_preview_scene.help").into()
+    pub fn help(&self) -> &str {
+        "action.obs.push_preview_scene.help"
     }
 
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_PUSH_PREVIEW
+    pub fn icon_state(&self) -> u8 {
+        0
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_PUSH_PREVIEW]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        1
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
     }
 }
 
@@ -1191,12 +1311,24 @@ impl ObsSceneCollectionSwitch {
         });
     }
 
-    pub fn help(&self) -> String {
-        t!("action.obs.switch_scene_collection.help").into()
+    pub fn help(&self) -> &str {
+        "action.obs.switch_scene_collection.help"
     }
 
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_SWITCH_COLLECTION
+    pub fn icon_state(&self) -> u8 {
+        0
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_SWITCH_COLLECTION]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        1
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
     }
 }
 
@@ -1249,11 +1381,23 @@ impl ObsChapterMarker {
         account_warning(ui, config);
     }
 
-    pub fn help(&self) -> String {
-        t!("action.obs.add_chapter_marker.help").into()
+    pub fn help(&self) -> &str {
+        "action.obs.add_chapter_marker.help"
     }
 
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_CHAPTER_MARKER
+    pub fn icon_state(&self) -> u8 {
+        0
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_CHAPTER_MARKER]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        1
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
     }
 }

@@ -102,9 +102,9 @@ impl JukeBoxGui {
                     for k in k.iter() {
                         let ac = c.key_map.get(&k).map(|c| c.clone()).unwrap_or_default();
                         let a = ac.action;
-                        let i = ac.icon;
+                        let i = ac.icons;
 
-                        let mut b = match i {
+                        let mut b = match &i[a.icon_state() as usize] {
                             ActionIcon::ImageIcon(s) => {
                                 let p = String::new() + "file://" + &s;
                                 let i = Image::new(ImageSource::Uri(p.into()))
@@ -133,7 +133,7 @@ impl JukeBoxGui {
                         }
                         let btn = ui
                             .add_sized([75.0, 75.0], b)
-                            .on_hover_text_at_pointer(format!("{}: {}", k, a.help()));
+                            .on_hover_text_at_pointer(format!("{}: {}", k, t!(a.help())));
 
                         if btn.clicked() {
                             self.enter_action_editor(k.to_owned());
@@ -178,9 +178,9 @@ impl JukeBoxGui {
                     let mut i = |ui: &mut Ui, b| {
                         let ac = c.key_map.get(&b).map(|c| c.clone()).unwrap_or_default();
                         let a = ac.action;
-                        let i = ac.icon;
+                        let i = ac.icons;
 
-                        let mut p = match i {
+                        let mut p = match &i[a.icon_state() as usize] {
                             ActionIcon::ImageIcon(s) => {
                                 let p = String::new() + "file://" + &s;
                                 let i = Image::new(ImageSource::Uri(p.into()))
@@ -205,7 +205,7 @@ impl JukeBoxGui {
                         }
                         let btn = ui
                             .add_sized([100.0, 231.0], p)
-                            .on_hover_text_at_pointer(format!("{}: {}", b, a.help()));
+                            .on_hover_text_at_pointer(format!("{}: {}", b, t!(a.help())));
 
                         if btn.clicked() {
                             self.enter_action_editor(b);

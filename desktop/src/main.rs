@@ -9,7 +9,7 @@ use std::fs::{create_dir_all, OpenOptions};
 
 #[macro_use]
 extern crate rust_i18n;
-i18n!("locales", fallback = "en", minify_key = true);
+i18n!("locales", fallback = "en");
 
 mod actions;
 mod config;

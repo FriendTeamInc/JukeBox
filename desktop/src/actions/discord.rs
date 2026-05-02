@@ -35,6 +35,7 @@ const ICON_DEAFEN: ImageSource =
 const ICON_DEAFENED: ImageSource =
     include_image!("../../../assets/action-icons/discord-headphones-2.bmp");
 
+// TODO: make new icons for push actions
 const ICON_PUSH_TO_TALK: ImageSource =
     include_image!("../../../assets/action-icons/discord-talking-1.bmp");
 const ICON_PUSH_TO_MUTE: ImageSource =
@@ -262,16 +263,31 @@ impl DiscordToggleMute {
         account_warning(ui, config)
     }
 
-    pub fn help(&self) -> String {
-        t!("action.discord.toggle_mute.help").into()
+    pub fn help(&self) -> &str {
+        "action.discord.toggle_mute.help"
     }
 
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
+    pub fn icon_state(&self) -> u8 {
         if DISCORD_MUTED.load(Ordering::Relaxed) {
-            ICON_MUTED
+            1
         } else {
-            ICON_MUTE
+            0
         }
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_MUTE, ICON_MUTED]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        2
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[
+            "action.discord.toggle_mute.icon_state_0",
+            "action.discord.toggle_mute.icon_state_1",
+        ]
     }
 }
 
@@ -338,16 +354,31 @@ impl DiscordToggleDeafen {
         account_warning(ui, config)
     }
 
-    pub fn help(&self) -> String {
-        t!("action.discord.toggle_deafen.help").into()
+    pub fn help(&self) -> &str {
+        "action.discord.toggle_deafen.help"
     }
 
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
+    pub fn icon_state(&self) -> u8 {
         if DISCORD_DEAFENED.load(Ordering::Relaxed) {
-            ICON_DEAFENED
+            1
         } else {
-            ICON_DEAFEN
+            0
         }
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_DEAFEN, ICON_DEAFENED]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        2
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[
+            "action.discord.toggle_deafen.icon_state_0",
+            "action.discord.toggle_deafen.icon_state_1",
+        ]
     }
 }
 
@@ -434,12 +465,24 @@ impl DiscordPushToTalk {
         account_warning(ui, config)
     }
 
-    pub fn help(&self) -> String {
-        t!("action.discord.push_to_talk.help").into()
+    pub fn help(&self) -> &str {
+        "action.discord.push_to_talk.help"
     }
 
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_PUSH_TO_TALK
+    pub fn icon_state(&self) -> u8 {
+        0
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_PUSH_TO_TALK]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        1
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
     }
 }
 
@@ -526,12 +569,24 @@ impl DiscordPushToMute {
         account_warning(ui, config)
     }
 
-    pub fn help(&self) -> String {
-        t!("action.discord.push_to_mute.help").into()
+    pub fn help(&self) -> &str {
+        "action.discord.push_to_mute.help"
     }
 
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_PUSH_TO_MUTE
+    pub fn icon_state(&self) -> u8 {
+        0
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_PUSH_TO_MUTE]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        1
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
     }
 }
 
@@ -620,11 +675,23 @@ impl DiscordPushToDeafen {
         account_warning(ui, config)
     }
 
-    pub fn help(&self) -> String {
-        t!("action.discord.push_to_deafen.help").into()
+    pub fn help(&self) -> &str {
+        "action.discord.push_to_deafen.help"
     }
 
-    pub fn icon_source(&'_ self) -> ImageSource<'_> {
-        ICON_PUSH_TO_DEAFEN
+    pub fn icon_state(&self) -> u8 {
+        0
+    }
+
+    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_PUSH_TO_DEAFEN]
+    }
+
+    pub fn icon_state_count(&self) -> u8 {
+        1
+    }
+
+    pub fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
     }
 }
