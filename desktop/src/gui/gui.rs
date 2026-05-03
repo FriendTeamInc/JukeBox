@@ -693,10 +693,9 @@ pub fn basic_gui() {
     });
 
     #[cfg(not(target_os = "linux"))]
-    {
-        let mut _tray_icon = std::rc::Rc::new(std::cell::RefCell::new(None));
-        let tray_c = _tray_icon.clone();
-    }
+    let mut _tray_icon = std::rc::Rc::new(std::cell::RefCell::new(None));
+    #[cfg(not(target_os = "linux"))]
+    let tray_c = _tray_icon.clone();
 
     // TODO: error handle this
     let _ = eframe::run_native(
