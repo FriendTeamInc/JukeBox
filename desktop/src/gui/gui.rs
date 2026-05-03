@@ -137,32 +137,23 @@ impl eframe::App for JukeBoxGui {
         // but only once
         ctx.request_repaint();
 
-        // TODO: refactor all this to App::tick when available
-        // https://github.com/emilk/egui/issues/5113
         self.handle_serial_events(ctx);
         let mut quit_app = QUIT_APP.get().unwrap().blocking_lock();
-        #[cfg(target_os = "linux")]
-        {
-            while let Ok(_e) = TrayIconEvent::receiver().try_recv() {}
-            let show_window_id = SHOW_WINDOW_ID.get().unwrap().blocking_lock();
-            let quit_window_id = QUIT_WINDOW_ID.get().unwrap().blocking_lock();
-            while let Ok(e) = MenuEvent::receiver().try_recv() {
-                log::info!("menuevent: {:?}", e);
-                if e.id == *show_window_id {
-                    ctx.send_viewport_cmd(ViewportCommand::Visible(true));
-                } else if e.id == *quit_window_id {
-                    ctx.send_viewport_cmd(ViewportCommand::Visible(false));
-                    *quit_app = true;
-                    ctx.send_viewport_cmd(ViewportCommand::Close);
-                }
+        while let Ok(_e) = TrayIconEvent::receiver().try_recv() {}
+        let show_window_id = SHOW_WINDOW_ID.get().unwrap().blocking_lock();
+        let quit_window_id = QUIT_WINDOW_ID.get().unwrap().blocking_lock();
+        while let Ok(e) = MenuEvent::receiver().try_recv() {
+            log::info!("menuevent: {:?}", e);
+            if e.id == *show_window_id {
+                ctx.send_viewport_cmd(ViewportCommand::Visible(true));
+            } else if e.id == *quit_window_id {
+                ctx.send_viewport_cmd(ViewportCommand::Visible(false));
+                *quit_app = true;
+                ctx.send_viewport_cmd(ViewportCommand::Close);
             }
         }
-        if ctx.input(|i| i.viewport().close_requested()) {
-            #[cfg(not(target_os = "linux"))]
-            {
-                *quit_app = true;
-            }
 
+        if ctx.input(|i| i.viewport().close_requested()) {
             if *quit_app {
                 for (_k, tx) in self.scmd_txs.blocking_lock().iter() {
                     let _ = tx.send(SerialCommand::Disconnect);
@@ -702,9 +693,10 @@ pub fn basic_gui() {
     });
 
     #[cfg(not(target_os = "linux"))]
-    let mut _tray_icon = std::rc::Rc::new(std::cell::RefCell::new(None));
-    #[cfg(not(target_os = "linux"))]
-    let tray_c = _tray_icon.clone();
+    {
+        let mut _tray_icon = std::rc::Rc::new(std::cell::RefCell::new(None));
+        let tray_c = _tray_icon.clone();
+    }
 
     // TODO: error handle this
     let _ = eframe::run_native(
