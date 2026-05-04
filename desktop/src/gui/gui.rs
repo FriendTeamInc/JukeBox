@@ -27,7 +27,7 @@ use tokio::{
         Mutex,
     },
 };
-use tray_icon::menu::{Menu, MenuEvent, MenuId, MenuItem, PredefinedMenuItem};
+use tray_icon::menu::{IconMenuItem, Menu, MenuEvent, MenuId, MenuItem, PredefinedMenuItem};
 use tray_icon::{TrayIcon, TrayIconBuilder, TrayIconEvent};
 
 use crate::actions::meta::AID_META_NO_ACTION;
@@ -47,6 +47,7 @@ use crate::system::system_task;
 
 const APP_ICON: &[u8] = include_bytes!("../../../assets/applogo.png");
 static QUIT_APP: OnceLock<Mutex<bool>> = OnceLock::new();
+static ABOUT_WINDOW_ID: OnceLock<Mutex<MenuId>> = OnceLock::new();
 static SHOW_WINDOW_ID: OnceLock<Mutex<MenuId>> = OnceLock::new();
 static QUIT_WINDOW_ID: OnceLock<Mutex<MenuId>> = OnceLock::new();
 
@@ -720,24 +721,31 @@ pub fn basic_gui() {
 }
 
 fn build_tray_icon() -> TrayIcon {
-    let icon = {
+    let (rgba, w, h) = {
         let image = image::load_from_memory(&APP_ICON[..])
             .expect("failed to parse app icon for tray")
             .into_rgba8();
         let (w, h) = image.dimensions();
         let rgba = image.into_raw();
-        tray_icon::Icon::from_rgba(rgba, w, h).expect("failed to load app icon for tray")
+        (rgba, w, h)
     };
 
-    let tray_menu = Menu::new();
-    let show_i = MenuItem::new("Show", true, None);
-    let quit_i = MenuItem::new("Quit", true, None);
+    let tray_icon =
+        tray_icon::Icon::from_rgba(rgba.clone(), w, h).expect("failed to load app icon for tray");
+    let tray_menu_icon = tray_icon::menu::Icon::from_rgba(rgba, w, h)
+        .expect("failed to load app icon for tray menu");
 
+    let tray_menu = Menu::new();
+    let about_i = IconMenuItem::new(&t!("window_title"), false, Some(tray_menu_icon), None);
+    let show_i = MenuItem::new("Show Window", true, None);
+    let quit_i = MenuItem::new("Quit JukeBox Desktop", true, None);
+
+    let _ = ABOUT_WINDOW_ID.set(Mutex::new(about_i.id().clone()));
     let _ = SHOW_WINDOW_ID.set(Mutex::new(show_i.id().clone()));
     let _ = QUIT_WINDOW_ID.set(Mutex::new(quit_i.id().clone()));
 
     let _ = tray_menu.append_items(&[
-        &PredefinedMenuItem::about(Some(&t!("window_title")), None),
+        &about_i,
         &PredefinedMenuItem::separator(),
         &show_i,
         &PredefinedMenuItem::separator(),
@@ -745,7 +753,7 @@ fn build_tray_icon() -> TrayIcon {
     ]);
 
     TrayIconBuilder::new()
-        .with_icon(icon)
+        .with_icon(tray_icon)
         .with_menu(Box::new(tray_menu))
         .with_title(t!("window_title"))
         .with_tooltip(t!("window_title"))
