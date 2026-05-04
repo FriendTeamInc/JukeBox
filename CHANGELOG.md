@@ -1,3 +1,17 @@
+# v0.7.0 - Asynchronous (TBD)
+- Upgrade microcontroller to RP2350 (from RP2040).
+- Switch firmware to use Embassy for better task management on device.
+- Upgrade screen (same ST7789 interface, larger bus size from 1 bit to 8 bits).
+- Upgrade case to support new hardware.
+- Fix screen and RGB editor in desktop app.
+- Fix temperature reporting for certain CPUs.
+- Improve connection to OBS and Discord on startup.
+- Dramatically improve screen graphics performance.
+- Dynamically dim and brighten screen on computer sleep and wakeup.
+- Add dynamic icons for certain actions to display status, such as being muted on Discord.
+- Re-enable system tray support for Windows.
+- Update dependencies for desktop app and firmware.
+
 # v0.6.1 - But Not Serialized (August 5, 2025)
 - Fix firmware having too big of a serial buffer, causing a crash on startup.
 - Fix versioning issue with firmware and software.

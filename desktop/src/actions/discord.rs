@@ -54,7 +54,7 @@ static DISCORD_DEAFENED: AtomicBool = AtomicBool::new(false);
 pub fn init_actions_discord(config: Arc<Mutex<JukeBoxConfig>>) -> (String, Vec<(String, Action, String)>) {
     // init discord connection (if we have a config saved for it)
     let _ = tokio::runtime::Handle::current()
-        .block_on(async move { create_client(config).await });
+        .block_on(async move { create_client(config, true).await });
 
     (
         t!("action.discord.title", icon = phos::DISCORD_LOGO).into(),
@@ -113,7 +113,10 @@ async fn discord_refresh_access_token(
     r.json().await.map_err(|_| ())
 }
 
-async fn create_client(config: Arc<Mutex<JukeBoxConfig>>) -> Result<(), ActionError> {
+async fn create_client(
+    config: Arc<Mutex<JukeBoxConfig>>,
+    skip_if_no_auth: bool,
+) -> Result<(), ActionError> {
     if DISCORD_CLIENT_ID.is_none() || DISCORD_CLIENT_SECRET.is_none() {
         return Err(ActionError::msg(t!("action.discord.err.compile")));
     }
@@ -126,6 +129,10 @@ async fn create_client(config: Arc<Mutex<JukeBoxConfig>>) -> Result<(), ActionEr
     let mut config = config.lock().await;
 
     if config.discord_oauth_access.is_none() {
+        if skip_if_no_auth {
+            return Ok(());
+        }
+
         let code = client
             .authorize(&["rpc", "rpc.voice.read", "rpc.voice.write"])
             .map_err(|_| ActionError::msg(t!("action.discord.err.authorize")))?;
@@ -182,7 +189,7 @@ fn account_warning(ui: &mut Ui, config: Arc<Mutex<JukeBoxConfig>>) {
         let has_oauth = config.blocking_lock().discord_oauth_access.is_some();
         if has_oauth {
             let _ = tokio::runtime::Handle::current()
-                .block_on(async move { create_client(config).await });
+                .block_on(async move { create_client(config, false).await });
         } else {
             ui.vertical_centered(|ui| ui.label(t!("action.discord.warning.help")));
             ui.label("");
@@ -194,7 +201,7 @@ fn account_warning(ui: &mut Ui, config: Arc<Mutex<JukeBoxConfig>>) {
                 .clicked()
             {
                 let _ = tokio::runtime::Handle::current()
-                    .block_on(async move { create_client(config).await });
+                    .block_on(async move { create_client(config, false).await });
             }
         }
     } else {
@@ -213,7 +220,7 @@ impl DiscordToggleMute {
     ) -> Result<(InputKey, bool), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c).await?;
+            create_client(c, false).await?;
         }
         let device_uid: String = device_uid.into();
         spawn_blocking(move || {
@@ -302,7 +309,7 @@ impl DiscordToggleDeafen {
     ) -> Result<(InputKey, bool), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c).await?;
+            create_client(c, false).await?;
         }
         let device_uid: String = device_uid.into();
         spawn_blocking(move || {
@@ -393,7 +400,7 @@ impl DiscordPushToTalk {
     ) -> Result<(InputKey, bool), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c).await?;
+            create_client(c, false).await?;
         }
         let device_uid: String = device_uid.into();
         spawn_blocking(move || {
@@ -426,7 +433,7 @@ impl DiscordPushToTalk {
     ) -> Result<(InputKey, bool), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c).await?;
+            create_client(c, false).await?;
         }
         let device_uid: String = device_uid.into();
         spawn_blocking(move || {
@@ -497,7 +504,7 @@ impl DiscordPushToMute {
     ) -> Result<(InputKey, bool), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c).await?;
+            create_client(c, false).await?;
         }
         let device_uid: String = device_uid.into();
         spawn_blocking(move || {
@@ -530,7 +537,7 @@ impl DiscordPushToMute {
     ) -> Result<(InputKey, bool), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c).await?;
+            create_client(c, false).await?;
         }
         let device_uid: String = device_uid.into();
         spawn_blocking(move || {
@@ -601,7 +608,7 @@ impl DiscordPushToDeafen {
     ) -> Result<(InputKey, bool), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c).await?;
+            create_client(c, false).await?;
         }
         let device_uid: String = device_uid.into();
         spawn_blocking(move || {
@@ -635,7 +642,7 @@ impl DiscordPushToDeafen {
     ) -> Result<(InputKey, bool), ActionError> {
         let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c).await?;
+            create_client(c, false).await?;
         }
         let device_uid: String = device_uid.into();
         spawn_blocking(move || {
