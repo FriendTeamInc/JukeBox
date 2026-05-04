@@ -3164,11 +3164,11 @@ dependencies = [
  "gtk",
  "image",
  "jukebox_util",
+ "libpulse-binding",
  "log",
  "nvml-wrapper",
  "obws",
  "open",
- "pactl",
  "picoboot-rs",
  "rand 0.10.1",
  "reqwest",
@@ -4259,14 +4259,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "36820e9051aca1014ddc75770aab4d68bc1e9e632f0f5627c4086bc216fb583b"
 dependencies = [
  "ttf-parser",
-]
-
-[[package]]
-name = "pactl"
-version = "0.4.0"
-source = "git+https://github.com/NotQuiteApex/pactl-rs#0ec528938891aa915bbcd4ad98cb66151c3f39c7"
-dependencies = [
- "libpulse-binding",
 ]
 
 [[package]]

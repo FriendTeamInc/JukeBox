@@ -35,7 +35,19 @@ enum AudioCommand {
 }
 
 #[cfg(target_os = "linux")]
-use pactl::controllers::{types::DeviceInfo, DeviceControl, SinkController, SourceController};
+use pulse::{
+    callbacks::ListResult,
+    context::{Context, FlagSet},
+    mainloop::standard::{IterateResult, Mainloop},
+    operation::Operation,
+    operation::State,
+    proplist::{properties::APPLICATION_NAME, Proplist},
+    volume::{ChannelVolumes, Volume},
+};
+#[cfg(target_os = "linux")]
+use std::cell::RefCell;
+#[cfg(target_os = "linux")]
+use std::rc::Rc;
 #[cfg(target_os = "windows")]
 use windows::Win32::{
     Devices::FunctionDiscovery::*,
@@ -51,14 +63,127 @@ static SYSTEM_SOURCES: OnceLock<Mutex<Option<Vec<String>>>> = OnceLock::new();
 static SYSTEM_SINKS: OnceLock<Mutex<Option<Vec<String>>>> = OnceLock::new();
 
 #[cfg(target_os = "linux")]
-fn get_devices(devices: Vec<DeviceInfo>) -> Vec<String> {
-    let mut d = Vec::new();
-
-    for device in devices {
-        d.push(device.description.unwrap());
+fn wait_for_operation<O: ?Sized>(mainloop: &mut Mainloop, op: Operation<O>) {
+    loop {
+        match mainloop.iterate(false) {
+            IterateResult::Err(_) | IterateResult::Quit(_) => panic!(),
+            IterateResult::Success(_) => (),
+        }
+        match op.get_state() {
+            State::Running => (),
+            State::Cancelled => panic!(),
+            State::Done => break,
+        }
     }
+}
 
-    d
+#[cfg(target_os = "linux")]
+fn get_input_devices(mainloop: &mut Mainloop, context: &mut Context) -> Vec<String> {
+    let devices = Rc::new(RefCell::new(Vec::new()));
+    let i_devices = devices.clone();
+    let op = context.introspect().get_source_info_list(move |l| match l {
+        ListResult::Item(i) => i_devices
+            .borrow_mut()
+            .push(i.description.clone().unwrap_or_default().to_string()),
+        _ => (),
+    });
+    wait_for_operation(mainloop, op);
+    devices.take()
+}
+
+#[cfg(target_os = "linux")]
+fn get_output_devices(mainloop: &mut Mainloop, context: &mut Context) -> Vec<String> {
+    let devices = Rc::new(RefCell::new(Vec::new()));
+    let i_devices = devices.clone();
+    let op = context.introspect().get_sink_info_list(move |l| match l {
+        ListResult::Item(i) => i_devices
+            .borrow_mut()
+            .push(i.description.clone().unwrap_or_default().to_string()),
+        _ => (),
+    });
+    wait_for_operation(mainloop, op);
+    devices.take()
+}
+
+#[cfg(target_os = "linux")]
+fn adjust_input_device_volume(
+    mainloop: &mut Mainloop,
+    context: &mut Context,
+    source: String,
+    adjust: i8,
+) {
+    let (volume, source) = {
+        let channel_volumes = Rc::new(RefCell::new(None));
+        let c = channel_volumes.clone();
+        let full_source = Rc::new(RefCell::new(None));
+        let f = full_source.clone();
+        let op = context.introspect().get_source_info_list(move |s| match s {
+            ListResult::Item(i) => {
+                if i.description.clone().unwrap().to_string() == source {
+                    *c.borrow_mut() = Some(i.volume.clone());
+                    *f.borrow_mut() = Some(i.name.clone().unwrap().to_string());
+                }
+            }
+            _ => (),
+        });
+        wait_for_operation(mainloop, op);
+        (channel_volumes.take().unwrap(), full_source.take().unwrap())
+    };
+
+    let volume = adjust_volume(adjust, volume);
+
+    let op = context
+        .introspect()
+        .set_source_volume_by_name(&source, &volume, None);
+    wait_for_operation(mainloop, op);
+}
+
+#[cfg(target_os = "linux")]
+fn adjust_output_device_volume(
+    mainloop: &mut Mainloop,
+    context: &mut Context,
+    sink: String,
+    adjust: i8,
+) {
+    let (volume, sink) = {
+        let channel_volumes = Rc::new(RefCell::new(None));
+        let c = channel_volumes.clone();
+        let full_sink = Rc::new(RefCell::new(None));
+        let f = full_sink.clone();
+        let op = context.introspect().get_sink_info_list(move |s| match s {
+            ListResult::Item(i) => {
+                if i.description.clone().unwrap().to_string() == sink {
+                    *c.borrow_mut() = Some(i.volume.clone());
+                    *f.borrow_mut() = Some(i.name.clone().unwrap().to_string());
+                }
+            }
+            _ => (),
+        });
+        wait_for_operation(mainloop, op);
+        (channel_volumes.take().unwrap(), full_sink.take().unwrap())
+    };
+
+    let volume = adjust_volume(adjust, volume);
+
+    let op = context
+        .introspect()
+        .set_sink_volume_by_name(&sink, &volume, None);
+    wait_for_operation(mainloop, op);
+}
+
+#[cfg(target_os = "linux")]
+fn adjust_volume(a: i8, mut v: ChannelVolumes) -> ChannelVolumes {
+    if a < 0 {
+        *v.decrease(Volume(
+            ((-a as f64 / 100.0) * (Volume::NORMAL.0 as f64)) as u32,
+        ))
+        .unwrap()
+    } else {
+        *v.increase(Volume(
+            ((a as f64 / 100.0) * (Volume::NORMAL.0 as f64)) as u32,
+        ))
+        .unwrap()
+    }
 }
 
 #[cfg(target_os = "windows")]
@@ -140,11 +265,46 @@ fn adjust_device_volume(dir: EDataFlow, device_name: String, adjust: i8) {
 
 fn system_audio_control_loop(mut cmd_rx: UnboundedReceiver<AudioCommand>) {
     #[cfg(target_os = "linux")]
-    let (mut source_controller, mut sink_controller) = {
-        (
-            SourceController::create().expect("failed to create source controller"),
-            SinkController::create().expect("failed to create sink controller"),
-        )
+    use std::cell::RefCell;
+    #[cfg(target_os = "linux")]
+    use std::rc::Rc;
+    #[cfg(target_os = "linux")]
+    let (mainloop, _proplist, context) = {
+        use std::ops::Deref as _;
+
+        let mut proplist = Proplist::new().unwrap();
+        proplist
+            .set_str(APPLICATION_NAME, "JukeBoxDesktop")
+            .unwrap();
+
+        let mainloop = Rc::new(RefCell::new(
+            Mainloop::new().expect("Failed to create PulseAudio mainloop"),
+        ));
+
+        let context = Rc::new(RefCell::new(
+            Context::new_with_proplist(mainloop.borrow().deref(), "JukeBoxDesktop", &proplist)
+                .expect("Failed to create new context"),
+        ));
+
+        context
+            .borrow_mut()
+            .connect(None, FlagSet::NOFLAGS, None)
+            .expect("Failed to connect context");
+
+        // Wait for context to be ready
+        loop {
+            match mainloop.borrow_mut().iterate(false) {
+                IterateResult::Err(_) | IterateResult::Quit(_) => panic!(),
+                IterateResult::Success(_) => {}
+            }
+            match context.borrow().get_state() {
+                pulse::context::State::Ready => break,
+                pulse::context::State::Failed | pulse::context::State::Terminated => panic!(),
+                _ => {}
+            }
+        }
+
+        (mainloop, proplist, context)
     };
 
     #[cfg(target_os = "windows")]
@@ -156,11 +316,8 @@ fn system_audio_control_loop(mut cmd_rx: UnboundedReceiver<AudioCommand>) {
         match cmd {
             AudioCommand::GetInputDevices => {
                 #[cfg(target_os = "linux")]
-                let devices = get_devices(
-                    source_controller
-                        .list_devices()
-                        .expect("failed to get list of source devices"),
-                );
+                let devices =
+                    get_input_devices(&mut mainloop.borrow_mut(), &mut context.borrow_mut());
                 #[cfg(target_os = "windows")]
                 let devices = get_device_names(eCapture);
 
@@ -169,11 +326,8 @@ fn system_audio_control_loop(mut cmd_rx: UnboundedReceiver<AudioCommand>) {
             }
             AudioCommand::GetOutputDevices => {
                 #[cfg(target_os = "linux")]
-                let devices = get_devices(
-                    sink_controller
-                        .list_devices()
-                        .expect("failed to get list of sink devices"),
-                );
+                let devices =
+                    get_output_devices(&mut mainloop.borrow_mut(), &mut context.borrow_mut());
                 #[cfg(target_os = "windows")]
                 let devices = get_device_names(eRender);
 
@@ -182,51 +336,25 @@ fn system_audio_control_loop(mut cmd_rx: UnboundedReceiver<AudioCommand>) {
             }
             AudioCommand::AdjustInputDevice(source, adjust) => {
                 #[cfg(target_os = "linux")]
-                {
-                    let sources = source_controller
-                        .list_devices()
-                        .expect("failed to get list of source devices");
-
-                    for s in sources {
-                        if s.description.unwrap_or_default() == *source {
-                            let vol = (adjust as f64) / 100.0;
-                            if vol > 0.0 {
-                                source_controller.increase_device_volume_by_percent(s.index, vol);
-                            } else if vol < 0.0 {
-                                source_controller.decrease_device_volume_by_percent(s.index, -vol);
-                            }
-                            break;
-                        }
-                    }
-                }
+                adjust_input_device_volume(
+                    &mut mainloop.borrow_mut(),
+                    &mut context.borrow_mut(),
+                    source,
+                    adjust,
+                );
                 #[cfg(target_os = "windows")]
-                {
-                    adjust_device_volume(eCapture, source, adjust);
-                }
+                adjust_device_volume(eCapture, source, adjust);
             }
             AudioCommand::AdjustOutputDevice(sink, adjust) => {
                 #[cfg(target_os = "linux")]
-                {
-                    let sinks = sink_controller
-                        .list_devices()
-                        .expect("failed to get list of sink devices");
-
-                    for s in sinks {
-                        if s.description.unwrap_or_default() == *sink {
-                            let vol = (adjust as f64) / 100.0;
-                            if vol > 0.0 {
-                                sink_controller.increase_device_volume_by_percent(s.index, vol);
-                            } else if vol < 0.0 {
-                                sink_controller.decrease_device_volume_by_percent(s.index, -vol);
-                            }
-                            break;
-                        }
-                    }
-                }
+                adjust_output_device_volume(
+                    &mut mainloop.borrow_mut(),
+                    &mut context.borrow_mut(),
+                    sink,
+                    adjust,
+                );
                 #[cfg(target_os = "windows")]
-                {
-                    adjust_device_volume(eRender, sink, adjust);
-                }
+                adjust_device_volume(eRender, sink, adjust);
             }
         }
     }
