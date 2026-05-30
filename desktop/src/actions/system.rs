@@ -396,12 +396,10 @@ impl SystemOpenApp {
         input_key: InputKey,
         _config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(InputKey, bool), ActionError> {
-        let filepath = self.filepath.clone();
-        let arguments = self.arguments.clone();
-        let _ = spawn_blocking(move || {
-            let _ = Command::new(filepath).args(arguments).spawn();
-        })
-        .await;
+        // spin off the process, drop its handle since we don't care about it completing
+        let _ = Command::new(self.filepath.clone())
+            .args(self.arguments.clone())
+            .spawn();
 
         // error handling?
 
