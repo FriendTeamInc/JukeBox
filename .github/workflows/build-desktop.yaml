@@ -20,7 +20,10 @@ jobs:
       - name: "Update Rust"
         uses: dtolnay/rust-toolchain@stable
       - name: "Build desktop (Linux)"
-        run: cd desktop/ && cargo build --release && mv target/release/jukebox_desktop target/release/jukebox_desktop_linux
+        env:
+          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
+          DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
+        run: cd desktop/ && cargo build -F "discord" --release && mv target/release/jukebox_desktop target/release/jukebox_desktop_linux
       - name: "Upload artifact (Linux)"
         uses: actions/upload-artifact@v4
         with:
@@ -40,7 +43,10 @@ jobs:
       - name: "Install cross-rs"
         run: cargo binstall cross
       - name: "Build desktop (Windows)"
-        run: cd desktop/ && cross build --target x86_64-pc-windows-gnu --release && mv target/x86_64-pc-windows-gnu/release/jukebox_desktop.exe target/x86_64-pc-windows-gnu/release/jukebox_desktop_windows.exe
+        env:
+          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
+          DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
+        run: cd desktop/ && cross build --target x86_64-pc-windows-gnu -F "discord" --release && mv target/x86_64-pc-windows-gnu/release/jukebox_desktop.exe target/x86_64-pc-windows-gnu/release/jukebox_desktop_windows.exe
       - name: "Upload artifact (Windows)"
         uses: actions/upload-artifact@v4
         with:

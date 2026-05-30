@@ -12,7 +12,10 @@ use obws::{
     Client,
 };
 use serde::{Deserialize, Serialize};
-use tokio::{runtime::Handle, sync::Mutex};
+use tokio::{
+    runtime::Handle,
+    sync::{Mutex, MutexGuard},
+};
 use uuid::Uuid;
 
 use crate::{
@@ -60,7 +63,7 @@ const ICON_CHAPTER_MARKER: ImageSource =
 static OBS_HOST_ADDRESS: OnceLock<Mutex<String>> = OnceLock::new();
 static OBS_HOST_PORT: OnceLock<Mutex<String>> = OnceLock::new();
 static OBS_PASSWORD: OnceLock<Mutex<String>> = OnceLock::new();
-static OBS_CLIENT: OnceLock<Mutex<Client>> = OnceLock::new();
+static OBS_CLIENT: OnceLock<Mutex<Option<Client>>> = OnceLock::new();
 
 static OBS_SCENES: OnceLock<Mutex<Option<Vec<Scene>>>> = OnceLock::new();
 static OBS_SOURCES: OnceLock<Mutex<Option<Vec<SceneItem>>>> = OnceLock::new();
@@ -110,7 +113,9 @@ pub fn init_actions_obs(config: Arc<Mutex<JukeBoxConfig>>) -> (String, Vec<(Stri
     )
 }
 
-async fn create_client(config: Arc<Mutex<JukeBoxConfig>>) -> Result<(), ()> {
+async fn create_client<'a>(
+    config: Arc<Mutex<JukeBoxConfig>>,
+) -> Result<MutexGuard<'a, Option<Client>>, ()> {
     let client_config = {
         let c = config.lock().await.clone();
 
@@ -164,9 +169,14 @@ async fn create_client(config: Arc<Mutex<JukeBoxConfig>>) -> Result<(), ()> {
         config.save();
     }
 
-    let _ = OBS_CLIENT.set(Mutex::new(client));
+    if OBS_CLIENT.get().is_none() {
+        let _ = OBS_CLIENT.set(Mutex::new(Some(client)));
+    } else {
+        let mut c = OBS_CLIENT.get().unwrap().lock().await;
+        *c = Some(client);
+    }
 
-    Ok(())
+    Ok(OBS_CLIENT.get().unwrap().lock().await)
 }
 
 fn account_warning(ui: &mut Ui, config: Arc<Mutex<JukeBoxConfig>>) -> Option<()> {
@@ -198,7 +208,7 @@ fn account_warning(ui: &mut Ui, config: Arc<Mutex<JukeBoxConfig>>) -> Option<()>
         }
     }
 
-    if OBS_CLIENT.get().is_none() {
+    if OBS_CLIENT.get().is_none() || OBS_CLIENT.get().unwrap().blocking_lock().is_none() {
         ui.vertical_centered(|ui| {
             ui.label(RichText::new(t!("action.obs.setup.help_connect")).size(11.0));
             ui.label(RichText::new(t!("action.obs.setup.help_instructions")).size(9.0));
@@ -206,7 +216,11 @@ fn account_warning(ui: &mut Ui, config: Arc<Mutex<JukeBoxConfig>>) -> Option<()>
         ui.label("");
         if ui.button(t!("action.obs.setup.button")).clicked() {
             let res = Handle::current().block_on(async { create_client(config).await });
-            log::info!("connect to obs: {:?}", res);
+            match res {
+                Ok(_) => log::error!("connected to obs"),
+                Err(e) => log::error!("failed to connect to obs: {:?}", e),
+            }
+
             // TODO: error handle
         }
         ui.label("");
@@ -244,18 +258,18 @@ fn account_warning(ui: &mut Ui, config: Arc<Mutex<JukeBoxConfig>>) -> Option<()>
     }
 }
 
-async fn check_client(
+async fn check_client<'a>(
     device_uid: &String,
     input_key: InputKey,
     config: Arc<Mutex<JukeBoxConfig>>,
-) -> Result<(), ActionError> {
+) -> Result<MutexGuard<'a, Option<Client>>, ActionError> {
     let c = config.clone();
-    if OBS_CLIENT.get().is_none() {
+    if OBS_CLIENT.get().is_none() || OBS_CLIENT.get().unwrap().lock().await.is_none() {
         create_client(c)
             .await
             .map_err(|_| ActionError::new(device_uid, input_key, t!("action.obs.err.client")))
     } else {
-        Ok(())
+        Ok(OBS_CLIENT.get().unwrap().lock().await)
     }
 }
 
@@ -268,17 +282,27 @@ impl ObsStream {
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(InputKey, bool), ActionError> {
-        check_client(device_uid, input_key, config.clone()).await?;
+        let mut client = check_client(device_uid, input_key, config.clone()).await?;
 
-        let client = OBS_CLIENT.get().unwrap().lock().await;
-        client
+        let res = client
+            .as_ref()
+            .unwrap()
             .streaming()
             .toggle()
             .await
             .map(|_| (input_key, false))
             .map_err(|_| {
                 ActionError::new(device_uid, input_key, t!("action.obs.toggle_stream.err"))
-            })
+            });
+
+        match res {
+            Ok(o) => Ok(o),
+            Err(e) => {
+                client.as_mut().unwrap().disconnect().await;
+                *client = None;
+                Err(e)
+            }
+        }
     }
 
     pub async fn on_release(
@@ -334,17 +358,27 @@ impl ObsRecord {
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(InputKey, bool), ActionError> {
-        check_client(device_uid, input_key, config.clone()).await?;
+        let mut client = check_client(device_uid, input_key, config.clone()).await?;
 
-        let client = OBS_CLIENT.get().unwrap().lock().await;
-        client
+        let res = client
+            .as_ref()
+            .unwrap()
             .recording()
             .toggle()
             .await
             .map(|_| (input_key, false))
             .map_err(|_| {
                 ActionError::new(device_uid, input_key, t!("action.obs.toggle_record.err"))
-            })
+            });
+
+        match res {
+            Ok(o) => Ok(o),
+            Err(e) => {
+                client.as_mut().unwrap().disconnect().await;
+                *client = None;
+                Err(e)
+            }
+        }
     }
 
     pub async fn on_release(
@@ -400,15 +434,27 @@ impl ObsPauseRecord {
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(InputKey, bool), ActionError> {
-        check_client(device_uid, input_key, config.clone()).await?;
+        let mut client = check_client(device_uid, input_key, config.clone()).await?;
 
-        let client = OBS_CLIENT.get().unwrap().lock().await;
-        client
+        let res = client
+            .as_ref()
+            .unwrap()
             .recording()
             .toggle_pause()
             .await
             .map(|_| (input_key, false))
-            .map_err(|_| ActionError::new(device_uid, input_key, t!("action.obs.pause_record.err")))
+            .map_err(|_| {
+                ActionError::new(device_uid, input_key, t!("action.obs.pause_record.err"))
+            });
+
+        match res {
+            Ok(o) => Ok(o),
+            Err(e) => {
+                client.as_mut().unwrap().disconnect().await;
+                *client = None;
+                Err(e)
+            }
+        }
     }
 
     pub async fn on_release(
@@ -464,10 +510,11 @@ impl ObsReplayBuffer {
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(InputKey, bool), ActionError> {
-        check_client(device_uid, input_key, config.clone()).await?;
+        let mut client = check_client(device_uid, input_key, config.clone()).await?;
 
-        let client = OBS_CLIENT.get().unwrap().lock().await;
-        client
+        let res = client
+            .as_ref()
+            .unwrap()
             .replay_buffer()
             .toggle()
             .await
@@ -478,7 +525,16 @@ impl ObsReplayBuffer {
                     input_key,
                     t!("action.obs.toggle_replay_buffer.err"),
                 )
-            })
+            });
+
+        match res {
+            Ok(o) => Ok(o),
+            Err(e) => {
+                client.as_mut().unwrap().disconnect().await;
+                *client = None;
+                Err(e)
+            }
+        }
     }
 
     pub async fn on_release(
@@ -534,10 +590,11 @@ impl ObsSaveReplay {
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(InputKey, bool), ActionError> {
-        check_client(device_uid, input_key, config.clone()).await?;
+        let mut client = check_client(device_uid, input_key, config.clone()).await?;
 
-        let client = OBS_CLIENT.get().unwrap().lock().await;
-        client
+        let res = client
+            .as_ref()
+            .unwrap()
             .replay_buffer()
             .save()
             .await
@@ -548,7 +605,16 @@ impl ObsSaveReplay {
                     input_key,
                     t!("action.obs.save_replay_buffer.err"),
                 )
-            })
+            });
+
+        match res {
+            Ok(o) => Ok(o),
+            Err(e) => {
+                client.as_mut().unwrap().disconnect().await;
+                *client = None;
+                Err(e)
+            }
+        }
     }
 
     pub async fn on_release(
@@ -607,62 +673,83 @@ impl ObsSource {
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(InputKey, bool), ActionError> {
-        check_client(device_uid, input_key, config.clone()).await?;
+        let mut client = check_client(device_uid, input_key, config.clone()).await?;
 
-        let client = OBS_CLIENT.get().unwrap().lock().await;
-        if let Some(scene) = &self.scene {
-            if let Some(source) = &self.source {
-                let scene_id = SceneId::Uuid(scene.0);
-
-                let enabled = client
-                    .scene_items()
-                    .enabled(scene_id, source.0)
-                    .await
-                    .map_err(|_| {
-                        ActionError::new(
-                            device_uid,
-                            input_key,
-                            t!(
-                                "action.obs.toggle_source.err.get_enabled",
-                                scene = scene.1,
-                                source = source.1
-                            ),
-                        )
-                    })?;
-
-                client
-                    .scene_items()
-                    .set_enabled(SetEnabled {
-                        scene: scene_id,
-                        item_id: source.0,
-                        enabled: !enabled,
-                    })
-                    .await
-                    .map(|_| (input_key, false))
-                    .map_err(|_| {
-                        ActionError::new(
-                            device_uid,
-                            input_key,
-                            t!(
-                                "action.obs.toggle_source.err.set_enabled",
-                                scene = scene.1,
-                                source = source.1
-                            ),
-                        )
-                    })
-            } else {
-                Err(ActionError::new(
-                    device_uid,
-                    input_key,
-                    "action.obs.toggle_source.err.source_not_configured",
-                ))
-            }
-        } else {
-            Err(ActionError::new(
+        let Some(scene) = &self.scene else {
+            return Err(ActionError::new(
                 device_uid,
                 input_key,
                 "action.obs.toggle_source.err.scene_not_configured",
-            ))
+            ));
+        };
+
+        let Some(source) = &self.source else {
+            return Err(ActionError::new(
+                device_uid,
+                input_key,
+                "action.obs.toggle_source.err.source_not_configured",
+            ));
+        };
+
+        let scene_id = SceneId::Uuid(scene.0);
+
+        let res = client
+            .as_ref()
+            .unwrap()
+            .scene_items()
+            .enabled(scene_id, source.0)
+            .await
+            .map_err(|_| {
+                ActionError::new(
+                    device_uid,
+                    input_key,
+                    t!(
+                        "action.obs.toggle_source.err.get_enabled",
+                        scene = scene.1,
+                        source = source.1
+                    ),
+                )
+            });
+
+        let enabled = match res {
+            Ok(e) => e,
+            Err(e) => {
+                client.as_mut().unwrap().disconnect().await;
+                *client = None;
+                return Err(e);
+            }
+        };
+
+        let res = client
+            .as_ref()
+            .unwrap()
+            .scene_items()
+            .set_enabled(SetEnabled {
+                scene: scene_id,
+                item_id: source.0,
+                enabled: !enabled,
+            })
+            .await
+            .map(|_| (input_key, false))
+            .map_err(|_| {
+                ActionError::new(
+                    device_uid,
+                    input_key,
+                    t!(
+                        "action.obs.toggle_source.err.set_enabled",
+                        scene = scene.1,
+                        source = source.1
+                    ),
+                )
+            });
+
+        match res {
+            Ok(o) => Ok(o),
+            Err(e) => {
+                client.as_mut().unwrap().disconnect().await;
+                *client = None;
+                Err(e)
+            }
         }
     }
 
@@ -720,7 +807,7 @@ impl ObsSource {
             *OBS_SCENES.get().unwrap().blocking_lock() = None;
             tokio::spawn(async {
                 let client = OBS_CLIENT.get().unwrap().lock().await;
-                if let Ok(scene_list) = client.scenes().list().await {
+                if let Ok(scene_list) = client.as_ref().unwrap().scenes().list().await {
                     *OBS_SCENES.get().unwrap().lock().await = Some(scene_list.scenes);
                 }
             });
@@ -758,7 +845,7 @@ impl ObsSource {
             let scene_id = SceneId::Uuid(self.scene.clone().unwrap().0);
             tokio::spawn(async move {
                 let client = OBS_CLIENT.get().unwrap().lock().await;
-                if let Ok(items) = client.scene_items().list(scene_id).await {
+                if let Ok(items) = client.as_ref().unwrap().scene_items().list(scene_id).await {
                     *OBS_SOURCES.get().unwrap().lock().await = Some(items);
                 }
             });
@@ -797,28 +884,38 @@ impl ObsMute {
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(InputKey, bool), ActionError> {
-        check_client(device_uid, input_key, config.clone()).await?;
+        let mut client = check_client(device_uid, input_key, config.clone()).await?;
 
-        let client = OBS_CLIENT.get().unwrap().lock().await;
-        if let Some(input) = &self.input {
-            client
-                .inputs()
-                .toggle_mute(InputId::Uuid(input.0))
-                .await
-                .map(|_| (input_key, false))
-                .map_err(|_| {
-                    ActionError::new(
-                        device_uid,
-                        input_key,
-                        t!("action.obs.toggle_mute.err.failure", input = input.1,),
-                    )
-                })
-        } else {
-            Err(ActionError::new(
+        let Some(input) = &self.input else {
+            return Err(ActionError::new(
                 device_uid,
                 input_key,
                 t!("action.obs.toggle_mute.err.input_not_configured",),
-            ))
+            ));
+        };
+
+        let res = client
+            .as_ref()
+            .unwrap()
+            .inputs()
+            .toggle_mute(InputId::Uuid(input.0))
+            .await
+            .map(|_| (input_key, false))
+            .map_err(|_| {
+                ActionError::new(
+                    device_uid,
+                    input_key,
+                    t!("action.obs.toggle_mute.err.failure", input = input.1,),
+                )
+            });
+
+        match res {
+            Ok(o) => Ok(o),
+            Err(e) => {
+                client.as_mut().unwrap().disconnect().await;
+                *client = None;
+                Err(e)
+            }
         }
     }
 
@@ -875,7 +972,7 @@ impl ObsMute {
             *OBS_INPUTS.get().unwrap().blocking_lock() = None;
             tokio::spawn(async {
                 let client = OBS_CLIENT.get().unwrap().lock().await;
-                if let Ok(input_list) = client.inputs().list(None).await {
+                if let Ok(input_list) = client.as_ref().unwrap().inputs().list(None).await {
                     // TODO: filter out non-audio sources
                     *OBS_INPUTS.get().unwrap().lock().await = Some(input_list);
                 }
@@ -915,28 +1012,38 @@ impl ObsSceneSwitch {
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(InputKey, bool), ActionError> {
-        check_client(device_uid, input_key, config.clone()).await?;
+        let mut client = check_client(device_uid, input_key, config.clone()).await?;
 
-        let client = OBS_CLIENT.get().unwrap().lock().await;
-        if let Some(scene) = &self.scene {
-            client
-                .scenes()
-                .set_current_program_scene(SceneId::Uuid(scene.0))
-                .await
-                .map(|_| (input_key, false))
-                .map_err(|_| {
-                    ActionError::new(
-                        device_uid,
-                        input_key,
-                        t!("action.obs.switch_scene.err.failure", scene = scene.1,),
-                    )
-                })
-        } else {
-            Err(ActionError::new(
+        let Some(scene) = &self.scene else {
+            return Err(ActionError::new(
                 device_uid,
                 input_key,
                 t!("action.obs.switch_scene.err.scene_not_configured"),
-            ))
+            ));
+        };
+
+        let res = client
+            .as_ref()
+            .unwrap()
+            .scenes()
+            .set_current_program_scene(SceneId::Uuid(scene.0))
+            .await
+            .map(|_| (input_key, false))
+            .map_err(|_| {
+                ActionError::new(
+                    device_uid,
+                    input_key,
+                    t!("action.obs.switch_scene.err.failure", scene = scene.1,),
+                )
+            });
+
+        match res {
+            Ok(o) => Ok(o),
+            Err(e) => {
+                client.as_mut().unwrap().disconnect().await;
+                *client = None;
+                Err(e)
+            }
         }
     }
 
@@ -993,7 +1100,7 @@ impl ObsSceneSwitch {
             *OBS_SCENES.get().unwrap().blocking_lock() = None;
             tokio::spawn(async {
                 let client = OBS_CLIENT.get().unwrap().lock().await;
-                if let Ok(scene_list) = client.scenes().list().await {
+                if let Ok(scene_list) = client.as_ref().unwrap().scenes().list().await {
                     *OBS_SCENES.get().unwrap().lock().await = Some(scene_list.scenes);
                 }
             });
@@ -1032,31 +1139,41 @@ impl ObsPreviewSceneSwitch {
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(InputKey, bool), ActionError> {
-        check_client(device_uid, input_key, config.clone()).await?;
+        let mut client = check_client(device_uid, input_key, config.clone()).await?;
 
-        let client = OBS_CLIENT.get().unwrap().lock().await;
-        if let Some(scene) = &self.scene {
-            client
-                .scenes()
-                .set_current_preview_scene(SceneId::Uuid(scene.0))
-                .await
-                .map(|_| (input_key, false))
-                .map_err(|_| {
-                    ActionError::new(
-                        device_uid,
-                        input_key,
-                        t!(
-                            "action.obs.switch_preview_scene.err.failure",
-                            scene = scene.1,
-                        ),
-                    )
-                })
-        } else {
-            Err(ActionError::new(
+        let Some(scene) = &self.scene else {
+            return Err(ActionError::new(
                 device_uid,
                 input_key,
                 t!("action.obs.switch_preview_scene.err.scene_not_configured"),
-            ))
+            ));
+        };
+
+        let res = client
+            .as_ref()
+            .unwrap()
+            .scenes()
+            .set_current_preview_scene(SceneId::Uuid(scene.0))
+            .await
+            .map(|_| (input_key, false))
+            .map_err(|_| {
+                ActionError::new(
+                    device_uid,
+                    input_key,
+                    t!(
+                        "action.obs.switch_preview_scene.err.failure",
+                        scene = scene.1,
+                    ),
+                )
+            });
+
+        match res {
+            Ok(o) => Ok(o),
+            Err(e) => {
+                client.as_mut().unwrap().disconnect().await;
+                *client = None;
+                Err(e)
+            }
         }
     }
 
@@ -1113,7 +1230,7 @@ impl ObsPreviewSceneSwitch {
             *OBS_SCENES.get().unwrap().blocking_lock() = None;
             tokio::spawn(async {
                 let client = OBS_CLIENT.get().unwrap().lock().await;
-                if let Ok(scene_list) = client.scenes().list().await {
+                if let Ok(scene_list) = client.as_ref().unwrap().scenes().list().await {
                     *OBS_SCENES.get().unwrap().lock().await = Some(scene_list.scenes);
                 }
             });
@@ -1150,10 +1267,11 @@ impl ObsPreviewScenePush {
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(InputKey, bool), ActionError> {
-        check_client(device_uid, input_key, config.clone()).await?;
+        let mut client = check_client(device_uid, input_key, config.clone()).await?;
 
-        let client = OBS_CLIENT.get().unwrap().lock().await;
-        client
+        let res = client
+            .as_ref()
+            .unwrap()
             .transitions()
             .trigger()
             .await
@@ -1164,7 +1282,16 @@ impl ObsPreviewScenePush {
                     input_key,
                     t!("action.obs.push_preview_scene.err"),
                 )
-            })
+            });
+
+        match res {
+            Ok(o) => Ok(o),
+            Err(e) => {
+                client.as_mut().unwrap().disconnect().await;
+                *client = None;
+                Err(e)
+            }
+        }
     }
 
     pub async fn on_release(
@@ -1222,31 +1349,41 @@ impl ObsSceneCollectionSwitch {
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(InputKey, bool), ActionError> {
-        check_client(device_uid, input_key, config.clone()).await?;
+        let mut client = check_client(device_uid, input_key, config.clone()).await?;
 
-        let client = OBS_CLIENT.get().unwrap().lock().await;
-        if let Some(scene_collection) = &self.scene_collection {
-            client
-                .scene_collections()
-                .set_current(scene_collection)
-                .await
-                .map(|_| (input_key, false))
-                .map_err(|_| {
-                    ActionError::new(
-                        device_uid,
-                        input_key,
-                        t!(
-                            "action.obs.switch_scene_collection.err.failure",
-                            collection = scene_collection,
-                        ),
-                    )
-                })
-        } else {
-            Err(ActionError::new(
+        let Some(scene_collection) = &self.scene_collection else {
+            return Err(ActionError::new(
                 device_uid,
                 input_key,
                 t!("action.obs.switch_scene_collection.err.collection_not_configured"),
-            ))
+            ));
+        };
+
+        let res = client
+            .as_ref()
+            .unwrap()
+            .scene_collections()
+            .set_current(scene_collection)
+            .await
+            .map(|_| (input_key, false))
+            .map_err(|_| {
+                ActionError::new(
+                    device_uid,
+                    input_key,
+                    t!(
+                        "action.obs.switch_scene_collection.err.failure",
+                        collection = scene_collection,
+                    ),
+                )
+            });
+
+        match res {
+            Ok(o) => Ok(o),
+            Err(e) => {
+                client.as_mut().unwrap().disconnect().await;
+                *client = None;
+                Err(e)
+            }
         }
     }
 
@@ -1303,7 +1440,9 @@ impl ObsSceneCollectionSwitch {
             *OBS_SCENE_COLLECTIONS.get().unwrap().blocking_lock() = None;
             tokio::spawn(async {
                 let client = OBS_CLIENT.get().unwrap().lock().await;
-                if let Ok(collection_list) = client.scene_collections().list().await {
+                if let Ok(collection_list) =
+                    client.as_ref().unwrap().scene_collections().list().await
+                {
                     *OBS_SCENE_COLLECTIONS.get().unwrap().lock().await =
                         Some(collection_list.collections);
                 }
@@ -1341,10 +1480,11 @@ impl ObsChapterMarker {
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(InputKey, bool), ActionError> {
-        check_client(device_uid, input_key, config.clone()).await?;
+        let mut client = check_client(device_uid, input_key, config.clone()).await?;
 
-        let client = OBS_CLIENT.get().unwrap().lock().await;
-        client
+        let res = client
+            .as_ref()
+            .unwrap()
             .recording()
             .create_chapter(None)
             .await
@@ -1355,7 +1495,16 @@ impl ObsChapterMarker {
                     input_key,
                     t!("action.obs.add_chapter_marker.err.failure"),
                 )
-            })
+            });
+
+        match res {
+            Ok(o) => Ok(o),
+            Err(e) => {
+                client.as_mut().unwrap().disconnect().await;
+                *client = None;
+                Err(e)
+            }
+        }
     }
 
     pub async fn on_release(
