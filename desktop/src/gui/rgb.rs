@@ -406,14 +406,19 @@ impl JukeBoxGui {
                     .as_micros()
                     % 1_000_000_000;
                 let buf = self.editing_rgb.calculate_matrix(t as u64);
+                // undo zigzag for preview
+                let buf = [
+                    buf[0], buf[1], buf[2], buf[3], buf[7], buf[6], buf[5], buf[4], buf[8], buf[9],
+                    buf[10], buf[11],
+                ];
+
                 ui.vertical(|ui| {
                     ui.allocate_exact_size(vec2(0.0, 10.0), Sense::empty());
                     for y in 0..3 {
                         ui.horizontal(|ui| {
                             ui.allocate_exact_size(vec2(3.0, 45.0), Sense::empty());
                             for x in 0..4 {
-                                let i = x + y * 4;
-                                let c = buf[i];
+                                let c = buf[x + y * 4];
 
                                 Self::draw_rgb_preview(
                                     ui,

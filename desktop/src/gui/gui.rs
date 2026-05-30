@@ -165,6 +165,7 @@ impl eframe::App for JukeBoxGui {
                     .store(true, std::sync::atomic::Ordering::Relaxed);
                 return;
             } else {
+                // TODO: currently does not work on wayland https://github.com/emilk/egui/issues/4931
                 ctx.send_viewport_cmd(ViewportCommand::CancelClose);
                 ctx.send_viewport_cmd(ViewportCommand::Visible(false));
             }
@@ -357,8 +358,9 @@ impl JukeBoxGui {
             c1.with_layout(Layout::left_to_right(Align::BOTTOM), |ui| {
                 self.draw_device_management(ui);
             });
-
-            self.draw_splash_text(c2);
+            c2.with_layout(Layout::right_to_left(Align::BOTTOM), |ui| {
+                self.draw_splash_text(ui);
+            });
         });
 
         if self.update_error.is_some() {
@@ -657,14 +659,12 @@ impl JukeBoxGui {
             self.splash_timer = Instant::now() + Duration::from_secs(30);
         }
         if self.config_enable_splash {
-            ui.with_layout(Layout::right_to_left(Align::BOTTOM), |ui| {
-                ui.label(
-                    // splash text will remain untranslated for the foreseeable future
-                    RichText::new(SPLASH_MESSAGES[self.splash_index])
-                        .monospace()
-                        .size(6.0),
-                );
-            });
+            ui.label(
+                // splash text will remain untranslated for the foreseeable future
+                RichText::new(SPLASH_MESSAGES[self.splash_index])
+                    .monospace()
+                    .size(6.0),
+            );
         }
     }
 }

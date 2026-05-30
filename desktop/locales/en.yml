@@ -36,6 +36,7 @@ help:
     select: "Profile Select"
     new: "New Profile"
     edit_name: "Edit Profile Name"
+    duplicate: "Duplicate Profile"
     delete: "Delete Profile"
 
   settings:

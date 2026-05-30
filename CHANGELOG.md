@@ -9,6 +9,8 @@
 - Dramatically improve screen graphics performance.
 - Dynamically dim and brighten screen on computer sleep and wakeup.
 - Add dynamic icons for certain actions to display status, such as being muted on Discord.
+- Add profile duplicate button.
+- Profiles now switch when creating a new profile or duplicating a profile.
 - Re-enable system tray support for Windows.
 - Update dependencies for desktop app and firmware.
 

@@ -118,6 +118,7 @@ async fn create_client(
     skip_if_no_auth: bool,
 ) -> Result<(), ActionError> {
     if DISCORD_CLIENT_ID.is_none() || DISCORD_CLIENT_SECRET.is_none() {
+        log::error!("discord: missing client id and secret from compile");
         return Err(ActionError::msg(t!("action.discord.err.compile")));
     }
 
@@ -188,6 +189,7 @@ fn account_warning(ui: &mut Ui, config: Arc<Mutex<JukeBoxConfig>>) {
     if DISCORD_CLIENT.get().is_none() {
         let has_oauth = config.blocking_lock().discord_oauth_access.is_some();
         if has_oauth {
+            // TODO: send any error to gui
             let _ = tokio::runtime::Handle::current()
                 .block_on(async move { create_client(config, false).await });
         } else {
@@ -200,6 +202,7 @@ fn account_warning(ui: &mut Ui, config: Arc<Mutex<JukeBoxConfig>>) {
                 )
                 .clicked()
             {
+                // TODO: send any error to gui
                 let _ = tokio::runtime::Handle::current()
                     .block_on(async move { create_client(config, false).await });
             }

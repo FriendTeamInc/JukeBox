@@ -85,11 +85,21 @@ impl StatReport {
             "GenuineIntel" => {
                 // TODO
                 cpu_brand
-                    .replace("Core i3 ", "i3-")
-                    .replace("Core i5 ", "i5-")
-                    .replace("Core i7 ", "i7-")
-                    .replace("Core i9 ", "i9-")
-                    .replace("Processor", "")
+                    .replace("Intel(R)", "Intel")
+                    .replace("Core(TM) ", "")
+                    .replace("Processor ", "")
+                    .replace("1st Gen ", "")
+                    .replace("2nd Gen ", "")
+                    .replace("3rd Gen ", "")
+                    .replace("4th Gen ", "")
+                    .replace("5th Gen ", "")
+                    .replace("6th Gen ", "")
+                    .replace("7th Gen ", "")
+                    .replace("8th Gen ", "")
+                    .replace("9th Gen ", "")
+                    .replace("10th Gen ", "")
+                    .replace("11th Gen ", "")
+                    .replace("12th Gen ", "")
                     .trim()
                     .to_string()
             }

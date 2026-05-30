@@ -112,6 +112,7 @@ impl JukeBoxGui {
 
             // Profile management
             ui.add_enabled_ui(!self.profile_renaming, |ui| {
+                // TODO: add a button to duplicate the current profile
                 let new_btn = ui
                     .button(RichText::new(phos::PLUS_CIRCLE))
                     .on_hover_text_at_pointer(t!("help.profile.new"));
@@ -119,7 +120,7 @@ impl JukeBoxGui {
                     let mut conf = self.config.blocking_lock();
                     let mut idx = conf.profiles.keys().len() + 1;
                     let name = loop {
-                        let name = t!("profile_name_new", idx = idx).into();
+                        let name: String = t!("profile_name_new", idx = idx).into();
                         if !conf.profiles.contains_key(&name) {
                             break name;
                         }
@@ -148,8 +149,15 @@ impl JukeBoxGui {
                             },
                         );
                     }
-                    conf.profiles.insert(name, m);
+                    conf.profiles.insert(name.clone(), m);
+                    conf.current_profile = name;
                     conf.save();
+                    drop(conf);
+
+                    let devices: Vec<_> = self.devices.keys().cloned().collect();
+                    for k in devices {
+                        self.set_device_profile(&k);
+                    }
                 }
 
                 let edit_btn = ui
@@ -159,6 +167,31 @@ impl JukeBoxGui {
                     let conf = self.config.blocking_lock();
                     self.profile_renaming = true;
                     self.profile_name_entry.replace_with(&conf.current_profile);
+                }
+
+                let dupe_btn = ui
+                    .button(RichText::new(phos::COPY_SIMPLE))
+                    .on_hover_text_at_pointer(t!("help.profile.duplicate"));
+                if dupe_btn.clicked() {
+                    let mut conf = self.config.blocking_lock();
+                    let mut idx = conf.profiles.keys().len() + 1;
+                    let name = loop {
+                        let name: String = t!("profile_name_new", idx = idx).into();
+                        if !conf.profiles.contains_key(&name) {
+                            break name;
+                        }
+                        idx += 1;
+                    };
+                    let duped_profile = conf.profiles.get(&conf.current_profile).unwrap().clone();
+                    conf.profiles.insert(name.clone(), duped_profile);
+                    conf.current_profile = name;
+                    conf.save();
+                    drop(conf);
+
+                    let devices: Vec<_> = self.devices.keys().cloned().collect();
+                    for k in devices {
+                        self.set_device_profile(&k);
+                    }
                 }
 
                 if self.config.blocking_lock().profiles.keys().len() <= 1 {
@@ -171,43 +204,34 @@ impl JukeBoxGui {
                         .button(RichText::new(phos::TRASH))
                         .on_hover_text_at_pointer(t!("help.profile.delete"));
 
+                    // TODO: add confirmation dialogue for deleting profile
                     if delete_btn.clicked() {
-                        {
-                            let mut conf = self.config.blocking_lock();
-                            let old_profile = conf.current_profile.clone();
-                            conf.profiles.remove(&old_profile);
-                            conf.current_profile = conf.profiles.keys().next().unwrap().clone();
+                        let mut conf = self.config.blocking_lock();
+                        let old_profile = conf.current_profile.clone();
+                        conf.profiles.remove(&old_profile);
+                        conf.current_profile = conf.profiles.keys().next().unwrap().clone();
 
-                            for (_, p) in conf.profiles.iter_mut() {
-                                for (_, d) in p.iter_mut() {
-                                    for (_, k) in d.key_map.iter_mut() {
-                                        k.action = match &k.action {
-                                            Action::MetaSwitchProfile(msp) => {
-                                                if msp.profile == old_profile {
-                                                    Action::MetaSwitchProfile(MetaSwitchProfile {
-                                                        profile: String::new(),
-                                                    })
-                                                } else {
-                                                    k.action.clone()
-                                                }
+                        for p in conf.profiles.values_mut() {
+                            for d in p.values_mut() {
+                                for k in d.key_map.values_mut() {
+                                    k.action = match &k.action {
+                                        Action::MetaSwitchProfile(msp) => {
+                                            if msp.profile == old_profile {
+                                                Action::MetaSwitchProfile(MetaSwitchProfile {
+                                                    profile: String::new(),
+                                                })
+                                            } else {
+                                                k.action.clone()
                                             }
-                                            // Action::MetaCopyFromProfile(mcfp) => {
-                                            //     if mcfp.profile == old_profile {
-                                            //         Action::MetaCopyFromProfile(MetaCopyFromProfile {
-                                            //             profile: String::new(),
-                                            //         })
-                                            //     } else {
-                                            //         k.action.clone()
-                                            //     }
-                                            // }
-                                            _ => k.action.clone(),
-                                        };
-                                    }
+                                        }
+                                        _ => k.action.clone(),
+                                    };
                                 }
                             }
-
-                            conf.save();
                         }
+
+                        conf.save();
+                        drop(conf);
 
                         let devices: Vec<_> = self.devices.keys().cloned().collect();
                         for k in devices {
