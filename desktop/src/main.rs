@@ -66,7 +66,7 @@ fn main() -> anyhow::Result<()> {
         let mut p = dirs::config_dir().expect("failed to find config directory");
         p.push("JukeBoxDesktop");
         p.push("jukebox_desktop_debug.log");
-        simple_logging::log_to_file(p, log::LevelFilter::Debug).unwrap();
+        simple_logging::log_to_file(p, log::LevelFilter::Info).unwrap();
     }
 
     // For OBS websocket TLS support, currently unused.

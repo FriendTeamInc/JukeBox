@@ -80,7 +80,7 @@ impl StatReport {
     }
 
     pub fn get_cpu_name(cpu_vendor: String, cpu_brand: String) -> String {
-        log::debug!("cpu info: {} {}", cpu_vendor, cpu_brand);
+        log::info!("cpu info: {} {}", cpu_vendor, cpu_brand);
         let mut cpu_name = match cpu_vendor.as_str() {
             "GenuineIntel" => {
                 // TODO
@@ -162,9 +162,9 @@ impl StatReport {
 pub fn system_task(system_stats: Arc<Mutex<SystemStats>>) -> Result<()> {
     let mut sys = System::new();
     let mut cmps = Components::new_with_refreshed_list();
-    log::debug!("components:");
+    log::info!("components:");
     for c in &cmps {
-        log::debug!("\t{c:?}");
+        log::info!("\t{c:?}");
     }
 
     // heuristic to figure out which gpu stats to get
@@ -217,6 +217,7 @@ pub fn system_task(system_stats: Arc<Mutex<SystemStats>>) -> Result<()> {
                     cpu.vendor_id().into(),
                     cpu.brand().into(),
                 ));
+                log::info!("formatted cpu name: {:?}", cpu_info);
             }
 
             cpu_usage += cpu.cpu_usage();

@@ -377,7 +377,11 @@ pub fn serial_get_device(connected_uids: &HashSet<String>) -> Result<Serial> {
         })
         .collect();
 
-    log::debug!("serial: {:?} / {:?}", ports, connected_uids);
+    log::debug!(
+        "serial_get_device ports/connected_uids: {:?} / {:?}",
+        ports,
+        connected_uids
+    );
 
     if ports.len() == 0 {
         bail!("failed to find any jukebox serial ports");
