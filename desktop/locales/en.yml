@@ -275,6 +275,7 @@ action:
       button: "Connect to Discord Account"
       success: "Discord account connected!"
     err:
+      compile: "This application was not compiled with credentials to access Discord API!"
       connect: "Cannot connect to Discord client!"
       authorize: "Failed to authorize with Discord!"
       oauth_request: "Failed to get Discord OAuth access token!"
