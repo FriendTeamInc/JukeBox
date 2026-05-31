@@ -52,7 +52,7 @@ SUBSYSTEM=="usb", \
 Made with OpenSCAD 2025.03.31 (development snapshot), protects everything inside the JukeBox. You can get the printable STLs with the `build.sh` script.
 
 ## PCB
-Made with KiCad 8, the external brains of the JukeBox.
+Made with KiCad 10, the external brains of the JukeBox.
 
 Footprints and models:
 - [Cherry/Kailh Switch footprint based on this.](https://github.com/luke-schutt/Pi5Keyboard/blob/main/Pi5-pcb/Pi5Footprints.pretty/Low%20Profile%20GC%20plus%20MX.kicad_mod)
@@ -65,7 +65,7 @@ Estimated power usage is 5 volts at 0.1 amps, or 0.5 watts.
 | R1, R5, R14    | RMCF0402FT1K00         | 3   | 1k    |     |
 | R3, R4         | RMCF0402FT27R0         | 2   | 27    |     |
 | R6, R7         | RMCF0402FT5K11         | 2   | 5.11k |     |
-| R8-11          | RMCF0402FT10K0         | 4   | 10k   |  X  |
+| R8-11          | RMCF0402FT10K0         | 4   | 10k   |     |
 | R12            | RMCF0402FT10K0         | 1   | 10k   |     |
 | R13            | RMCF0402FT10R0         | 1   | 10    |     |
 | R15            | RMCF0402FT33R0         | 1   | 33    |     |
