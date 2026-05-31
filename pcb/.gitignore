@@ -34,3 +34,6 @@ gerbers/
 *.csv
 
 .DS_STORE
+
+.history/
+*.lck

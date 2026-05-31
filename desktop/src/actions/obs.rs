@@ -108,6 +108,7 @@ pub fn init_actions_obs(config: Arc<Mutex<JukeBoxConfig>>) -> (String, Vec<(Stri
             (AID_OBS_COLLECTION_SWITCH.into(),  Action::ObsSceneCollectionSwitch(ObsSceneCollectionSwitch::default()), t!("action.obs.switch_scene_collection.title").into()),
             // ("ObsFilter".into(),                Action::ObsFilter(ObsFilter::default()),                               t!("action.obs.toggle_filter.title").into()),
             // ("ObsTransition".into(),            Action::ObsTransition(ObsTransition::default()),                       t!("action.obs.switch_transition.title").into()),
+            // TODO: Source Screenshot?
             (AID_OBS_CHAPTER_MARKER.into(),     Action::ObsChapterMarker(ObsChapterMarker::default()),                 t!("action.obs.add_chapter_marker.title").into()),
         ],
     )

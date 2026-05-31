@@ -112,7 +112,6 @@ impl JukeBoxGui {
 
             // Profile management
             ui.add_enabled_ui(!self.profile_renaming, |ui| {
-                // TODO: add a button to duplicate the current profile
                 let new_btn = ui
                     .button(RichText::new(phos::PLUS_CIRCLE))
                     .on_hover_text_at_pointer(t!("help.profile.new"));
@@ -211,23 +210,24 @@ impl JukeBoxGui {
                         conf.profiles.remove(&old_profile);
                         conf.current_profile = conf.profiles.keys().next().unwrap().clone();
 
-                        for p in conf.profiles.values_mut() {
-                            for d in p.values_mut() {
-                                for k in d.key_map.values_mut() {
-                                    k.action = match &k.action {
-                                        Action::MetaSwitchProfile(msp) => {
-                                            if msp.profile == old_profile {
-                                                Action::MetaSwitchProfile(MetaSwitchProfile {
-                                                    profile: String::new(),
-                                                })
-                                            } else {
-                                                k.action.clone()
-                                            }
-                                        }
-                                        _ => k.action.clone(),
-                                    };
+                        for k in conf
+                            .profiles
+                            .values_mut()
+                            .flat_map(|p| p.values_mut())
+                            .flat_map(|d| d.key_map.values_mut())
+                        {
+                            k.action = match &k.action {
+                                Action::MetaSwitchProfile(msp) => {
+                                    if msp.profile == old_profile {
+                                        Action::MetaSwitchProfile(MetaSwitchProfile {
+                                            profile: String::new(),
+                                        })
+                                    } else {
+                                        k.action.clone()
+                                    }
                                 }
-                            }
+                                _ => k.action.clone(),
+                            };
                         }
 
                         conf.save();
