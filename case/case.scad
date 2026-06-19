@@ -21,6 +21,10 @@ ioHO = cS-cmO-17.5;
 ioHB = 0.125;
 // Debug Port
 dbgPort = false;
+// Reset button width
+rbW = 2.5;
+// Reset button height
+rbH = 5;
 
 /* [Case top settings] */
 // Case top height
@@ -139,6 +143,13 @@ module speaker_icon() {
 SOX = cS / 2 - (csScrCW + ctW * 2) / 2; // screen origin x
 SOY = cS - 18 - ctW - csScrCH / 2-2.75; // screen origin y
 
+module case_reset_button() {
+    b = 3;
+    c = 0.125/2;
+    cube([rbW+b, rbH+b, 0.4]);
+    translate([b/2+c/2, b/2+c/2, 0.4]) cube([rbW-c, rbH-c, 2.4]);
+}
+
 module case_top() {
     difference() {
         union() {
@@ -157,10 +168,11 @@ module case_top() {
                     // identify led cutout
                     translate([cS-25.5, cS-17.5, ctH]) cylinder(h=1, d=2);
                     // reset button cutout
-                    translate([cS-29.25, cS-36.75, ctH]) cube([2.5, 5, 1]);
+                    translate([cS-28.75, cS-36.75, ctH]) cube([rbW, rbH, 1]);
                 }
             }
 
+            // LED light pipe
             difference() {
                 translate([cS-25.5, cS-17.5, ctH-2.8]) cylinder(h=2.8, d=4);
                 translate([cS-25.5, cS-17.5, ctH-2.8]) cylinder(h=2.8, d=2);
@@ -172,7 +184,7 @@ module case_top() {
             // Mounting plates
             square4(0, cS-ctMW, h) roundedsquare(ctMW, ctMW, ctMH, cpR);
             translate([    cmO,           0, h]) cube([cS - cmO*2, ctM+1.5, ctMH]);
-            translate([    cmO,      cS-cmO-4, h]) cube([cS - cmO*2, ctM+1.5, ctMH]);
+            translate([    cmO,    cS-cmO-4, h]) cube([cS - cmO*2, ctM+1.5, ctMH]);
             translate([      0,           0, h]) roundedsquare(ctMW, ctMW+60, ctMH, cpR);
             translate([cS-ctMW,           0, h]) roundedsquare(ctMW, ctMW+60, ctMH, cpR);
             translate([      0,  cS-ctMW-12, h]) roundedsquare(ctMW, ctMW+12, ctMH, cpR);
@@ -188,6 +200,15 @@ module case_top() {
             // Supports (keyboard)
             translate([0, 47.5, h]) cube([cS, 3, ctMH]);
             translate([0, 27.5, h]) cube([cS, 3, ctMH]);
+
+            // alignment holders
+            difference(){
+                bS = 100;
+                bBS = 0.25;
+                translate([0, 0, h-1]) roundedsquare(cS, cS, 1, cR);
+                translate([(cS-(bS+bBS))/2, (cS-(bS+bBS))/2, h-2]) cube([bS+bBS, bS+bBS, 2]);
+                translate([0, cS-36.5, h-2]) cube([cS, 25, 2]);
+            }
         }
 
         union() {
@@ -343,6 +364,7 @@ module case_screen_spacer() {
     }
 }
 
+translate([0, -8, 0]) case_reset_button();
 translate([-3, 3, 9]) rotate([0, 180, 0]) case_top();
 translate([3, 3, 0]) case_bottom();
 translate([-10, 15, 0]) rotate([0, 0, 180]) case_leg();
