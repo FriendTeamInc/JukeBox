@@ -277,39 +277,39 @@ action:
       success: "Discord account connected!"
     err:
       compile: "This application was not compiled with credentials to access Discord API!"
-      connect: "Cannot connect to Discord client! Error: {error:?}"
-      authorize: "Failed to authorize with Discord! Error: {error:?}"
+      connect: "Cannot connect to Discord client! Error: %{error}"
+      authorize: "Failed to authorize with Discord! Error: %{error}"
       oauth_request: "Failed to get Discord OAuth access token!"
       oauth_refresh: "Failed to refresh Discord OAuth access token!"
-      authenticate: "Failed to authenticate with Discord! Error: {error:?}"
+      authenticate: "Failed to authenticate with Discord! Error: %{error}"
 
     toggle_mute:
       title: "Toggle Mute"
       help: "Toggle mutes your microphone on Discord when pressed."
-      err: "Failed to set Discord mute state for Toggle Mute. Error: {error:?}"
+      err: "Failed to set Discord mute state for Toggle Mute. Error: %{error}"
       icon_state_0: "Unmuted Icon"
       icon_state_1: "Muted Icon"
     toggle_deafen:
       title: "Toggle Deafen"
       help: "Toggle deafens your audio on Discord when pressed."
-      err: "Failed to set Discord deafen state for Toggle Deafen. Error: {error:?}"
+      err: "Failed to set Discord deafen state for Toggle Deafen. Error: %{error}"
       icon_state_0: "Undeafened Icon"
       icon_state_1: "Deafened Icon"
     push_to_talk:
       title: "Push to Talk"
       help: "Unmutes your microphone on Discord while held."
-      err_press: "Failed to set Discord mute state for Push To Talk (press). Error: {error:?}"
-      err_release: "Failed to set Discord mute state for Push To Talk (release). Error: {error:?}"
+      err_press: "Failed to set Discord mute state for Push To Talk (press). Error: %{error}"
+      err_release: "Failed to set Discord mute state for Push To Talk (release). Error: %{error}"
     push_to_mute:
       title: "Push to Mute"
       help: "Mutes your microphone on Discord while held."
-      err_press: "Failed to set Discord mute state for Push To Mute (press). Error: {error:?}"
-      err_release: "Failed to set Discord mute state for Push To Mute (release). Error: {error:?}"
+      err_press: "Failed to set Discord mute state for Push To Mute (press). Error: %{error}"
+      err_release: "Failed to set Discord mute state for Push To Mute (release). Error: %{error}"
     push_to_deafen:
       title: "Push to Deafen"
       help: "Deafens your audio on Discord while held."
-      err_press: "Failed to set Discord deafen state for Push To Deafen (press). Error: {error:?}"
-      err_release: "Failed to set Discord deafen state for Push To Deafen (release). Error: {error:?}"
+      err_press: "Failed to set Discord deafen state for Push To Deafen (press). Error: %{error}"
+      err_release: "Failed to set Discord deafen state for Push To Deafen (release). Error: %{error}"
   
   obs:
     title: "%{icon} OBS"
