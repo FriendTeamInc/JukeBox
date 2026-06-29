@@ -125,7 +125,7 @@ async fn create_client(
     let mut client = DiscordIpcClient::new(DISCORD_CLIENT_ID.unwrap());
     client
         .connect()
-        .map_err(|_| ActionError::msg(t!("action.discord.err.connect")))?;
+        .map_err(|e| ActionError::msg(t!("action.discord.err.connect", error = e)))?;
 
     let mut config = config.lock().await;
 
@@ -136,7 +136,7 @@ async fn create_client(
 
         let code = client
             .authorize(&["rpc", "rpc.voice.read", "rpc.voice.write"])
-            .map_err(|_| ActionError::msg(t!("action.discord.err.authorize")))?;
+            .map_err(|e| ActionError::msg(t!("action.discord.err.authorize", error = e)))?;
 
         let oauth = discord_access_token_request(
             &code,
@@ -163,7 +163,7 @@ async fn create_client(
 
     client
         .authenticate(&config.discord_oauth_access.clone().unwrap().access_token)
-        .map_err(|_| ActionError::msg(t!("action.discord.err.authenticate")))?;
+        .map_err(|e| ActionError::msg(t!("action.discord.err.authenticate", error = e)))?;
 
     if let Ok(v) = client.get_voice_settings() {
         let deaf = if let Some(deaf) = v.deaf {
@@ -242,8 +242,12 @@ impl DiscordToggleMute {
                         .mute(muted),
                 )
                 .map(|_| (input_key, true))
-                .map_err(|_| {
-                    ActionError::new(device_uid, input_key, t!("action.discord.toggle_mute.err"))
+                .map_err(|e| {
+                    ActionError::new(
+                        device_uid,
+                        input_key,
+                        t!("action.discord.toggle_mute.err", error = e),
+                    )
                 })
         })
         .await
@@ -329,11 +333,11 @@ impl DiscordToggleDeafen {
                         .deaf(deafened),
                 )
                 .map(|_| (input_key, true))
-                .map_err(|_| {
+                .map_err(|e| {
                     ActionError::new(
                         device_uid,
                         input_key,
-                        t!("action.discord.toggle_deafen.err"),
+                        t!("action.discord.toggle_deafen.err", error = e),
                     )
                 })
         })
@@ -416,11 +420,11 @@ impl DiscordPushToTalk {
                         .mute(false),
                 )
                 .map(|_| (input_key, true))
-                .map_err(|_| {
+                .map_err(|e| {
                     ActionError::new(
                         device_uid,
                         input_key,
-                        t!("action.discord.push_to_talk.err_press"),
+                        t!("action.discord.push_to_talk.err_press", error = e),
                     )
                 })
         })
@@ -449,11 +453,11 @@ impl DiscordPushToTalk {
                         .mute(true),
                 )
                 .map(|_| (input_key, true))
-                .map_err(|_| {
+                .map_err(|e| {
                     ActionError::new(
                         device_uid,
                         input_key,
-                        t!("action.discord.push_to_talk.err_release"),
+                        t!("action.discord.push_to_talk.err_release", error = e),
                     )
                 })
         })
@@ -520,11 +524,11 @@ impl DiscordPushToMute {
                         .mute(true),
                 )
                 .map(|_| (input_key, true))
-                .map_err(|_| {
+                .map_err(|e| {
                     ActionError::new(
                         device_uid,
                         input_key,
-                        t!("action.discord.push_to_mute.err_press"),
+                        t!("action.discord.push_to_mute.err_press", error = e),
                     )
                 })
         })
@@ -553,11 +557,11 @@ impl DiscordPushToMute {
                         .mute(false),
                 )
                 .map(|_| (input_key, true))
-                .map_err(|_| {
+                .map_err(|e| {
                     ActionError::new(
                         device_uid,
                         input_key,
-                        t!("action.discord.push_to_mute.err_release"),
+                        t!("action.discord.push_to_mute.err_release", error = e),
                     )
                 })
         })
@@ -625,11 +629,11 @@ impl DiscordPushToDeafen {
                         .deaf(true),
                 )
                 .map(|_| (input_key, true))
-                .map_err(|_| {
+                .map_err(|e| {
                     ActionError::new(
                         device_uid,
                         input_key,
-                        t!("action.discord.push_to_deafen.err_press"),
+                        t!("action.discord.push_to_deafen.err_press", error = e),
                     )
                 })
         })
@@ -659,11 +663,11 @@ impl DiscordPushToDeafen {
                         .deaf(false),
                 )
                 .map(|_| (input_key, true))
-                .map_err(|_| {
+                .map_err(|e| {
                     ActionError::new(
                         device_uid,
                         input_key,
-                        t!("action.discord.push_to_deafen.err_release"),
+                        t!("action.discord.push_to_deafen.err_release", error = e),
                     )
                 })
         })
