@@ -166,15 +166,6 @@ async fn auth_client(
             ))
         })?;
 
-    client
-        .authenticate(&config.discord_oauth_access.clone().unwrap().access_token)
-        .map_err(|e| {
-            ActionError::msg(t!(
-                "action.discord.err.authenticate",
-                error = format!("{:?}", e)
-            ))
-        })?;
-
     Ok(())
 }
 

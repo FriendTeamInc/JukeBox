@@ -29,18 +29,30 @@ pub struct ActionError {
 }
 impl ActionError {
     pub fn new(device_uid: impl Into<String>, input_key: InputKey, msg: impl Into<String>) -> Self {
-        Self {
+        let s = Self {
             device_uid: Some(device_uid.into()),
             input_key: Some(input_key),
             msg: msg.into(),
-        }
+        };
+        s.log();
+        s
     }
     pub fn msg(msg: impl Into<String>) -> Self {
-        Self {
+        let s = Self {
             device_uid: None,
             input_key: None,
             msg: msg.into(),
-        }
+        };
+        s.log();
+        s
+    }
+    pub fn log(&self) {
+        log::error!(
+            "ActionError: ({:?}, {:?}) - `{}`",
+            self.device_uid,
+            self.input_key,
+            self.msg
+        )
     }
 }
 impl fmt::Display for ActionError {
