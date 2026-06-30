@@ -10,7 +10,7 @@ use discord_rich_presence::{voice_settings::VoiceSettings, DiscordIpc, DiscordIp
 use eframe::egui::{include_image, vec2, Button, ImageSource, Ui};
 use egui_phosphor::regular as phos;
 use serde::{Deserialize, Serialize};
-use tokio::{sync::Mutex, task::spawn_blocking};
+use tokio::sync::Mutex;
 
 use crate::{
     config::{DiscordOauthAccess, JukeBoxConfig},
@@ -113,20 +113,11 @@ async fn discord_refresh_access_token(
     r.json().await.map_err(|_| ())
 }
 
-async fn create_client(
+async fn auth_client(
     config: Arc<Mutex<JukeBoxConfig>>,
+    client: &mut DiscordIpcClient,
     skip_if_no_auth: bool,
 ) -> Result<(), ActionError> {
-    if DISCORD_CLIENT_ID.is_none() || DISCORD_CLIENT_SECRET.is_none() {
-        log::error!("discord: missing client id and secret from compile");
-        return Err(ActionError::msg(t!("action.discord.err.compile")));
-    }
-
-    let mut client = DiscordIpcClient::new(DISCORD_CLIENT_ID.unwrap());
-    client.connect().map_err(|e| {
-        ActionError::msg(t!("action.discord.err.connect", error = format!("{:?}", e)))
-    })?;
-
     let mut config = config.lock().await;
 
     if config.discord_oauth_access.is_none() {
@@ -175,6 +166,34 @@ async fn create_client(
             ))
         })?;
 
+    client
+        .authenticate(&config.discord_oauth_access.clone().unwrap().access_token)
+        .map_err(|e| {
+            ActionError::msg(t!(
+                "action.discord.err.authenticate",
+                error = format!("{:?}", e)
+            ))
+        })?;
+
+    Ok(())
+}
+
+async fn create_client(
+    config: Arc<Mutex<JukeBoxConfig>>,
+    skip_if_no_auth: bool,
+) -> Result<(), ActionError> {
+    if DISCORD_CLIENT_ID.is_none() || DISCORD_CLIENT_SECRET.is_none() {
+        log::error!("discord: missing client id and secret from compile");
+        return Err(ActionError::msg(t!("action.discord.err.compile")));
+    }
+
+    let mut client = DiscordIpcClient::new(DISCORD_CLIENT_ID.unwrap());
+    client.connect().map_err(|e| {
+        ActionError::msg(t!("action.discord.err.connect", error = format!("{:?}", e)))
+    })?;
+
+    auth_client(config, &mut client, skip_if_no_auth).await?;
+
     if let Ok(v) = client.get_voice_settings() {
         let deaf = if let Some(deaf) = v.deaf {
             DISCORD_DEAFENED.store(deaf, Ordering::Relaxed);
@@ -222,6 +241,64 @@ fn account_warning(ui: &mut Ui, config: Arc<Mutex<JukeBoxConfig>>) {
     }
 }
 
+fn discord_reconnect(
+    client: &mut DiscordIpcClient,
+    device_uid: &String,
+    input_key: InputKey,
+) -> Result<(), ActionError> {
+    client.reconnect().map_err(|e| {
+        ActionError::new(
+            device_uid.clone(),
+            input_key,
+            t!("action.discord.err.reconnect", error = format!("{:?}", e)),
+        )
+    })
+}
+
+fn discord_toggle_mute(
+    client: &mut DiscordIpcClient,
+    muted: bool,
+    device_uid: &String,
+    input_key: InputKey,
+) -> Result<(InputKey, bool), ActionError> {
+    client
+        .set_voice_settings(VoiceSettings::new().mute(muted))
+        .map(|_| (input_key, true))
+        .map_err(|e| {
+            ActionError::new(
+                device_uid,
+                input_key,
+                t!(
+                    "action.discord.err.set_mute_state",
+                    state = muted,
+                    error = format!("{:?}", e)
+                ),
+            )
+        })
+}
+
+fn discord_toggle_deafen(
+    client: &mut DiscordIpcClient,
+    deafened: bool,
+    device_uid: &String,
+    input_key: InputKey,
+) -> Result<(InputKey, bool), ActionError> {
+    client
+        .set_voice_settings(VoiceSettings::new().mute(deafened).deaf(deafened))
+        .map(|_| (input_key, true))
+        .map_err(|e| {
+            ActionError::new(
+                device_uid,
+                input_key,
+                t!(
+                    "action.discord.err.set_deafen_state",
+                    state = deafened,
+                    error = format!("{:?}", e)
+                ),
+            )
+        })
+}
+
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct DiscordToggleMute {}
 impl DiscordToggleMute {
@@ -231,37 +308,28 @@ impl DiscordToggleMute {
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(InputKey, bool), ActionError> {
-        let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c, false).await?;
+            create_client(config.clone(), false).await?;
         }
-        let device_uid: String = device_uid.into();
-        spawn_blocking(move || {
-            let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
-            let muted = !DISCORD_MUTED.load(Ordering::Relaxed);
-            DISCORD_MUTED.store(muted, Ordering::Relaxed);
+        let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
 
-            if !muted {
-                DISCORD_DEAFENED.store(false, Ordering::Relaxed);
+        let muted = !DISCORD_MUTED.load(Ordering::Relaxed);
+        DISCORD_MUTED.store(muted, Ordering::Relaxed);
+
+        if !muted {
+            DISCORD_DEAFENED.store(false, Ordering::Relaxed);
+        }
+
+        let res = discord_toggle_mute(&mut client, muted, &device_uid, input_key);
+
+        match res {
+            Ok(o) => Ok(o),
+            Err(_) => {
+                discord_reconnect(&mut client, &device_uid, input_key)?;
+                auth_client(config.clone(), &mut client, false).await?;
+                discord_toggle_mute(&mut client, muted, &device_uid, input_key)
             }
-
-            client
-                .set_voice_settings(
-                    VoiceSettings::new()
-                        // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::VoiceActivity))
-                        .mute(muted),
-                )
-                .map(|_| (input_key, true))
-                .map_err(|e| {
-                    ActionError::new(
-                        device_uid,
-                        input_key,
-                        t!("action.discord.toggle_mute.err", error = format!("{:?}", e)),
-                    )
-                })
-        })
-        .await
-        .unwrap()
+        }
     }
 
     pub async fn on_release(
@@ -324,38 +392,25 @@ impl DiscordToggleDeafen {
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(InputKey, bool), ActionError> {
-        let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c, false).await?;
+            create_client(config.clone(), false).await?;
         }
-        let device_uid: String = device_uid.into();
-        spawn_blocking(move || {
-            let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
-            let deafened = !DISCORD_DEAFENED.load(Ordering::Relaxed);
-            DISCORD_DEAFENED.store(deafened, Ordering::Relaxed);
-            DISCORD_MUTED.store(deafened, Ordering::Relaxed);
+        let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
 
-            client
-                .set_voice_settings(
-                    VoiceSettings::new()
-                        // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::VoiceActivity))
-                        .mute(deafened)
-                        .deaf(deafened),
-                )
-                .map(|_| (input_key, true))
-                .map_err(|e| {
-                    ActionError::new(
-                        device_uid,
-                        input_key,
-                        t!(
-                            "action.discord.toggle_deafen.err",
-                            error = format!("{:?}", e)
-                        ),
-                    )
-                })
-        })
-        .await
-        .unwrap()
+        let deafened = !DISCORD_DEAFENED.load(Ordering::Relaxed);
+        DISCORD_DEAFENED.store(deafened, Ordering::Relaxed);
+        DISCORD_MUTED.store(deafened, Ordering::Relaxed);
+
+        let res = discord_toggle_deafen(&mut client, deafened, &device_uid, input_key);
+
+        match res {
+            Ok(o) => Ok(o),
+            Err(_) => {
+                discord_reconnect(&mut client, &device_uid, input_key)?;
+                auth_client(config.clone(), &mut client, false).await?;
+                discord_toggle_deafen(&mut client, deafened, &device_uid, input_key)
+            }
+        }
     }
 
     pub async fn on_release(
@@ -418,34 +473,21 @@ impl DiscordPushToTalk {
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(InputKey, bool), ActionError> {
-        let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c, false).await?;
+            create_client(config.clone(), false).await?;
         }
-        let device_uid: String = device_uid.into();
-        spawn_blocking(move || {
-            let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
+        let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
 
-            client
-                .set_voice_settings(
-                    VoiceSettings::new()
-                        // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
-                        .mute(false),
-                )
-                .map(|_| (input_key, true))
-                .map_err(|e| {
-                    ActionError::new(
-                        device_uid,
-                        input_key,
-                        t!(
-                            "action.discord.push_to_talk.err_press",
-                            error = format!("{:?}", e)
-                        ),
-                    )
-                })
-        })
-        .await
-        .unwrap()
+        let res = discord_toggle_mute(&mut client, false, &device_uid, input_key);
+
+        match res {
+            Ok(o) => Ok(o),
+            Err(_) => {
+                discord_reconnect(&mut client, &device_uid, input_key)?;
+                auth_client(config.clone(), &mut client, false).await?;
+                discord_toggle_mute(&mut client, false, &device_uid, input_key)
+            }
+        }
     }
 
     pub async fn on_release(
@@ -454,34 +496,21 @@ impl DiscordPushToTalk {
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(InputKey, bool), ActionError> {
-        let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c, false).await?;
+            create_client(config.clone(), false).await?;
         }
-        let device_uid: String = device_uid.into();
-        spawn_blocking(move || {
-            let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
+        let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
 
-            client
-                .set_voice_settings(
-                    VoiceSettings::new()
-                        // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
-                        .mute(true),
-                )
-                .map(|_| (input_key, true))
-                .map_err(|e| {
-                    ActionError::new(
-                        device_uid,
-                        input_key,
-                        t!(
-                            "action.discord.push_to_talk.err_release",
-                            error = format!("{:?}", e)
-                        ),
-                    )
-                })
-        })
-        .await
-        .unwrap()
+        let res = discord_toggle_mute(&mut client, true, &device_uid, input_key);
+
+        match res {
+            Ok(o) => Ok(o),
+            Err(_) => {
+                discord_reconnect(&mut client, &device_uid, input_key)?;
+                auth_client(config.clone(), &mut client, false).await?;
+                discord_toggle_mute(&mut client, true, &device_uid, input_key)
+            }
+        }
     }
 
     pub fn get_type(&self) -> String {
@@ -528,34 +557,21 @@ impl DiscordPushToMute {
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(InputKey, bool), ActionError> {
-        let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c, false).await?;
+            create_client(config.clone(), false).await?;
         }
-        let device_uid: String = device_uid.into();
-        spawn_blocking(move || {
-            let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
+        let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
 
-            client
-                .set_voice_settings(
-                    VoiceSettings::new()
-                        // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
-                        .mute(true),
-                )
-                .map(|_| (input_key, true))
-                .map_err(|e| {
-                    ActionError::new(
-                        device_uid,
-                        input_key,
-                        t!(
-                            "action.discord.push_to_mute.err_press",
-                            error = format!("{:?}", e)
-                        ),
-                    )
-                })
-        })
-        .await
-        .unwrap()
+        let res = discord_toggle_mute(&mut client, true, &device_uid, input_key);
+
+        match res {
+            Ok(o) => Ok(o),
+            Err(_) => {
+                discord_reconnect(&mut client, &device_uid, input_key)?;
+                auth_client(config.clone(), &mut client, false).await?;
+                discord_toggle_mute(&mut client, true, &device_uid, input_key)
+            }
+        }
     }
 
     pub async fn on_release(
@@ -564,34 +580,21 @@ impl DiscordPushToMute {
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(InputKey, bool), ActionError> {
-        let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c, false).await?;
+            create_client(config.clone(), false).await?;
         }
-        let device_uid: String = device_uid.into();
-        spawn_blocking(move || {
-            let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
+        let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
 
-            client
-                .set_voice_settings(
-                    VoiceSettings::new()
-                        // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
-                        .mute(false),
-                )
-                .map(|_| (input_key, true))
-                .map_err(|e| {
-                    ActionError::new(
-                        device_uid,
-                        input_key,
-                        t!(
-                            "action.discord.push_to_mute.err_release",
-                            error = format!("{:?}", e)
-                        ),
-                    )
-                })
-        })
-        .await
-        .unwrap()
+        let res = discord_toggle_mute(&mut client, false, &device_uid, input_key);
+
+        match res {
+            Ok(o) => Ok(o),
+            Err(_) => {
+                discord_reconnect(&mut client, &device_uid, input_key)?;
+                auth_client(config.clone(), &mut client, false).await?;
+                discord_toggle_mute(&mut client, false, &device_uid, input_key)
+            }
+        }
     }
 
     pub fn get_type(&self) -> String {
@@ -638,35 +641,21 @@ impl DiscordPushToDeafen {
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(InputKey, bool), ActionError> {
-        let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c, false).await?;
+            create_client(config.clone(), false).await?;
         }
-        let device_uid: String = device_uid.into();
-        spawn_blocking(move || {
-            let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
+        let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
 
-            client
-                .set_voice_settings(
-                    VoiceSettings::new()
-                        // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
-                        .mute(true)
-                        .deaf(true),
-                )
-                .map(|_| (input_key, true))
-                .map_err(|e| {
-                    ActionError::new(
-                        device_uid,
-                        input_key,
-                        t!(
-                            "action.discord.push_to_deafen.err_press",
-                            error = format!("{:?}", e)
-                        ),
-                    )
-                })
-        })
-        .await
-        .unwrap()
+        let res = discord_toggle_deafen(&mut client, true, &device_uid, input_key);
+
+        match res {
+            Ok(o) => Ok(o),
+            Err(_) => {
+                discord_reconnect(&mut client, &device_uid, input_key)?;
+                auth_client(config.clone(), &mut client, false).await?;
+                discord_toggle_deafen(&mut client, true, &device_uid, input_key)
+            }
+        }
     }
 
     pub async fn on_release(
@@ -675,35 +664,21 @@ impl DiscordPushToDeafen {
         input_key: InputKey,
         config: Arc<Mutex<JukeBoxConfig>>,
     ) -> Result<(InputKey, bool), ActionError> {
-        let c = config.clone();
         if DISCORD_CLIENT.get().is_none() {
-            create_client(c, false).await?;
+            create_client(config.clone(), false).await?;
         }
-        let device_uid: String = device_uid.into();
-        spawn_blocking(move || {
-            let mut client = DISCORD_CLIENT.get().unwrap().blocking_lock();
+        let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
 
-            client
-                .set_voice_settings(
-                    VoiceSettings::new()
-                        // .mode(VoiceModeSettings::new().voice_mode(VoiceMode::PushToTalk))
-                        .mute(false)
-                        .deaf(false),
-                )
-                .map(|_| (input_key, true))
-                .map_err(|e| {
-                    ActionError::new(
-                        device_uid,
-                        input_key,
-                        t!(
-                            "action.discord.push_to_deafen.err_release",
-                            error = format!("{:?}", e)
-                        ),
-                    )
-                })
-        })
-        .await
-        .unwrap()
+        let res = discord_toggle_deafen(&mut client, false, &device_uid, input_key);
+
+        match res {
+            Ok(o) => Ok(o),
+            Err(_) => {
+                discord_reconnect(&mut client, &device_uid, input_key)?;
+                auth_client(config.clone(), &mut client, false).await?;
+                discord_toggle_deafen(&mut client, false, &device_uid, input_key)
+            }
+        }
     }
 
     pub fn get_type(&self) -> String {
