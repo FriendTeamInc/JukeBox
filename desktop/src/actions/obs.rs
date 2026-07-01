@@ -89,8 +89,8 @@ pub fn init_actions_obs(config: Arc<Mutex<JukeBoxConfig>>) -> (String, Vec<(Stri
     OBS_SCENE_COLLECTIONS.get_or_init(|| Mutex::new(None));
 
     // init obs websocket (if we have a saved config for it)
-    let _ = tokio::runtime::Handle::current()
-        .block_on(async move { create_client(config).await });
+    tokio::runtime::Handle::current()
+        .spawn(async move { create_client(config).await });
 
     (
         t!("action.obs.title", icon = phos::VINYL_RECORD).into(),

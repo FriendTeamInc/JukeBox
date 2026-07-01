@@ -34,7 +34,7 @@ impl ActionError {
             input_key: Some(input_key),
             msg: msg.into(),
         };
-        s.log();
+        log::debug!("{}", s);
         s
     }
     pub fn msg(msg: impl Into<String>) -> Self {
@@ -43,21 +43,17 @@ impl ActionError {
             input_key: None,
             msg: msg.into(),
         };
-        s.log();
+        log::debug!("{}", s);
         s
-    }
-    pub fn log(&self) {
-        log::error!(
-            "ActionError: ({:?}, {:?}) - `{}`",
-            self.device_uid,
-            self.input_key,
-            self.msg
-        )
     }
 }
 impl fmt::Display for ActionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.msg)
+        write!(
+            f,
+            "ActionError: ({:?}, {:?}) - `{}`",
+            self.device_uid, self.input_key, self.msg
+        )
     }
 }
 
@@ -191,6 +187,7 @@ create_actions! {
 
     DiscordToggleMute,
     DiscordToggleDeafen,
+    // DiscordToggleNoiseSuppression,
     DiscordPushToTalk,
     DiscordPushToMute,
     DiscordPushToDeafen

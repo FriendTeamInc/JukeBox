@@ -22,6 +22,7 @@ use super::types::{Action, ActionError};
 
 pub const AID_DISCORD_TOGGLE_MUTE: &str = "DiscordToggleMute";
 pub const AID_DISCORD_TOGGLE_DEAFEN: &str = "DiscordToggleDeafen";
+// pub const AID_DISCORD_TOGGLE_NOISE_SUPPRESSION: &str = "DiscordToggleNoiseSuppression";
 pub const AID_DISCORD_PUSH_TO_TALK: &str = "DiscordPushToTalk";
 pub const AID_DISCORD_PUSH_TO_MUTE: &str = "DiscordPushToMute";
 pub const AID_DISCORD_PUSH_TO_DEAFEN: &str = "DiscordPushToDeafen";
@@ -34,6 +35,10 @@ const ICON_DEAFEN: ImageSource =
     include_image!("../../../assets/action-icons/discord-headphones-1.bmp");
 const ICON_DEAFENED: ImageSource =
     include_image!("../../../assets/action-icons/discord-headphones-2.bmp");
+// const ICON_NOISE_SUPPRESSION_ON: ImageSource =
+//     include_image!("../../../assets/action-icons/discord-noise-suppression-1.bmp");
+// const ICON_NOISE_SUPPRESSION_OFF: ImageSource =
+//     include_image!("../../../assets/action-icons/discord-noise-suppression-2.bmp");
 
 // TODO: make new icons for push actions
 const ICON_PUSH_TO_TALK: ImageSource =
@@ -48,6 +53,7 @@ const DISCORD_CLIENT_SECRET: Option<&str> = option_env!("DISCORD_CLIENT_SECRET")
 static DISCORD_CLIENT: OnceLock<Mutex<DiscordIpcClient>> = OnceLock::new();
 static DISCORD_MUTED: AtomicBool = AtomicBool::new(false);
 static DISCORD_DEAFENED: AtomicBool = AtomicBool::new(false);
+static DISCORD_NOISE_SUPPRESSION: AtomicBool = AtomicBool::new(false);
 
 #[rustfmt::skip]
 #[allow(dead_code)]
@@ -64,6 +70,7 @@ pub fn init_actions_discord(config: Arc<Mutex<JukeBoxConfig>>) -> (String, Vec<(
             (AID_DISCORD_PUSH_TO_TALK.into(),   Action::DiscordPushToTalk(DiscordPushToTalk::default()),     t!("action.discord.push_to_talk.title").into()),
             (AID_DISCORD_PUSH_TO_MUTE.into(),   Action::DiscordPushToMute(DiscordPushToMute::default()),     t!("action.discord.push_to_mute.title").into()),
             (AID_DISCORD_PUSH_TO_DEAFEN.into(), Action::DiscordPushToDeafen(DiscordPushToDeafen::default()), t!("action.discord.push_to_deafen.title").into()),
+            // (AID_DISCORD_TOGGLE_NOISE_SUPPRESSION.into(), Action::DiscordToggleNoiseSuppression(DiscordToggleNoiseSuppression::default()), t!("action.discord.toggle_noise_suppression.title").into()),
         ],
     )
 }
@@ -196,6 +203,9 @@ async fn create_client(
         if let Some(mute) = v.mute {
             DISCORD_MUTED.store(mute || deaf, Ordering::Relaxed);
         }
+        if let Some(noise_suppression) = v.noise_suppression {
+            DISCORD_NOISE_SUPPRESSION.store(noise_suppression, Ordering::Relaxed);
+        }
     }
 
     DISCORD_CLIENT
@@ -210,8 +220,8 @@ fn account_warning(ui: &mut Ui, config: Arc<Mutex<JukeBoxConfig>>) {
         let has_oauth = config.blocking_lock().discord_oauth_access.is_some();
         if has_oauth {
             // TODO: send any error to gui
-            tokio::runtime::Handle::current()
-                .spawn(async move { create_client(config, false).await });
+            let _ = tokio::runtime::Handle::current()
+                .block_on(async move { create_client(config, false).await });
         } else {
             ui.vertical_centered(|ui| ui.label(t!("action.discord.warning.help")));
             ui.label("");
@@ -292,6 +302,28 @@ fn discord_toggle_deafen(
             )
         })
 }
+
+// fn discord_toggle_noise_suppression(
+//     client: &mut DiscordIpcClient,
+//     noise_suppression: bool,
+//     device_uid: &String,
+//     input_key: InputKey,
+// ) -> Result<(InputKey, bool), ActionError> {
+//     client
+//         .set_voice_settings(VoiceSettings::new().noise_suppression(noise_suppression))
+//         .map(|_| (input_key, true))
+//         .map_err(|e| {
+//             ActionError::new(
+//                 device_uid,
+//                 input_key,
+//                 t!(
+//                     "action.discord.err.set_noise_suppression_state",
+//                     state = noise_suppression,
+//                     error = format!("{:?}", e)
+//                 ),
+//             )
+//         })
+// }
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct DiscordToggleMute {}
@@ -439,6 +471,77 @@ impl DiscordToggleDeafen {
         ]
     }
 }
+
+// #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
+// pub struct DiscordToggleNoiseSuppression {}
+// impl DiscordToggleNoiseSuppression {
+//     pub async fn on_press(
+//         &self,
+//         device_uid: &String,
+//         input_key: InputKey,
+//         config: Arc<Mutex<JukeBoxConfig>>,
+//     ) -> Result<(InputKey, bool), ActionError> {
+//         if DISCORD_CLIENT.get().is_none() {
+//             create_client(config.clone(), false).await?;
+//         }
+//         let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
+
+//         let noise_suppression = !DISCORD_NOISE_SUPPRESSION.load(Ordering::Relaxed);
+//         DISCORD_NOISE_SUPPRESSION.store(noise_suppression, Ordering::Relaxed);
+
+//         discord_toggle_noise_suppression(&mut client, noise_suppression, &device_uid, input_key)
+//     }
+
+//     pub async fn on_release(
+//         &self,
+//         _device_uid: &String,
+//         input_key: InputKey,
+//         _config: Arc<Mutex<JukeBoxConfig>>,
+//     ) -> Result<(InputKey, bool), ActionError> {
+//         Ok((input_key, false))
+//     }
+
+//     pub fn get_type(&self) -> String {
+//         AID_DISCORD_TOGGLE_NOISE_SUPPRESSION.into()
+//     }
+
+//     pub fn edit_ui(
+//         &mut self,
+//         ui: &mut Ui,
+//         _device_uid: &String,
+//         _input_key: InputKey,
+//         config: Arc<Mutex<JukeBoxConfig>>,
+//     ) {
+//         account_warning(ui, config)
+//     }
+
+//     pub fn help(&self) -> &str {
+//         "action.discord.toggle_noise_suppression.help"
+//     }
+
+//     pub fn icon_state(&self) -> u8 {
+//         if DISCORD_NOISE_SUPPRESSION.load(Ordering::Relaxed) {
+//             1
+//         } else {
+//             0
+//         }
+//     }
+
+//     pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+//         &[ICON_NOISE_SUPPRESSION_OFF, ICON_NOISE_SUPPRESSION_ON]
+//     }
+
+//     pub fn icon_state_count(&self) -> u8 {
+//         2
+//     }
+
+//     pub fn icon_state_descriptions(&self) -> &[&str] {
+//         &[
+//             "action.discord.toggle_noise_suppression.icon_state_0",
+//             "action.discord.toggle_noise_suppression.icon_state_1",
+//         ]
+//     }
+// }
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct DiscordPushToTalk {}

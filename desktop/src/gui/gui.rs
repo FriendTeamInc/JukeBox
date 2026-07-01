@@ -503,6 +503,7 @@ impl JukeBoxGui {
 
         // recieve action error events
         while let Ok(error) = self.ae_rx.try_recv() {
+            log::error!("{}", error);
             self.action_errors.push_back(error);
             bring_back_up = true;
         }

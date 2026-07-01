@@ -258,6 +258,7 @@ impl JukeBoxGui {
                             .on_press(&self.current_device, self.editing_key, self.config.clone())
                             .await
                     }) {
+                        log::error!("{}", press_err);
                         self.action_errors.push_back(press_err);
                     }
                     if let Err(release_err) = h.block_on(async {
@@ -265,6 +266,7 @@ impl JukeBoxGui {
                             .on_release(&self.current_device, self.editing_key, self.config.clone())
                             .await
                     }) {
+                        log::error!("{}", release_err);
                         self.action_errors.push_back(release_err);
                     }
                 }
@@ -393,7 +395,10 @@ impl JukeBoxGui {
                     self.editing_action_icons[slot] =
                         ActionIcon::ImageIcon(i.to_string_lossy().to_string())
                 }
-                Err(e) => self.action_errors.push_back(e),
+                Err(e) => {
+                    log::error!("{}", e);
+                    self.action_errors.push_back(e)
+                }
             }
         }
     }

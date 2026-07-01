@@ -286,6 +286,7 @@ action:
       authenticate: "Failed to authenticate with Discord! Error: %{error}"
       set_mute_state: "Failed to set Discord mute state as \"%{state}\". Error: %{error}"
       set_deafen_state: "Failed to set Discord deafen state as \"%{state}\". Error: %{error}"
+      set_noise_suppression_state: "Failed to set Discord noise suppression state as \"%{state}\". Error: %{error}"
 
     toggle_mute:
       title: "Toggle Mute"
@@ -297,6 +298,11 @@ action:
       help: "Toggle deafens your audio on Discord when pressed."
       icon_state_0: "Undeafened Icon"
       icon_state_1: "Deafened Icon"
+    toggle_noise_suppression:
+      title: "Toggle Noise Suppression"
+      help: "Toggles noise suppression your audio on Discord when pressed."
+      icon_state_0: "Noise Suppression Off Icon"
+      icon_state_1: "Noise Suppression On Icon"
     push_to_talk:
       title: "Push to Talk"
       help: "Unmutes your microphone on Discord while held."
