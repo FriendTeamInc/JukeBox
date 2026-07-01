@@ -273,8 +273,9 @@ action:
     title: "%{icon} Discord"
     warning:
       help: "You need to connect your Discord Account before using this action!"
-      button: "Connect to Discord Account"
+      connect_button: "Connect to Discord Account"
       success: "Discord account connected!"
+      reconnect_button: "Reconnect to Discord"
     err:
       compile: "This application was not compiled with credentials to access Discord API!"
       connect: "Cannot connect to Discord client! Error: %{error}"

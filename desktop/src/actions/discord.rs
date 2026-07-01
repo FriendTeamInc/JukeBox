@@ -54,7 +54,7 @@ static DISCORD_DEAFENED: AtomicBool = AtomicBool::new(false);
 pub fn init_actions_discord(config: Arc<Mutex<JukeBoxConfig>>) -> (String, Vec<(String, Action, String)>) {
     // init discord connection (if we have a config saved for it)
     let _ = tokio::runtime::Handle::current()
-        .block_on(async move { create_client(config, true).await });
+        .spawn(async move { create_client(config, true).await });
 
     (
         t!("action.discord.title", icon = phos::DISCORD_LOGO).into(),
@@ -210,40 +210,43 @@ fn account_warning(ui: &mut Ui, config: Arc<Mutex<JukeBoxConfig>>) {
         let has_oauth = config.blocking_lock().discord_oauth_access.is_some();
         if has_oauth {
             // TODO: send any error to gui
-            let _ = tokio::runtime::Handle::current()
-                .block_on(async move { create_client(config, false).await });
+            tokio::runtime::Handle::current()
+                .spawn(async move { create_client(config, false).await });
         } else {
             ui.vertical_centered(|ui| ui.label(t!("action.discord.warning.help")));
             ui.label("");
             if ui
                 .add_sized(
-                    vec2(228.0, 110.0),
-                    Button::new(t!("action.discord.warning.button")),
+                    vec2(228.0, 100.0),
+                    Button::new(t!("action.discord.warning.connect_button")),
                 )
                 .clicked()
             {
                 // TODO: send any error to gui
-                let _ = tokio::runtime::Handle::current()
-                    .block_on(async move { create_client(config, false).await });
+                tokio::runtime::Handle::current()
+                    .spawn(async move { create_client(config, false).await });
             }
         }
     } else {
         ui.vertical_centered(|ui| ui.label(t!("action.discord.warning.success")));
+        ui.label("");
+        if ui
+            .add_sized(
+                vec2(228.0, 100.0),
+                Button::new(t!("action.discord.warning.reconnect_button")),
+            )
+            .clicked()
+        {
+            // TODO: send any error to gui
+            tokio::runtime::Handle::current().spawn(async move {
+                let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
+                match client.reconnect() {
+                    Ok(_) => auth_client(config, &mut client, false).await,
+                    Err(_) => Ok(()),
+                }
+            });
+        }
     }
-}
-
-fn discord_reconnect(
-    client: &mut DiscordIpcClient,
-    device_uid: &String,
-    input_key: InputKey,
-) -> Result<(), ActionError> {
-    client.reconnect().map_err(|e| {
-        ActionError::new(
-            device_uid.clone(),
-            input_key,
-            t!("action.discord.err.reconnect", error = format!("{:?}", e)),
-        )
-    })
 }
 
 fn discord_toggle_mute(
@@ -311,16 +314,7 @@ impl DiscordToggleMute {
             DISCORD_DEAFENED.store(false, Ordering::Relaxed);
         }
 
-        let res = discord_toggle_mute(&mut client, muted, &device_uid, input_key);
-
-        match res {
-            Ok(o) => Ok(o),
-            Err(_) => {
-                discord_reconnect(&mut client, &device_uid, input_key)?;
-                auth_client(config.clone(), &mut client, false).await?;
-                discord_toggle_mute(&mut client, muted, &device_uid, input_key)
-            }
-        }
+        discord_toggle_mute(&mut client, muted, &device_uid, input_key)
     }
 
     pub async fn on_release(
@@ -392,16 +386,7 @@ impl DiscordToggleDeafen {
         DISCORD_DEAFENED.store(deafened, Ordering::Relaxed);
         DISCORD_MUTED.store(deafened, Ordering::Relaxed);
 
-        let res = discord_toggle_deafen(&mut client, deafened, &device_uid, input_key);
-
-        match res {
-            Ok(o) => Ok(o),
-            Err(_) => {
-                discord_reconnect(&mut client, &device_uid, input_key)?;
-                auth_client(config.clone(), &mut client, false).await?;
-                discord_toggle_deafen(&mut client, deafened, &device_uid, input_key)
-            }
-        }
+        discord_toggle_deafen(&mut client, deafened, &device_uid, input_key)
     }
 
     pub async fn on_release(
@@ -469,16 +454,7 @@ impl DiscordPushToTalk {
         }
         let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
 
-        let res = discord_toggle_mute(&mut client, false, &device_uid, input_key);
-
-        match res {
-            Ok(o) => Ok(o),
-            Err(_) => {
-                discord_reconnect(&mut client, &device_uid, input_key)?;
-                auth_client(config.clone(), &mut client, false).await?;
-                discord_toggle_mute(&mut client, false, &device_uid, input_key)
-            }
-        }
+        discord_toggle_mute(&mut client, false, &device_uid, input_key)
     }
 
     pub async fn on_release(
@@ -492,16 +468,7 @@ impl DiscordPushToTalk {
         }
         let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
 
-        let res = discord_toggle_mute(&mut client, true, &device_uid, input_key);
-
-        match res {
-            Ok(o) => Ok(o),
-            Err(_) => {
-                discord_reconnect(&mut client, &device_uid, input_key)?;
-                auth_client(config.clone(), &mut client, false).await?;
-                discord_toggle_mute(&mut client, true, &device_uid, input_key)
-            }
-        }
+        discord_toggle_mute(&mut client, true, &device_uid, input_key)
     }
 
     pub fn get_type(&self) -> String {
@@ -553,16 +520,7 @@ impl DiscordPushToMute {
         }
         let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
 
-        let res = discord_toggle_mute(&mut client, true, &device_uid, input_key);
-
-        match res {
-            Ok(o) => Ok(o),
-            Err(_) => {
-                discord_reconnect(&mut client, &device_uid, input_key)?;
-                auth_client(config.clone(), &mut client, false).await?;
-                discord_toggle_mute(&mut client, true, &device_uid, input_key)
-            }
-        }
+        discord_toggle_mute(&mut client, true, &device_uid, input_key)
     }
 
     pub async fn on_release(
@@ -576,16 +534,7 @@ impl DiscordPushToMute {
         }
         let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
 
-        let res = discord_toggle_mute(&mut client, false, &device_uid, input_key);
-
-        match res {
-            Ok(o) => Ok(o),
-            Err(_) => {
-                discord_reconnect(&mut client, &device_uid, input_key)?;
-                auth_client(config.clone(), &mut client, false).await?;
-                discord_toggle_mute(&mut client, false, &device_uid, input_key)
-            }
-        }
+        discord_toggle_mute(&mut client, false, &device_uid, input_key)
     }
 
     pub fn get_type(&self) -> String {
@@ -637,16 +586,7 @@ impl DiscordPushToDeafen {
         }
         let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
 
-        let res = discord_toggle_deafen(&mut client, true, &device_uid, input_key);
-
-        match res {
-            Ok(o) => Ok(o),
-            Err(_) => {
-                discord_reconnect(&mut client, &device_uid, input_key)?;
-                auth_client(config.clone(), &mut client, false).await?;
-                discord_toggle_deafen(&mut client, true, &device_uid, input_key)
-            }
-        }
+        discord_toggle_deafen(&mut client, true, &device_uid, input_key)
     }
 
     pub async fn on_release(
@@ -660,16 +600,7 @@ impl DiscordPushToDeafen {
         }
         let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
 
-        let res = discord_toggle_deafen(&mut client, false, &device_uid, input_key);
-
-        match res {
-            Ok(o) => Ok(o),
-            Err(_) => {
-                discord_reconnect(&mut client, &device_uid, input_key)?;
-                auth_client(config.clone(), &mut client, false).await?;
-                discord_toggle_deafen(&mut client, false, &device_uid, input_key)
-            }
-        }
+        discord_toggle_deafen(&mut client, false, &device_uid, input_key)
     }
 
     pub fn get_type(&self) -> String {
