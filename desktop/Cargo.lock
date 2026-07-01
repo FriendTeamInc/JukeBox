@@ -1341,7 +1341,7 @@ dependencies = [
 [[package]]
 name = "discord-rich-presence"
 version = "1.1.0"
-source = "git+https://github.com/NotQuiteApex/discord-rich-presence?branch=voice-settings-test#ed2d370ff83454407b22cffe8de34d05c51b2242"
+source = "git+https://github.com/NotQuiteApex/discord-rich-presence?branch=voice-settings#42d71f98b4c2b88346c1dbb4c5bd88cb31ccc040"
 dependencies = [
  "log",
  "serde",
