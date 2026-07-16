@@ -1,4 +1,4 @@
-# v0.7.0 - Asynchronous (TBD)
+# v0.7.0 - Asynchronous (July 15, 2026)
 Note: This update is for a new hardware revision of JukeBox and will not work with older beta units. Do not use this or newer versions with older hardware.
 - Upgrade microcontroller to RP2350 (from RP2040).
 - Switch firmware to use Embassy for better task management on device.
