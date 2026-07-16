@@ -1,4 +1,5 @@
 # v0.7.0 - Asynchronous (TBD)
+Note: This update is for a new hardware revision of JukeBox and will not work with older beta units. Do not use this or newer versions with older hardware.
 - Upgrade microcontroller to RP2350 (from RP2040).
 - Switch firmware to use Embassy for better task management on device.
 - Upgrade screen (same ST7789 interface, larger bus size from 1 bit to 8 bits).

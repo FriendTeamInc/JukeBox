@@ -14,7 +14,7 @@ anyhow = "1.0"
 dirs = "6"
 
 eframe = "0.34"
-egui_extras = { version = "*", features = ["all_loaders"] }
+egui_extras = { version = "0.34", features = ["all_loaders"] }
 image = { version = "0.25", features = ["bmp", "png"] }
 egui-phosphor = "0.12"
 egui-theme-switch = "0.7"

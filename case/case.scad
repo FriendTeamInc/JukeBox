@@ -145,7 +145,7 @@ SOY = cS - 18 - ctW - csScrCH / 2-2.75; // screen origin y
 
 module case_reset_button() {
     b = 3;
-    c = 0.125/2;
+    c = 0.25;
     cube([rbW+b, rbH+b, 0.4]);
     translate([b/2+c/2, b/2+c/2, 0.4]) cube([rbW-c, rbH-c, 2.4]);
 }
