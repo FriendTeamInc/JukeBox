@@ -1,8 +1,10 @@
-# <img src="assets/textlogo.svg" alt="JukeBox!" width="400"/>
+<p align="center">
+    <img src="assets/textlogo.svg" alt="JukeBox!" width="400"/>
 
-An affordable, adorable, powerful hotkey device to run macros, play funny sounds, managing your audio settings, change paint brush settings, configuring items in OBS, and so much more!
+    <img src="assets/textlogo.svg" alt="A JukeBox unit sitting idle on a desk."/>
 
-(TODO: physical image here)
+    An affordable, adorable, powerful hotkey device to run macros, play funny sounds, managing your audio settings, change paint brush settings, configure items in OBS, and so much more!
+</p>
 
 # Disclaimer
 While this project is public, it is not ready for any sort of prime time. Any releases prior to 1.0 are considered beta.
