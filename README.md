@@ -1,5 +1,5 @@
-<p align="center"><img src="assets/textlogo.svg" alt="JukeBox!" width="400"/></p>
-<p align="center"><img src="assets/textlogo.svg" alt="A JukeBox unit sitting idle on a desk."/></p>
+<p align="center"><img src="assets/textlogo.svg" alt="JukeBox!"/></p>
+<p align="center"><img src="assets/product-solo.jpg" alt="A JukeBox unit sitting idle on a desk."/></p>
 <p align="center">An affordable, adorable, powerful hotkey device to run macros, play funny sounds, managing your audio settings, change paint brush settings, configure items in OBS, and so much more!</p>
 
 # Disclaimer
