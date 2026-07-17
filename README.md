@@ -1,10 +1,6 @@
-<p align="center">
-    <img src="assets/textlogo.svg" alt="JukeBox!" width="400"/>
-
-    <img src="assets/textlogo.svg" alt="A JukeBox unit sitting idle on a desk."/>
-
-    An affordable, adorable, powerful hotkey device to run macros, play funny sounds, managing your audio settings, change paint brush settings, configure items in OBS, and so much more!
-</p>
+<p align="center"><img src="assets/textlogo.svg" alt="JukeBox!" width="400"/></p>
+<p align="center"><img src="assets/textlogo.svg" alt="A JukeBox unit sitting idle on a desk."/></p>
+<p align="center">An affordable, adorable, powerful hotkey device to run macros, play funny sounds, managing your audio settings, change paint brush settings, configure items in OBS, and so much more!</p>
 
 # Disclaimer
 While this project is public, it is not ready for any sort of prime time. Any releases prior to 1.0 are considered beta.
@@ -92,7 +88,7 @@ Estimated power usage is 5 volts at 0.1 amps, or 0.5 watts.
 | Y1             | ABM8-272-T3            | 1   |       |     |
 
 # License
-Copyright (c) 2020-2025 Logan "NotQuiteApex" Hickok-Dickson
+Copyright (c) 2020-2026 Logan "NotQuiteApex" Hickok-Dickson
 
 All programming files, found in [`firmware/`](firmware/), [`software/`](software/), and [`case/`](case/), are licensed under the [MIT license](https://mit-license.org/).
 
