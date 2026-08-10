@@ -127,10 +127,10 @@ pub struct JukeBoxGui {
 }
 impl eframe::App for JukeBoxGui {
     fn ui(&mut self, ui: &mut Ui, _frame: &mut Frame) {
-        CentralPanel::default().show_inside(ui, |ui| self.ui(ui));
+        CentralPanel::default().show(ui, |ui| self.ui(ui));
     }
 
-    fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+    fn logic(&mut self, ctx: &Context, _frame: &mut Frame) {
         // Call a new frame every frame, bypassing the limited updates.
         // NOTE: This is a bad idea, we should probably change this later
         // and only update the window as necessary.
@@ -680,7 +680,8 @@ pub fn basic_gui() {
             .with_inner_size([960.0, 680.0])
             .with_maximize_button(false)
             .with_resizable(false)
-            .with_icon(eframe::icon_data::from_png_bytes(&APP_ICON[..]).unwrap()),
+            .with_icon(eframe::icon_data::from_png_bytes(&APP_ICON[..]).unwrap())
+            .with_app_id("jukebox_desktop"),
         centered: true,
         ..Default::default()
     };

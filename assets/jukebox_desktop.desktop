@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=JukeBox Desktop
+Exec=jukebox_desktop
+Icon=jukebox_desktop
+Type=Application
+Categories=Utility;Accessibility;

@@ -13,12 +13,12 @@ env_logger = "0.11"
 anyhow = "1.0"
 dirs = "6"
 
-eframe = "0.34"
-egui_extras = { version = "0.34", features = ["all_loaders"] }
+eframe = "0.35"
+egui_extras = { version = "0.35", features = ["all_loaders"] }
 image = { version = "0.25", features = ["bmp", "png"] }
-egui-phosphor = "0.12"
-egui-theme-switch = "0.7"
-egui_commonmark = "0.23"
+egui-phosphor = "0.13"
+egui-theme-switch = "0.8"
+egui_commonmark = "0.24"
 rfd = "0.17"
 open = "5.3"
 rust-i18n = "4"
