@@ -38,7 +38,7 @@ use tokio::{
 };
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct SerialConnectionDetails {
+struct SerialConnectionDetails {
     pub device_type: DeviceType,
     pub firmware_version: String,
     pub device_uid: String,
@@ -48,9 +48,6 @@ pub struct SerialConnectionDetails {
 pub enum SerialCommand {
     Identify,
     SetInputEvent(u8, InputEvent),
-    // SetKeyboardInput(u8, KeyboardEvent),
-    // SetMouseInput(u8, MouseEvent),
-    // SetGamepadInput(u8, [u8; 6]),
     SetRgbMode(RgbProfile),
     SetScrIcon(u8, [u8; 32 * 32 * 2]),
     SetScrMode(ScreenProfile),
@@ -62,7 +59,9 @@ pub enum SerialCommand {
 #[derive(PartialEq, Clone)]
 pub enum SerialEvent {
     Connected {
-        device_info: SerialConnectionDetails,
+        device_uid: String,
+        firmware_version: String,
+        device_type: DeviceType,
     },
     GetInputKeys {
         device_uid: String,
@@ -395,7 +394,7 @@ pub fn serial_get_device(connected_uids: &HashSet<String>) -> Result<Serial> {
         .context("failed to open serial port")?)
 }
 
-pub async fn serial_loop(
+async fn serial_loop(
     f: &mut Serial,
     sg_tx: UnboundedSender<SerialEvent>,
     sr_tx: UnboundedSender<SerialEvent>,
@@ -509,7 +508,7 @@ pub async fn serial_loop(
     Ok(())
 }
 
-pub async fn build_config(config: Arc<Mutex<JukeBoxConfig>>, device_info: SerialConnectionDetails) {
+async fn build_config(config: Arc<Mutex<JukeBoxConfig>>, device_info: SerialConnectionDetails) {
     let device_uid = device_info.device_uid;
     let device_type = device_info.device_type;
 
@@ -635,12 +634,16 @@ pub async fn serial_task(
         tokio::spawn(async move {
             let _ = sg_tx
                 .send(SerialEvent::Connected {
-                    device_info: device_info.clone(),
+                    device_uid: device_info.device_uid.clone(),
+                    firmware_version: device_info.firmware_version.clone(),
+                    device_type: device_info.device_type.clone(),
                 })
                 .context("failed to send device info to gui");
             let _ = sr_tx
                 .send(SerialEvent::Connected {
-                    device_info: device_info.clone(),
+                    device_uid: device_info.device_uid.clone(),
+                    firmware_version: device_info.firmware_version.clone(),
+                    device_type: device_info.device_type.clone(),
                 })
                 .context("failed to send device info to react");
 

@@ -115,13 +115,15 @@ pub async fn action_task(
 
     while let Some(evnt) = s_evnt_rx.recv().await {
         match evnt {
-            SerialEvent::Connected { device_info } => {
-                let device_uid = &device_info.device_uid;
-
-                clear_set(&mut prevkeys, device_uid).await;
+            SerialEvent::Connected {
+                device_uid,
+                firmware_version: _,
+                device_type: _,
+            } => {
+                clear_set(&mut prevkeys, &device_uid).await;
 
                 let scmd_tx = {
-                    if let Some(tx) = scmd_txs.lock().await.get(device_uid) {
+                    if let Some(tx) = scmd_txs.lock().await.get(&device_uid) {
                         tx.clone()
                     } else {
                         log::warn!("failed to find serial command sender for {}", device_uid);
@@ -130,7 +132,7 @@ pub async fn action_task(
                 };
 
                 let (device_type, keys, profile_name, rgb_profile, screen_profile) =
-                    get_profile_info(&config, device_uid).await;
+                    get_profile_info(&config, &device_uid).await;
                 update_device_configs(
                     scmd_tx,
                     device_type,

@@ -516,11 +516,11 @@ impl JukeBoxGui {
         // recieve serial events
         while let Ok(event) = self.sg_rx.try_recv() {
             match event {
-                SerialEvent::Connected { device_info } => {
-                    let device_uid = device_info.device_uid;
-                    let firmware_version = device_info.firmware_version;
-                    let device_type = device_info.device_type;
-
+                SerialEvent::Connected {
+                    device_uid,
+                    firmware_version,
+                    device_type,
+                } => {
                     self.current_device = device_uid.clone();
 
                     let device_name = {

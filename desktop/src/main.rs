@@ -58,15 +58,18 @@ fn main() -> anyhow::Result<()> {
         bail!("failed to acquire exclusive lock for application. aborting.");
     }
 
-    #[cfg(feature = "env_log")]
-    env_logger::init();
-
-    #[cfg(not(feature = "env_log"))]
     {
+        use flexi_logger::{Duplicate, FileSpec, LogSpecification, Logger};
+
         let mut p = dirs::config_dir().expect("failed to find config directory");
         p.push("JukeBoxDesktop");
-        p.push("jukebox_desktop_debug.log");
-        simple_logging::log_to_file(p, log::LevelFilter::Info).unwrap();
+
+        Logger::try_with_env_or_str("info")
+            .unwrap_or_else(|_| Logger::with(LogSpecification::info()))
+            .log_to_file(FileSpec::default().directory(p).basename("jukebox_desktop"))
+            .duplicate_to_stderr(Duplicate::All)
+            .start()
+            .ok();
     }
 
     // For OBS websocket TLS support, currently unused.

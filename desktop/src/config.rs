@@ -161,6 +161,6 @@ impl JukeBoxConfig {
     pub fn save(&self) {
         let path = Self::get_path();
         let file = File::create(path).expect("failed to create config file");
-        serde_json::to_writer(file, &self).expect("failed to write config file");
+        serde_json::to_writer_pretty(file, &self).expect("failed to write config file");
     }
 }
