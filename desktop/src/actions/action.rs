@@ -16,7 +16,10 @@ use tokio::sync::{
 };
 
 use crate::{
-    actions::types::{get_icon_bytes, get_icon_cache_async, ActionError},
+    actions::{
+        input::{InputKeyboard, InputMouse},
+        types::{get_icon_bytes, get_icon_cache_async, Action, ActionError},
+    },
     config::{ActionConfig, JukeBoxConfig},
     input::InputKey,
     serial::{SerialCommand, SerialEvent},
@@ -62,12 +65,14 @@ async fn send_scr_icon(
 }
 
 pub fn send_input_event(tx: &UnboundedSender<SerialCommand>, slot: u8, action: &Action) {
-    let _ = match action {
-        Action::InputKeyboard(kb) => {
-            tx.send(SerialCommand::SetInputEvent(slot, kb.get_input_event()))
-        }
-        Action::InputMouse(ms) => tx.send(SerialCommand::SetInputEvent(slot, ms.get_input_event())),
-        _ => tx.send(SerialCommand::SetInputEvent(slot, InputEvent::default())),
+    let _ = if action.is::<InputKeyboard>() {
+        let a = action.downcast_ref::<InputKeyboard>().unwrap();
+        tx.send(SerialCommand::SetInputEvent(slot, a.get_input_event()))
+    } else if action.is::<InputMouse>() {
+        let a = action.downcast_ref::<InputMouse>().unwrap();
+        tx.send(SerialCommand::SetInputEvent(slot, a.get_input_event()))
+    } else {
+        tx.send(SerialCommand::SetInputEvent(slot, InputEvent::default()))
     };
 }
 

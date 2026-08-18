@@ -1,4 +1,4 @@
-use std::{rc::Rc, sync::Arc};
+use std::sync::Arc;
 
 use eframe::egui::{include_image, ComboBox, ImageSource, Ui};
 use egui_phosphor::regular as phos;
@@ -24,12 +24,12 @@ const ICON_SWITCH_PROFILE: ImageSource =
 // const ICON_COPY_FROM_PROFILE: ImageSource =
 //     include_image!("../../../assets/action-icons/meta-copyfromprofile.bmp");
 
-pub fn init_actions_meta(_config: Arc<Mutex<JukeBoxConfig>>) -> (String, Vec<Action>) {
+pub fn init_actions_meta(_config: ActionModuleConfig) -> (String, Vec<Action>) {
     (
         t!("action.meta.title", icon = phos::GEAR).into(),
         vec![
-            Rc::new(MetaNoAction::default()),
-            Rc::new(MetaSwitchProfile::default()),
+            Arc::new(MetaNoAction::default()),
+            Arc::new(MetaSwitchProfile::default()),
         ],
     )
 }

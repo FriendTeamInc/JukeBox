@@ -1,5 +1,4 @@
 use std::{
-    rc::Rc,
     sync::{Arc, OnceLock},
     time::Duration,
 };
@@ -21,7 +20,7 @@ use uuid::Uuid;
 
 use crate::{
     actions::types::{ActionModuleConfig, ActionResult, ActionTrait},
-    config::{JukeBoxConfig, ObsAccess},
+    config::ObsAccess,
     input::InputKey,
     single_fire,
 };
@@ -95,35 +94,21 @@ pub fn init_actions_obs(config: ActionModuleConfig) -> (String, Vec<Action>) {
     (
         t!("action.obs.title", icon = phos::VINYL_RECORD).into(),
         vec![
-            Rc::new(ObsStream::default()),
-            Rc::new(ObsRecord::default()),
-            Rc::new(ObsPauseRecord::default()),
-            Rc::new(ObsReplayBuffer::default()),
-            Rc::new(ObsSaveReplay::default()),
-            Rc::new(ObsSource::default()),
-            Rc::new(ObsMute::default()),
-            Rc::new(ObsSceneSwitch::default()),
-            Rc::new(ObsPreviewSceneSwitch::default()),
-            Rc::new(ObsPreviewScenePush::default()),
-            Rc::new(ObsSceneCollectionSwitch::default()),
-            // Rc::new(ObsFilter::default()),
-            // Rc::new(ObsTransition::default()),
-            Rc::new(ObsChapterMarker::default()),
-            // (AID_OBS_STREAM.into(),             Action::ObsStream(ObsStream::default()),                               t!("action.obs.toggle_stream.title").into()),
-            // (AID_OBS_RECORD.into(),             Action::ObsRecord(ObsRecord::default()),                               t!("action.obs.toggle_record.title").into()),
-            // (AID_OBS_RECORD_PAUSE.into(),       Action::ObsPauseRecord(ObsPauseRecord::default()),                     t!("action.obs.pause_record.title").into()),
-            // (AID_OBS_REPLAY_BUFFER.into(),      Action::ObsReplayBuffer(ObsReplayBuffer::default()),                   t!("action.obs.toggle_replay_buffer.title").into()),
-            // (AID_OBS_REPLAY_BUFFER_SAVE.into(), Action::ObsSaveReplay(ObsSaveReplay::default()),                       t!("action.obs.save_replay_buffer.title").into()),
-            // (AID_OBS_TOGGLE_SOURCE.into(),      Action::ObsSource(ObsSource::default()),                               t!("action.obs.toggle_source.title").into()),
-            // (AID_OBS_TOGGLE_MUTE.into(),        Action::ObsMute(ObsMute::default()),                                   t!("action.obs.toggle_mute.title").into()),
-            // (AID_OBS_SCENE_SWITCH.into(),       Action::ObsSceneSwitch(ObsSceneSwitch::default()),                     t!("action.obs.switch_scene.title").into()),
-            // (AID_OBS_PREVIEW_SWITCH.into(),     Action::ObsPreviewSceneSwitch(ObsPreviewSceneSwitch::default()),       t!("action.obs.switch_preview_scene.title").into()),
-            // (AID_OBS_PREVIEW_PUSH.into(),       Action::ObsPreviewScenePush(ObsPreviewScenePush::default()),           t!("action.obs.push_preview_scene.title").into()),
-            // (AID_OBS_COLLECTION_SWITCH.into(),  Action::ObsSceneCollectionSwitch(ObsSceneCollectionSwitch::default()), t!("action.obs.switch_scene_collection.title").into()),
-            // // ("ObsFilter".into(),                Action::ObsFilter(ObsFilter::default()),                               t!("action.obs.toggle_filter.title").into()),
-            // // ("ObsTransition".into(),            Action::ObsTransition(ObsTransition::default()),                       t!("action.obs.switch_transition.title").into()),
+            Arc::new(ObsStream::default()),
+            Arc::new(ObsRecord::default()),
+            Arc::new(ObsPauseRecord::default()),
+            Arc::new(ObsReplayBuffer::default()),
+            Arc::new(ObsSaveReplay::default()),
+            Arc::new(ObsSource::default()),
+            Arc::new(ObsMute::default()),
+            Arc::new(ObsSceneSwitch::default()),
+            Arc::new(ObsPreviewSceneSwitch::default()),
+            Arc::new(ObsPreviewScenePush::default()),
+            Arc::new(ObsSceneCollectionSwitch::default()),
+            // Arc::new(ObsFilter::default()),
+            // Arc::new(ObsTransition::default()),
             // // TODO: Source Screenshot?
-            // (AID_OBS_CHAPTER_MARKER.into(),     Action::ObsChapterMarker(ObsChapterMarker::default()),                 t!("action.obs.add_chapter_marker.title").into()),
+            Arc::new(ObsChapterMarker::default()),
         ],
     )
 }

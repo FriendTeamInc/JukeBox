@@ -1,6 +1,5 @@
 use std::{
     collections::HashMap,
-    rc::Rc,
     sync::{Arc, OnceLock},
 };
 
@@ -27,12 +26,12 @@ const ICON_MOUSE: ImageSource = include_image!("../../../assets/action-icons/inp
 
 static KEY_MAP: OnceLock<HashMap<u8, &str>> = OnceLock::new();
 
-pub fn init_actions_input(_config: Arc<Mutex<JukeBoxConfig>>) -> (String, Vec<Action>) {
+pub fn init_actions_input(_config: ActionModuleConfig) -> (String, Vec<Action>) {
     (
         t!("action.input.title", icon = phos::CURSOR_CLICK).into(),
         vec![
-            Rc::new(InputKeyboard::default()),
-            Rc::new(InputMouse::default()),
+            Arc::new(InputKeyboard::default()),
+            Arc::new(InputMouse::default()),
             // Arc::new(InputGamepad::default()),
         ],
     )

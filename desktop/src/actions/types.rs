@@ -3,11 +3,11 @@
 use std::{
     collections::HashMap,
     fmt,
-    rc::Rc,
     sync::{Arc, OnceLock},
 };
 
 use async_trait::async_trait;
+use downcast_rs::{impl_downcast, DowncastSync};
 use eframe::egui::{
     load::Bytes, Image, ImageSource, TextureFilter, TextureOptions, TextureWrapMode, Ui,
 };
@@ -62,7 +62,7 @@ pub type ActionModuleConfig = Arc<Mutex<HashMap<String, String>>>;
 
 #[async_trait]
 #[typetag::serde(tag = "type")]
-pub trait ActionTrait: Send + Sync {
+pub trait ActionTrait: DowncastSync {
     fn get_type(&self) -> &'static str;
     fn get_title(&self) -> &'static str;
     fn get_description(&self) -> &'static str;
@@ -110,7 +110,8 @@ pub trait ActionTrait: Send + Sync {
             .corner_radius(2.0)
     }
 }
-pub type Action = Rc<dyn ActionTrait>;
+impl_downcast!(sync ActionTrait);
+pub type Action = Arc<dyn ActionTrait>;
 // TODO: differentiate between built-in and external actions
 
 pub struct ActionMap {
@@ -136,7 +137,9 @@ impl ActionMap {
             .map(|(title, l)| {
                 (
                     title.clone(),
-                    l.iter().map(|(at, _, s)| (at.clone(), s.clone())).collect(),
+                    l.iter()
+                        .map(|a| (a.get_type().into(), a.get_title().into()))
+                        .collect(),
                 )
             })
             .collect();
@@ -145,7 +148,7 @@ impl ActionMap {
             .iter()
             .map(|(_, l)| l)
             .flatten()
-            .map(|(at, a, _)| (at.clone(), a.clone()))
+            .map(|a| (a.get_type().into(), a.clone()))
             .collect();
 
         Self { ui_list, enum_map }
@@ -161,7 +164,7 @@ impl ActionMap {
 
     fn keyboard_key(key: u8) -> ActionConfig {
         ActionConfig {
-            action: Rc::new(InputKeyboard { keys: vec![key] }),
+            action: Arc::new(InputKeyboard { keys: vec![key] }),
             icons: vec![ActionIcon::DefaultActionIcon],
         }
     }

@@ -1,14 +1,11 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use eframe::egui::{Color32, ComboBox, RichText, TextBuffer, TextEdit, Ui};
 use egui_phosphor::regular as phos;
 use jukebox_util::{peripheral::DeviceType, rgb::RgbProfile, screen::ScreenProfile};
 
 use crate::{
-    actions::{
-        meta::MetaSwitchProfile,
-        types::{Action, ActionMap},
-    },
+    actions::{meta::MetaSwitchProfile, types::ActionMap},
     config::DeviceConfig,
     serial::SerialCommand,
 };
@@ -35,35 +32,27 @@ impl JukeBoxGui {
                         {
                             let mut conf = self.config.blocking_lock();
 
+                            // update profiles
                             let current_profile = conf.current_profile.clone();
                             let c = conf.profiles.remove(&current_profile).expect("");
                             conf.profiles.insert(self.profile_name_entry.clone(), c);
                             conf.current_profile.replace_with(&self.profile_name_entry);
 
+                            // update any profile switch actions to use the new name
                             for (_, p) in conf.profiles.iter_mut() {
                                 for (_, d) in p.iter_mut() {
                                     for (_, k) in d.key_map.iter_mut() {
-                                        k.action = match &k.action {
-                                            Action::MetaSwitchProfile(msp) => {
-                                                if msp.profile == current_profile {
-                                                    Action::MetaSwitchProfile(MetaSwitchProfile {
-                                                        profile: self.profile_name_entry.clone(),
-                                                    })
-                                                } else {
-                                                    k.action.clone()
-                                                }
+                                        if k.action.is::<MetaSwitchProfile>() {
+                                            let msp = k
+                                                .action
+                                                .downcast_ref::<MetaSwitchProfile>()
+                                                .unwrap();
+                                            if msp.profile == current_profile {
+                                                k.action = Arc::new(MetaSwitchProfile {
+                                                    profile: self.profile_name_entry.clone(),
+                                                });
                                             }
-                                            // Action::MetaCopyFromProfile(mcfp) => {
-                                            //     if mcfp.profile == current_profile {
-                                            //         Action::MetaCopyFromProfile(MetaCopyFromProfile {
-                                            //             profile: self.profile_name_entry.clone(),
-                                            //         })
-                                            //     } else {
-                                            //         k.action.clone()
-                                            //     }
-                                            // }
-                                            _ => k.action.clone(),
-                                        };
+                                        }
                                     }
                                 }
                             }
@@ -216,18 +205,14 @@ impl JukeBoxGui {
                             .flat_map(|p| p.values_mut())
                             .flat_map(|d| d.key_map.values_mut())
                         {
-                            k.action = match &k.action {
-                                Action::MetaSwitchProfile(msp) => {
-                                    if msp.profile == old_profile {
-                                        Action::MetaSwitchProfile(MetaSwitchProfile {
-                                            profile: String::new(),
-                                        })
-                                    } else {
-                                        k.action.clone()
-                                    }
+                            if k.action.is::<MetaSwitchProfile>() {
+                                let msp = k.action.downcast_ref::<MetaSwitchProfile>().unwrap();
+                                if msp.profile == old_profile {
+                                    k.action = Arc::new(MetaSwitchProfile {
+                                        profile: self.profile_name_entry.clone(),
+                                    });
                                 }
-                                _ => k.action.clone(),
-                            };
+                            }
                         }
 
                         conf.save();

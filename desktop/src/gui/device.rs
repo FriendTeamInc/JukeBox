@@ -133,7 +133,11 @@ impl JukeBoxGui {
                         }
                         let btn = ui
                             .add_sized([75.0, 75.0], b)
-                            .on_hover_text_at_pointer(format!("{}: {}", k, t!(a.help())));
+                            .on_hover_text_at_pointer(format!(
+                                "{}: {}",
+                                k,
+                                t!(a.get_description())
+                            ));
 
                         if btn.clicked() {
                             self.enter_action_editor(k.to_owned());
@@ -203,9 +207,13 @@ impl JukeBoxGui {
                         if inputs.contains(&b) {
                             p = p.corner_radius(20u8);
                         }
-                        let btn = ui
-                            .add_sized([100.0, 231.0], p)
-                            .on_hover_text_at_pointer(format!("{}: {}", b, t!(a.help())));
+                        let btn =
+                            ui.add_sized([100.0, 231.0], p)
+                                .on_hover_text_at_pointer(format!(
+                                    "{}: {}",
+                                    b,
+                                    t!(a.get_description())
+                                ));
 
                         if btn.clicked() {
                             self.enter_action_editor(b);

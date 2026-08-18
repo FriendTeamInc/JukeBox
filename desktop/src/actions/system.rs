@@ -361,7 +361,7 @@ fn system_audio_control_loop(mut cmd_rx: UnboundedReceiver<AudioCommand>) {
     }
 }
 
-pub fn init_actions_system(_config: Arc<Mutex<JukeBoxConfig>>) -> (String, Vec<Action>) {
+pub fn init_actions_system(_config: ActionModuleConfig) -> (String, Vec<Action>) {
     let (cmd_tx, cmd_rx) = unbounded_channel();
     SYSTEM_AUDIO_CMD_TX.get_or_init(|| cmd_tx);
     SYSTEM_SOURCES.get_or_init(|| Mutex::new(None));
@@ -376,10 +376,10 @@ pub fn init_actions_system(_config: Arc<Mutex<JukeBoxConfig>>) -> (String, Vec<A
     (
         t!("action.system.title", icon = phos::DESKTOP_TOWER).into(),
         vec![
-            Rc::new(SystemOpenApp::default()),
-            Rc::new(SystemOpenWeb::default()),
-            Rc::new(SystemSndInCtrl::default()),
-            Rc::new(SystemSndOutCtrl::default()),
+            Arc::new(SystemOpenApp::default()),
+            Arc::new(SystemOpenWeb::default()),
+            Arc::new(SystemSndInCtrl::default()),
+            Arc::new(SystemSndOutCtrl::default()),
             // (AID_SYSTEM_OPEN_APP.into(),     Action::SystemOpenApp(SystemOpenApp::default()),       t!("action.system.open_app.title").into()),
             // (AID_SYSTEM_OPEN_WEB.into(),     Action::SystemOpenWeb(SystemOpenWeb::default()),       t!("action.system.open_web.title").into()),
             // (AID_SYSTEM_SND_IN_CTRL.into(),  Action::SystemSndInCtrl(SystemSndInCtrl::default()),   t!("action.system.snd_in_ctrl.title").into()),

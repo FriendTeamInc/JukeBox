@@ -1,9 +1,8 @@
 use std::{
     collections::HashMap,
-    rc::Rc,
     sync::{
         atomic::{AtomicBool, Ordering},
-        OnceLock,
+        Arc, OnceLock,
     },
 };
 
@@ -65,11 +64,11 @@ pub fn init_actions_discord(config: ActionModuleConfig) -> (String, Vec<Action>)
     (
         t!("action.discord.title", icon = phos::DISCORD_LOGO).into(),
         vec![
-            Rc::new(DiscordToggleMute::default()),
-            Rc::new(DiscordToggleDeafen::default()),
-            Rc::new(DiscordPushToTalk::default()),
-            Rc::new(DiscordPushToMute::default()),
-            Rc::new(DiscordPushToDeafen::default()),
+            Arc::new(DiscordToggleMute::default()),
+            Arc::new(DiscordToggleDeafen::default()),
+            Arc::new(DiscordPushToTalk::default()),
+            Arc::new(DiscordPushToMute::default()),
+            Arc::new(DiscordPushToDeafen::default()),
         ],
     )
 }

@@ -4,6 +4,7 @@ use std::{
     collections::HashMap,
     fs::{create_dir_all, File},
     path::PathBuf,
+    sync::Arc,
 };
 
 use jukebox_util::{peripheral::DeviceType, rgb::RgbProfile, screen::ScreenProfile};
@@ -33,7 +34,7 @@ pub enum ActionIcon {
     DefaultActionIcon,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ActionConfig {
     pub action: Action,
     pub icons: Vec<ActionIcon>,
@@ -41,7 +42,7 @@ pub struct ActionConfig {
 impl Default for ActionConfig {
     fn default() -> Self {
         Self {
-            action: Action::MetaNoAction(MetaNoAction::default()),
+            action: Arc::new(MetaNoAction::default()),
             icons: Default::default(),
         }
     }

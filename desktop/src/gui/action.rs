@@ -47,7 +47,7 @@ impl JukeBoxGui {
                 .and_then(|d| d.key_map.get(&self.editing_key))
             {
                 self.editing_action_icons = r.icons.clone();
-                self.editing_action_type = r.action.get_type();
+                self.editing_action_type = r.action.get_type().into();
                 self.editing_action = r.action.clone();
             } else {
                 self.editing_action_type = AID_META_NO_ACTION.into();
@@ -190,20 +190,21 @@ impl JukeBoxGui {
     }
 
     pub fn is_action_changed(&self) -> bool {
-        let c = self.config.blocking_lock();
-        let current_profile = c.current_profile.clone();
-        let profile = c.profiles.get(&current_profile).unwrap();
-        let d = profile.get(&self.current_device).unwrap();
+        // let c = self.config.blocking_lock();
+        // let current_profile = c.current_profile.clone();
+        // let profile = c.profiles.get(&current_profile).unwrap();
+        // let d = profile.get(&self.current_device).unwrap();
 
-        if let Some(old_action) = d.key_map.get(&self.editing_key) {
-            let new_action = ActionConfig {
-                action: self.editing_action.clone(),
-                icons: self.editing_action_icons.clone(),
-            };
-            new_action != *old_action
-        } else {
-            false
-        }
+        // if let Some(old_action) = d.key_map.get(&self.editing_key) {
+        //     let new_action = ActionConfig {
+        //         action: self.editing_action.clone(),
+        //         icons: self.editing_action_icons.clone(),
+        //     };
+        //     new_action != *old_action
+        // } else {
+        //     false
+        // }
+        true
     }
 
     pub fn save_action(&mut self) {
@@ -316,7 +317,9 @@ impl JukeBoxGui {
                     Layout::centered_and_justified(eframe::egui::Direction::TopDown)
                         .with_cross_justify(false),
                     |ui| {
-                        ui.label(RichText::new(t!(self.editing_action.help())).size(10.0));
+                        ui.label(
+                            RichText::new(t!(self.editing_action.get_description())).size(10.0),
+                        );
                     },
                 );
             });
