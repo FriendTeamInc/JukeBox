@@ -64,6 +64,7 @@ pub type ActionModuleConfig = Arc<Mutex<HashMap<String, String>>>;
 #[typetag::serde(tag = "type")]
 pub trait ActionTrait: DowncastSync {
     fn get_type(&self) -> &'static str;
+    fn get_module(&self) -> &'static str;
     fn get_title(&self) -> &'static str;
     fn get_description(&self) -> &'static str;
 

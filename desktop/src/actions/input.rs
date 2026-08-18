@@ -7,18 +7,15 @@ use eframe::egui::{include_image, ComboBox, ImageSource, Slider, Ui};
 use egui_phosphor::regular as phos;
 use jukebox_util::input::{InputEvent, KeyboardEvent, MouseEvent, KEYBOARD_SCAN_CODES};
 use serde::{Deserialize, Serialize};
-use tokio::sync::Mutex;
 
-use crate::{
-    actions::types::{ActionModuleConfig, ActionTrait},
-    config::JukeBoxConfig,
-};
+use crate::actions::types::{ActionModuleConfig, ActionTrait};
 
 use super::types::Action;
 
-pub const AID_INPUT_KEYBOARD: &str = "InputKeyboard";
-pub const AID_INPUT_MOUSE: &str = "InputMouse";
-// pub const AID_INPUT_GAMEPAD: &str = "InputGamepad";
+pub const AMID_INPUT: &str = "JB.Input";
+pub const AID_INPUT_KEYBOARD: &str = "Keyboard";
+pub const AID_INPUT_MOUSE: &str = "Mouse";
+// pub const AID_INPUT_GAMEPAD: &str = "Gamepad";
 
 const ICON_KEYBOARD: ImageSource =
     include_image!("../../../assets/action-icons/input-keyboard.bmp");
@@ -46,6 +43,9 @@ pub struct InputKeyboard {
 impl ActionTrait for InputKeyboard {
     fn get_type(&self) -> &'static str {
         AID_INPUT_KEYBOARD
+    }
+    fn get_module(&self) -> &'static str {
+        AMID_INPUT
     }
     fn get_title(&self) -> &'static str {
         "action.input.keyboard.title"
@@ -114,6 +114,9 @@ pub struct InputMouse {
 impl ActionTrait for InputMouse {
     fn get_type(&self) -> &'static str {
         AID_INPUT_MOUSE
+    }
+    fn get_module(&self) -> &'static str {
+        AMID_INPUT
     }
     fn get_title(&self) -> &'static str {
         "action.input.mouse.title"

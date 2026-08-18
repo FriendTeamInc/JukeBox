@@ -15,19 +15,6 @@ use crate::{
     input::InputKey,
 };
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct DiscordOauthAccess {
-    pub access_token: String,
-    pub refresh_token: String,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct ObsAccess {
-    pub host: String,
-    pub port: u16,
-    pub password: Option<String>,
-}
-
 #[derive(Serialize, Deserialize, Clone, PartialEq)]
 pub enum ActionIcon {
     ImageIcon(String),
@@ -62,17 +49,27 @@ pub struct DeviceInfo {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
+pub struct ProfileConfig {
+    // pub profile_uuid: String,
+    pub profile_name: String,
+    pub device_configs: HashMap<String, DeviceConfig>,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct JukeBoxConfig {
-    // Profile Name
-    pub current_profile: String,
-    pub profiles: HashMap<String, HashMap<String, DeviceConfig>>,
     // Profile Name -> Device UID -> Device Config
+    // TODO: change profile name to uuid, store name in a separate variable
+    pub profiles: HashMap<String, ProfileConfig>,
 
     // Device UID -> (Device Type, Device Nickname)
     pub devices: HashMap<String, DeviceInfo>,
 
-    pub discord_oauth_access: Option<DiscordOauthAccess>,
-    pub obs_access: Option<ObsAccess>,
+    // Action Module ID -> Action Module Config
+    pub action_module_config: HashMap<String, HashMap<String, String>>,
+
+    // Profile Name
+    // TODO: change profile name to uuid, store name in a separate variable
+    pub current_profile: String,
 
     pub enable_splash: bool,
     pub always_save_on_exit: bool,

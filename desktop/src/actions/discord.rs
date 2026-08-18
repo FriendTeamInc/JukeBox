@@ -19,12 +19,13 @@ use crate::{
     input::InputKey,
 };
 
-pub const AID_DISCORD_TOGGLE_MUTE: &str = "DiscordToggleMute";
-pub const AID_DISCORD_TOGGLE_DEAFEN: &str = "DiscordToggleDeafen";
-// pub const AID_DISCORD_TOGGLE_NOISE_SUPPRESSION: &str = "DiscordToggleNoiseSuppression";
-pub const AID_DISCORD_PUSH_TO_TALK: &str = "DiscordPushToTalk";
-pub const AID_DISCORD_PUSH_TO_MUTE: &str = "DiscordPushToMute";
-pub const AID_DISCORD_PUSH_TO_DEAFEN: &str = "DiscordPushToDeafen";
+pub const AMID_DISCORD: &str = "JB.Discord";
+pub const AID_DISCORD_TOGGLE_MUTE: &str = "ToggleMute";
+pub const AID_DISCORD_TOGGLE_DEAFEN: &str = "ToggleDeafen";
+// pub const AID_DISCORD_TOGGLE_NOISE_SUPPRESSION: &str = "ToggleNoiseSuppression";
+pub const AID_DISCORD_PUSH_TO_TALK: &str = "PushToTalk";
+pub const AID_DISCORD_PUSH_TO_MUTE: &str = "PushToMute";
+pub const AID_DISCORD_PUSH_TO_DEAFEN: &str = "PushToDeafen";
 
 const ICON_MUTE: ImageSource =
     include_image!("../../../assets/action-icons/discord-microphone-1.bmp");
@@ -306,6 +307,9 @@ impl ActionTrait for DiscordToggleMute {
     fn get_type(&self) -> &'static str {
         AID_DISCORD_TOGGLE_MUTE
     }
+    fn get_module(&self) -> &'static str {
+        AMID_DISCORD
+    }
     fn get_title(&self) -> &'static str {
         "action.discord.toggle_mute.title"
     }
@@ -370,6 +374,9 @@ impl ActionTrait for DiscordToggleDeafen {
     fn get_type(&self) -> &'static str {
         AID_DISCORD_TOGGLE_DEAFEN
     }
+    fn get_module(&self) -> &'static str {
+        AMID_DISCORD
+    }
     fn get_title(&self) -> &'static str {
         "action.discord.toggle_deafen.title"
     }
@@ -431,6 +438,9 @@ impl ActionTrait for DiscordPushToTalk {
     fn get_type(&self) -> &'static str {
         AID_DISCORD_PUSH_TO_TALK
     }
+    fn get_module(&self) -> &'static str {
+        AMID_DISCORD
+    }
     fn get_title(&self) -> &'static str {
         "action.discord.push_to_talk.title"
     }
@@ -483,6 +493,9 @@ impl ActionTrait for DiscordPushToMute {
     fn get_type(&self) -> &'static str {
         AID_DISCORD_PUSH_TO_MUTE
     }
+    fn get_module(&self) -> &'static str {
+        AMID_DISCORD
+    }
     fn get_title(&self) -> &'static str {
         "action.discord.push_to_mute.title"
     }
@@ -534,6 +547,9 @@ pub struct DiscordPushToDeafen {}
 impl ActionTrait for DiscordPushToDeafen {
     fn get_type(&self) -> &'static str {
         AID_DISCORD_PUSH_TO_DEAFEN
+    }
+    fn get_module(&self) -> &'static str {
+        AMID_DISCORD
     }
     fn get_title(&self) -> &'static str {
         "action.discord.push_to_deafen.title"

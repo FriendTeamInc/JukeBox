@@ -9,15 +9,16 @@ use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::{sync::Mutex, task::spawn_blocking};
 
 use crate::actions::types::{ActionModuleConfig, ActionResult, ActionTrait};
+use crate::input::InputKey;
 use crate::single_fire;
-use crate::{config::JukeBoxConfig, input::InputKey};
 
 use super::types::{Action, ActionError};
 
-pub const AID_SYSTEM_OPEN_APP: &str = "SystemOpenApp";
-pub const AID_SYSTEM_OPEN_WEB: &str = "SystemOpenWeb";
-pub const AID_SYSTEM_SND_IN_CTRL: &str = "SystemSndInCtrl";
-pub const AID_SYSTEM_SND_OUT_CTRL: &str = "SystemSndOutCtrl";
+pub const AMID_SYSTEM: &str = "JB.System";
+pub const AID_SYSTEM_OPEN_APP: &str = "OpenApp";
+pub const AID_SYSTEM_OPEN_WEB: &str = "OpenWeb";
+pub const AID_SYSTEM_SND_IN_CTRL: &str = "SndInCtrl";
+pub const AID_SYSTEM_SND_OUT_CTRL: &str = "SndOutCtrl";
 
 const ICON_OPEN_APP: ImageSource =
     include_image!("../../../assets/action-icons/system-appopen.bmp");
@@ -380,10 +381,6 @@ pub fn init_actions_system(_config: ActionModuleConfig) -> (String, Vec<Action>)
             Arc::new(SystemOpenWeb::default()),
             Arc::new(SystemSndInCtrl::default()),
             Arc::new(SystemSndOutCtrl::default()),
-            // (AID_SYSTEM_OPEN_APP.into(),     Action::SystemOpenApp(SystemOpenApp::default()),       t!("action.system.open_app.title").into()),
-            // (AID_SYSTEM_OPEN_WEB.into(),     Action::SystemOpenWeb(SystemOpenWeb::default()),       t!("action.system.open_web.title").into()),
-            // (AID_SYSTEM_SND_IN_CTRL.into(),  Action::SystemSndInCtrl(SystemSndInCtrl::default()),   t!("action.system.snd_in_ctrl.title").into()),
-            // (AID_SYSTEM_SND_OUT_CTRL.into(), Action::SystemSndOutCtrl(SystemSndOutCtrl::default()), t!("action.system.snd_out_ctrl.title").into()),
         ],
     )
 }
@@ -398,6 +395,9 @@ pub struct SystemOpenApp {
 impl ActionTrait for SystemOpenApp {
     fn get_type(&self) -> &'static str {
         AID_SYSTEM_OPEN_APP
+    }
+    fn get_module(&self) -> &'static str {
+        AMID_SYSTEM
     }
     fn get_title(&self) -> &'static str {
         "action.system.open_app.title"
@@ -468,6 +468,9 @@ impl ActionTrait for SystemOpenWeb {
     fn get_type(&self) -> &'static str {
         AID_SYSTEM_OPEN_WEB
     }
+    fn get_module(&self) -> &'static str {
+        AMID_SYSTEM
+    }
     fn get_title(&self) -> &'static str {
         "action.system.open_web.title"
     }
@@ -514,6 +517,9 @@ pub struct SystemSndInCtrl {
 impl ActionTrait for SystemSndInCtrl {
     fn get_type(&self) -> &'static str {
         AID_SYSTEM_SND_IN_CTRL
+    }
+    fn get_module(&self) -> &'static str {
+        AMID_SYSTEM
     }
     fn get_title(&self) -> &'static str {
         "action.system.snd_in_ctrl.title"
@@ -588,6 +594,9 @@ pub struct SystemSndOutCtrl {
 impl ActionTrait for SystemSndOutCtrl {
     fn get_type(&self) -> &'static str {
         AID_SYSTEM_SND_OUT_CTRL
+    }
+    fn get_module(&self) -> &'static str {
+        AMID_SYSTEM
     }
     fn get_title(&self) -> &'static str {
         "action.system.snd_out_ctrl.title"

@@ -27,18 +27,19 @@ use crate::{
 
 use super::types::{Action, ActionError};
 
-pub const AID_OBS_STREAM: &str = "ObsStream";
-pub const AID_OBS_RECORD: &str = "ObsRecord";
-pub const AID_OBS_RECORD_PAUSE: &str = "ObsRecordPause";
-pub const AID_OBS_REPLAY_BUFFER: &str = "ObsReplayBuffer";
-pub const AID_OBS_REPLAY_BUFFER_SAVE: &str = "ObsReplayBufferSave";
-pub const AID_OBS_TOGGLE_SOURCE: &str = "ObsToggleSource";
-pub const AID_OBS_TOGGLE_MUTE: &str = "ObsToggleMute";
-pub const AID_OBS_SCENE_SWITCH: &str = "ObsSceneSwitch";
-pub const AID_OBS_PREVIEW_SWITCH: &str = "ObsPreviewSwitch";
-pub const AID_OBS_PREVIEW_PUSH: &str = "ObsPreviewPush";
-pub const AID_OBS_COLLECTION_SWITCH: &str = "ObsCollectionSwitch";
-pub const AID_OBS_CHAPTER_MARKER: &str = "ObsChapterMarker";
+pub const AMID_OBS: &str = "JB.OBS";
+pub const AID_OBS_STREAM: &str = "Stream";
+pub const AID_OBS_RECORD: &str = "Record";
+pub const AID_OBS_RECORD_PAUSE: &str = "RecordPause";
+pub const AID_OBS_REPLAY_BUFFER: &str = "ReplayBuffer";
+pub const AID_OBS_REPLAY_BUFFER_SAVE: &str = "ReplayBufferSave";
+pub const AID_OBS_TOGGLE_SOURCE: &str = "ToggleSource";
+pub const AID_OBS_TOGGLE_MUTE: &str = "ToggleMute";
+pub const AID_OBS_SCENE_SWITCH: &str = "SceneSwitch";
+pub const AID_OBS_PREVIEW_SWITCH: &str = "PreviewSwitch";
+pub const AID_OBS_PREVIEW_PUSH: &str = "PreviewPush";
+pub const AID_OBS_COLLECTION_SWITCH: &str = "CollectionSwitch";
+pub const AID_OBS_CHAPTER_MARKER: &str = "ChapterMarker";
 
 const ICON_STREAM: ImageSource = include_image!("../../../assets/action-icons/obs-stream.bmp");
 const ICON_RECORD: ImageSource = include_image!("../../../assets/action-icons/obs-record.bmp");
@@ -281,6 +282,9 @@ impl ActionTrait for ObsStream {
     fn get_type(&self) -> &'static str {
         AID_OBS_STREAM
     }
+    fn get_module(&self) -> &'static str {
+        AMID_OBS
+    }
     fn get_title(&self) -> &'static str {
         "action.obs.toggle_stream.title"
     }
@@ -333,6 +337,9 @@ pub struct ObsRecord {}
 impl ActionTrait for ObsRecord {
     fn get_type(&self) -> &'static str {
         AID_OBS_RECORD
+    }
+    fn get_module(&self) -> &'static str {
+        AMID_OBS
     }
     fn get_title(&self) -> &'static str {
         "action.obs.toggle_record.title"
@@ -387,6 +394,9 @@ impl ActionTrait for ObsPauseRecord {
     fn get_type(&self) -> &'static str {
         AID_OBS_RECORD_PAUSE
     }
+    fn get_module(&self) -> &'static str {
+        AMID_OBS
+    }
     fn get_title(&self) -> &'static str {
         "action.obs.pause_record.title"
     }
@@ -439,6 +449,9 @@ pub struct ObsReplayBuffer {}
 impl ActionTrait for ObsReplayBuffer {
     fn get_type(&self) -> &'static str {
         AID_OBS_REPLAY_BUFFER
+    }
+    fn get_module(&self) -> &'static str {
+        AMID_OBS
     }
     fn get_title(&self) -> &'static str {
         "action.obs.toggle_replay_buffer.title"
@@ -496,6 +509,9 @@ pub struct ObsSaveReplay {}
 impl ActionTrait for ObsSaveReplay {
     fn get_type(&self) -> &'static str {
         AID_OBS_REPLAY_BUFFER_SAVE
+    }
+    fn get_module(&self) -> &'static str {
+        AMID_OBS
     }
     fn get_title(&self) -> &'static str {
         "action.obs.save_replay_buffer.title"
@@ -556,6 +572,9 @@ pub struct ObsSource {
 impl ActionTrait for ObsSource {
     fn get_type(&self) -> &'static str {
         AID_OBS_TOGGLE_SOURCE
+    }
+    fn get_module(&self) -> &'static str {
+        AMID_OBS
     }
     fn get_title(&self) -> &'static str {
         "action.obs.toggle_source.title"
@@ -745,6 +764,9 @@ impl ActionTrait for ObsMute {
     fn get_type(&self) -> &'static str {
         AID_OBS_TOGGLE_MUTE
     }
+    fn get_module(&self) -> &'static str {
+        AMID_OBS
+    }
     fn get_title(&self) -> &'static str {
         "action.obs.toggle_mute.title"
     }
@@ -850,6 +872,9 @@ impl ActionTrait for ObsSceneSwitch {
     fn get_type(&self) -> &'static str {
         AID_OBS_SCENE_SWITCH
     }
+    fn get_module(&self) -> &'static str {
+        AMID_OBS
+    }
     fn get_title(&self) -> &'static str {
         "action.obs.switch_scene.title"
     }
@@ -953,6 +978,9 @@ pub struct ObsPreviewSceneSwitch {
 impl ActionTrait for ObsPreviewSceneSwitch {
     fn get_type(&self) -> &'static str {
         AID_OBS_PREVIEW_SWITCH
+    }
+    fn get_module(&self) -> &'static str {
+        AMID_OBS
     }
     fn get_title(&self) -> &'static str {
         "action.obs.switch_preview_scene.title"
@@ -1059,6 +1087,9 @@ impl ActionTrait for ObsPreviewScenePush {
     fn get_type(&self) -> &'static str {
         AID_OBS_PREVIEW_PUSH
     }
+    fn get_module(&self) -> &'static str {
+        AMID_OBS
+    }
     fn get_title(&self) -> &'static str {
         "action.obs.push_preview_scene.title"
     }
@@ -1117,6 +1148,9 @@ pub struct ObsSceneCollectionSwitch {
 impl ActionTrait for ObsSceneCollectionSwitch {
     fn get_type(&self) -> &'static str {
         AID_OBS_COLLECTION_SWITCH
+    }
+    fn get_module(&self) -> &'static str {
+        AMID_OBS
     }
     fn get_title(&self) -> &'static str {
         "action.obs.switch_scene_collection.title"
@@ -1225,6 +1259,9 @@ pub struct ObsChapterMarker {}
 impl ActionTrait for ObsChapterMarker {
     fn get_type(&self) -> &'static str {
         AID_OBS_CHAPTER_MARKER
+    }
+    fn get_module(&self) -> &'static str {
+        AMID_OBS
     }
     fn get_title(&self) -> &'static str {
         "action.obs.add_chapter_marker.title"

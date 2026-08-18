@@ -3,19 +3,18 @@ use std::sync::Arc;
 use eframe::egui::{include_image, ComboBox, ImageSource, Ui};
 use egui_phosphor::regular as phos;
 use serde::{Deserialize, Serialize};
-use tokio::sync::Mutex;
 
 use crate::{
     actions::types::{ActionModuleConfig, ActionResult, ActionTrait},
-    config::JukeBoxConfig,
     input::InputKey,
 };
 
 use super::types::Action;
 
-pub const AID_META_NO_ACTION: &str = "MetaNoAction";
-pub const AID_META_SWITCH_PROFILE: &str = "MetaSwitchProfile";
-// pub const AID_META_COPY_FROM_PROFILE: &str = "MetaCopyFromProfile";
+pub const AMID_META: &str = "JB.Meta";
+pub const AID_META_NO_ACTION: &str = "NoAction";
+pub const AID_META_SWITCH_PROFILE: &str = "SwitchProfile";
+// pub const AID_META_COPY_FROM_PROFILE: &str = "CopyFromProfile";
 
 const ICON_NO_ACTION: ImageSource =
     include_image!("../../../assets/action-icons/meta-noaction.bmp");
@@ -41,6 +40,9 @@ pub struct MetaNoAction {}
 impl ActionTrait for MetaNoAction {
     fn get_type(&self) -> &'static str {
         AID_META_NO_ACTION
+    }
+    fn get_module(&self) -> &'static str {
+        AMID_META
     }
     fn get_title(&self) -> &'static str {
         "action.meta.no_action.title"
@@ -91,6 +93,9 @@ pub struct MetaSwitchProfile {
 impl ActionTrait for MetaSwitchProfile {
     fn get_type(&self) -> &'static str {
         AID_META_SWITCH_PROFILE
+    }
+    fn get_module(&self) -> &'static str {
+        AMID_META
     }
     fn get_title(&self) -> &'static str {
         "action.meta.switch_profile.title"
