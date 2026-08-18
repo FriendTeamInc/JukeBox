@@ -1,5 +1,6 @@
 use std::{
     collections::HashMap,
+    rc::Rc,
     sync::{Arc, OnceLock},
 };
 
@@ -9,9 +10,12 @@ use jukebox_util::input::{InputEvent, KeyboardEvent, MouseEvent, KEYBOARD_SCAN_C
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
-use crate::{config::JukeBoxConfig, input::InputKey};
+use crate::{
+    actions::types::{ActionModuleConfig, ActionTrait},
+    config::JukeBoxConfig,
+};
 
-use super::types::{Action, ActionError};
+use super::types::Action;
 
 pub const AID_INPUT_KEYBOARD: &str = "InputKeyboard";
 pub const AID_INPUT_MOUSE: &str = "InputMouse";
@@ -23,14 +27,13 @@ const ICON_MOUSE: ImageSource = include_image!("../../../assets/action-icons/inp
 
 static KEY_MAP: OnceLock<HashMap<u8, &str>> = OnceLock::new();
 
-#[rustfmt::skip]
-pub fn init_actions_input(_config: Arc<Mutex<JukeBoxConfig>>) -> (String, Vec<(String, Action, String)>) {
+pub fn init_actions_input(_config: Arc<Mutex<JukeBoxConfig>>) -> (String, Vec<Action>) {
     (
         t!("action.input.title", icon = phos::CURSOR_CLICK).into(),
         vec![
-            (AID_INPUT_KEYBOARD.into(), Action::InputKeyboard(InputKeyboard::default()), t!("action.input.keyboard.title").into()),
-            (AID_INPUT_MOUSE.into(),    Action::InputMouse(InputMouse::default()),       t!("action.input.mouse.title").into()),
-            // (AID_INPUT_GAMEPAD.into(),  Action::InputGamepad(InputGamepad::default()),  t!("action.input.gamepad.title").into()),
+            Rc::new(InputKeyboard::default()),
+            Rc::new(InputMouse::default()),
+            // Arc::new(InputGamepad::default()),
         ],
     )
 }
@@ -39,38 +42,20 @@ pub fn init_actions_input(_config: Arc<Mutex<JukeBoxConfig>>) -> (String, Vec<(S
 pub struct InputKeyboard {
     pub keys: Vec<u8>,
 }
-impl InputKeyboard {
-    pub async fn on_press(
-        &self,
-        _device_uid: &String,
-        input_key: InputKey,
-        _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(InputKey, bool), ActionError> {
-        // TODO: trigger on test input from gui?
-        Ok((input_key, false))
+#[async_trait::async_trait]
+#[typetag::serde]
+impl ActionTrait for InputKeyboard {
+    fn get_type(&self) -> &'static str {
+        AID_INPUT_KEYBOARD
+    }
+    fn get_title(&self) -> &'static str {
+        "action.input.keyboard.title"
+    }
+    fn get_description(&self) -> &'static str {
+        "action.input.keyboard.help"
     }
 
-    pub async fn on_release(
-        &self,
-        _device_uid: &String,
-        input_key: InputKey,
-        _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(InputKey, bool), ActionError> {
-        // TODO: trigger on test input from gui?
-        Ok((input_key, false))
-    }
-
-    pub fn get_type(&self) -> String {
-        AID_INPUT_KEYBOARD.into()
-    }
-
-    pub fn edit_ui(
-        &mut self,
-        ui: &mut Ui,
-        _device_uid: &String,
-        _input_key: InputKey,
-        _config: Arc<Mutex<JukeBoxConfig>>,
-    ) {
+    fn edit_ui(&mut self, _module_config: &mut ActionModuleConfig, ui: &mut Ui) {
         ui.horizontal(|ui| {
             ui.label(t!("action.input.keyboard.add_keys"));
             ui.add_enabled_ui(self.keys.len() < 6, |ui| {
@@ -102,10 +87,11 @@ impl InputKeyboard {
         }
     }
 
-    pub fn help(&self) -> &str {
-        "action.input.keyboard.help"
+    fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_KEYBOARD]
     }
-
+}
+impl InputKeyboard {
     pub fn get_input_event(&self) -> InputEvent {
         let mut keys = [0u8; 6];
         for (i, v) in self.keys.iter().enumerate() {
@@ -113,22 +99,6 @@ impl InputKeyboard {
         }
 
         InputEvent::Keyboard(KeyboardEvent { keys })
-    }
-
-    pub fn icon_state(&self) -> u8 {
-        0
-    }
-
-    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
-        &[ICON_KEYBOARD]
-    }
-
-    pub fn icon_state_count(&self) -> u8 {
-        1
-    }
-
-    pub fn icon_state_descriptions(&self) -> &[&str] {
-        &[""]
     }
 }
 
@@ -140,38 +110,20 @@ pub struct InputMouse {
     scroll_y: i8,
     scroll_x: i8,
 }
-impl InputMouse {
-    pub async fn on_press(
-        &self,
-        _device_uid: &String,
-        input_key: InputKey,
-        _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(InputKey, bool), ActionError> {
-        // TODO: trigger on test input from gui?
-        Ok((input_key, false))
+#[async_trait::async_trait]
+#[typetag::serde]
+impl ActionTrait for InputMouse {
+    fn get_type(&self) -> &'static str {
+        AID_INPUT_MOUSE
+    }
+    fn get_title(&self) -> &'static str {
+        "action.input.mouse.title"
+    }
+    fn get_description(&self) -> &'static str {
+        "action.input.mouse.help"
     }
 
-    pub async fn on_release(
-        &self,
-        _device_uid: &String,
-        input_key: InputKey,
-        _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(InputKey, bool), ActionError> {
-        // TODO: trigger on test input from gui?
-        Ok((input_key, false))
-    }
-
-    pub fn get_type(&self) -> String {
-        AID_INPUT_MOUSE.into()
-    }
-
-    pub fn edit_ui(
-        &mut self,
-        ui: &mut Ui,
-        _device_uid: &String,
-        _input_key: InputKey,
-        _config: Arc<Mutex<JukeBoxConfig>>,
-    ) {
+    fn edit_ui(&mut self, _module_config: &mut ActionModuleConfig, ui: &mut Ui) {
         ui.label(t!("action.input.mouse.buttons"));
         let mut bits = [
             (
@@ -237,10 +189,11 @@ impl InputMouse {
         });
     }
 
-    pub fn help(&self) -> &str {
-        "action.input.mouse.help"
+    fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+        &[ICON_MOUSE]
     }
-
+}
+impl InputMouse {
     pub fn get_input_event(&self) -> InputEvent {
         InputEvent::Mouse(MouseEvent {
             buttons: self.buttons,
@@ -249,21 +202,5 @@ impl InputMouse {
             scroll_y: self.scroll_y,
             scroll_x: self.scroll_x,
         })
-    }
-
-    pub fn icon_state(&self) -> u8 {
-        0
-    }
-
-    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
-        &[ICON_MOUSE]
-    }
-
-    pub fn icon_state_count(&self) -> u8 {
-        1
-    }
-
-    pub fn icon_state_descriptions(&self) -> &[&str] {
-        &[""]
     }
 }

@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::{sync::Mutex, task::spawn_blocking};
 
+use crate::actions::types::{ActionModuleConfig, ActionResult, ActionTrait};
 use crate::single_fire;
 use crate::{config::JukeBoxConfig, input::InputKey};
 
@@ -360,8 +361,7 @@ fn system_audio_control_loop(mut cmd_rx: UnboundedReceiver<AudioCommand>) {
     }
 }
 
-#[rustfmt::skip]
-pub fn init_actions_system(_config: Arc<Mutex<JukeBoxConfig>>) -> (String, Vec<(String, Action, String)>) {
+pub fn init_actions_system(_config: Arc<Mutex<JukeBoxConfig>>) -> (String, Vec<Action>) {
     let (cmd_tx, cmd_rx) = unbounded_channel();
     SYSTEM_AUDIO_CMD_TX.get_or_init(|| cmd_tx);
     SYSTEM_SOURCES.get_or_init(|| Mutex::new(None));
@@ -376,10 +376,14 @@ pub fn init_actions_system(_config: Arc<Mutex<JukeBoxConfig>>) -> (String, Vec<(
     (
         t!("action.system.title", icon = phos::DESKTOP_TOWER).into(),
         vec![
-            (AID_SYSTEM_OPEN_APP.into(),     Action::SystemOpenApp(SystemOpenApp::default()),       t!("action.system.open_app.title").into()),
-            (AID_SYSTEM_OPEN_WEB.into(),     Action::SystemOpenWeb(SystemOpenWeb::default()),       t!("action.system.open_web.title").into()),
-            (AID_SYSTEM_SND_IN_CTRL.into(),  Action::SystemSndInCtrl(SystemSndInCtrl::default()),   t!("action.system.snd_in_ctrl.title").into()),
-            (AID_SYSTEM_SND_OUT_CTRL.into(), Action::SystemSndOutCtrl(SystemSndOutCtrl::default()), t!("action.system.snd_out_ctrl.title").into()),
+            Rc::new(SystemOpenApp::default()),
+            Rc::new(SystemOpenWeb::default()),
+            Rc::new(SystemSndInCtrl::default()),
+            Rc::new(SystemSndOutCtrl::default()),
+            // (AID_SYSTEM_OPEN_APP.into(),     Action::SystemOpenApp(SystemOpenApp::default()),       t!("action.system.open_app.title").into()),
+            // (AID_SYSTEM_OPEN_WEB.into(),     Action::SystemOpenWeb(SystemOpenWeb::default()),       t!("action.system.open_web.title").into()),
+            // (AID_SYSTEM_SND_IN_CTRL.into(),  Action::SystemSndInCtrl(SystemSndInCtrl::default()),   t!("action.system.snd_in_ctrl.title").into()),
+            // (AID_SYSTEM_SND_OUT_CTRL.into(), Action::SystemSndOutCtrl(SystemSndOutCtrl::default()), t!("action.system.snd_out_ctrl.title").into()),
         ],
     )
 }
@@ -389,13 +393,25 @@ pub struct SystemOpenApp {
     filepath: String,
     arguments: Vec<String>,
 }
-impl SystemOpenApp {
-    pub async fn on_press(
-        &self,
+#[async_trait::async_trait]
+#[typetag::serde]
+impl ActionTrait for SystemOpenApp {
+    fn get_type(&self) -> &'static str {
+        AID_SYSTEM_OPEN_APP
+    }
+    fn get_title(&self) -> &'static str {
+        "action.system.open_app.title"
+    }
+    fn get_description(&self) -> &'static str {
+        "action.system.open_app.help"
+    }
+
+    async fn on_press(
+        &mut self,
+        _module_config: &mut ActionModuleConfig,
         _device_uid: &String,
-        input_key: InputKey,
-        _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(InputKey, bool), ActionError> {
+        _input_key: &InputKey,
+    ) -> ActionResult {
         // spin off the process, drop its handle since we don't care about it completing
         let _ = Command::new(self.filepath.clone())
             .args(self.arguments.clone())
@@ -403,29 +419,10 @@ impl SystemOpenApp {
 
         // error handling?
 
-        Ok((input_key, false))
+        Ok(())
     }
 
-    pub async fn on_release(
-        &self,
-        _device_uid: &String,
-        input_key: InputKey,
-        _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(InputKey, bool), ActionError> {
-        Ok((input_key, false))
-    }
-
-    pub fn get_type(&self) -> String {
-        AID_SYSTEM_OPEN_APP.into()
-    }
-
-    pub fn edit_ui(
-        &mut self,
-        ui: &mut Ui,
-        _device_uid: &String,
-        _input_key: InputKey,
-        _config: Arc<Mutex<JukeBoxConfig>>,
-    ) {
+    fn edit_ui(&mut self, _module_config: &mut ActionModuleConfig, ui: &mut Ui) {
         if ui
             .button(t!("action.system.open_app.choose_file"))
             .clicked()
@@ -456,24 +453,8 @@ impl SystemOpenApp {
         }
     }
 
-    pub fn help(&self) -> &str {
-        "action.system.open_app.help"
-    }
-
-    pub fn icon_state(&self) -> u8 {
-        0
-    }
-
-    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+    fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
         &[ICON_OPEN_APP]
-    }
-
-    pub fn icon_state_count(&self) -> u8 {
-        1
-    }
-
-    pub fn icon_state_descriptions(&self) -> &[&str] {
-        &[""]
     }
 }
 
@@ -481,70 +462,45 @@ impl SystemOpenApp {
 pub struct SystemOpenWeb {
     url: String,
 }
-impl SystemOpenWeb {
-    pub async fn on_press(
-        &self,
-        device_uid: &String,
-        input_key: InputKey,
-        _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(InputKey, bool), ActionError> {
-        open::that(self.url.clone())
-            .map(|_| (input_key, false))
-            .map_err(|e| {
-                ActionError::new(
-                    device_uid.clone(),
-                    input_key,
-                    t!(
-                        "action.system.open_web.err",
-                        webpage = self.url,
-                        reason = e.to_string()
-                    ),
-                )
-            })
+#[async_trait::async_trait]
+#[typetag::serde]
+impl ActionTrait for SystemOpenWeb {
+    fn get_type(&self) -> &'static str {
+        AID_SYSTEM_OPEN_WEB
+    }
+    fn get_title(&self) -> &'static str {
+        "action.system.open_web.title"
+    }
+    fn get_description(&self) -> &'static str {
+        "action.system.open_web.help"
     }
 
-    pub async fn on_release(
-        &self,
-        _device_uid: &String,
-        input_key: InputKey,
-        _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(InputKey, bool), ActionError> {
-        Ok((input_key, false))
-    }
-
-    pub fn get_type(&self) -> String {
-        AID_SYSTEM_OPEN_WEB.into()
-    }
-
-    pub fn edit_ui(
+    async fn on_press(
         &mut self,
-        ui: &mut Ui,
-        _device_uid: &String,
-        _input_key: InputKey,
-        _config: Arc<Mutex<JukeBoxConfig>>,
-    ) {
+        _module_config: &mut ActionModuleConfig,
+        device_uid: &String,
+        input_key: &InputKey,
+    ) -> ActionResult {
+        open::that(self.url.clone()).map_err(|e| {
+            ActionError::new(
+                device_uid.clone(),
+                *input_key,
+                t!(
+                    "action.system.open_web.err",
+                    webpage = self.url,
+                    reason = e.to_string()
+                ),
+            )
+        })
+    }
+
+    fn edit_ui(&mut self, _module_config: &mut ActionModuleConfig, ui: &mut Ui) {
         ui.label(t!("action.system.open_web.url"));
         ui.text_edit_singleline(&mut self.url);
     }
 
-    pub fn help(&self) -> &str {
-        "action.system.open_web.help"
-    }
-
-    pub fn icon_state(&self) -> u8 {
-        0
-    }
-
-    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+    fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
         &[ICON_OPEN_WEB]
-    }
-
-    pub fn icon_state_count(&self) -> u8 {
-        1
-    }
-
-    pub fn icon_state_descriptions(&self) -> &[&str] {
-        &[""]
     }
 }
 
@@ -553,13 +509,25 @@ pub struct SystemSndInCtrl {
     input_device: Option<String>,
     vol_adjust: i8,
 }
-impl SystemSndInCtrl {
-    pub async fn on_press(
-        &self,
+#[async_trait::async_trait]
+#[typetag::serde]
+impl ActionTrait for SystemSndInCtrl {
+    fn get_type(&self) -> &'static str {
+        AID_SYSTEM_SND_IN_CTRL
+    }
+    fn get_title(&self) -> &'static str {
+        "action.system.snd_in_ctrl.title"
+    }
+    fn get_description(&self) -> &'static str {
+        "action.system.snd_in_ctrl.help"
+    }
+
+    async fn on_press(
+        &mut self,
+        _module_config: &mut ActionModuleConfig,
         _device_uid: &String,
-        input_key: InputKey,
-        _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(InputKey, bool), ActionError> {
+        _input_key: &InputKey,
+    ) -> ActionResult {
         // TODO: error handling
         if let Some(input_device) = self.input_device.clone() {
             let adjust = self.vol_adjust;
@@ -569,29 +537,10 @@ impl SystemSndInCtrl {
                 .send(AudioCommand::AdjustInputDevice(input_device, adjust));
         }
 
-        Ok((input_key, false))
+        Ok(())
     }
 
-    pub async fn on_release(
-        &self,
-        _device_uid: &String,
-        input_key: InputKey,
-        _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(InputKey, bool), ActionError> {
-        Ok((input_key, false))
-    }
-
-    pub fn get_type(&self) -> String {
-        AID_SYSTEM_SND_IN_CTRL.into()
-    }
-
-    pub fn edit_ui(
-        &mut self,
-        ui: &mut Ui,
-        _device_uid: &String,
-        _input_key: InputKey,
-        _config: Arc<Mutex<JukeBoxConfig>>,
-    ) {
+    fn edit_ui(&mut self, _module_config: &mut ActionModuleConfig, ui: &mut Ui) {
         ui.label(t!("action.system.snd_in_ctrl.input_device"));
         let ir = ComboBox::from_id_salt("SystemAudioInputControlDeviceSelect")
             .selected_text(self.input_device.clone().unwrap_or_default())
@@ -624,24 +573,8 @@ impl SystemSndInCtrl {
         ui.add(Slider::new(&mut self.vol_adjust, -100..=100));
     }
 
-    pub fn help(&self) -> &str {
-        "action.system.snd_in_ctrl.help"
-    }
-
-    pub fn icon_state(&self) -> u8 {
-        0
-    }
-
-    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+    fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
         &[ICON_INPUT_CONTROL]
-    }
-
-    pub fn icon_state_count(&self) -> u8 {
-        1
-    }
-
-    pub fn icon_state_descriptions(&self) -> &[&str] {
-        &[""]
     }
 }
 
@@ -650,13 +583,25 @@ pub struct SystemSndOutCtrl {
     output_device: Option<String>,
     vol_adjust: i8,
 }
-impl SystemSndOutCtrl {
-    pub async fn on_press(
-        &self,
+#[async_trait::async_trait]
+#[typetag::serde]
+impl ActionTrait for SystemSndOutCtrl {
+    fn get_type(&self) -> &'static str {
+        AID_SYSTEM_SND_OUT_CTRL
+    }
+    fn get_title(&self) -> &'static str {
+        "action.system.snd_out_ctrl.title"
+    }
+    fn get_description(&self) -> &'static str {
+        "action.system.snd_out_ctrl.help"
+    }
+
+    async fn on_press(
+        &mut self,
+        _module_config: &mut ActionModuleConfig,
         _device_uid: &String,
-        input_key: InputKey,
-        _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(InputKey, bool), ActionError> {
+        _input_key: &InputKey,
+    ) -> ActionResult {
         // TODO: error handling
         if let Some(output_device) = self.output_device.clone() {
             let adjust = self.vol_adjust;
@@ -666,29 +611,10 @@ impl SystemSndOutCtrl {
                 .send(AudioCommand::AdjustOutputDevice(output_device, adjust));
         }
 
-        Ok((input_key, false))
+        Ok(())
     }
 
-    pub async fn on_release(
-        &self,
-        _device_uid: &String,
-        input_key: InputKey,
-        _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(InputKey, bool), ActionError> {
-        Ok((input_key, false))
-    }
-
-    pub fn get_type(&self) -> String {
-        AID_SYSTEM_SND_OUT_CTRL.into()
-    }
-
-    pub fn edit_ui(
-        &mut self,
-        ui: &mut Ui,
-        _device_uid: &String,
-        _input_key: InputKey,
-        _config: Arc<Mutex<JukeBoxConfig>>,
-    ) {
+    fn edit_ui(&mut self, _module_config: &mut ActionModuleConfig, ui: &mut Ui) {
         ui.label(t!("action.system.snd_out_ctrl.output_device"));
         let ir = ComboBox::from_id_salt("SystemAudioOutputControlDeviceSelect")
             .selected_text(self.output_device.clone().unwrap_or_default())
@@ -721,23 +647,7 @@ impl SystemSndOutCtrl {
         ui.add(Slider::new(&mut self.vol_adjust, -100..=100));
     }
 
-    pub fn help(&self) -> &str {
-        "action.system.snd_out_ctrl.help"
-    }
-
-    pub fn icon_state(&self) -> u8 {
-        0
-    }
-
-    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+    fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
         &[ICON_OUTPUT_CONTROL]
-    }
-
-    pub fn icon_state_count(&self) -> u8 {
-        1
-    }
-
-    pub fn icon_state_descriptions(&self) -> &[&str] {
-        &[""]
     }
 }

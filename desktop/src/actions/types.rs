@@ -3,14 +3,15 @@
 use std::{
     collections::HashMap,
     fmt,
+    rc::Rc,
     sync::{Arc, OnceLock},
 };
 
+use async_trait::async_trait;
 use eframe::egui::{
     load::Bytes, Image, ImageSource, TextureFilter, TextureOptions, TextureWrapMode, Ui,
 };
 use jukebox_util::peripheral::DeviceType;
-use serde::{Deserialize, Serialize};
 use tokio::sync::{Mutex, MutexGuard};
 
 use crate::{
@@ -56,142 +57,61 @@ impl fmt::Display for ActionError {
         )
     }
 }
+pub type ActionResult = Result<(), ActionError>;
+pub type ActionModuleConfig = Arc<Mutex<HashMap<String, String>>>;
 
-macro_rules! create_actions {
-    ( $( $item:ident ),* ) => {
-        #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-        pub enum Action {
-            $($item($item),)*
-        }
+#[async_trait]
+#[typetag::serde(tag = "type")]
+pub trait ActionTrait: Send + Sync {
+    fn get_type(&self) -> &'static str;
+    fn get_title(&self) -> &'static str;
+    fn get_description(&self) -> &'static str;
 
-        impl Action {
-            // Ok(bool) = change icon if true
-            // Err(ActionError) = error to display in gui if something went wrong
-            pub async fn on_press(
-                &self,
-                device_uid: &String,
-                input_key: InputKey,
-                config: Arc<Mutex<JukeBoxConfig>>,
-            ) -> Result<(InputKey, bool), ActionError> {
-                match self {
-                    $(Self::$item(x) => x.on_press(device_uid, input_key, config).await,)*
-                }
-            }
+    async fn on_press(
+        &mut self,
+        _module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+    ) -> ActionResult {
+        Ok(())
+    }
+    async fn on_release(
+        &mut self,
+        _module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+    ) -> ActionResult {
+        Ok(())
+    }
+    fn edit_ui(&mut self, _module_config: &mut ActionModuleConfig, _ui: &mut Ui) {}
 
-            // same as on_press()
-            pub async fn on_release(
-                &self,
-                device_uid: &String,
-                input_key: InputKey,
-                config: Arc<Mutex<JukeBoxConfig>>,
-            ) -> Result<(InputKey, bool), ActionError> {
-                match self {
-                    $(Self::$item(x) => x.on_release(device_uid, input_key, config).await,)*
-                }
-            }
+    fn icon_state(&self) -> u8 {
+        0
+    }
+    fn icon_state_icons(&self) -> &[ImageSource<'_>];
+    fn icon_state_count(&self) -> u8 {
+        1
+    }
+    fn icon_state_descriptions(&self) -> &[&str] {
+        &[""]
+    }
 
-            pub fn edit_ui(
-                &mut self,
-                ui: &mut Ui,
-                device_uid: &String,
-                input_key: InputKey,
-                config: Arc<Mutex<JukeBoxConfig>>,
-            ) {
-                match self {
-                    $(Self::$item(x) => x.edit_ui(ui, device_uid, input_key, config),)*
-                }
-            }
-
-            pub fn get_type(&self) -> String {
-                match self {
-                    $(Self::$item(x) => x.get_type(),)*
-                }
-            }
-
-            pub fn help(&self) -> &str {
-                match self {
-                    $(Self::$item(x) => x.help(),)*
-                }
-            }
-
-            pub fn icon_source(&'_ self) -> ImageSource<'_> {
-                self.icon_state_icons()[self.icon_state() as usize].clone()
-            }
-
-            pub fn icon(&'_ self) -> Image<'_> {
-                Image::new(self.icon_source())
-                    .texture_options(TextureOptions {
-                        magnification: TextureFilter::Nearest,
-                        minification: TextureFilter::Nearest,
-                        wrap_mode: TextureWrapMode::ClampToEdge,
-                        mipmap_mode: None,
-                    })
-                    .corner_radius(2.0)
-            }
-
-            pub fn icon_state(&self) -> u8 {
-                match self {
-                    $(Self::$item(x) => x.icon_state(),)*
-                }
-            }
-
-            pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
-                match self {
-                    $(Self::$item(x) => x.icon_state_icons(),)*
-                }
-            }
-
-            pub fn icon_state_count(&self) -> u8 {
-                match self {
-                    $(Self::$item(x) => x.icon_state_count(),)*
-                }
-            }
-
-            pub fn icon_state_descriptions(&self) -> &[&str] {
-                match self {
-                    $(Self::$item(x) => x.icon_state_descriptions(),)*
-                }
-            }
-        }
-    };
+    fn icon_source(&'_ self) -> ImageSource<'_> {
+        self.icon_state_icons()[self.icon_state() as usize].clone()
+    }
+    fn icon(&'_ self) -> Image<'_> {
+        Image::new(self.icon_source())
+            .texture_options(TextureOptions {
+                magnification: TextureFilter::Nearest,
+                minification: TextureFilter::Nearest,
+                wrap_mode: TextureWrapMode::ClampToEdge,
+                mipmap_mode: None,
+            })
+            .corner_radius(2.0)
+    }
 }
-
-create_actions! {
-    MetaNoAction,
-    MetaSwitchProfile,
-    // MetaCopyFromProfile,
-
-    SystemOpenApp,
-    SystemOpenWeb,
-    SystemSndInCtrl,
-    SystemSndOutCtrl,
-
-    InputKeyboard,
-    InputMouse,
-    // InputGamepad,
-
-    ObsStream,
-    ObsRecord,
-    ObsPauseRecord,
-    ObsReplayBuffer,
-    ObsSaveReplay,
-    ObsSource,
-    ObsMute,
-    ObsSceneSwitch,
-    ObsPreviewSceneSwitch,
-    ObsPreviewScenePush,
-    ObsSceneCollectionSwitch,
-    // ObsFilter,
-    // ObsTransition,
-    ObsChapterMarker,
-
-    DiscordToggleMute,
-    DiscordToggleDeafen,
-    // DiscordToggleNoiseSuppression,
-    DiscordPushToTalk,
-    DiscordPushToMute,
-    DiscordPushToDeafen
-}
+pub type Action = Rc<dyn ActionTrait>;
+// TODO: differentiate between built-in and external actions
 
 pub struct ActionMap {
     ui_list: Vec<(String, Vec<(String, String)>)>,
@@ -236,12 +156,12 @@ impl ActionMap {
     }
 
     pub fn enum_new(&self, t: String) -> Action {
-        self.enum_map.get(&t).unwrap().clone()
+        (self.enum_map.get(&t).unwrap()).clone()
     }
 
     fn keyboard_key(key: u8) -> ActionConfig {
         ActionConfig {
-            action: Action::InputKeyboard(InputKeyboard { keys: vec![key] }),
+            action: Rc::new(InputKeyboard { keys: vec![key] }),
             icons: vec![ActionIcon::DefaultActionIcon],
         }
     }

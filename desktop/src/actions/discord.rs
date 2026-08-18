@@ -1,8 +1,9 @@
 use std::{
     collections::HashMap,
+    rc::Rc,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, OnceLock,
+        OnceLock,
     },
 };
 
@@ -13,12 +14,11 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
 use crate::{
-    config::{DiscordOauthAccess, JukeBoxConfig},
+    actions::types::{Action, ActionError, ActionModuleConfig, ActionResult, ActionTrait},
+    config::DiscordOauthAccess,
     get_reqwest_client,
     input::InputKey,
 };
-
-use super::types::{Action, ActionError};
 
 pub const AID_DISCORD_TOGGLE_MUTE: &str = "DiscordToggleMute";
 pub const AID_DISCORD_TOGGLE_DEAFEN: &str = "DiscordToggleDeafen";
@@ -57,7 +57,7 @@ static DISCORD_NOISE_SUPPRESSION: AtomicBool = AtomicBool::new(false);
 
 #[rustfmt::skip]
 #[allow(dead_code)]
-pub fn init_actions_discord(config: Arc<Mutex<JukeBoxConfig>>) -> (String, Vec<(String, Action, String)>) {
+pub fn init_actions_discord(config: ActionModuleConfig) -> (String, Vec<Action>) {
     // init discord connection (if we have a config saved for it)
     let _ = tokio::runtime::Handle::current()
         .spawn(async move { create_client(config, true).await });
@@ -65,12 +65,11 @@ pub fn init_actions_discord(config: Arc<Mutex<JukeBoxConfig>>) -> (String, Vec<(
     (
         t!("action.discord.title", icon = phos::DISCORD_LOGO).into(),
         vec![
-            (AID_DISCORD_TOGGLE_MUTE.into(),    Action::DiscordToggleMute(DiscordToggleMute::default()),     t!("action.discord.toggle_mute.title").into()),
-            (AID_DISCORD_TOGGLE_DEAFEN.into(),  Action::DiscordToggleDeafen(DiscordToggleDeafen::default()), t!("action.discord.toggle_deafen.title").into()),
-            (AID_DISCORD_PUSH_TO_TALK.into(),   Action::DiscordPushToTalk(DiscordPushToTalk::default()),     t!("action.discord.push_to_talk.title").into()),
-            (AID_DISCORD_PUSH_TO_MUTE.into(),   Action::DiscordPushToMute(DiscordPushToMute::default()),     t!("action.discord.push_to_mute.title").into()),
-            (AID_DISCORD_PUSH_TO_DEAFEN.into(), Action::DiscordPushToDeafen(DiscordPushToDeafen::default()), t!("action.discord.push_to_deafen.title").into()),
-            // (AID_DISCORD_TOGGLE_NOISE_SUPPRESSION.into(), Action::DiscordToggleNoiseSuppression(DiscordToggleNoiseSuppression::default()), t!("action.discord.toggle_noise_suppression.title").into()),
+            Rc::new(DiscordToggleMute::default()),
+            Rc::new(DiscordToggleDeafen::default()),
+            Rc::new(DiscordPushToTalk::default()),
+            Rc::new(DiscordPushToMute::default()),
+            Rc::new(DiscordPushToDeafen::default()),
         ],
     )
 }
@@ -121,7 +120,7 @@ async fn discord_refresh_access_token(
 }
 
 async fn auth_client(
-    config: Arc<Mutex<JukeBoxConfig>>,
+    config: ActionModuleConfig,
     client: &mut DiscordIpcClient,
     skip_if_no_auth: bool,
 ) -> Result<(), ActionError> {
@@ -176,10 +175,7 @@ async fn auth_client(
     Ok(())
 }
 
-async fn create_client(
-    config: Arc<Mutex<JukeBoxConfig>>,
-    skip_if_no_auth: bool,
-) -> Result<(), ActionError> {
+async fn create_client(config: ActionModuleConfig, skip_if_no_auth: bool) -> ActionResult {
     if DISCORD_CLIENT_ID.is_none() || DISCORD_CLIENT_SECRET.is_none() {
         log::error!("discord: missing client id and secret from compile");
         return Err(ActionError::msg(t!("action.discord.err.compile")));
@@ -215,7 +211,7 @@ async fn create_client(
     Ok(())
 }
 
-fn account_warning(ui: &mut Ui, config: Arc<Mutex<JukeBoxConfig>>) {
+fn account_warning(ui: &mut Ui, config: &mut ActionModuleConfig) {
     if DISCORD_CLIENT.get().is_none() {
         let has_oauth = config.blocking_lock().discord_oauth_access.is_some();
         if has_oauth {
@@ -264,10 +260,10 @@ fn discord_toggle_mute(
     muted: bool,
     device_uid: &String,
     input_key: InputKey,
-) -> Result<(InputKey, bool), ActionError> {
+) -> ActionResult {
     client
         .set_voice_settings(VoiceSettings::new().mute(muted))
-        .map(|_| (input_key, true))
+        .map(|_| ())
         .map_err(|e| {
             ActionError::new(
                 device_uid,
@@ -286,10 +282,10 @@ fn discord_toggle_deafen(
     deafened: bool,
     device_uid: &String,
     input_key: InputKey,
-) -> Result<(InputKey, bool), ActionError> {
+) -> ActionResult {
     client
         .set_voice_settings(VoiceSettings::new().mute(deafened).deaf(deafened))
-        .map(|_| (input_key, true))
+        .map(|_| ())
         .map_err(|e| {
             ActionError::new(
                 device_uid,
@@ -303,39 +299,29 @@ fn discord_toggle_deafen(
         })
 }
 
-// fn discord_toggle_noise_suppression(
-//     client: &mut DiscordIpcClient,
-//     noise_suppression: bool,
-//     device_uid: &String,
-//     input_key: InputKey,
-// ) -> Result<(InputKey, bool), ActionError> {
-//     client
-//         .set_voice_settings(VoiceSettings::new().noise_suppression(noise_suppression))
-//         .map(|_| (input_key, true))
-//         .map_err(|e| {
-//             ActionError::new(
-//                 device_uid,
-//                 input_key,
-//                 t!(
-//                     "action.discord.err.set_noise_suppression_state",
-//                     state = noise_suppression,
-//                     error = format!("{:?}", e)
-//                 ),
-//             )
-//         })
-// }
-
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct DiscordToggleMute {}
-impl DiscordToggleMute {
-    pub async fn on_press(
-        &self,
+#[async_trait::async_trait]
+#[typetag::serde]
+impl ActionTrait for DiscordToggleMute {
+    fn get_type(&self) -> &'static str {
+        AID_DISCORD_TOGGLE_MUTE
+    }
+    fn get_title(&self) -> &'static str {
+        "action.discord.toggle_mute.title"
+    }
+    fn get_description(&self) -> &'static str {
+        "action.discord.toggle_mute.help"
+    }
+
+    async fn on_press(
+        &mut self,
+        module_config: &mut ActionModuleConfig,
         device_uid: &String,
-        input_key: InputKey,
-        config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(InputKey, bool), ActionError> {
+        input_key: &InputKey,
+    ) -> ActionResult {
         if DISCORD_CLIENT.get().is_none() {
-            create_client(config.clone(), false).await?;
+            create_client(module_config.clone(), false).await?;
         }
         let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
 
@@ -346,37 +332,14 @@ impl DiscordToggleMute {
             DISCORD_DEAFENED.store(false, Ordering::Relaxed);
         }
 
-        discord_toggle_mute(&mut client, muted, &device_uid, input_key)
+        discord_toggle_mute(&mut client, muted, device_uid, *input_key)
     }
 
-    pub async fn on_release(
-        &self,
-        _device_uid: &String,
-        input_key: InputKey,
-        _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(InputKey, bool), ActionError> {
-        Ok((input_key, false))
+    fn edit_ui(&mut self, module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+        account_warning(ui, module_config)
     }
 
-    pub fn get_type(&self) -> String {
-        AID_DISCORD_TOGGLE_MUTE.into()
-    }
-
-    pub fn edit_ui(
-        &mut self,
-        ui: &mut Ui,
-        _device_uid: &String,
-        _input_key: InputKey,
-        config: Arc<Mutex<JukeBoxConfig>>,
-    ) {
-        account_warning(ui, config)
-    }
-
-    pub fn help(&self) -> &str {
-        "action.discord.toggle_mute.help"
-    }
-
-    pub fn icon_state(&self) -> u8 {
+    fn icon_state(&self) -> u8 {
         if DISCORD_MUTED.load(Ordering::Relaxed) {
             1
         } else {
@@ -384,15 +347,15 @@ impl DiscordToggleMute {
         }
     }
 
-    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+    fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
         &[ICON_MUTE, ICON_MUTED]
     }
 
-    pub fn icon_state_count(&self) -> u8 {
+    fn icon_state_count(&self) -> u8 {
         2
     }
 
-    pub fn icon_state_descriptions(&self) -> &[&str] {
+    fn icon_state_descriptions(&self) -> &[&str] {
         &[
             "action.discord.toggle_mute.icon_state_0",
             "action.discord.toggle_mute.icon_state_1",
@@ -402,15 +365,27 @@ impl DiscordToggleMute {
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct DiscordToggleDeafen {}
-impl DiscordToggleDeafen {
-    pub async fn on_press(
-        &self,
+#[async_trait::async_trait]
+#[typetag::serde]
+impl ActionTrait for DiscordToggleDeafen {
+    fn get_type(&self) -> &'static str {
+        AID_DISCORD_TOGGLE_DEAFEN
+    }
+    fn get_title(&self) -> &'static str {
+        "action.discord.toggle_deafen.title"
+    }
+    fn get_description(&self) -> &'static str {
+        "action.discord.toggle_deafen.help"
+    }
+
+    async fn on_press(
+        &mut self,
+        module_config: &mut ActionModuleConfig,
         device_uid: &String,
-        input_key: InputKey,
-        config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(InputKey, bool), ActionError> {
+        input_key: &InputKey,
+    ) -> ActionResult {
         if DISCORD_CLIENT.get().is_none() {
-            create_client(config.clone(), false).await?;
+            create_client(module_config.clone(), false).await?;
         }
         let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
 
@@ -418,37 +393,14 @@ impl DiscordToggleDeafen {
         DISCORD_DEAFENED.store(deafened, Ordering::Relaxed);
         DISCORD_MUTED.store(deafened, Ordering::Relaxed);
 
-        discord_toggle_deafen(&mut client, deafened, &device_uid, input_key)
+        discord_toggle_deafen(&mut client, deafened, device_uid, *input_key)
     }
 
-    pub async fn on_release(
-        &self,
-        _device_uid: &String,
-        input_key: InputKey,
-        _config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(InputKey, bool), ActionError> {
-        Ok((input_key, false))
+    fn edit_ui(&mut self, module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+        account_warning(ui, module_config)
     }
 
-    pub fn get_type(&self) -> String {
-        AID_DISCORD_TOGGLE_DEAFEN.into()
-    }
-
-    pub fn edit_ui(
-        &mut self,
-        ui: &mut Ui,
-        _device_uid: &String,
-        _input_key: InputKey,
-        config: Arc<Mutex<JukeBoxConfig>>,
-    ) {
-        account_warning(ui, config)
-    }
-
-    pub fn help(&self) -> &str {
-        "action.discord.toggle_deafen.help"
-    }
-
-    pub fn icon_state(&self) -> u8 {
+    fn icon_state(&self) -> u8 {
         if DISCORD_DEAFENED.load(Ordering::Relaxed) {
             1
         } else {
@@ -456,15 +408,15 @@ impl DiscordToggleDeafen {
         }
     }
 
-    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+    fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
         &[ICON_DEAFEN, ICON_DEAFENED]
     }
 
-    pub fn icon_state_count(&self) -> u8 {
+    fn icon_state_count(&self) -> u8 {
         2
     }
 
-    pub fn icon_state_descriptions(&self) -> &[&str] {
+    fn icon_state_descriptions(&self) -> &[&str] {
         &[
             "action.discord.toggle_deafen.icon_state_0",
             "action.discord.toggle_deafen.icon_state_1",
@@ -472,271 +424,158 @@ impl DiscordToggleDeafen {
     }
 }
 
-// #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
-// pub struct DiscordToggleNoiseSuppression {}
-// impl DiscordToggleNoiseSuppression {
-//     pub async fn on_press(
-//         &self,
-//         device_uid: &String,
-//         input_key: InputKey,
-//         config: Arc<Mutex<JukeBoxConfig>>,
-//     ) -> Result<(InputKey, bool), ActionError> {
-//         if DISCORD_CLIENT.get().is_none() {
-//             create_client(config.clone(), false).await?;
-//         }
-//         let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
-
-//         let noise_suppression = !DISCORD_NOISE_SUPPRESSION.load(Ordering::Relaxed);
-//         DISCORD_NOISE_SUPPRESSION.store(noise_suppression, Ordering::Relaxed);
-
-//         discord_toggle_noise_suppression(&mut client, noise_suppression, &device_uid, input_key)
-//     }
-
-//     pub async fn on_release(
-//         &self,
-//         _device_uid: &String,
-//         input_key: InputKey,
-//         _config: Arc<Mutex<JukeBoxConfig>>,
-//     ) -> Result<(InputKey, bool), ActionError> {
-//         Ok((input_key, false))
-//     }
-
-//     pub fn get_type(&self) -> String {
-//         AID_DISCORD_TOGGLE_NOISE_SUPPRESSION.into()
-//     }
-
-//     pub fn edit_ui(
-//         &mut self,
-//         ui: &mut Ui,
-//         _device_uid: &String,
-//         _input_key: InputKey,
-//         config: Arc<Mutex<JukeBoxConfig>>,
-//     ) {
-//         account_warning(ui, config)
-//     }
-
-//     pub fn help(&self) -> &str {
-//         "action.discord.toggle_noise_suppression.help"
-//     }
-
-//     pub fn icon_state(&self) -> u8 {
-//         if DISCORD_NOISE_SUPPRESSION.load(Ordering::Relaxed) {
-//             1
-//         } else {
-//             0
-//         }
-//     }
-
-//     pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
-//         &[ICON_NOISE_SUPPRESSION_OFF, ICON_NOISE_SUPPRESSION_ON]
-//     }
-
-//     pub fn icon_state_count(&self) -> u8 {
-//         2
-//     }
-
-//     pub fn icon_state_descriptions(&self) -> &[&str] {
-//         &[
-//             "action.discord.toggle_noise_suppression.icon_state_0",
-//             "action.discord.toggle_noise_suppression.icon_state_1",
-//         ]
-//     }
-// }
-
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct DiscordPushToTalk {}
-impl DiscordPushToTalk {
-    pub async fn on_press(
-        &self,
-        device_uid: &String,
-        input_key: InputKey,
-        config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(InputKey, bool), ActionError> {
-        if DISCORD_CLIENT.get().is_none() {
-            create_client(config.clone(), false).await?;
-        }
-        let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
-
-        discord_toggle_mute(&mut client, false, &device_uid, input_key)
+#[async_trait::async_trait]
+#[typetag::serde]
+impl ActionTrait for DiscordPushToTalk {
+    fn get_type(&self) -> &'static str {
+        AID_DISCORD_PUSH_TO_TALK
     }
-
-    pub async fn on_release(
-        &self,
-        device_uid: &String,
-        input_key: InputKey,
-        config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(InputKey, bool), ActionError> {
-        if DISCORD_CLIENT.get().is_none() {
-            create_client(config.clone(), false).await?;
-        }
-        let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
-
-        discord_toggle_mute(&mut client, true, &device_uid, input_key)
+    fn get_title(&self) -> &'static str {
+        "action.discord.push_to_talk.title"
     }
-
-    pub fn get_type(&self) -> String {
-        AID_DISCORD_PUSH_TO_TALK.into()
-    }
-
-    pub fn edit_ui(
-        &mut self,
-        ui: &mut Ui,
-        _device_uid: &String,
-        _input_key: InputKey,
-        config: Arc<Mutex<JukeBoxConfig>>,
-    ) {
-        account_warning(ui, config)
-    }
-
-    pub fn help(&self) -> &str {
+    fn get_description(&self) -> &'static str {
         "action.discord.push_to_talk.help"
     }
 
-    pub fn icon_state(&self) -> u8 {
-        0
+    async fn on_press(
+        &mut self,
+        module_config: &mut ActionModuleConfig,
+        device_uid: &String,
+        input_key: &InputKey,
+    ) -> ActionResult {
+        if DISCORD_CLIENT.get().is_none() {
+            create_client(module_config.clone(), false).await?;
+        }
+        let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
+
+        discord_toggle_mute(&mut client, false, device_uid, *input_key)
     }
 
-    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+    async fn on_release(
+        &mut self,
+        module_config: &mut ActionModuleConfig,
+        device_uid: &String,
+        input_key: &InputKey,
+    ) -> ActionResult {
+        if DISCORD_CLIENT.get().is_none() {
+            create_client(module_config.clone(), false).await?;
+        }
+        let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
+
+        discord_toggle_mute(&mut client, true, device_uid, *input_key)
+    }
+
+    fn edit_ui(&mut self, module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+        account_warning(ui, module_config)
+    }
+
+    fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
         &[ICON_PUSH_TO_TALK]
-    }
-
-    pub fn icon_state_count(&self) -> u8 {
-        1
-    }
-
-    pub fn icon_state_descriptions(&self) -> &[&str] {
-        &[""]
     }
 }
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct DiscordPushToMute {}
-impl DiscordPushToMute {
-    pub async fn on_press(
-        &self,
-        device_uid: &String,
-        input_key: InputKey,
-        config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(InputKey, bool), ActionError> {
-        if DISCORD_CLIENT.get().is_none() {
-            create_client(config.clone(), false).await?;
-        }
-        let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
-
-        discord_toggle_mute(&mut client, true, &device_uid, input_key)
+#[async_trait::async_trait]
+#[typetag::serde]
+impl ActionTrait for DiscordPushToMute {
+    fn get_type(&self) -> &'static str {
+        AID_DISCORD_PUSH_TO_MUTE
     }
-
-    pub async fn on_release(
-        &self,
-        device_uid: &String,
-        input_key: InputKey,
-        config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(InputKey, bool), ActionError> {
-        if DISCORD_CLIENT.get().is_none() {
-            create_client(config.clone(), false).await?;
-        }
-        let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
-
-        discord_toggle_mute(&mut client, false, &device_uid, input_key)
+    fn get_title(&self) -> &'static str {
+        "action.discord.push_to_mute.title"
     }
-
-    pub fn get_type(&self) -> String {
-        AID_DISCORD_PUSH_TO_MUTE.into()
-    }
-
-    pub fn edit_ui(
-        &mut self,
-        ui: &mut Ui,
-        _device_uid: &String,
-        _input_key: InputKey,
-        config: Arc<Mutex<JukeBoxConfig>>,
-    ) {
-        account_warning(ui, config)
-    }
-
-    pub fn help(&self) -> &str {
+    fn get_description(&self) -> &'static str {
         "action.discord.push_to_mute.help"
     }
 
-    pub fn icon_state(&self) -> u8 {
-        0
+    async fn on_press(
+        &mut self,
+        module_config: &mut ActionModuleConfig,
+        device_uid: &String,
+        input_key: &InputKey,
+    ) -> ActionResult {
+        if DISCORD_CLIENT.get().is_none() {
+            create_client(module_config.clone(), false).await?;
+        }
+        let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
+
+        discord_toggle_mute(&mut client, true, device_uid, *input_key)
     }
 
-    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+    async fn on_release(
+        &mut self,
+        module_config: &mut ActionModuleConfig,
+        device_uid: &String,
+        input_key: &InputKey,
+    ) -> ActionResult {
+        if DISCORD_CLIENT.get().is_none() {
+            create_client(module_config.clone(), false).await?;
+        }
+        let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
+
+        discord_toggle_mute(&mut client, false, device_uid, *input_key)
+    }
+
+    fn edit_ui(&mut self, module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+        account_warning(ui, module_config)
+    }
+
+    fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
         &[ICON_PUSH_TO_MUTE]
-    }
-
-    pub fn icon_state_count(&self) -> u8 {
-        1
-    }
-
-    pub fn icon_state_descriptions(&self) -> &[&str] {
-        &[""]
     }
 }
 
 #[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct DiscordPushToDeafen {}
-impl DiscordPushToDeafen {
-    pub async fn on_press(
-        &self,
-        device_uid: &String,
-        input_key: InputKey,
-        config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(InputKey, bool), ActionError> {
-        if DISCORD_CLIENT.get().is_none() {
-            create_client(config.clone(), false).await?;
-        }
-        let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
-
-        discord_toggle_deafen(&mut client, true, &device_uid, input_key)
+#[async_trait::async_trait]
+#[typetag::serde]
+impl ActionTrait for DiscordPushToDeafen {
+    fn get_type(&self) -> &'static str {
+        AID_DISCORD_PUSH_TO_DEAFEN
     }
-
-    pub async fn on_release(
-        &self,
-        device_uid: &String,
-        input_key: InputKey,
-        config: Arc<Mutex<JukeBoxConfig>>,
-    ) -> Result<(InputKey, bool), ActionError> {
-        if DISCORD_CLIENT.get().is_none() {
-            create_client(config.clone(), false).await?;
-        }
-        let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
-
-        discord_toggle_deafen(&mut client, false, &device_uid, input_key)
+    fn get_title(&self) -> &'static str {
+        "action.discord.push_to_deafen.title"
     }
-
-    pub fn get_type(&self) -> String {
-        AID_DISCORD_PUSH_TO_DEAFEN.into()
-    }
-
-    pub fn edit_ui(
-        &mut self,
-        ui: &mut Ui,
-        _device_uid: &String,
-        _input_key: InputKey,
-        config: Arc<Mutex<JukeBoxConfig>>,
-    ) {
-        account_warning(ui, config)
-    }
-
-    pub fn help(&self) -> &str {
+    fn get_description(&self) -> &'static str {
         "action.discord.push_to_deafen.help"
     }
 
-    pub fn icon_state(&self) -> u8 {
-        0
+    async fn on_press(
+        &mut self,
+        module_config: &mut ActionModuleConfig,
+        device_uid: &String,
+        input_key: &InputKey,
+    ) -> ActionResult {
+        if DISCORD_CLIENT.get().is_none() {
+            create_client(module_config.clone(), false).await?;
+        }
+        let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
+
+        discord_toggle_deafen(&mut client, true, device_uid, *input_key)
     }
 
-    pub fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
+    async fn on_release(
+        &mut self,
+        module_config: &mut ActionModuleConfig,
+        device_uid: &String,
+        input_key: &InputKey,
+    ) -> ActionResult {
+        if DISCORD_CLIENT.get().is_none() {
+            create_client(module_config.clone(), false).await?;
+        }
+        let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
+
+        discord_toggle_deafen(&mut client, false, device_uid, *input_key)
+    }
+
+    fn edit_ui(&mut self, module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+        account_warning(ui, module_config)
+    }
+
+    fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
         &[ICON_PUSH_TO_DEAFEN]
-    }
-
-    pub fn icon_state_count(&self) -> u8 {
-        1
-    }
-
-    pub fn icon_state_descriptions(&self) -> &[&str] {
-        &[""]
     }
 }

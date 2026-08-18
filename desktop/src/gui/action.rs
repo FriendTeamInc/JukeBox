@@ -235,7 +235,7 @@ impl JukeBoxGui {
                 let test_btn =
                     match &self.editing_action_icons[self.editing_action.icon_state() as usize] {
                         ActionIcon::ImageIcon(s) => {
-                            let p = String::new() + "file://" + s;
+                            let p = String::new() + "file://" + &s;
                             let i = Image::new(ImageSource::Uri(p.into()))
                                 .texture_options(TextureOptions {
                                     magnification: TextureFilter::Nearest,

@@ -16,7 +16,7 @@ use tokio::sync::{
 };
 
 use crate::{
-    actions::types::{get_icon_bytes, get_icon_cache_async, Action, ActionError},
+    actions::types::{get_icon_bytes, get_icon_cache_async, ActionError},
     config::{ActionConfig, JukeBoxConfig},
     input::InputKey,
     serial::{SerialCommand, SerialEvent},
@@ -71,6 +71,49 @@ pub fn send_input_event(tx: &UnboundedSender<SerialCommand>, slot: u8, action: &
     };
 }
 
+async fn clear_set(p: &mut HashMap<String, Arc<Mutex<HashSet<InputKey>>>>, uid: &String) {
+    if !p.contains_key(uid) {
+        p.insert(uid.clone(), Arc::new(Mutex::new(HashSet::new())));
+    }
+    let p = p.get_mut(uid).unwrap();
+    p.lock().await.clear();
+}
+
+async fn get_profile_info(
+    config: &Arc<Mutex<JukeBoxConfig>>,
+    device_uid: &String,
+) -> (
+    DeviceType,
+    HashMap<InputKey, ActionConfig>,
+    String,
+    Option<RgbProfile>,
+    Option<ScreenProfile>,
+) {
+    let c = config.lock().await;
+
+    let (profile, rgb, scr) = c
+        .profiles
+        .get(&c.current_profile)
+        .and_then(|p| p.get(device_uid))
+        .map(|p| {
+            (
+                p.key_map.clone(),
+                p.rgb_profile.clone(),
+                p.screen_profile.clone(),
+            )
+        })
+        .unwrap_or((HashMap::new(), None, None));
+
+    let device_type = c
+        .devices
+        .get(device_uid)
+        .map(|d| d.device_type)
+        .unwrap_or(DeviceType::Unknown)
+        .clone();
+
+    (device_type, profile, c.current_profile.clone(), rgb, scr)
+}
+
 pub async fn action_task(
     mut s_evnt_rx: UnboundedReceiver<SerialEvent>,
     config: Arc<Mutex<JukeBoxConfig>>,
@@ -78,40 +121,6 @@ pub async fn action_task(
     ae_tx: UnboundedSender<ActionError>,
 ) -> Result<()> {
     let mut prevkeys: HashMap<String, Arc<Mutex<HashSet<InputKey>>>> = HashMap::new();
-
-    let clear_set = async |p: &mut HashMap<String, Arc<Mutex<HashSet<InputKey>>>>, uid: &String| {
-        if !p.contains_key(uid) {
-            p.insert(uid.clone(), Arc::new(Mutex::new(HashSet::new())));
-        }
-        let p = p.get_mut(uid).unwrap();
-        p.lock().await.clear();
-    };
-
-    let get_profile_info = async |config: &Arc<Mutex<JukeBoxConfig>>, device_uid: &String| {
-        let c = config.lock().await; // Lock drops immediately
-
-        let (profile, rgb, scr) = c
-            .profiles
-            .get(&c.current_profile)
-            .and_then(|p| p.get(device_uid))
-            .map(|p| {
-                (
-                    p.key_map.clone(),
-                    p.rgb_profile.clone(),
-                    p.screen_profile.clone(),
-                )
-            })
-            .unwrap_or((HashMap::new(), None, None));
-
-        let device_type = c
-            .devices
-            .get(device_uid)
-            .map(|d| d.device_type)
-            .unwrap_or(DeviceType::Unknown)
-            .clone();
-
-        (device_type, profile, c.current_profile.clone(), rgb, scr)
-    };
 
     while let Some(evnt) = s_evnt_rx.recv().await {
         match evnt {
@@ -234,6 +243,7 @@ pub async fn action_task(
                         new_screen_profile,
                     ) = get_profile_info(&config, &device_uid).await;
 
+                    // TODO: make this less stupid
                     if current_profile_name != new_profile_name {
                         update_device_configs(
                             scmd_tx,
