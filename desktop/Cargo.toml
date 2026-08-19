@@ -46,7 +46,7 @@ futures = "0.3"
 reqwest = { version = "0.13", features = ["json", "form"] }
 obws = { version = "0.15", features = ["events"] }
 discord-rich-presence = { git = "https://github.com/NotQuiteApex/discord-rich-presence", branch = "voice-settings" }
-uuid = "1.16"
+uuid = { version = "1.16", features = ["v4"] }
 sha1_smol = "1.0"
 
 sysinfo = { version = "0.39", features = ["multithread"] }

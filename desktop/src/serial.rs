@@ -568,8 +568,8 @@ async fn build_config(config: Arc<Mutex<JukeBoxConfig>>, device_info: SerialConn
         };
 
         for (_, v) in conf.profiles.iter_mut() {
-            if !v.contains_key(&device_uid) {
-                v.insert(
+            if !v.device_configs.contains_key(&device_uid) {
+                v.device_configs.insert(
                     device_uid.clone(),
                     DeviceConfig {
                         key_map: ActionMap::default_action_config(device_type.into()),

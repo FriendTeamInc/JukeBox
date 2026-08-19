@@ -92,6 +92,7 @@ impl JukeBoxGui {
                         .profiles
                         .get(&c.current_profile)
                         .unwrap()
+                        .device_configs
                         .get(&self.current_device)
                         .unwrap()
                         .clone();
@@ -173,6 +174,7 @@ impl JukeBoxGui {
                             .profiles
                             .get(&c.current_profile)
                             .unwrap()
+                            .device_configs
                             .get(&self.current_device)
                             .unwrap()
                             .clone();
@@ -314,7 +316,7 @@ impl JukeBoxGui {
                             let c = self.config.blocking_lock();
                             c.profiles
                                 .get(&c.current_profile)
-                                .and_then(|p| p.get(&self.current_device))
+                                .and_then(|p| p.device_configs.get(&self.current_device))
                                 .and_then(|d| d.rgb_profile.clone())
                                 .unwrap_or(RgbProfile::default_gui_profile())
                         };
@@ -329,7 +331,7 @@ impl JukeBoxGui {
                             let c = self.config.blocking_lock();
                             c.profiles
                                 .get(&c.current_profile)
-                                .and_then(|p| p.get(&self.current_device))
+                                .and_then(|p| p.device_configs.get(&self.current_device))
                                 .and_then(|d| d.screen_profile.clone())
                                 .unwrap_or(ScreenProfile::default_profile())
                         };
@@ -439,7 +441,7 @@ impl JukeBoxGui {
                         let mut conf = self.config.blocking_lock();
                         conf.devices.remove(&old_device);
                         for (_, p) in conf.profiles.iter_mut() {
-                            p.remove_entry(&old_device);
+                            p.device_configs.remove_entry(&old_device);
                         }
                         conf.save();
 

@@ -110,49 +110,47 @@ impl ActionTrait for MetaSwitchProfile {
         _device_uid: &String,
         _input_key: &InputKey,
     ) -> ActionResult {
-        // let mut config = config.lock().await;
-        // if config.profiles.contains_key(&self.profile) {
-        //     config.current_profile = self.profile.clone();
-        //     Ok((input_key, false))
-        // } else {
-        //     if self.profile.len() == 0 {
-        //         Err(ActionError::new(
-        //             device_uid,
-        //             input_key,
-        //             t!("action.meta.switch_profile.err.empty_profile"),
-        //         ))
-        //     } else {
-        //         Err(ActionError::new(
-        //             device_uid,
-        //             input_key,
-        //             t!(
-        //                 "action.meta.switch_profile.err.profile_not_found",
-        //                 profile = self.profile
-        //             ),
-        //         ))
-        //     }
-        // }
-        todo!()
+        let mut config = config.lock().await;
+        if config.profiles.contains_key(&self.profile) {
+            config.current_profile = self.profile.clone();
+            Ok((input_key, false))
+        } else {
+            if self.profile.len() == 0 {
+                Err(ActionError::new(
+                    device_uid,
+                    input_key,
+                    t!("action.meta.switch_profile.err.empty_profile"),
+                ))
+            } else {
+                Err(ActionError::new(
+                    device_uid,
+                    input_key,
+                    t!(
+                        "action.meta.switch_profile.err.profile_not_found",
+                        profile = self.profile
+                    ),
+                ))
+            }
+        }
     }
 
     fn edit_ui(&mut self, _module_config: &mut ActionModuleConfig, _ui: &mut Ui) {
-        // ui.label(t!("action.meta.switch_profile.profile_select"));
-        // ComboBox::from_id_salt("MetaSwitchProfileSelect")
-        //     .selected_text(self.profile.clone())
-        //     .width(228.0)
-        //     .show_ui(ui, |ui| {
-        //         let config = config.blocking_lock();
-        //         for k in config.profiles.keys() {
-        //             if *k == config.current_profile {
-        //                 continue;
-        //             }
+        ui.label(t!("action.meta.switch_profile.profile_select"));
+        ComboBox::from_id_salt("MetaSwitchProfileSelect")
+            .selected_text(self.profile.clone())
+            .width(228.0)
+            .show_ui(ui, |ui| {
+                let config = config.blocking_lock();
+                for k in config.profiles.keys() {
+                    if *k == config.current_profile {
+                        continue;
+                    }
 
-        //             if ui.selectable_label(*k == self.profile, k.clone()).clicked() {
-        //                 self.profile = k.clone();
-        //             }
-        //         }
-        //     });
-        todo!()
+                    if ui.selectable_label(*k == self.profile, k.clone()).clicked() {
+                        self.profile = k.clone();
+                    }
+                }
+            });
     }
 
     fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {

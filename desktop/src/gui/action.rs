@@ -43,7 +43,7 @@ impl JukeBoxGui {
             if let Some(r) = c
                 .profiles
                 .get(&c.current_profile)
-                .and_then(|p| p.get(&self.current_device))
+                .and_then(|p| p.device_configs.get(&self.current_device))
                 .and_then(|d| d.key_map.get(&self.editing_key))
             {
                 self.editing_action_icons = r.icons.clone();
@@ -75,7 +75,9 @@ impl JukeBoxGui {
 
         let c = self.config.blocking_lock().clone();
         let p = c.profiles.clone();
-        let p = p.get(&c.current_profile).and_then(|d| d.get(device_uid));
+        let p = p
+            .get(&c.current_profile)
+            .and_then(|d| d.device_configs.get(device_uid));
 
         if let Some(p) = p {
             for (k, a) in &p.key_map {
@@ -107,7 +109,9 @@ impl JukeBoxGui {
 
         let c = self.config.blocking_lock().clone();
         let p = c.profiles.clone();
-        let p = p.get(&c.current_profile).and_then(|d| d.get(device_uid));
+        let p = p
+            .get(&c.current_profile)
+            .and_then(|d| d.device_configs.get(device_uid));
 
         if let Some(p) = p {
             for (k, a) in &p.key_map {
@@ -136,7 +140,7 @@ impl JukeBoxGui {
             c.profiles
                 .clone()
                 .get(&c.current_profile)
-                .and_then(|d| d.get(device_uid))
+                .and_then(|d| d.device_configs.get(device_uid))
                 .and_then(|p| p.key_map.get(&self.editing_key))
         } {
             get_icon_bytes(action_config, &mut get_icon_cache())
@@ -165,7 +169,7 @@ impl JukeBoxGui {
             c.profiles
                 .clone()
                 .get(&c.current_profile)
-                .and_then(|d| d.get(device_uid))
+                .and_then(|d| d.device_configs.get(device_uid))
                 .and_then(|p| p.key_map.get(&self.editing_key))
                 .map(|a| a.action.clone())
         } {
@@ -204,6 +208,7 @@ impl JukeBoxGui {
         // } else {
         //     false
         // }
+        // TODO: restore this
         true
     }
 
@@ -214,7 +219,10 @@ impl JukeBoxGui {
             let mut c = self.config.blocking_lock();
             let current_profile = c.current_profile.clone();
             let profile = c.profiles.get_mut(&current_profile).unwrap();
-            let d = profile.get_mut(&self.current_device).unwrap();
+            let d = profile
+                .device_configs
+                .get_mut(&self.current_device)
+                .unwrap();
             d.key_map.insert(
                 self.editing_key.clone(),
                 ActionConfig {

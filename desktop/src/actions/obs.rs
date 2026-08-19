@@ -20,7 +20,6 @@ use uuid::Uuid;
 
 use crate::{
     actions::types::{ActionModuleConfig, ActionResult, ActionTrait},
-    config::ObsAccess,
     input::InputKey,
     single_fire,
 };

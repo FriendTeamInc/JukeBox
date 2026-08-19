@@ -14,7 +14,6 @@ use tokio::sync::Mutex;
 
 use crate::{
     actions::types::{Action, ActionError, ActionModuleConfig, ActionResult, ActionTrait},
-    config::DiscordOauthAccess,
     get_reqwest_client,
     input::InputKey,
 };
@@ -78,7 +77,7 @@ async fn discord_access_token_request(
     code: &str,
     client_id: &str,
     client_secret: &str,
-) -> Result<DiscordOauthAccess, ()> {
+) -> Result<HashMap<String, String>, ()> {
     let params = HashMap::from([
         ("grant_type", "authorization_code"),
         ("code", code),
@@ -101,7 +100,7 @@ async fn discord_refresh_access_token(
     refresh_token: &str,
     client_id: &str,
     client_secret: &str,
-) -> Result<DiscordOauthAccess, ()> {
+) -> Result<HashMap<String, String>, ()> {
     let params = HashMap::from([
         ("grant_type", "refresh_token"),
         ("refresh_token", refresh_token),

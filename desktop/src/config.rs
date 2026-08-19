@@ -9,6 +9,7 @@ use std::{
 
 use jukebox_util::{peripheral::DeviceType, rgb::RgbProfile, screen::ScreenProfile};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 use crate::{
     actions::{meta::MetaNoAction, types::Action},
@@ -79,13 +80,22 @@ pub struct JukeBoxConfig {
 }
 impl Default for JukeBoxConfig {
     fn default() -> Self {
+        let uuid = Uuid::new_v4().to_string();
+
         JukeBoxConfig {
-            current_profile: "Default Profile".into(),
-            profiles: HashMap::from([("Default Profile".into(), HashMap::new())]),
+            profiles: HashMap::from([(
+                uuid.clone(),
+                ProfileConfig {
+                    profile_name: t!("profile_name_new", idx = 1).into(),
+                    device_configs: HashMap::new(),
+                },
+            )]),
+
             devices: HashMap::new(),
 
-            discord_oauth_access: None,
-            obs_access: None,
+            action_module_config: HashMap::new(),
+
+            current_profile: uuid,
 
             enable_splash: true,
             always_save_on_exit: false,

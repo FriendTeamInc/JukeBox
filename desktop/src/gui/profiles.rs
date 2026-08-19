@@ -1,12 +1,16 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use eframe::egui::{Color32, ComboBox, RichText, TextBuffer, TextEdit, Ui};
 use egui_phosphor::regular as phos;
 use jukebox_util::{peripheral::DeviceType, rgb::RgbProfile, screen::ScreenProfile};
+use uuid::Uuid;
 
 use crate::{
     actions::{meta::MetaSwitchProfile, types::ActionMap},
-    config::DeviceConfig,
+    config::{DeviceConfig, ProfileConfig},
     serial::SerialCommand,
 };
 
@@ -22,40 +26,23 @@ impl JukeBoxGui {
                 if edit.lost_focus() && self.profile_name_entry.len() > 0 {
                     self.profile_renaming = false;
 
-                    let contains = self
-                        .config
-                        .blocking_lock()
-                        .profiles
-                        .contains_key(&self.profile_name_entry);
+                    let contains = {
+                        let conf = self.config.blocking_lock();
+                        let profile_name_list: HashSet<String> = conf
+                            .profiles
+                            .values()
+                            .map(|p| p.profile_name.clone())
+                            .collect();
+                        profile_name_list.contains(&self.profile_name_entry)
+                    };
 
                     if !contains && self.profile_name_entry.chars().count() <= 18 {
                         {
                             let mut conf = self.config.blocking_lock();
 
-                            // update profiles
-                            let current_profile = conf.current_profile.clone();
-                            let c = conf.profiles.remove(&current_profile).expect("");
-                            conf.profiles.insert(self.profile_name_entry.clone(), c);
-                            conf.current_profile.replace_with(&self.profile_name_entry);
-
-                            // update any profile switch actions to use the new name
-                            for (_, p) in conf.profiles.iter_mut() {
-                                for (_, d) in p.iter_mut() {
-                                    for (_, k) in d.key_map.iter_mut() {
-                                        if k.action.is::<MetaSwitchProfile>() {
-                                            let msp = k
-                                                .action
-                                                .downcast_ref::<MetaSwitchProfile>()
-                                                .unwrap();
-                                            if msp.profile == current_profile {
-                                                k.action = Arc::new(MetaSwitchProfile {
-                                                    profile: self.profile_name_entry.clone(),
-                                                });
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            let p = conf.current_profile.clone();
+                            let current_profile = conf.profiles.get_mut(&p).unwrap();
+                            current_profile.profile_name = self.profile_name_entry.clone();
 
                             conf.save();
                         }
@@ -71,8 +58,12 @@ impl JukeBoxGui {
                 let (profiles, current) = {
                     let conf = self.config.blocking_lock();
 
-                    let mut profiles: Vec<_> = conf.profiles.keys().cloned().collect();
-                    profiles.sort_by(|a, b| a.cmp(b));
+                    let mut profiles: Vec<_> = conf
+                        .profiles
+                        .iter()
+                        .map(|(k, v)| (k.clone(), v.profile_name.clone()))
+                        .collect();
+                    profiles.sort_by(|a, b| a.1.cmp(&b.1));
                     let current = conf.current_profile.clone();
 
                     (profiles, current)
@@ -82,11 +73,11 @@ impl JukeBoxGui {
                     .width(150.0)
                     .show_ui(ui, |ui| {
                         for k in &profiles {
-                            let u = ui.selectable_label(*k == current, &*k.clone());
+                            let u = ui.selectable_label(*k.0 == current, k.1.clone());
                             if u.clicked() {
                                 {
                                     let mut conf = self.config.blocking_lock();
-                                    conf.current_profile = k.into();
+                                    conf.current_profile = k.0.clone();
                                     conf.save();
                                 }
 
@@ -107,9 +98,14 @@ impl JukeBoxGui {
                 if new_btn.clicked() {
                     let mut conf = self.config.blocking_lock();
                     let mut idx = conf.profiles.keys().len() + 1;
+                    let profile_name_list: HashSet<String> = conf
+                        .profiles
+                        .values()
+                        .map(|p| p.profile_name.clone())
+                        .collect();
                     let name = loop {
                         let name: String = t!("profile_name_new", idx = idx).into();
-                        if !conf.profiles.contains_key(&name) {
+                        if !profile_name_list.contains(&name) {
                             break name;
                         }
                         idx += 1;
@@ -137,8 +133,13 @@ impl JukeBoxGui {
                             },
                         );
                     }
-                    conf.profiles.insert(name.clone(), m);
-                    conf.current_profile = name;
+                    let p = ProfileConfig {
+                        profile_name: name,
+                        device_configs: m,
+                    };
+                    let uuid = Uuid::new_v4().to_string();
+                    conf.profiles.insert(uuid.clone(), p);
+                    conf.current_profile = uuid;
                     conf.save();
                     drop(conf);
 
@@ -154,7 +155,12 @@ impl JukeBoxGui {
                 if edit_btn.clicked() {
                     let conf = self.config.blocking_lock();
                     self.profile_renaming = true;
-                    self.profile_name_entry.replace_with(&conf.current_profile);
+                    let profile_name = &conf
+                        .profiles
+                        .get(&conf.current_profile)
+                        .unwrap()
+                        .profile_name;
+                    self.profile_name_entry.replace_with(profile_name);
                 }
 
                 let dupe_btn = ui
@@ -202,7 +208,7 @@ impl JukeBoxGui {
                         for k in conf
                             .profiles
                             .values_mut()
-                            .flat_map(|p| p.values_mut())
+                            .flat_map(|p| p.device_configs.values_mut())
                             .flat_map(|d| d.key_map.values_mut())
                         {
                             if k.action.is::<MetaSwitchProfile>() {
@@ -256,7 +262,9 @@ impl JukeBoxGui {
             let c = self.config.blocking_lock();
             let txs = self.scmd_txs.blocking_lock();
             if let Some(tx) = txs.get(device_uid) {
-                let _ = tx.send(SerialCommand::SetProfileName(c.current_profile.clone()));
+                let p = c.current_profile.clone();
+                let profile = c.profiles.get(&p).unwrap();
+                let _ = tx.send(SerialCommand::SetProfileName(profile.profile_name.clone()));
             }
         }
     }

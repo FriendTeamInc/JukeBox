@@ -99,7 +99,7 @@ async fn get_profile_info(
     let (profile, rgb, scr) = c
         .profiles
         .get(&c.current_profile)
-        .and_then(|p| p.get(device_uid))
+        .and_then(|p| p.device_configs.get(device_uid))
         .map(|p| {
             (
                 p.key_map.clone(),
