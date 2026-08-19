@@ -8,7 +8,10 @@ use egui_phosphor::regular as phos;
 use jukebox_util::input::{InputEvent, KeyboardEvent, MouseEvent, KEYBOARD_SCAN_CODES};
 use serde::{Deserialize, Serialize};
 
-use crate::actions::types::{ActionModuleConfig, ActionTrait};
+use crate::{
+    actions::types::{ActionModuleConfig, ActionTrait},
+    input::InputKey,
+};
 
 use super::types::Action;
 
@@ -54,7 +57,14 @@ impl ActionTrait for InputKeyboard {
         "action.input.keyboard.help"
     }
 
-    fn edit_ui(&mut self, _module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>),
+        _module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         ui.horizontal(|ui| {
             ui.label(t!("action.input.keyboard.add_keys"));
             ui.add_enabled_ui(self.keys.len() < 6, |ui| {
@@ -125,7 +135,14 @@ impl ActionTrait for InputMouse {
         "action.input.mouse.help"
     }
 
-    fn edit_ui(&mut self, _module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>),
+        _module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         ui.label(t!("action.input.mouse.buttons"));
         let mut bits = [
             (

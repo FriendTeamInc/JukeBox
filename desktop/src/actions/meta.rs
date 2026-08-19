@@ -5,7 +5,7 @@ use egui_phosphor::regular as phos;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    actions::types::{ActionModuleConfig, ActionResult, ActionTrait},
+    actions::types::{ActionModuleConfig, ActionOk, ActionResult, ActionTrait},
     input::InputKey,
 };
 
@@ -62,7 +62,7 @@ impl ActionTrait for MetaNoAction {
             device_uid,
             input_key
         );
-        Ok(())
+        Ok(ActionOk::new(device_uid, *input_key))
     }
 
     async fn on_release(
@@ -76,7 +76,7 @@ impl ActionTrait for MetaNoAction {
             device_uid,
             input_key
         );
-        Ok(())
+        Ok(ActionOk::new(device_uid, *input_key))
     }
 
     fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
@@ -107,46 +107,31 @@ impl ActionTrait for MetaSwitchProfile {
     async fn on_release(
         &mut self,
         _module_config: &mut ActionModuleConfig,
-        _device_uid: &String,
-        _input_key: &InputKey,
+        device_uid: &String,
+        input_key: &InputKey,
     ) -> ActionResult {
-        let mut config = config.lock().await;
-        if config.profiles.contains_key(&self.profile) {
-            config.current_profile = self.profile.clone();
-            Ok((input_key, false))
-        } else {
-            if self.profile.len() == 0 {
-                Err(ActionError::new(
-                    device_uid,
-                    input_key,
-                    t!("action.meta.switch_profile.err.empty_profile"),
-                ))
-            } else {
-                Err(ActionError::new(
-                    device_uid,
-                    input_key,
-                    t!(
-                        "action.meta.switch_profile.err.profile_not_found",
-                        profile = self.profile
-                    ),
-                ))
-            }
-        }
+        Ok(ActionOk::new(device_uid, *input_key).switch_to_profile(self.profile.clone()))
     }
 
-    fn edit_ui(&mut self, _module_config: &mut ActionModuleConfig, _ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        profiles: &(String, Vec<(String, String)>),
+        _module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         ui.label(t!("action.meta.switch_profile.profile_select"));
         ComboBox::from_id_salt("MetaSwitchProfileSelect")
             .selected_text(self.profile.clone())
             .width(228.0)
             .show_ui(ui, |ui| {
-                let config = config.blocking_lock();
-                for k in config.profiles.keys() {
-                    if *k == config.current_profile {
+                for (k, v) in profiles.1 {
+                    if k == profiles.0 {
                         continue;
                     }
 
-                    if ui.selectable_label(*k == self.profile, k.clone()).clicked() {
+                    if ui.selectable_label(*k == self.profile, v).clicked() {
                         self.profile = k.clone();
                     }
                 }

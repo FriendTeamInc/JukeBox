@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::{sync::Mutex, task::spawn_blocking};
 
-use crate::actions::types::{ActionModuleConfig, ActionResult, ActionTrait};
+use crate::actions::types::{ActionModuleConfig, ActionOk, ActionResult, ActionTrait};
 use crate::input::InputKey;
 use crate::single_fire;
 
@@ -409,8 +409,8 @@ impl ActionTrait for SystemOpenApp {
     async fn on_press(
         &mut self,
         _module_config: &mut ActionModuleConfig,
-        _device_uid: &String,
-        _input_key: &InputKey,
+        device_uid: &String,
+        input_key: &InputKey,
     ) -> ActionResult {
         // spin off the process, drop its handle since we don't care about it completing
         let _ = Command::new(self.filepath.clone())
@@ -419,10 +419,17 @@ impl ActionTrait for SystemOpenApp {
 
         // error handling?
 
-        Ok(())
+        Ok(ActionOk::new(device_uid, *input_key))
     }
 
-    fn edit_ui(&mut self, _module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>),
+        _module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         if ui
             .button(t!("action.system.open_app.choose_file"))
             .clicked()
@@ -484,20 +491,29 @@ impl ActionTrait for SystemOpenWeb {
         device_uid: &String,
         input_key: &InputKey,
     ) -> ActionResult {
-        open::that(self.url.clone()).map_err(|e| {
-            ActionError::new(
-                device_uid.clone(),
-                *input_key,
-                t!(
-                    "action.system.open_web.err",
-                    webpage = self.url,
-                    reason = e.to_string()
-                ),
-            )
-        })
+        open::that(self.url.clone())
+            .map(|_| ActionOk::new(device_uid, *input_key))
+            .map_err(|e| {
+                ActionError::new(
+                    device_uid.clone(),
+                    *input_key,
+                    t!(
+                        "action.system.open_web.err",
+                        webpage = self.url,
+                        reason = e.to_string()
+                    ),
+                )
+            })
     }
 
-    fn edit_ui(&mut self, _module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>),
+        _module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         ui.label(t!("action.system.open_web.url"));
         ui.text_edit_singleline(&mut self.url);
     }
@@ -531,8 +547,8 @@ impl ActionTrait for SystemSndInCtrl {
     async fn on_press(
         &mut self,
         _module_config: &mut ActionModuleConfig,
-        _device_uid: &String,
-        _input_key: &InputKey,
+        device_uid: &String,
+        input_key: &InputKey,
     ) -> ActionResult {
         // TODO: error handling
         if let Some(input_device) = self.input_device.clone() {
@@ -543,10 +559,17 @@ impl ActionTrait for SystemSndInCtrl {
                 .send(AudioCommand::AdjustInputDevice(input_device, adjust));
         }
 
-        Ok(())
+        Ok(ActionOk::new(device_uid, *input_key))
     }
 
-    fn edit_ui(&mut self, _module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>),
+        _module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         ui.label(t!("action.system.snd_in_ctrl.input_device"));
         let ir = ComboBox::from_id_salt("SystemAudioInputControlDeviceSelect")
             .selected_text(self.input_device.clone().unwrap_or_default())
@@ -608,8 +631,8 @@ impl ActionTrait for SystemSndOutCtrl {
     async fn on_press(
         &mut self,
         _module_config: &mut ActionModuleConfig,
-        _device_uid: &String,
-        _input_key: &InputKey,
+        device_uid: &String,
+        input_key: &InputKey,
     ) -> ActionResult {
         // TODO: error handling
         if let Some(output_device) = self.output_device.clone() {
@@ -620,10 +643,17 @@ impl ActionTrait for SystemSndOutCtrl {
                 .send(AudioCommand::AdjustOutputDevice(output_device, adjust));
         }
 
-        Ok(())
+        Ok(ActionOk::new(device_uid, *input_key))
     }
 
-    fn edit_ui(&mut self, _module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>),
+        _module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         ui.label(t!("action.system.snd_out_ctrl.output_device"));
         let ir = ComboBox::from_id_salt("SystemAudioOutputControlDeviceSelect")
             .selected_text(self.output_device.clone().unwrap_or_default())

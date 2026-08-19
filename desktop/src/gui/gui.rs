@@ -74,6 +74,7 @@ pub struct JukeBoxGui {
 
     pub gui_tab: GuiTab,
 
+    // TODO: add current_profile, current_profile_name, and current_profile_module
     pub current_device: String,
     // Device UID -> (DeviceType, Device Nickname, Firmware Version, Connected?, Device Inputs)
     pub devices: HashMap<String, DeviceInfoExt>,
@@ -92,6 +93,7 @@ pub struct JukeBoxGui {
     pub editing_key: InputKey,
     pub editing_action_icons: Vec<ActionIcon>,
     pub editing_action_type: String,
+    // TODO: add editing_action_module
     pub editing_action: Action,
 
     pub editing_rgb: RgbProfile,

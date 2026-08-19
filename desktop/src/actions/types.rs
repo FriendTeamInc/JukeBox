@@ -23,6 +23,41 @@ use crate::{
 pub static ICON_CACHE: OnceLock<Mutex<HashMap<String, Vec<u8>>>> = OnceLock::new();
 
 #[derive(Debug, Clone)]
+pub struct ActionOk {
+    pub device_uid: String,
+    pub input_key: InputKey,
+    pub save_action_config: bool,
+    pub save_module_config: bool,
+    pub switch_to_profile: Option<String>,
+}
+impl ActionOk {
+    pub fn new(device_uid: impl Into<String>, input_key: InputKey) -> Self {
+        Self {
+            device_uid: device_uid.into(),
+            input_key,
+            save_action_config: false,
+            save_module_config: false,
+            switch_to_profile: None,
+        }
+    }
+
+    pub fn save_action_config(mut self, save_action_config: bool) -> Self {
+        self.save_action_config = save_action_config;
+        self
+    }
+
+    pub fn save_module_config(mut self, save_module_config: bool) -> Self {
+        self.save_module_config = save_module_config;
+        self
+    }
+
+    pub fn switch_to_profile(mut self, switch_to_profile: impl Into<String>) -> Self {
+        self.switch_to_profile = Some(switch_to_profile.into());
+        self
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct ActionError {
     pub device_uid: Option<String>,
     pub input_key: Option<InputKey>,
@@ -57,7 +92,7 @@ impl fmt::Display for ActionError {
         )
     }
 }
-pub type ActionResult = Result<(), ActionError>;
+pub type ActionResult = Result<ActionOk, ActionError>;
 pub type ActionModuleConfig = Arc<Mutex<HashMap<String, String>>>;
 
 #[async_trait]
@@ -71,20 +106,28 @@ pub trait ActionTrait: DowncastSync {
     async fn on_press(
         &mut self,
         _module_config: &mut ActionModuleConfig,
-        _device_uid: &String,
-        _input_key: &InputKey,
+        device_uid: &String,
+        input_key: &InputKey,
     ) -> ActionResult {
-        Ok(())
+        Ok(ActionOk::new(device_uid, *input_key))
     }
     async fn on_release(
         &mut self,
         _module_config: &mut ActionModuleConfig,
+        device_uid: &String,
+        input_key: &InputKey,
+    ) -> ActionResult {
+        Ok(ActionOk::new(device_uid, *input_key))
+    }
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>), // (current_profile_uuid, [(uuid, name), ...]) // kind of a hack just for MetaSwitchProfile, revisit later
+        _module_config: &mut ActionModuleConfig,
         _device_uid: &String,
         _input_key: &InputKey,
-    ) -> ActionResult {
-        Ok(())
+        _ui: &mut Ui,
+    ) {
     }
-    fn edit_ui(&mut self, _module_config: &mut ActionModuleConfig, _ui: &mut Ui) {}
 
     fn icon_state(&self) -> u8 {
         0

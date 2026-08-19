@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use eframe::egui::{
     scroll_area::ScrollBarVisibility, vec2, Align, Button, CollapsingHeader, Grid, Image,
@@ -9,7 +9,7 @@ use egui_phosphor::regular as phos;
 use image::EncodableLayout;
 use jukebox_util::peripheral::DeviceType;
 use rfd::FileDialog;
-use tokio::runtime::Handle;
+use tokio::{runtime::Handle, sync::Mutex};
 
 use crate::{
     actions::{
@@ -241,6 +241,7 @@ impl JukeBoxGui {
     pub fn draw_edit_action(&mut self, ui: &mut Ui) {
         ui.columns_const(|[c1, c2]| {
             c1.horizontal(|ui| {
+                // Test action button (will not save any changes to the action or module settings)
                 let test_btn =
                     match &self.editing_action_icons[self.editing_action.icon_state() as usize] {
                         ActionIcon::ImageIcon(s) => {
@@ -264,21 +265,32 @@ impl JukeBoxGui {
                     let h = Handle::current();
                     if let Err(press_err) = h.block_on(async {
                         self.editing_action
-                            .on_press(&self.current_device, self.editing_key, self.config.clone())
+                            .on_press(
+                                &mut self.current_mod_config,
+                                &self.current_device,
+                                &self.editing_key,
+                            )
                             .await
+                            .map(|_| ())
                     }) {
                         log::error!("{}", press_err);
                         self.action_errors.push_back(press_err);
                     }
                     if let Err(release_err) = h.block_on(async {
                         self.editing_action
-                            .on_release(&self.current_device, self.editing_key, self.config.clone())
+                            .on_release(
+                                &mut self.current_mod_config,
+                                &self.current_device,
+                                &self.editing_key,
+                            )
                             .await
+                            .map(|_| ())
                     }) {
                         log::error!("{}", release_err);
                         self.action_errors.push_back(release_err);
                     }
                 }
+
                 ui.vertical(|ui| {
                     ui.add_enabled_ui(self.is_action_changed(), |ui| {
                         if ui
@@ -339,11 +351,21 @@ impl JukeBoxGui {
                     .scroll_bar_visibility(ScrollBarVisibility::AlwaysVisible)
                     .show(ui, |ui| {
                         ui.with_layout(Layout::top_down_justified(Align::Min), |ui| {
+                            let profiles = {
+                                let c = self.config.blocking_lock();
+                                let p: Vec<_> = c
+                                    .profiles
+                                    .iter()
+                                    .map(|(k, v)| (k.clone(), v.profile_name))
+                                    .collect();
+                                (c.current_profile, p)
+                            };
                             self.editing_action.edit_ui(
-                                ui,
+                                &profiles,
+                                &mut self.current_mod_config,
                                 &self.current_device,
-                                self.editing_key,
-                                self.config.clone(),
+                                &self.editing_key,
+                                ui,
                             );
                             ui.allocate_space(ui.available_size_before_wrap());
                         });
