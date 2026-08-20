@@ -26,20 +26,18 @@ pub static ICON_CACHE: OnceLock<Mutex<HashMap<String, Vec<u8>>>> = OnceLock::new
 
 #[derive(Debug, Clone)]
 pub struct ActionOk {
-    pub device_uid: String,
-    pub input_key: InputKey,
     pub save_action_config: bool,
     pub save_module_config: bool,
     pub switch_to_profile: Option<String>,
+    pub change_icon: bool,
 }
 impl ActionOk {
-    pub fn new(device_uid: impl Into<String>, input_key: InputKey) -> Self {
+    pub fn new() -> Self {
         Self {
-            device_uid: device_uid.into(),
-            input_key,
             save_action_config: false,
             save_module_config: false,
             switch_to_profile: None,
+            change_icon: false,
         }
     }
 
@@ -55,6 +53,11 @@ impl ActionOk {
 
     pub fn switch_to_profile(mut self, switch_to_profile: impl Into<String>) -> Self {
         self.switch_to_profile = Some(switch_to_profile.into());
+        self
+    }
+
+    pub fn change_icon(mut self, change_icon: bool) -> Self {
+        self.change_icon = change_icon;
         self
     }
 }
@@ -145,24 +148,24 @@ pub trait ActionTrait: DowncastSync + DynCompare + DynClone {
 
     async fn on_press(
         &mut self,
-        _module_config: &mut ActionModuleConfig,
-        device_uid: &String,
-        input_key: &InputKey,
+        _module_config: ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
     ) -> ActionResult {
-        Ok(ActionOk::new(device_uid, *input_key))
+        Ok(ActionOk::new())
     }
     async fn on_release(
         &mut self,
-        _module_config: &mut ActionModuleConfig,
-        device_uid: &String,
-        input_key: &InputKey,
+        _module_config: ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
     ) -> ActionResult {
-        Ok(ActionOk::new(device_uid, *input_key))
+        Ok(ActionOk::new())
     }
     fn edit_ui(
         &mut self,
         _profiles: &(String, Vec<(String, String)>), // (current_profile_uuid, [(uuid, name), ...]) // kind of a hack just for MetaSwitchProfile, revisit later
-        _module_config: &mut ActionModuleConfig,
+        _module_config: ActionModuleConfig,
         _device_uid: &String,
         _input_key: &InputKey,
         _ui: &mut Ui,

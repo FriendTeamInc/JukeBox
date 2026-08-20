@@ -4,7 +4,6 @@ use std::{
     collections::HashMap,
     fs::{create_dir_all, File},
     path::PathBuf,
-    sync::Arc,
 };
 
 use jukebox_util::{peripheral::DeviceType, rgb::RgbProfile, screen::ScreenProfile};

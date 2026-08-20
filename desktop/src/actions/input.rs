@@ -57,7 +57,7 @@ impl ActionTrait for InputKeyboard {
     fn edit_ui(
         &mut self,
         _profiles: &(String, Vec<(String, String)>),
-        _module_config: &mut ActionModuleConfig,
+        _module_config: ActionModuleConfig,
         _device_uid: &String,
         _input_key: &InputKey,
         ui: &mut Ui,
@@ -135,7 +135,7 @@ impl ActionTrait for InputMouse {
     fn edit_ui(
         &mut self,
         _profiles: &(String, Vec<(String, String)>),
-        _module_config: &mut ActionModuleConfig,
+        _module_config: ActionModuleConfig,
         _device_uid: &String,
         _input_key: &InputKey,
         ui: &mut Ui,

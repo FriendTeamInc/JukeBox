@@ -408,9 +408,9 @@ impl ActionTrait for SystemOpenApp {
 
     async fn on_press(
         &mut self,
-        _module_config: &mut ActionModuleConfig,
-        device_uid: &String,
-        input_key: &InputKey,
+        _module_config: ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
     ) -> ActionResult {
         // spin off the process, drop its handle since we don't care about it completing
         let _ = Command::new(self.filepath.clone())
@@ -419,13 +419,13 @@ impl ActionTrait for SystemOpenApp {
 
         // error handling?
 
-        Ok(ActionOk::new(device_uid, *input_key))
+        Ok(ActionOk::new())
     }
 
     fn edit_ui(
         &mut self,
         _profiles: &(String, Vec<(String, String)>),
-        _module_config: &mut ActionModuleConfig,
+        _module_config: ActionModuleConfig,
         _device_uid: &String,
         _input_key: &InputKey,
         ui: &mut Ui,
@@ -487,12 +487,12 @@ impl ActionTrait for SystemOpenWeb {
 
     async fn on_press(
         &mut self,
-        _module_config: &mut ActionModuleConfig,
+        _module_config: ActionModuleConfig,
         device_uid: &String,
         input_key: &InputKey,
     ) -> ActionResult {
         open::that(self.url.clone())
-            .map(|_| ActionOk::new(device_uid, *input_key))
+            .map(|_| ActionOk::new())
             .map_err(|e| {
                 ActionError::new(
                     device_uid.clone(),
@@ -509,7 +509,7 @@ impl ActionTrait for SystemOpenWeb {
     fn edit_ui(
         &mut self,
         _profiles: &(String, Vec<(String, String)>),
-        _module_config: &mut ActionModuleConfig,
+        _module_config: ActionModuleConfig,
         _device_uid: &String,
         _input_key: &InputKey,
         ui: &mut Ui,
@@ -546,9 +546,9 @@ impl ActionTrait for SystemSndInCtrl {
 
     async fn on_press(
         &mut self,
-        _module_config: &mut ActionModuleConfig,
-        device_uid: &String,
-        input_key: &InputKey,
+        _module_config: ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
     ) -> ActionResult {
         // TODO: error handling
         if let Some(input_device) = self.input_device.clone() {
@@ -559,13 +559,13 @@ impl ActionTrait for SystemSndInCtrl {
                 .send(AudioCommand::AdjustInputDevice(input_device, adjust));
         }
 
-        Ok(ActionOk::new(device_uid, *input_key))
+        Ok(ActionOk::new())
     }
 
     fn edit_ui(
         &mut self,
         _profiles: &(String, Vec<(String, String)>),
-        _module_config: &mut ActionModuleConfig,
+        _module_config: ActionModuleConfig,
         _device_uid: &String,
         _input_key: &InputKey,
         ui: &mut Ui,
@@ -630,9 +630,9 @@ impl ActionTrait for SystemSndOutCtrl {
 
     async fn on_press(
         &mut self,
-        _module_config: &mut ActionModuleConfig,
-        device_uid: &String,
-        input_key: &InputKey,
+        _module_config: ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
     ) -> ActionResult {
         // TODO: error handling
         if let Some(output_device) = self.output_device.clone() {
@@ -643,13 +643,13 @@ impl ActionTrait for SystemSndOutCtrl {
                 .send(AudioCommand::AdjustOutputDevice(output_device, adjust));
         }
 
-        Ok(ActionOk::new(device_uid, *input_key))
+        Ok(ActionOk::new())
     }
 
     fn edit_ui(
         &mut self,
         _profiles: &(String, Vec<(String, String)>),
-        _module_config: &mut ActionModuleConfig,
+        _module_config: ActionModuleConfig,
         _device_uid: &String,
         _input_key: &InputKey,
         ui: &mut Ui,

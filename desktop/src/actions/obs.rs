@@ -176,7 +176,7 @@ async fn create_client<'a>(
     Ok(OBS_CLIENT.get().unwrap().lock().await)
 }
 
-fn account_warning(ui: &mut Ui, config: &mut ActionModuleConfig) -> Option<()> {
+fn account_warning(ui: &mut Ui, config: ActionModuleConfig) -> Option<()> {
     if OBS_HOST_ADDRESS.get().is_none()
         && OBS_HOST_PORT.get().is_none()
         && OBS_PASSWORD.get().is_none()
@@ -258,7 +258,7 @@ fn account_warning(ui: &mut Ui, config: &mut ActionModuleConfig) -> Option<()> {
 async fn check_client<'a>(
     device_uid: &String,
     input_key: &InputKey,
-    config: &mut ActionModuleConfig,
+    config: ActionModuleConfig,
 ) -> Result<MutexGuard<'a, Option<Client>>, ActionError> {
     let c = config.clone();
     if OBS_CLIENT.get().is_none() || OBS_CLIENT.get().unwrap().lock().await.is_none() {
@@ -290,7 +290,7 @@ impl ActionTrait for ObsStream {
 
     async fn on_press(
         &mut self,
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         device_uid: &String,
         input_key: &InputKey,
     ) -> ActionResult {
@@ -302,7 +302,7 @@ impl ActionTrait for ObsStream {
             .streaming()
             .toggle()
             .await
-            .map(|_| ActionOk::new(device_uid, *input_key))
+            .map(|_| ActionOk::new())
             .map_err(|_| {
                 ActionError::new(device_uid, *input_key, t!("action.obs.toggle_stream.err"))
             });
@@ -320,7 +320,7 @@ impl ActionTrait for ObsStream {
     fn edit_ui(
         &mut self,
         _profiles: &(String, Vec<(String, String)>),
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         _device_uid: &String,
         _input_key: &InputKey,
         ui: &mut Ui,
@@ -353,7 +353,7 @@ impl ActionTrait for ObsRecord {
 
     async fn on_press(
         &mut self,
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         device_uid: &String,
         input_key: &InputKey,
     ) -> ActionResult {
@@ -365,7 +365,7 @@ impl ActionTrait for ObsRecord {
             .recording()
             .toggle()
             .await
-            .map(|_| ActionOk::new(device_uid, *input_key))
+            .map(|_| ActionOk::new())
             .map_err(|_| {
                 ActionError::new(device_uid, *input_key, t!("action.obs.toggle_record.err"))
             });
@@ -383,7 +383,7 @@ impl ActionTrait for ObsRecord {
     fn edit_ui(
         &mut self,
         _profiles: &(String, Vec<(String, String)>),
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         _device_uid: &String,
         _input_key: &InputKey,
         ui: &mut Ui,
@@ -416,7 +416,7 @@ impl ActionTrait for ObsPauseRecord {
 
     async fn on_press(
         &mut self,
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         device_uid: &String,
         input_key: &InputKey,
     ) -> ActionResult {
@@ -428,7 +428,7 @@ impl ActionTrait for ObsPauseRecord {
             .recording()
             .toggle_pause()
             .await
-            .map(|_| ActionOk::new(device_uid, *input_key))
+            .map(|_| ActionOk::new())
             .map_err(|_| {
                 ActionError::new(device_uid, *input_key, t!("action.obs.pause_record.err"))
             });
@@ -446,7 +446,7 @@ impl ActionTrait for ObsPauseRecord {
     fn edit_ui(
         &mut self,
         _profiles: &(String, Vec<(String, String)>),
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         _device_uid: &String,
         _input_key: &InputKey,
         ui: &mut Ui,
@@ -479,7 +479,7 @@ impl ActionTrait for ObsReplayBuffer {
 
     async fn on_press(
         &mut self,
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         device_uid: &String,
         input_key: &InputKey,
     ) -> ActionResult {
@@ -491,7 +491,7 @@ impl ActionTrait for ObsReplayBuffer {
             .replay_buffer()
             .toggle()
             .await
-            .map(|_| ActionOk::new(device_uid, *input_key))
+            .map(|_| ActionOk::new())
             .map_err(|_| {
                 ActionError::new(
                     device_uid,
@@ -513,7 +513,7 @@ impl ActionTrait for ObsReplayBuffer {
     fn edit_ui(
         &mut self,
         _profiles: &(String, Vec<(String, String)>),
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         _device_uid: &String,
         _input_key: &InputKey,
         ui: &mut Ui,
@@ -546,7 +546,7 @@ impl ActionTrait for ObsSaveReplay {
 
     async fn on_press(
         &mut self,
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         device_uid: &String,
         input_key: &InputKey,
     ) -> ActionResult {
@@ -558,7 +558,7 @@ impl ActionTrait for ObsSaveReplay {
             .replay_buffer()
             .save()
             .await
-            .map(|_| ActionOk::new(device_uid, *input_key))
+            .map(|_| ActionOk::new())
             .map_err(|_| {
                 ActionError::new(
                     device_uid,
@@ -580,7 +580,7 @@ impl ActionTrait for ObsSaveReplay {
     fn edit_ui(
         &mut self,
         _profiles: &(String, Vec<(String, String)>),
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         _device_uid: &String,
         _input_key: &InputKey,
         ui: &mut Ui,
@@ -616,7 +616,7 @@ impl ActionTrait for ObsSource {
 
     async fn on_press(
         &mut self,
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         device_uid: &String,
         input_key: &InputKey,
     ) -> ActionResult {
@@ -677,7 +677,7 @@ impl ActionTrait for ObsSource {
                 enabled: !enabled,
             })
             .await
-            .map(|_| ActionOk::new(device_uid, *input_key))
+            .map(|_| ActionOk::new())
             .map_err(|_| {
                 ActionError::new(
                     device_uid,
@@ -703,7 +703,7 @@ impl ActionTrait for ObsSource {
     fn edit_ui(
         &mut self,
         _profiles: &(String, Vec<(String, String)>),
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         _device_uid: &String,
         _input_key: &InputKey,
         ui: &mut Ui,
@@ -814,7 +814,7 @@ impl ActionTrait for ObsMute {
 
     async fn on_press(
         &mut self,
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         device_uid: &String,
         input_key: &InputKey,
     ) -> ActionResult {
@@ -834,7 +834,7 @@ impl ActionTrait for ObsMute {
             .inputs()
             .toggle_mute(InputId::Uuid(input.0))
             .await
-            .map(|_| ActionOk::new(device_uid, *input_key))
+            .map(|_| ActionOk::new())
             .map_err(|_| {
                 ActionError::new(
                     device_uid,
@@ -856,7 +856,7 @@ impl ActionTrait for ObsMute {
     fn edit_ui(
         &mut self,
         _profiles: &(String, Vec<(String, String)>),
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         _device_uid: &String,
         _input_key: &InputKey,
         ui: &mut Ui,
@@ -929,7 +929,7 @@ impl ActionTrait for ObsSceneSwitch {
 
     async fn on_press(
         &mut self,
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         device_uid: &String,
         input_key: &InputKey,
     ) -> ActionResult {
@@ -949,7 +949,7 @@ impl ActionTrait for ObsSceneSwitch {
             .scenes()
             .set_current_program_scene(SceneId::Uuid(scene.0))
             .await
-            .map(|_| ActionOk::new(device_uid, *input_key))
+            .map(|_| ActionOk::new())
             .map_err(|_| {
                 ActionError::new(
                     device_uid,
@@ -971,7 +971,7 @@ impl ActionTrait for ObsSceneSwitch {
     fn edit_ui(
         &mut self,
         _profiles: &(String, Vec<(String, String)>),
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         _device_uid: &String,
         _input_key: &InputKey,
         ui: &mut Ui,
@@ -1043,7 +1043,7 @@ impl ActionTrait for ObsPreviewSceneSwitch {
 
     async fn on_press(
         &mut self,
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         device_uid: &String,
         input_key: &InputKey,
     ) -> ActionResult {
@@ -1063,7 +1063,7 @@ impl ActionTrait for ObsPreviewSceneSwitch {
             .scenes()
             .set_current_preview_scene(SceneId::Uuid(scene.0))
             .await
-            .map(|_| ActionOk::new(device_uid, *input_key))
+            .map(|_| ActionOk::new())
             .map_err(|_| {
                 ActionError::new(
                     device_uid,
@@ -1088,7 +1088,7 @@ impl ActionTrait for ObsPreviewSceneSwitch {
     fn edit_ui(
         &mut self,
         _profiles: &(String, Vec<(String, String)>),
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         _device_uid: &String,
         _input_key: &InputKey,
         ui: &mut Ui,
@@ -1158,7 +1158,7 @@ impl ActionTrait for ObsPreviewScenePush {
 
     async fn on_press(
         &mut self,
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         device_uid: &String,
         input_key: &InputKey,
     ) -> ActionResult {
@@ -1170,7 +1170,7 @@ impl ActionTrait for ObsPreviewScenePush {
             .transitions()
             .trigger()
             .await
-            .map(|_| ActionOk::new(device_uid, *input_key))
+            .map(|_| ActionOk::new())
             .map_err(|_| {
                 ActionError::new(
                     device_uid,
@@ -1192,7 +1192,7 @@ impl ActionTrait for ObsPreviewScenePush {
     fn edit_ui(
         &mut self,
         _profiles: &(String, Vec<(String, String)>),
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         _device_uid: &String,
         _input_key: &InputKey,
         ui: &mut Ui,
@@ -1227,7 +1227,7 @@ impl ActionTrait for ObsSceneCollectionSwitch {
 
     async fn on_press(
         &mut self,
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         device_uid: &String,
         input_key: &InputKey,
     ) -> ActionResult {
@@ -1247,7 +1247,7 @@ impl ActionTrait for ObsSceneCollectionSwitch {
             .scene_collections()
             .set_current(scene_collection)
             .await
-            .map(|_| ActionOk::new(device_uid, *input_key))
+            .map(|_| ActionOk::new())
             .map_err(|_| {
                 ActionError::new(
                     device_uid,
@@ -1272,7 +1272,7 @@ impl ActionTrait for ObsSceneCollectionSwitch {
     fn edit_ui(
         &mut self,
         _profiles: &(String, Vec<(String, String)>),
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         _device_uid: &String,
         _input_key: &InputKey,
         ui: &mut Ui,
@@ -1345,7 +1345,7 @@ impl ActionTrait for ObsChapterMarker {
 
     async fn on_press(
         &mut self,
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         device_uid: &String,
         input_key: &InputKey,
     ) -> ActionResult {
@@ -1357,7 +1357,7 @@ impl ActionTrait for ObsChapterMarker {
             .recording()
             .create_chapter(None)
             .await
-            .map(|_| ActionOk::new(device_uid, *input_key))
+            .map(|_| ActionOk::new())
             .map_err(|_| {
                 ActionError::new(
                     device_uid,
@@ -1379,7 +1379,7 @@ impl ActionTrait for ObsChapterMarker {
     fn edit_ui(
         &mut self,
         _profiles: &(String, Vec<(String, String)>),
-        module_config: &mut ActionModuleConfig,
+        module_config: ActionModuleConfig,
         _device_uid: &String,
         _input_key: &InputKey,
         ui: &mut Ui,

@@ -6,7 +6,6 @@ use std::{
 };
 
 use anyhow::Result;
-use futures::future::{join, join_all};
 use jukebox_util::{
     input::InputEvent, peripheral::DeviceType, rgb::RgbProfile, screen::ScreenProfile,
 };
@@ -18,7 +17,7 @@ use tokio::sync::{
 use crate::{
     actions::{
         input::{InputKeyboard, InputMouse},
-        types::{get_icon_bytes, get_icon_cache_async, Action, ActionError},
+        types::{get_icon_bytes, get_icon_cache_async, Action, ActionError, ActionModuleConfig},
     },
     config::{ActionConfig, JukeBoxConfig},
     input::InputKey,
@@ -91,6 +90,7 @@ async fn get_profile_info(
     DeviceType,
     HashMap<InputKey, ActionConfig>,
     String,
+    HashMap<String, ActionModuleConfig>,
     Option<RgbProfile>,
     Option<ScreenProfile>,
 ) {
@@ -109,6 +109,13 @@ async fn get_profile_info(
         })
         .unwrap_or((HashMap::new(), None, None));
 
+    let module_configs = c
+        .action_module_config
+        .clone()
+        .iter()
+        .map(|(k, v)| (k.clone(), Arc::new(Mutex::new(v.clone()))))
+        .collect();
+
     let device_type = c
         .devices
         .get(device_uid)
@@ -116,7 +123,14 @@ async fn get_profile_info(
         .unwrap_or(DeviceType::Unknown)
         .clone();
 
-    (device_type, profile, c.current_profile.clone(), rgb, scr)
+    (
+        device_type,
+        profile,
+        c.current_profile.clone(),
+        module_configs,
+        rgb,
+        scr,
+    )
 }
 
 pub async fn action_task(
@@ -145,13 +159,13 @@ pub async fn action_task(
                     }
                 };
 
-                let (device_type, keys, profile_name, rgb_profile, screen_profile) =
+                let (device_type, keys, profile_uuid, _, rgb_profile, screen_profile) =
                     get_profile_info(&config, &device_uid).await;
                 update_device_configs(
                     scmd_tx,
                     device_type,
                     keys,
-                    profile_name,
+                    profile_uuid,
                     rgb_profile.unwrap_or(RgbProfile::default_gui_profile()),
                     screen_profile.unwrap_or(ScreenProfile::default_profile()),
                 )
@@ -175,7 +189,7 @@ pub async fn action_task(
                 let ae_tx = ae_tx.clone();
 
                 tokio::spawn(async move {
-                    let (_, current_profile, current_profile_name, _, _) =
+                    let (_, mut profile, profile_uuid, mut module_configs, _, _) =
                         get_profile_info(&config, &device_uid).await;
 
                     let mut prevkeys = prevkeys.lock().await;
@@ -183,37 +197,47 @@ pub async fn action_task(
                     let pressed = keys.difference(&prevkeys);
                     let released = prevkeys.difference(&keys);
 
-                    let mut pressed_futures = Vec::new();
-                    let mut released_futures = Vec::new();
+                    let mut new_profile = None;
 
-                    for p in pressed {
-                        if let Some(r) = current_profile.get(p) {
-                            pressed_futures.push(r.action.on_press(
-                                &device_uid,
-                                *p,
-                                config.clone(),
-                            ));
-                        }
-                    }
+                    for k in pressed {
+                        let Some(p) = profile.remove(k) else { continue };
 
-                    for p in released {
-                        if let Some(r) = current_profile.get(p) {
-                            released_futures.push(r.action.on_release(
-                                &device_uid,
-                                *p,
-                                config.clone(),
-                            ));
-                        }
-                    }
+                        let m = module_configs
+                            .get(p.action.get_module())
+                            .cloned()
+                            .unwrap_or_default();
+                        let _ = module_configs.insert(p.action.get_module().into(), m.clone());
+                        let i = p.icons;
+                        let mut a = p.action;
 
-                    let (pressed, released) =
-                        join(join_all(pressed_futures), join_all(released_futures)).await;
+                        // TODO: restore join/join_all futures
 
-                    for res in pressed {
-                        match res {
-                            Ok((k, c)) => {
-                                if c {
-                                    if let Some(a) = current_profile.get(&k) {
+                        match a.on_press(m, &device_uid, k).await {
+                            Ok(o) => {
+                                if o.save_action_config {
+                                    let mut c = config.lock().await;
+                                    let p = c.profiles.get_mut(&profile_uuid).unwrap();
+                                    let d = p.device_configs.get_mut(&device_uid).unwrap();
+                                    let k = d.key_map.get_mut(&k).unwrap();
+                                    *k = ActionConfig {
+                                        action: a,
+                                        icons: i,
+                                    };
+                                    c.save();
+                                }
+                                if o.save_module_config {
+                                    let a = profile.get(&k).unwrap();
+                                    let mut c = config.lock().await;
+                                    let amid = a.action.get_module().to_string();
+                                    let m = module_configs.get(&amid).unwrap().lock().await;
+                                    let _ = c.action_module_config.insert(amid, m.clone());
+                                    c.save();
+                                }
+                                if let Some(p) = o.switch_to_profile {
+                                    new_profile = Some(p);
+                                }
+                                if o.change_icon {
+                                    if let Some(a) = profile.get(&k) {
                                         send_scr_icon(&scmd_tx, a, &k).await;
                                     }
                                 }
@@ -223,11 +247,44 @@ pub async fn action_task(
                             }
                         }
                     }
-                    for res in released {
-                        match res {
-                            Ok((k, c)) => {
-                                if c {
-                                    if let Some(a) = current_profile.get(&k) {
+
+                    for k in released {
+                        let Some(r) = profile.remove(k) else { continue };
+
+                        let m = module_configs
+                            .get(r.action.get_module())
+                            .cloned()
+                            .unwrap_or_default();
+                        let _ = module_configs.insert(r.action.get_module().into(), m.clone());
+                        let i = r.icons;
+                        let mut a = r.action;
+
+                        match a.on_release(m, &device_uid, k).await {
+                            Ok(o) => {
+                                if o.save_action_config {
+                                    let mut c = config.lock().await;
+                                    let p = c.profiles.get_mut(&profile_uuid).unwrap();
+                                    let d = p.device_configs.get_mut(&device_uid).unwrap();
+                                    let k = d.key_map.get_mut(&k).unwrap();
+                                    *k = ActionConfig {
+                                        action: a,
+                                        icons: i,
+                                    };
+                                    c.save();
+                                }
+                                if o.save_module_config {
+                                    let a = profile.get(&k).unwrap();
+                                    let mut c = config.lock().await;
+                                    let amid = a.action.get_module().to_string();
+                                    let m = module_configs.get(&amid).unwrap().lock().await;
+                                    let _ = c.action_module_config.insert(amid, m.clone());
+                                    c.save();
+                                }
+                                if let Some(p) = o.switch_to_profile {
+                                    new_profile = Some(p);
+                                }
+                                if o.change_icon {
+                                    if let Some(a) = profile.get(&k) {
                                         send_scr_icon(&scmd_tx, a, &k).await;
                                     }
                                 }
@@ -240,25 +297,42 @@ pub async fn action_task(
 
                     *prevkeys = keys;
 
-                    let (
-                        device_type,
-                        new_keys,
-                        new_profile_name,
-                        new_rgb_profile,
-                        new_screen_profile,
-                    ) = get_profile_info(&config, &device_uid).await;
+                    if let Some(p) = new_profile {
+                        let found_profile = {
+                            let mut c = config.lock().await;
+                            if let Some(_) = c.profiles.get(&p) {
+                                c.current_profile = p.clone();
+                                c.save();
+                                true
+                            } else {
+                                false
+                            }
+                        };
 
-                    // TODO: make this less stupid
-                    if current_profile_name != new_profile_name {
-                        update_device_configs(
-                            scmd_tx,
-                            device_type,
-                            new_keys,
-                            new_profile_name,
-                            new_rgb_profile.unwrap_or(RgbProfile::default_gui_profile()),
-                            new_screen_profile.unwrap_or(ScreenProfile::default_profile()),
-                        )
-                        .await;
+                        if found_profile {
+                            let (
+                                device_type,
+                                new_keys,
+                                new_profile_name,
+                                _,
+                                new_rgb_profile,
+                                new_screen_profile,
+                            ) = get_profile_info(&config, &device_uid).await;
+                            update_device_configs(
+                                scmd_tx,
+                                device_type,
+                                new_keys,
+                                new_profile_name,
+                                new_rgb_profile.unwrap_or(RgbProfile::default_gui_profile()),
+                                new_screen_profile.unwrap_or(ScreenProfile::default_profile()),
+                            )
+                            .await;
+                        } else {
+                            let _ = ae_tx.send(ActionError::msg(t!(
+                                "action.meta.switch_profile.err.profile_not_found",
+                                profile = p
+                            )));
+                        }
                     }
                 });
             }

@@ -51,7 +51,7 @@ impl ActionTrait for MetaNoAction {
 
     async fn on_press(
         &mut self,
-        _module_config: &mut ActionModuleConfig,
+        _module_config: ActionModuleConfig,
         device_uid: &String,
         input_key: &InputKey,
     ) -> ActionResult {
@@ -60,12 +60,12 @@ impl ActionTrait for MetaNoAction {
             device_uid,
             input_key
         );
-        Ok(ActionOk::new(device_uid, *input_key))
+        Ok(ActionOk::new())
     }
 
     async fn on_release(
         &mut self,
-        _module_config: &mut ActionModuleConfig,
+        _module_config: ActionModuleConfig,
         device_uid: &String,
         input_key: &InputKey,
     ) -> ActionResult {
@@ -74,7 +74,7 @@ impl ActionTrait for MetaNoAction {
             device_uid,
             input_key
         );
-        Ok(ActionOk::new(device_uid, *input_key))
+        Ok(ActionOk::new())
     }
 
     fn icon_state_icons(&'_ self) -> &[ImageSource<'_>] {
@@ -104,17 +104,17 @@ impl ActionTrait for MetaSwitchProfile {
 
     async fn on_release(
         &mut self,
-        _module_config: &mut ActionModuleConfig,
-        device_uid: &String,
-        input_key: &InputKey,
+        _module_config: ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
     ) -> ActionResult {
-        Ok(ActionOk::new(device_uid, *input_key).switch_to_profile(self.profile.clone()))
+        Ok(ActionOk::new().switch_to_profile(self.profile.clone()))
     }
 
     fn edit_ui(
         &mut self,
         profiles: &(String, Vec<(String, String)>),
-        _module_config: &mut ActionModuleConfig,
+        _module_config: ActionModuleConfig,
         _device_uid: &String,
         _input_key: &InputKey,
         ui: &mut Ui,
