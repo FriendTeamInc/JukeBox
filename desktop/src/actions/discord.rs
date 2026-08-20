@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     sync::{
         atomic::{AtomicBool, Ordering},
-        Arc, OnceLock,
+        OnceLock,
     },
 };
 
@@ -13,7 +13,9 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
 
 use crate::{
-    actions::types::{Action, ActionError, ActionModuleConfig, ActionResult, ActionTrait},
+    actions::types::{
+        Action, ActionError, ActionModuleConfig, ActionOk, ActionResult, ActionTrait,
+    },
     get_reqwest_client,
     input::InputKey,
 };
@@ -64,11 +66,11 @@ pub fn init_actions_discord(config: ActionModuleConfig) -> (String, Vec<Action>)
     (
         t!("action.discord.title", icon = phos::DISCORD_LOGO).into(),
         vec![
-            Arc::new(DiscordToggleMute::default()),
-            Arc::new(DiscordToggleDeafen::default()),
-            Arc::new(DiscordPushToTalk::default()),
-            Arc::new(DiscordPushToMute::default()),
-            Arc::new(DiscordPushToDeafen::default()),
+            Box::new(DiscordToggleMute::default()),
+            Box::new(DiscordToggleDeafen::default()),
+            Box::new(DiscordPushToTalk::default()),
+            Box::new(DiscordPushToMute::default()),
+            Box::new(DiscordPushToDeafen::default()),
         ],
     )
 }
@@ -258,15 +260,15 @@ fn discord_toggle_mute(
     client: &mut DiscordIpcClient,
     muted: bool,
     device_uid: &String,
-    input_key: InputKey,
+    input_key: &InputKey,
 ) -> ActionResult {
     client
         .set_voice_settings(VoiceSettings::new().mute(muted))
-        .map(|_| ())
+        .map(|_| ActionOk::new(device_uid, *input_key))
         .map_err(|e| {
             ActionError::new(
                 device_uid,
-                input_key,
+                *input_key,
                 t!(
                     "action.discord.err.set_mute_state",
                     state = muted,
@@ -280,15 +282,15 @@ fn discord_toggle_deafen(
     client: &mut DiscordIpcClient,
     deafened: bool,
     device_uid: &String,
-    input_key: InputKey,
+    input_key: &InputKey,
 ) -> ActionResult {
     client
         .set_voice_settings(VoiceSettings::new().mute(deafened).deaf(deafened))
-        .map(|_| ())
+        .map(|_| ActionOk::new(device_uid, *input_key))
         .map_err(|e| {
             ActionError::new(
                 device_uid,
-                input_key,
+                *input_key,
                 t!(
                     "action.discord.err.set_deafen_state",
                     state = deafened,
@@ -334,10 +336,17 @@ impl ActionTrait for DiscordToggleMute {
             DISCORD_DEAFENED.store(false, Ordering::Relaxed);
         }
 
-        discord_toggle_mute(&mut client, muted, device_uid, *input_key)
+        discord_toggle_mute(&mut client, muted, device_uid, input_key)
     }
 
-    fn edit_ui(&mut self, module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>),
+        module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         account_warning(ui, module_config)
     }
 
@@ -398,10 +407,17 @@ impl ActionTrait for DiscordToggleDeafen {
         DISCORD_DEAFENED.store(deafened, Ordering::Relaxed);
         DISCORD_MUTED.store(deafened, Ordering::Relaxed);
 
-        discord_toggle_deafen(&mut client, deafened, device_uid, *input_key)
+        discord_toggle_deafen(&mut client, deafened, device_uid, input_key)
     }
 
-    fn edit_ui(&mut self, module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>),
+        module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         account_warning(ui, module_config)
     }
 
@@ -458,7 +474,7 @@ impl ActionTrait for DiscordPushToTalk {
         }
         let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
 
-        discord_toggle_mute(&mut client, false, device_uid, *input_key)
+        discord_toggle_mute(&mut client, false, device_uid, input_key)
     }
 
     async fn on_release(
@@ -472,10 +488,17 @@ impl ActionTrait for DiscordPushToTalk {
         }
         let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
 
-        discord_toggle_mute(&mut client, true, device_uid, *input_key)
+        discord_toggle_mute(&mut client, true, device_uid, input_key)
     }
 
-    fn edit_ui(&mut self, module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>),
+        module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         account_warning(ui, module_config)
     }
 
@@ -513,7 +536,7 @@ impl ActionTrait for DiscordPushToMute {
         }
         let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
 
-        discord_toggle_mute(&mut client, true, device_uid, *input_key)
+        discord_toggle_mute(&mut client, true, device_uid, input_key)
     }
 
     async fn on_release(
@@ -527,10 +550,17 @@ impl ActionTrait for DiscordPushToMute {
         }
         let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
 
-        discord_toggle_mute(&mut client, false, device_uid, *input_key)
+        discord_toggle_mute(&mut client, false, device_uid, input_key)
     }
 
-    fn edit_ui(&mut self, module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>),
+        module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         account_warning(ui, module_config)
     }
 
@@ -568,7 +598,7 @@ impl ActionTrait for DiscordPushToDeafen {
         }
         let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
 
-        discord_toggle_deafen(&mut client, true, device_uid, *input_key)
+        discord_toggle_deafen(&mut client, true, device_uid, input_key)
     }
 
     async fn on_release(
@@ -582,10 +612,17 @@ impl ActionTrait for DiscordPushToDeafen {
         }
         let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
 
-        discord_toggle_deafen(&mut client, false, device_uid, *input_key)
+        discord_toggle_deafen(&mut client, false, device_uid, input_key)
     }
 
-    fn edit_ui(&mut self, module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>),
+        module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         account_warning(ui, module_config)
     }
 

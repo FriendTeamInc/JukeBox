@@ -1,7 +1,4 @@
-use std::{
-    sync::{Arc, OnceLock},
-    time::Duration,
-};
+use std::{sync::OnceLock, time::Duration};
 
 use eframe::egui::{include_image, ComboBox, ImageSource, RichText, TextEdit, Ui};
 use egui_phosphor::regular as phos;
@@ -19,7 +16,7 @@ use tokio::{
 use uuid::Uuid;
 
 use crate::{
-    actions::types::{ActionModuleConfig, ActionResult, ActionTrait},
+    actions::types::{ActionModuleConfig, ActionOk, ActionResult, ActionTrait},
     input::InputKey,
     single_fire,
 };
@@ -94,21 +91,21 @@ pub fn init_actions_obs(config: ActionModuleConfig) -> (String, Vec<Action>) {
     (
         t!("action.obs.title", icon = phos::VINYL_RECORD).into(),
         vec![
-            Arc::new(ObsStream::default()),
-            Arc::new(ObsRecord::default()),
-            Arc::new(ObsPauseRecord::default()),
-            Arc::new(ObsReplayBuffer::default()),
-            Arc::new(ObsSaveReplay::default()),
-            Arc::new(ObsSource::default()),
-            Arc::new(ObsMute::default()),
-            Arc::new(ObsSceneSwitch::default()),
-            Arc::new(ObsPreviewSceneSwitch::default()),
-            Arc::new(ObsPreviewScenePush::default()),
-            Arc::new(ObsSceneCollectionSwitch::default()),
-            // Arc::new(ObsFilter::default()),
-            // Arc::new(ObsTransition::default()),
+            Box::new(ObsStream::default()),
+            Box::new(ObsRecord::default()),
+            Box::new(ObsPauseRecord::default()),
+            Box::new(ObsReplayBuffer::default()),
+            Box::new(ObsSaveReplay::default()),
+            Box::new(ObsSource::default()),
+            Box::new(ObsMute::default()),
+            Box::new(ObsSceneSwitch::default()),
+            Box::new(ObsPreviewSceneSwitch::default()),
+            Box::new(ObsPreviewScenePush::default()),
+            Box::new(ObsSceneCollectionSwitch::default()),
+            // Box::new(ObsFilter::default()),
+            // Box::new(ObsTransition::default()),
             // // TODO: Source Screenshot?
-            Arc::new(ObsChapterMarker::default()),
+            Box::new(ObsChapterMarker::default()),
         ],
     )
 }
@@ -305,13 +302,13 @@ impl ActionTrait for ObsStream {
             .streaming()
             .toggle()
             .await
-            .map(|_| ())
+            .map(|_| ActionOk::new(device_uid, *input_key))
             .map_err(|_| {
                 ActionError::new(device_uid, *input_key, t!("action.obs.toggle_stream.err"))
             });
 
         match res {
-            Ok(()) => Ok(()),
+            Ok(o) => Ok(o),
             Err(e) => {
                 client.as_mut().unwrap().disconnect().await;
                 *client = None;
@@ -320,7 +317,14 @@ impl ActionTrait for ObsStream {
         }
     }
 
-    fn edit_ui(&mut self, module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>),
+        module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         account_warning(ui, module_config);
     }
 
@@ -361,13 +365,13 @@ impl ActionTrait for ObsRecord {
             .recording()
             .toggle()
             .await
-            .map(|_| ())
+            .map(|_| ActionOk::new(device_uid, *input_key))
             .map_err(|_| {
                 ActionError::new(device_uid, *input_key, t!("action.obs.toggle_record.err"))
             });
 
         match res {
-            Ok(()) => Ok(()),
+            Ok(o) => Ok(o),
             Err(e) => {
                 client.as_mut().unwrap().disconnect().await;
                 *client = None;
@@ -376,7 +380,14 @@ impl ActionTrait for ObsRecord {
         }
     }
 
-    fn edit_ui(&mut self, module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>),
+        module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         account_warning(ui, module_config);
     }
 
@@ -417,13 +428,13 @@ impl ActionTrait for ObsPauseRecord {
             .recording()
             .toggle_pause()
             .await
-            .map(|_| ())
+            .map(|_| ActionOk::new(device_uid, *input_key))
             .map_err(|_| {
                 ActionError::new(device_uid, *input_key, t!("action.obs.pause_record.err"))
             });
 
         match res {
-            Ok(()) => Ok(()),
+            Ok(o) => Ok(o),
             Err(e) => {
                 client.as_mut().unwrap().disconnect().await;
                 *client = None;
@@ -432,7 +443,14 @@ impl ActionTrait for ObsPauseRecord {
         }
     }
 
-    fn edit_ui(&mut self, module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>),
+        module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         account_warning(ui, module_config);
     }
 
@@ -473,7 +491,7 @@ impl ActionTrait for ObsReplayBuffer {
             .replay_buffer()
             .toggle()
             .await
-            .map(|_| ())
+            .map(|_| ActionOk::new(device_uid, *input_key))
             .map_err(|_| {
                 ActionError::new(
                     device_uid,
@@ -483,7 +501,7 @@ impl ActionTrait for ObsReplayBuffer {
             });
 
         match res {
-            Ok(()) => Ok(()),
+            Ok(o) => Ok(o),
             Err(e) => {
                 client.as_mut().unwrap().disconnect().await;
                 *client = None;
@@ -492,7 +510,14 @@ impl ActionTrait for ObsReplayBuffer {
         }
     }
 
-    fn edit_ui(&mut self, module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>),
+        module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         account_warning(ui, module_config);
     }
 
@@ -533,7 +558,7 @@ impl ActionTrait for ObsSaveReplay {
             .replay_buffer()
             .save()
             .await
-            .map(|_| ())
+            .map(|_| ActionOk::new(device_uid, *input_key))
             .map_err(|_| {
                 ActionError::new(
                     device_uid,
@@ -543,7 +568,7 @@ impl ActionTrait for ObsSaveReplay {
             });
 
         match res {
-            Ok(()) => Ok(()),
+            Ok(o) => Ok(o),
             Err(e) => {
                 client.as_mut().unwrap().disconnect().await;
                 *client = None;
@@ -552,7 +577,14 @@ impl ActionTrait for ObsSaveReplay {
         }
     }
 
-    fn edit_ui(&mut self, module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>),
+        module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         account_warning(ui, module_config);
     }
 
@@ -645,7 +677,7 @@ impl ActionTrait for ObsSource {
                 enabled: !enabled,
             })
             .await
-            .map(|_| ())
+            .map(|_| ActionOk::new(device_uid, *input_key))
             .map_err(|_| {
                 ActionError::new(
                     device_uid,
@@ -659,7 +691,7 @@ impl ActionTrait for ObsSource {
             });
 
         match res {
-            Ok(()) => Ok(()),
+            Ok(o) => Ok(o),
             Err(e) => {
                 client.as_mut().unwrap().disconnect().await;
                 *client = None;
@@ -668,7 +700,14 @@ impl ActionTrait for ObsSource {
         }
     }
 
-    fn edit_ui(&mut self, module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>),
+        module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         if account_warning(ui, module_config).is_none() {
             return;
         }
@@ -795,7 +834,7 @@ impl ActionTrait for ObsMute {
             .inputs()
             .toggle_mute(InputId::Uuid(input.0))
             .await
-            .map(|_| ())
+            .map(|_| ActionOk::new(device_uid, *input_key))
             .map_err(|_| {
                 ActionError::new(
                     device_uid,
@@ -805,7 +844,7 @@ impl ActionTrait for ObsMute {
             });
 
         match res {
-            Ok(()) => Ok(()),
+            Ok(o) => Ok(o),
             Err(e) => {
                 client.as_mut().unwrap().disconnect().await;
                 *client = None;
@@ -814,7 +853,14 @@ impl ActionTrait for ObsMute {
         }
     }
 
-    fn edit_ui(&mut self, module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>),
+        module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         if account_warning(ui, module_config).is_none() {
             return;
         }
@@ -903,7 +949,7 @@ impl ActionTrait for ObsSceneSwitch {
             .scenes()
             .set_current_program_scene(SceneId::Uuid(scene.0))
             .await
-            .map(|_| ())
+            .map(|_| ActionOk::new(device_uid, *input_key))
             .map_err(|_| {
                 ActionError::new(
                     device_uid,
@@ -913,7 +959,7 @@ impl ActionTrait for ObsSceneSwitch {
             });
 
         match res {
-            Ok(()) => Ok(()),
+            Ok(o) => Ok(o),
             Err(e) => {
                 client.as_mut().unwrap().disconnect().await;
                 *client = None;
@@ -922,7 +968,14 @@ impl ActionTrait for ObsSceneSwitch {
         }
     }
 
-    fn edit_ui(&mut self, module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>),
+        module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         if account_warning(ui, module_config).is_none() {
             return;
         }
@@ -1010,7 +1063,7 @@ impl ActionTrait for ObsPreviewSceneSwitch {
             .scenes()
             .set_current_preview_scene(SceneId::Uuid(scene.0))
             .await
-            .map(|_| ())
+            .map(|_| ActionOk::new(device_uid, *input_key))
             .map_err(|_| {
                 ActionError::new(
                     device_uid,
@@ -1023,7 +1076,7 @@ impl ActionTrait for ObsPreviewSceneSwitch {
             });
 
         match res {
-            Ok(()) => Ok(()),
+            Ok(o) => Ok(o),
             Err(e) => {
                 client.as_mut().unwrap().disconnect().await;
                 *client = None;
@@ -1032,7 +1085,14 @@ impl ActionTrait for ObsPreviewSceneSwitch {
         }
     }
 
-    fn edit_ui(&mut self, module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>),
+        module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         if account_warning(ui, module_config).is_none() {
             return;
         }
@@ -1110,7 +1170,7 @@ impl ActionTrait for ObsPreviewScenePush {
             .transitions()
             .trigger()
             .await
-            .map(|_| ())
+            .map(|_| ActionOk::new(device_uid, *input_key))
             .map_err(|_| {
                 ActionError::new(
                     device_uid,
@@ -1120,7 +1180,7 @@ impl ActionTrait for ObsPreviewScenePush {
             });
 
         match res {
-            Ok(()) => Ok(()),
+            Ok(o) => Ok(o),
             Err(e) => {
                 client.as_mut().unwrap().disconnect().await;
                 *client = None;
@@ -1129,7 +1189,14 @@ impl ActionTrait for ObsPreviewScenePush {
         }
     }
 
-    fn edit_ui(&mut self, module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>),
+        module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         account_warning(ui, module_config);
     }
 
@@ -1180,7 +1247,7 @@ impl ActionTrait for ObsSceneCollectionSwitch {
             .scene_collections()
             .set_current(scene_collection)
             .await
-            .map(|_| ())
+            .map(|_| ActionOk::new(device_uid, *input_key))
             .map_err(|_| {
                 ActionError::new(
                     device_uid,
@@ -1193,7 +1260,7 @@ impl ActionTrait for ObsSceneCollectionSwitch {
             });
 
         match res {
-            Ok(()) => Ok(()),
+            Ok(o) => Ok(o),
             Err(e) => {
                 client.as_mut().unwrap().disconnect().await;
                 *client = None;
@@ -1202,7 +1269,14 @@ impl ActionTrait for ObsSceneCollectionSwitch {
         }
     }
 
-    fn edit_ui(&mut self, module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>),
+        module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         if account_warning(ui, module_config).is_none() {
             return;
         }
@@ -1283,7 +1357,7 @@ impl ActionTrait for ObsChapterMarker {
             .recording()
             .create_chapter(None)
             .await
-            .map(|_| ())
+            .map(|_| ActionOk::new(device_uid, *input_key))
             .map_err(|_| {
                 ActionError::new(
                     device_uid,
@@ -1293,7 +1367,7 @@ impl ActionTrait for ObsChapterMarker {
             });
 
         match res {
-            Ok(()) => Ok(()),
+            Ok(o) => Ok(o),
             Err(e) => {
                 client.as_mut().unwrap().disconnect().await;
                 *client = None;
@@ -1302,7 +1376,14 @@ impl ActionTrait for ObsChapterMarker {
         }
     }
 
-    fn edit_ui(&mut self, module_config: &mut ActionModuleConfig, ui: &mut Ui) {
+    fn edit_ui(
+        &mut self,
+        _profiles: &(String, Vec<(String, String)>),
+        module_config: &mut ActionModuleConfig,
+        _device_uid: &String,
+        _input_key: &InputKey,
+        ui: &mut Ui,
+    ) {
         account_warning(ui, module_config);
     }
 

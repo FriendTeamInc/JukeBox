@@ -3257,6 +3257,7 @@ dependencies = [
  "dirs",
  "discord-rich-presence",
  "downcast-rs 2.0.2",
+ "dyn-clone",
  "eframe",
  "egui-phosphor",
  "egui-theme-switch",

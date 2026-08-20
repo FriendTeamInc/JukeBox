@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::collections::{HashMap, HashSet};
 
 use eframe::egui::{Color32, ComboBox, RichText, TextBuffer, TextEdit, Ui};
 use egui_phosphor::regular as phos;
@@ -214,9 +211,7 @@ impl JukeBoxGui {
                             if k.action.is::<MetaSwitchProfile>() {
                                 let msp = k.action.downcast_ref::<MetaSwitchProfile>().unwrap();
                                 if msp.profile == old_profile {
-                                    k.action = Arc::new(MetaSwitchProfile {
-                                        profile: self.profile_name_entry.clone(),
-                                    });
+                                    k.action = Box::new(MetaSwitchProfile { profile: "".into() });
                                 }
                             }
                         }

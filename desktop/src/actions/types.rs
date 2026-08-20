@@ -1,6 +1,7 @@
 // Types of actions and their associations
 
 use std::{
+    any::Any,
     collections::HashMap,
     fmt,
     sync::{Arc, OnceLock},
@@ -8,6 +9,7 @@ use std::{
 
 use async_trait::async_trait;
 use downcast_rs::{impl_downcast, DowncastSync};
+use dyn_clone::{clone_trait_object, DynClone};
 use eframe::egui::{
     load::Bytes, Image, ImageSource, TextureFilter, TextureOptions, TextureWrapMode, Ui,
 };
@@ -95,9 +97,47 @@ impl fmt::Display for ActionError {
 pub type ActionResult = Result<ActionOk, ActionError>;
 pub type ActionModuleConfig = Arc<Mutex<HashMap<String, String>>>;
 
+// https://quinedot.github.io/rust-learning/dyn-trait-eq.html
+trait AsDynCompare: Any {
+    fn as_any(&self) -> &dyn Any;
+    fn as_dyn_compare(&self) -> &dyn DynCompare;
+}
+
+// Sized types only
+impl<T: Any + DynCompare> AsDynCompare for T {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn as_dyn_compare(&self) -> &dyn DynCompare {
+        self
+    }
+}
+trait DynCompare: AsDynCompare {
+    fn dyn_eq(&self, other: &dyn DynCompare) -> bool;
+}
+impl<T: Any + PartialEq> DynCompare for T {
+    fn dyn_eq(&self, other: &dyn DynCompare) -> bool {
+        if let Some(other) = other.as_any().downcast_ref::<Self>() {
+            self == other
+        } else {
+            false
+        }
+    }
+}
+impl PartialEq<dyn DynCompare> for dyn DynCompare {
+    fn eq(&self, other: &dyn DynCompare) -> bool {
+        self.dyn_eq(other)
+    }
+}
+impl PartialEq<dyn ActionTrait> for dyn ActionTrait {
+    fn eq(&self, other: &dyn ActionTrait) -> bool {
+        (&*self as &dyn DynCompare) == (&*other as &dyn DynCompare)
+    }
+}
+
 #[async_trait]
 #[typetag::serde(tag = "type")]
-pub trait ActionTrait: DowncastSync {
+pub trait ActionTrait: DowncastSync + DynCompare + DynClone {
     fn get_type(&self) -> &'static str;
     fn get_module(&self) -> &'static str;
     fn get_title(&self) -> &'static str;
@@ -155,7 +195,8 @@ pub trait ActionTrait: DowncastSync {
     }
 }
 impl_downcast!(sync ActionTrait);
-pub type Action = Arc<dyn ActionTrait>;
+clone_trait_object!(ActionTrait);
+pub type Action = Box<dyn ActionTrait>;
 // TODO: differentiate between built-in and external actions
 
 pub struct ActionMap {
@@ -166,15 +207,58 @@ impl ActionMap {
     pub fn new(config: Arc<Mutex<JukeBoxConfig>>) -> Self {
         // this function is only safe to call once!
         // TODO: we should probably fix that...
+        let (
+            meta_module_config,
+            input_module_config,
+            system_module_config,
+            discord_module_config,
+            obs_module_config,
+        ) = {
+            let c = config.blocking_lock();
+            let meta_module_config = Arc::new(Mutex::new(HashMap::new()));
+            let input_module_config = Arc::new(Mutex::new(HashMap::new()));
+            let system_module_config = Arc::new(Mutex::new(HashMap::new()));
+            let discord_module_config = Arc::new(Mutex::new(
+                c.action_module_config
+                    .get(AMID_DISCORD)
+                    .cloned()
+                    .unwrap_or_default(),
+            ));
+            let obs_module_config = Arc::new(Mutex::new(
+                c.action_module_config
+                    .get(AMID_OBS)
+                    .cloned()
+                    .unwrap_or_default(),
+            ));
+            (
+                meta_module_config,
+                input_module_config,
+                system_module_config,
+                discord_module_config,
+                obs_module_config,
+            )
+        };
 
         let l = vec![
-            init_actions_meta(config.clone()),
-            init_actions_input(config.clone()),
-            init_actions_system(config.clone()),
+            init_actions_meta(meta_module_config.clone()),
+            init_actions_input(input_module_config.clone()),
+            init_actions_system(system_module_config.clone()),
             #[cfg(feature = "discord")]
-            init_actions_discord(config.clone()),
-            init_actions_obs(config.clone()),
+            init_actions_discord(discord_module_config.clone()),
+            init_actions_obs(obs_module_config.clone()),
         ];
+
+        {
+            let mut c = config.blocking_lock();
+            let _ = c.action_module_config.insert(
+                AMID_DISCORD.into(),
+                discord_module_config.blocking_lock().clone(),
+            );
+            let _ = c
+                .action_module_config
+                .insert(AMID_OBS.into(), obs_module_config.blocking_lock().clone());
+            c.save();
+        }
 
         let ui_list = l
             .iter()
@@ -208,7 +292,7 @@ impl ActionMap {
 
     fn keyboard_key(key: u8) -> ActionConfig {
         ActionConfig {
-            action: Arc::new(InputKeyboard { keys: vec![key] }),
+            action: Box::new(InputKeyboard { keys: vec![key] }),
             icons: vec![ActionIcon::DefaultActionIcon],
         }
     }

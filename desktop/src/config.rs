@@ -30,9 +30,14 @@ pub struct ActionConfig {
 impl Default for ActionConfig {
     fn default() -> Self {
         Self {
-            action: Arc::new(MetaNoAction::default()),
+            action: Box::new(MetaNoAction::default()),
             icons: Default::default(),
         }
+    }
+}
+impl PartialEq for ActionConfig {
+    fn eq(&self, other: &Self) -> bool {
+        self.action == other.action.clone() && self.icons == other.icons
     }
 }
 

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use eframe::egui::{include_image, ComboBox, ImageSource, Ui};
 use egui_phosphor::regular as phos;
 use serde::{Deserialize, Serialize};
@@ -27,8 +25,8 @@ pub fn init_actions_meta(_config: ActionModuleConfig) -> (String, Vec<Action>) {
     (
         t!("action.meta.title", icon = phos::GEAR).into(),
         vec![
-            Arc::new(MetaNoAction::default()),
-            Arc::new(MetaSwitchProfile::default()),
+            Box::new(MetaNoAction::default()),
+            Box::new(MetaSwitchProfile::default()),
         ],
     )
 }
@@ -126,8 +124,8 @@ impl ActionTrait for MetaSwitchProfile {
             .selected_text(self.profile.clone())
             .width(228.0)
             .show_ui(ui, |ui| {
-                for (k, v) in profiles.1 {
-                    if k == profiles.0 {
+                for (k, v) in &profiles.1 {
+                    if *k == profiles.0 {
                         continue;
                     }
 

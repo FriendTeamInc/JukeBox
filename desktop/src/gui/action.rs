@@ -1,4 +1,4 @@
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 
 use eframe::egui::{
     scroll_area::ScrollBarVisibility, vec2, Align, Button, CollapsingHeader, Grid, Image,
@@ -9,7 +9,7 @@ use egui_phosphor::regular as phos;
 use image::EncodableLayout;
 use jukebox_util::peripheral::DeviceType;
 use rfd::FileDialog;
-use tokio::{runtime::Handle, sync::Mutex};
+use tokio::runtime::Handle;
 
 use crate::{
     actions::{
@@ -194,22 +194,20 @@ impl JukeBoxGui {
     }
 
     pub fn is_action_changed(&self) -> bool {
-        // let c = self.config.blocking_lock();
-        // let current_profile = c.current_profile.clone();
-        // let profile = c.profiles.get(&current_profile).unwrap();
-        // let d = profile.get(&self.current_device).unwrap();
+        let c = self.config.blocking_lock();
+        let current_profile = c.current_profile.clone();
+        let profile = c.profiles.get(&current_profile).unwrap();
+        let d = profile.device_configs.get(&self.current_device).unwrap();
 
-        // if let Some(old_action) = d.key_map.get(&self.editing_key) {
-        //     let new_action = ActionConfig {
-        //         action: self.editing_action.clone(),
-        //         icons: self.editing_action_icons.clone(),
-        //     };
-        //     new_action != *old_action
-        // } else {
-        //     false
-        // }
-        // TODO: restore this
-        true
+        if let Some(old_action) = d.key_map.get(&self.editing_key) {
+            let new_action = ActionConfig {
+                action: self.editing_action.clone(),
+                icons: self.editing_action_icons.clone(),
+            };
+            new_action != *old_action
+        } else {
+            false
+        }
     }
 
     pub fn save_action(&mut self) {

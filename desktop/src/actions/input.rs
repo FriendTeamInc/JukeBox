@@ -1,7 +1,4 @@
-use std::{
-    collections::HashMap,
-    sync::{Arc, OnceLock},
-};
+use std::{collections::HashMap, sync::OnceLock};
 
 use eframe::egui::{include_image, ComboBox, ImageSource, Slider, Ui};
 use egui_phosphor::regular as phos;
@@ -30,9 +27,9 @@ pub fn init_actions_input(_config: ActionModuleConfig) -> (String, Vec<Action>) 
     (
         t!("action.input.title", icon = phos::CURSOR_CLICK).into(),
         vec![
-            Arc::new(InputKeyboard::default()),
-            Arc::new(InputMouse::default()),
-            // Arc::new(InputGamepad::default()),
+            Box::new(InputKeyboard::default()),
+            Box::new(InputMouse::default()),
+            // Box::new(InputGamepad::default()),
         ],
     )
 }

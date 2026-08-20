@@ -298,7 +298,7 @@ impl JukeBoxGui {
             editing_key: InputKey::UnknownKey,
             editing_action_icons: Vec::new(),
             editing_action_type: AID_META_NO_ACTION.into(),
-            editing_action: Arc::new(MetaNoAction::default()),
+            editing_action: Box::new(MetaNoAction::default()),
 
             editing_rgb: RgbProfile::default_gui_profile(),
             editing_rgb_key_index: 0,

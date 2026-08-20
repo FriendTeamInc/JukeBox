@@ -1,5 +1,5 @@
+use std::process::Command;
 use std::sync::OnceLock;
-use std::{process::Command, sync::Arc};
 
 use eframe::egui::{include_image, ComboBox, ImageSource, Slider, TextWrapMode, Ui};
 use egui_phosphor::regular as phos;
@@ -377,10 +377,10 @@ pub fn init_actions_system(_config: ActionModuleConfig) -> (String, Vec<Action>)
     (
         t!("action.system.title", icon = phos::DESKTOP_TOWER).into(),
         vec![
-            Arc::new(SystemOpenApp::default()),
-            Arc::new(SystemOpenWeb::default()),
-            Arc::new(SystemSndInCtrl::default()),
-            Arc::new(SystemSndOutCtrl::default()),
+            Box::new(SystemOpenApp::default()),
+            Box::new(SystemOpenWeb::default()),
+            Box::new(SystemSndInCtrl::default()),
+            Box::new(SystemSndOutCtrl::default()),
         ],
     )
 }
