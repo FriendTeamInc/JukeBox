@@ -116,30 +116,39 @@ async fn create_client<'a>(
     let client_config = {
         let c = config.lock().await.clone();
 
-        let config = if let Some(o) = c.obs_access {
-            o
-        } else {
-            let pw = OBS_PASSWORD.get().unwrap().lock().await.clone();
-            let password = if pw.len() == 0 { None } else { Some(pw) };
-            ObsAccess {
-                host: OBS_HOST_ADDRESS.get().unwrap().lock().await.clone(),
-                port: OBS_HOST_PORT
+        let (host, port, password) =
+            if c.contains_key("host") && c.contains_key("port") && c.contains_key("password") {
+                let host = c.get("host").unwrap().clone();
+                let port = c
+                    .get("port")
+                    .unwrap()
+                    .clone()
+                    .parse()
+                    .expect("cannot parse port");
+                let password = c.get("password").cloned();
+
+                (host, port, password)
+            } else {
+                let pw = OBS_PASSWORD.get().unwrap().lock().await.clone();
+                let password = if pw.len() == 0 { None } else { Some(pw) };
+                let host = OBS_HOST_ADDRESS.get().unwrap().lock().await.clone();
+                let port = OBS_HOST_PORT
                     .get()
                     .unwrap()
                     .lock()
                     .await
                     .clone()
                     .parse()
-                    .expect("cannot parse port"),
-                password,
-            }
-        };
+                    .expect("cannot parse port");
+
+                (host, port, password)
+            };
 
         ConnectConfig {
-            host: config.host,
-            port: config.port,
+            host: host,
+            port: port,
             dangerous: None,
-            password: config.password,
+            password: password,
             event_subscriptions: None, // TODO: subscribe for kicked/disconnected events?
             // tls: false,
             broadcast_capacity: DEFAULT_BROADCAST_CAPACITY,
@@ -150,21 +159,9 @@ async fn create_client<'a>(
         }
     };
 
-    let obs_access = ObsAccess {
-        host: client_config.host.clone(),
-        port: client_config.port,
-        password: client_config.password.clone(),
-    };
-
     let client = Client::connect_with_config(client_config)
         .await
         .map_err(|_| ())?;
-
-    {
-        let mut config = config.lock().await;
-        config.obs_access = Some(obs_access);
-        config.save();
-    }
 
     if OBS_CLIENT.get().is_none() {
         let _ = OBS_CLIENT.set(Mutex::new(Some(client)));
@@ -182,27 +179,26 @@ fn account_warning(ui: &mut Ui, config: ActionModuleConfig) -> Option<()> {
         && OBS_PASSWORD.get().is_none()
     {
         let c = config.blocking_lock().clone();
-        if let Some(c) = c.obs_access {
-            OBS_HOST_ADDRESS.get_or_init(|| Mutex::new(c.host));
-            OBS_HOST_PORT.get_or_init(|| Mutex::new(c.port.to_string()));
-            OBS_PASSWORD.get_or_init(|| Mutex::new(c.password.unwrap_or("".into())));
-        } else {
-            OBS_HOST_ADDRESS.get_or_init(|| Mutex::new("localhost".into()));
-            OBS_HOST_PORT.get_or_init(|| Mutex::new("4455".into()));
-            OBS_PASSWORD.get_or_init(|| Mutex::new("".into()));
-        }
+
+        let host = c.get("host").cloned().unwrap_or("localhost".into());
+        let port = c.get("port").cloned().unwrap_or("4455".into());
+        let password = c.get("password").cloned().unwrap_or("".into());
+
+        OBS_HOST_ADDRESS.get_or_init(|| Mutex::new(host));
+        OBS_HOST_PORT.get_or_init(|| Mutex::new(port));
+        OBS_PASSWORD.get_or_init(|| Mutex::new(password));
     }
 
-    let o = config.blocking_lock().obs_access.clone();
-    if OBS_CLIENT.get().is_none() && o.is_some() {
+    // let o = config.blocking_lock().obs_access.clone();
+    if OBS_CLIENT.get().is_none() {
         let c = config.clone();
         let res = Handle::current().block_on(async { create_client(c).await });
-        if let Err(_) = res {
-            let config = config.clone();
-            let mut c = config.blocking_lock();
-            c.obs_access = None;
-            c.save();
-        }
+        // if let Err(_) = res {
+        //     let config = config.clone();
+        //     let mut c = config.blocking_lock();
+        //     c.obs_access = None;
+        //     c.save();
+        // }
     }
 
     if OBS_CLIENT.get().is_none() || OBS_CLIENT.get().unwrap().blocking_lock().is_none() {
@@ -260,9 +256,8 @@ async fn check_client<'a>(
     input_key: &InputKey,
     config: ActionModuleConfig,
 ) -> Result<MutexGuard<'a, Option<Client>>, ActionError> {
-    let c = config.clone();
     if OBS_CLIENT.get().is_none() || OBS_CLIENT.get().unwrap().lock().await.is_none() {
-        create_client(c)
+        create_client(config)
             .await
             .map_err(|_| ActionError::new(device_uid, *input_key, t!("action.obs.err.client")))
     } else {

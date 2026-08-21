@@ -51,6 +51,8 @@ const ICON_PUSH_TO_DEAFEN: ImageSource =
 
 const DISCORD_CLIENT_ID: Option<&str> = option_env!("DISCORD_CLIENT_ID");
 const DISCORD_CLIENT_SECRET: Option<&str> = option_env!("DISCORD_CLIENT_SECRET");
+const DISCORD_ACCESS_TOKEN: &str = "access_token";
+const DISCORD_REFRESH_TOKEN: &str = "refresh_token";
 static DISCORD_CLIENT: OnceLock<Mutex<DiscordIpcClient>> = OnceLock::new();
 static DISCORD_MUTED: AtomicBool = AtomicBool::new(false);
 static DISCORD_DEAFENED: AtomicBool = AtomicBool::new(false);
@@ -124,12 +126,12 @@ async fn auth_client(
     config: ActionModuleConfig,
     client: &mut DiscordIpcClient,
     skip_if_no_auth: bool,
-) -> Result<(), ActionError> {
+) -> ActionResult {
     let mut config = config.lock().await;
 
-    if config.discord_oauth_access.is_none() {
+    if config.get(DISCORD_ACCESS_TOKEN).is_none() || config.get(DISCORD_REFRESH_TOKEN).is_none() {
         if skip_if_no_auth {
-            return Ok(());
+            return Ok(ActionOk::new());
         }
 
         let code = client
@@ -141,7 +143,7 @@ async fn auth_client(
                 ))
             })?;
 
-        let oauth = discord_access_token_request(
+        let mut oauth = discord_access_token_request(
             &code,
             DISCORD_CLIENT_ID.unwrap(),
             DISCORD_CLIENT_SECRET.unwrap(),
@@ -149,31 +151,37 @@ async fn auth_client(
         .await
         .map_err(|_| ActionError::msg(t!("action.discord.err.oauth_request")))?;
 
-        config.discord_oauth_access = Some(oauth);
-        config.save();
+        let access_token = oauth.remove(DISCORD_ACCESS_TOKEN).unwrap();
+        let refresh_token = oauth.remove(DISCORD_REFRESH_TOKEN).unwrap();
+
+        config.insert(DISCORD_ACCESS_TOKEN.into(), access_token);
+        config.insert(DISCORD_REFRESH_TOKEN.into(), refresh_token);
     } else {
-        let oauth = discord_refresh_access_token(
-            &config.discord_oauth_access.as_ref().unwrap().refresh_token,
+        let refresh_token = config.get(DISCORD_REFRESH_TOKEN).unwrap();
+        let mut oauth = discord_refresh_access_token(
+            refresh_token,
             DISCORD_CLIENT_ID.unwrap(),
             DISCORD_CLIENT_SECRET.unwrap(),
         )
         .await
         .map_err(|_| ActionError::msg(t!("action.discord.err.oauth_refresh")))?;
 
-        config.discord_oauth_access = Some(oauth);
-        config.save();
+        let access_token = oauth.remove(DISCORD_ACCESS_TOKEN).unwrap();
+        let refresh_token = oauth.remove(DISCORD_REFRESH_TOKEN).unwrap();
+
+        config.insert(DISCORD_ACCESS_TOKEN.into(), access_token);
+        config.insert(DISCORD_REFRESH_TOKEN.into(), refresh_token);
     }
 
-    client
-        .authenticate(&config.discord_oauth_access.clone().unwrap().access_token)
-        .map_err(|e| {
-            ActionError::msg(t!(
-                "action.discord.err.authenticate",
-                error = format!("{:?}", e)
-            ))
-        })?;
+    let access_token = config.get(DISCORD_ACCESS_TOKEN).unwrap();
+    client.authenticate(access_token).map_err(|e| {
+        ActionError::msg(t!(
+            "action.discord.err.authenticate",
+            error = format!("{:?}", e)
+        ))
+    })?;
 
-    Ok(())
+    Ok(ActionOk::new().save_module_config(true))
 }
 
 async fn create_client(config: ActionModuleConfig, skip_if_no_auth: bool) -> ActionResult {
@@ -187,7 +195,7 @@ async fn create_client(config: ActionModuleConfig, skip_if_no_auth: bool) -> Act
         ActionError::msg(t!("action.discord.err.connect", error = format!("{:?}", e)))
     })?;
 
-    auth_client(config, &mut client, skip_if_no_auth).await?;
+    let r = auth_client(config, &mut client, skip_if_no_auth).await?;
 
     if let Ok(v) = client.get_voice_settings() {
         let deaf = if let Some(deaf) = v.deaf {
@@ -209,12 +217,12 @@ async fn create_client(config: ActionModuleConfig, skip_if_no_auth: bool) -> Act
         .set(Mutex::new(client))
         .expect("failed to set DISCORD_CLIENT");
 
-    Ok(())
+    Ok(r)
 }
 
 fn account_warning(ui: &mut Ui, config: ActionModuleConfig) {
     if DISCORD_CLIENT.get().is_none() {
-        let has_oauth = config.blocking_lock().discord_oauth_access.is_some();
+        let has_oauth = config.blocking_lock().get(DISCORD_ACCESS_TOKEN).is_some();
         if has_oauth {
             // TODO: send any error to gui
             let _ = tokio::runtime::Handle::current()
@@ -249,7 +257,7 @@ fn account_warning(ui: &mut Ui, config: ActionModuleConfig) {
                 let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
                 match client.reconnect() {
                     Ok(_) => auth_client(config, &mut client, false).await,
-                    Err(_) => Ok(()),
+                    Err(_) => Ok(ActionOk::new()),
                 }
             });
         }

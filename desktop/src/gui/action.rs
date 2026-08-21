@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 
 use eframe::egui::{
     scroll_area::ScrollBarVisibility, vec2, Align, Button, CollapsingHeader, Grid, Image,
@@ -9,7 +9,7 @@ use egui_phosphor::regular as phos;
 use image::EncodableLayout;
 use jukebox_util::peripheral::DeviceType;
 use rfd::FileDialog;
-use tokio::runtime::Handle;
+use tokio::{runtime::Handle, sync::Mutex};
 
 use crate::{
     actions::{
@@ -228,6 +228,9 @@ impl JukeBoxGui {
                     icons: self.editing_action_icons.clone(),
                 },
             );
+            let m = self.editing_action_module.blocking_lock().clone();
+            let amid = self.editing_action.get_module().to_string();
+            c.action_module_config.insert(amid, m);
             c.save();
         }
 
@@ -264,7 +267,7 @@ impl JukeBoxGui {
                     if let Err(press_err) = h.block_on(async {
                         self.editing_action
                             .on_press(
-                                &mut self.current_mod_config,
+                                self.editing_action_module.clone(),
                                 &self.current_device,
                                 &self.editing_key,
                             )
@@ -277,7 +280,7 @@ impl JukeBoxGui {
                     if let Err(release_err) = h.block_on(async {
                         self.editing_action
                             .on_release(
-                                &mut self.current_mod_config,
+                                self.editing_action_module.clone(),
                                 &self.current_device,
                                 &self.editing_key,
                             )
@@ -354,13 +357,13 @@ impl JukeBoxGui {
                                 let p: Vec<_> = c
                                     .profiles
                                     .iter()
-                                    .map(|(k, v)| (k.clone(), v.profile_name))
+                                    .map(|(k, v)| (k.clone(), v.profile_name.clone()))
                                     .collect();
-                                (c.current_profile, p)
+                                (c.current_profile.clone(), p)
                             };
                             self.editing_action.edit_ui(
                                 &profiles,
-                                &mut self.current_mod_config,
+                                self.editing_action_module.clone(),
                                 &self.current_device,
                                 &self.editing_key,
                                 ui,
@@ -408,6 +411,16 @@ impl JukeBoxGui {
 
     fn reset_editing_action(&mut self) {
         self.editing_action = self.action_map.enum_new(self.editing_action_type.clone());
+        {
+            let c = self.config.blocking_lock();
+            let amid = self.editing_action.get_module().to_string();
+            let m = c
+                .action_module_config
+                .get(&amid)
+                .cloned()
+                .unwrap_or_default();
+            self.editing_action_module = Arc::new(Mutex::new(m));
+        }
         self.reset_editing_action_icons();
     }
 

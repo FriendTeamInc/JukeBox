@@ -31,7 +31,7 @@ use tray_icon::menu::{IconMenuItem, Menu, MenuEvent, MenuId, MenuItem, Predefine
 use tray_icon::{TrayIcon, TrayIconBuilder, TrayIconEvent};
 
 use crate::actions::meta::AID_META_NO_ACTION;
-use crate::actions::types::ActionError;
+use crate::actions::types::{ActionError, ActionModuleConfig};
 use crate::actions::{
     action::action_task,
     meta::MetaNoAction,
@@ -93,7 +93,7 @@ pub struct JukeBoxGui {
     pub editing_key: InputKey,
     pub editing_action_icons: Vec<ActionIcon>,
     pub editing_action_type: String,
-    // TODO: add editing_action_module
+    pub editing_action_module: ActionModuleConfig,
     pub editing_action: Action,
 
     pub editing_rgb: RgbProfile,
@@ -298,6 +298,7 @@ impl JukeBoxGui {
             editing_key: InputKey::UnknownKey,
             editing_action_icons: Vec::new(),
             editing_action_type: AID_META_NO_ACTION.into(),
+            editing_action_module: Arc::new(Mutex::new(HashMap::new())),
             editing_action: Box::new(MetaNoAction::default()),
 
             editing_rgb: RgbProfile::default_gui_profile(),
