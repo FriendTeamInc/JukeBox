@@ -10,9 +10,9 @@ use crate::{
 use super::types::Action;
 
 pub const AMID_META: &str = "JB.Meta";
-pub const AID_META_NO_ACTION: &str = "NoAction";
-pub const AID_META_SWITCH_PROFILE: &str = "SwitchProfile";
-// pub const AID_META_COPY_FROM_PROFILE: &str = "CopyFromProfile";
+pub const AID_META_NO_ACTION: &str = "JB.Meta.NoAction";
+pub const AID_META_SWITCH_PROFILE: &str = "JB.Meta.SwitchProfile";
+// pub const AID_META_COPY_FROM_PROFILE: &str = "JB.Meta.CopyFromProfile";
 
 const ICON_NO_ACTION: ImageSource =
     include_image!("../../../assets/action-icons/meta-noaction.bmp");

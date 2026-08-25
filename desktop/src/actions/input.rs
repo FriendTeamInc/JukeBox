@@ -13,9 +13,9 @@ use crate::{
 use super::types::Action;
 
 pub const AMID_INPUT: &str = "JB.Input";
-pub const AID_INPUT_KEYBOARD: &str = "Keyboard";
-pub const AID_INPUT_MOUSE: &str = "Mouse";
-// pub const AID_INPUT_GAMEPAD: &str = "Gamepad";
+pub const AID_INPUT_KEYBOARD: &str = "JB.Input.Keyboard";
+pub const AID_INPUT_MOUSE: &str = "JB.Input.Mouse";
+// pub const AID_INPUT_GAMEPAD: &str = "JB.Input.Gamepad";
 
 const ICON_KEYBOARD: ImageSource =
     include_image!("../../../assets/action-icons/input-keyboard.bmp");

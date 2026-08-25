@@ -101,9 +101,8 @@ pub type ActionResult = Result<ActionOk, ActionError>;
 pub type ActionModuleConfig = Arc<Mutex<HashMap<String, String>>>;
 
 // https://quinedot.github.io/rust-learning/dyn-trait-eq.html
-trait AsDynCompare: Any {
+pub trait AsDynCompare: Any {
     fn as_any(&self) -> &dyn Any;
-    fn as_dyn_compare(&self) -> &dyn DynCompare;
 }
 
 // Sized types only
@@ -111,11 +110,8 @@ impl<T: Any + DynCompare> AsDynCompare for T {
     fn as_any(&self) -> &dyn Any {
         self
     }
-    fn as_dyn_compare(&self) -> &dyn DynCompare {
-        self
-    }
 }
-trait DynCompare: AsDynCompare {
+pub trait DynCompare: AsDynCompare {
     fn dyn_eq(&self, other: &dyn DynCompare) -> bool;
 }
 impl<T: Any + PartialEq> DynCompare for T {

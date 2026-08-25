@@ -80,20 +80,21 @@ impl JukeBoxGui {
             conf.save();
         }
 
-        ui.with_layout(Layout::bottom_up(Align::RIGHT), |ui| {
-            ui.columns_const(|[c1, c2]| {
-                c1.with_layout(Layout::left_to_right(Align::Max), |ui| {
-                    ui.label(t!("settings.copyright"));
-                });
-                c2.with_layout(Layout::right_to_left(Align::Max), |ui| {
-                    ui.hyperlink_to(
-                        t!("settings.repository"),
-                        "https://github.com/FriendTeamInc/JukeBox",
-                    );
-                    ui.label(" - ");
-                    ui.hyperlink_to(t!("settings.homepage"), "https://jukebox.friendteam.biz");
-                });
-            });
-        });
+        // TODO: doesn't work???
+        // ui.with_layout(Layout::bottom_up(Align::RIGHT), |ui| {
+        //     ui.columns_const(|[c1, c2]| {
+        //         c1.with_layout(Layout::left_to_right(Align::Max), |ui| {
+        //             ui.label(t!("settings.copyright"));
+        //         });
+        //         c2.with_layout(Layout::right_to_left(Align::Max), |ui| {
+        //             ui.hyperlink_to(
+        //                 t!("settings.repository"),
+        //                 "https://github.com/FriendTeamInc/JukeBox",
+        //             );
+        //             ui.label(" - ");
+        //             ui.hyperlink_to(t!("settings.homepage"), "https://jukebox.friendteam.biz");
+        //         });
+        //     });
+        // });
     }
 }

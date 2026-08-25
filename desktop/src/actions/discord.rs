@@ -1,13 +1,13 @@
 use std::{
     collections::HashMap,
     sync::{
-        atomic::{AtomicBool, Ordering},
         OnceLock,
+        atomic::{AtomicBool, Ordering},
     },
 };
 
-use discord_rich_presence::{voice_settings::VoiceSettings, DiscordIpc, DiscordIpcClient};
-use eframe::egui::{include_image, vec2, Button, ImageSource, Ui};
+use discord_rich_presence::{DiscordIpc, DiscordIpcClient, voice_settings::VoiceSettings};
+use eframe::egui::{Button, ImageSource, Ui, include_image, vec2};
 use egui_phosphor::regular as phos;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
@@ -20,13 +20,19 @@ use crate::{
     input::InputKey,
 };
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+struct DiscordOauthAccess {
+    pub access_token: String,
+    pub refresh_token: String,
+}
+
 pub const AMID_DISCORD: &str = "JB.Discord";
-pub const AID_DISCORD_TOGGLE_MUTE: &str = "ToggleMute";
-pub const AID_DISCORD_TOGGLE_DEAFEN: &str = "ToggleDeafen";
-// pub const AID_DISCORD_TOGGLE_NOISE_SUPPRESSION: &str = "ToggleNoiseSuppression";
-pub const AID_DISCORD_PUSH_TO_TALK: &str = "PushToTalk";
-pub const AID_DISCORD_PUSH_TO_MUTE: &str = "PushToMute";
-pub const AID_DISCORD_PUSH_TO_DEAFEN: &str = "PushToDeafen";
+pub const AID_DISCORD_TOGGLE_MUTE: &str = "JB.Discord.ToggleMute";
+pub const AID_DISCORD_TOGGLE_DEAFEN: &str = "JB.Discord.ToggleDeafen";
+// pub const AID_DISCORD_TOGGLE_NOISE_SUPPRESSION: &str = "JB.Discord.ToggleNoiseSuppression";
+pub const AID_DISCORD_PUSH_TO_TALK: &str = "JB.Discord.PushToTalk";
+pub const AID_DISCORD_PUSH_TO_MUTE: &str = "JB.Discord.PushToMute";
+pub const AID_DISCORD_PUSH_TO_DEAFEN: &str = "JB.Discord.PushToDeafen";
 
 const ICON_MUTE: ImageSource =
     include_image!("../../../assets/action-icons/discord-microphone-1.bmp");
@@ -81,7 +87,7 @@ async fn discord_access_token_request(
     code: &str,
     client_id: &str,
     client_secret: &str,
-) -> Result<HashMap<String, String>, ()> {
+) -> Result<DiscordOauthAccess, ActionError> {
     let params = HashMap::from([
         ("grant_type", "authorization_code"),
         ("code", code),
@@ -95,16 +101,18 @@ async fn discord_access_token_request(
         .form(&params)
         .send()
         .await
-        .map_err(|_| ())?;
+        .map_err(|e| ActionError::msg(t!("action.discord.err.oauth_request", error = e)))?;
 
-    r.json().await.map_err(|_| ())
+    r.json()
+        .await
+        .map_err(|e| ActionError::msg(t!("action.discord.err.oauth_request", error = e)))
 }
 
 async fn discord_refresh_access_token(
     refresh_token: &str,
     client_id: &str,
     client_secret: &str,
-) -> Result<HashMap<String, String>, ()> {
+) -> Result<DiscordOauthAccess, ActionError> {
     let params = HashMap::from([
         ("grant_type", "refresh_token"),
         ("refresh_token", refresh_token),
@@ -117,23 +125,17 @@ async fn discord_refresh_access_token(
         .form(&params)
         .send()
         .await
-        .map_err(|_| ())?;
+        .map_err(|e| ActionError::msg(t!("action.discord.err.oauth_refresh", error = e)))?;
 
-    r.json().await.map_err(|_| ())
+    r.json()
+        .await
+        .map_err(|e| ActionError::msg(t!("action.discord.err.oauth_refresh", error = e)))
 }
 
-async fn auth_client(
-    config: ActionModuleConfig,
-    client: &mut DiscordIpcClient,
-    skip_if_no_auth: bool,
-) -> ActionResult {
+async fn auth_client(config: ActionModuleConfig, client: &mut DiscordIpcClient) -> ActionResult {
     let mut config = config.lock().await;
 
     if config.get(DISCORD_ACCESS_TOKEN).is_none() || config.get(DISCORD_REFRESH_TOKEN).is_none() {
-        if skip_if_no_auth {
-            return Ok(ActionOk::new());
-        }
-
         let code = client
             .authorize(&["rpc", "rpc.voice.read", "rpc.voice.write"])
             .map_err(|e| {
@@ -143,34 +145,26 @@ async fn auth_client(
                 ))
             })?;
 
-        let mut oauth = discord_access_token_request(
+        let oauth = discord_access_token_request(
             &code,
             DISCORD_CLIENT_ID.unwrap(),
             DISCORD_CLIENT_SECRET.unwrap(),
         )
-        .await
-        .map_err(|_| ActionError::msg(t!("action.discord.err.oauth_request")))?;
+        .await?;
 
-        let access_token = oauth.remove(DISCORD_ACCESS_TOKEN).unwrap();
-        let refresh_token = oauth.remove(DISCORD_REFRESH_TOKEN).unwrap();
-
-        config.insert(DISCORD_ACCESS_TOKEN.into(), access_token);
-        config.insert(DISCORD_REFRESH_TOKEN.into(), refresh_token);
+        config.insert(DISCORD_ACCESS_TOKEN.into(), oauth.access_token);
+        config.insert(DISCORD_REFRESH_TOKEN.into(), oauth.refresh_token);
     } else {
         let refresh_token = config.get(DISCORD_REFRESH_TOKEN).unwrap();
-        let mut oauth = discord_refresh_access_token(
+        let oauth = discord_refresh_access_token(
             refresh_token,
             DISCORD_CLIENT_ID.unwrap(),
             DISCORD_CLIENT_SECRET.unwrap(),
         )
-        .await
-        .map_err(|_| ActionError::msg(t!("action.discord.err.oauth_refresh")))?;
+        .await?;
 
-        let access_token = oauth.remove(DISCORD_ACCESS_TOKEN).unwrap();
-        let refresh_token = oauth.remove(DISCORD_REFRESH_TOKEN).unwrap();
-
-        config.insert(DISCORD_ACCESS_TOKEN.into(), access_token);
-        config.insert(DISCORD_REFRESH_TOKEN.into(), refresh_token);
+        config.insert(DISCORD_ACCESS_TOKEN.into(), oauth.access_token);
+        config.insert(DISCORD_REFRESH_TOKEN.into(), oauth.refresh_token);
     }
 
     let access_token = config.get(DISCORD_ACCESS_TOKEN).unwrap();
@@ -195,7 +189,16 @@ async fn create_client(config: ActionModuleConfig, skip_if_no_auth: bool) -> Act
         ActionError::msg(t!("action.discord.err.connect", error = format!("{:?}", e)))
     })?;
 
-    let r = auth_client(config, &mut client, skip_if_no_auth).await?;
+    let config_has_no_access_token = {
+        let c = config.lock().await;
+        c.get(DISCORD_ACCESS_TOKEN).is_none()
+    };
+
+    if skip_if_no_auth && config_has_no_access_token {
+        return Ok(ActionOk::new());
+    }
+
+    let r = auth_client(config, &mut client).await?;
 
     if let Ok(v) = client.get_voice_settings() {
         let deaf = if let Some(deaf) = v.deaf {
@@ -225,8 +228,8 @@ fn account_warning(ui: &mut Ui, config: ActionModuleConfig) {
         let has_oauth = config.blocking_lock().get(DISCORD_ACCESS_TOKEN).is_some();
         if has_oauth {
             // TODO: send any error to gui
-            let _ = tokio::runtime::Handle::current()
-                .block_on(async move { create_client(config, false).await });
+            // let _ = tokio::runtime::Handle::current()
+            //     .block_on(async move { create_client(config, false).await });
         } else {
             ui.vertical_centered(|ui| ui.label(t!("action.discord.warning.help")));
             ui.label("");
@@ -256,7 +259,7 @@ fn account_warning(ui: &mut Ui, config: ActionModuleConfig) {
             tokio::runtime::Handle::current().spawn(async move {
                 let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
                 match client.reconnect() {
-                    Ok(_) => auth_client(config, &mut client, false).await,
+                    Ok(_) => auth_client(config, &mut client).await,
                     Err(_) => Ok(ActionOk::new()),
                 }
             });

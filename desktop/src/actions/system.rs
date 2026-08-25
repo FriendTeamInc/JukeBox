@@ -15,10 +15,10 @@ use crate::single_fire;
 use super::types::{Action, ActionError};
 
 pub const AMID_SYSTEM: &str = "JB.System";
-pub const AID_SYSTEM_OPEN_APP: &str = "OpenApp";
-pub const AID_SYSTEM_OPEN_WEB: &str = "OpenWeb";
-pub const AID_SYSTEM_SND_IN_CTRL: &str = "SndInCtrl";
-pub const AID_SYSTEM_SND_OUT_CTRL: &str = "SndOutCtrl";
+pub const AID_SYSTEM_OPEN_APP: &str = "JB.System.OpenApp";
+pub const AID_SYSTEM_OPEN_WEB: &str = "JB.System.OpenWeb";
+pub const AID_SYSTEM_SND_IN_CTRL: &str = "JB.System.SndInCtrl";
+pub const AID_SYSTEM_SND_OUT_CTRL: &str = "JB.System.SndOutCtrl";
 
 const ICON_OPEN_APP: ImageSource =
     include_image!("../../../assets/action-icons/system-appopen.bmp");

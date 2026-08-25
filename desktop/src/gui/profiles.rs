@@ -52,7 +52,7 @@ impl JukeBoxGui {
                     edit.request_focus();
                 }
             } else {
-                let (profiles, current) = {
+                let (profiles, current_uuid, current_name) = {
                     let conf = self.config.blocking_lock();
 
                     let mut profiles: Vec<_> = conf
@@ -61,16 +61,22 @@ impl JukeBoxGui {
                         .map(|(k, v)| (k.clone(), v.profile_name.clone()))
                         .collect();
                     profiles.sort_by(|a, b| a.1.cmp(&b.1));
-                    let current = conf.current_profile.clone();
+                    let current_uuid = conf.current_profile.clone();
+                    let current_name = conf
+                        .profiles
+                        .get(&current_uuid)
+                        .unwrap()
+                        .profile_name
+                        .clone();
 
-                    (profiles, current)
+                    (profiles, current_uuid, current_name)
                 };
                 ComboBox::from_id_salt("ProfileSelect")
-                    .selected_text(current.clone())
+                    .selected_text(current_name)
                     .width(150.0)
                     .show_ui(ui, |ui| {
                         for k in &profiles {
-                            let u = ui.selectable_label(*k.0 == current, k.1.clone());
+                            let u = ui.selectable_label(*k.0 == current_uuid, k.1.clone());
                             if u.clicked() {
                                 {
                                     let mut conf = self.config.blocking_lock();

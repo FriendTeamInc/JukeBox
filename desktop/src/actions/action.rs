@@ -90,11 +90,19 @@ async fn get_profile_info(
     DeviceType,
     HashMap<InputKey, ActionConfig>,
     String,
+    String,
     HashMap<String, ActionModuleConfig>,
     Option<RgbProfile>,
     Option<ScreenProfile>,
 ) {
     let c = config.lock().await;
+
+    let profile_name = c
+        .profiles
+        .get(&c.current_profile)
+        .cloned()
+        .map(|p| p.profile_name)
+        .unwrap_or_default();
 
     let (profile, rgb, scr) = c
         .profiles
@@ -127,6 +135,7 @@ async fn get_profile_info(
         device_type,
         profile,
         c.current_profile.clone(),
+        profile_name,
         module_configs,
         rgb,
         scr,
@@ -159,13 +168,13 @@ pub async fn action_task(
                     }
                 };
 
-                let (device_type, keys, profile_uuid, _, rgb_profile, screen_profile) =
+                let (device_type, keys, _, profile_name, _, rgb_profile, screen_profile) =
                     get_profile_info(&config, &device_uid).await;
                 update_device_configs(
                     scmd_tx,
                     device_type,
                     keys,
-                    profile_uuid,
+                    profile_name,
                     rgb_profile.unwrap_or(RgbProfile::default_gui_profile()),
                     screen_profile.unwrap_or(ScreenProfile::default_profile()),
                 )
@@ -189,7 +198,7 @@ pub async fn action_task(
                 let ae_tx = ae_tx.clone();
 
                 tokio::spawn(async move {
-                    let (_, mut profile, profile_uuid, mut module_configs, _, _) =
+                    let (_, mut profile, profile_uuid, _, mut module_configs, _, _) =
                         get_profile_info(&config, &device_uid).await;
 
                     let mut prevkeys = prevkeys.lock().await;
@@ -313,6 +322,7 @@ pub async fn action_task(
                             let (
                                 device_type,
                                 new_keys,
+                                _,
                                 new_profile_name,
                                 _,
                                 new_rgb_profile,

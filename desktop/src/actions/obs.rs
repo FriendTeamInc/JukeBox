@@ -1,12 +1,12 @@
 use std::{sync::OnceLock, time::Duration};
 
-use eframe::egui::{include_image, ComboBox, ImageSource, RichText, TextEdit, Ui};
+use eframe::egui::{ComboBox, ImageSource, RichText, TextEdit, Ui, include_image};
 use egui_phosphor::regular as phos;
 use obws::{
+    Client,
     client::{ConnectConfig, DEFAULT_BROADCAST_CAPACITY},
     requests::{inputs::InputId, scene_items::SetEnabled, scenes::SceneId},
     responses::{inputs::Input, scene_items::SceneItem, scenes::Scene},
-    Client,
 };
 use serde::{Deserialize, Serialize};
 use tokio::{
@@ -24,18 +24,18 @@ use crate::{
 use super::types::{Action, ActionError};
 
 pub const AMID_OBS: &str = "JB.OBS";
-pub const AID_OBS_STREAM: &str = "Stream";
-pub const AID_OBS_RECORD: &str = "Record";
-pub const AID_OBS_RECORD_PAUSE: &str = "RecordPause";
-pub const AID_OBS_REPLAY_BUFFER: &str = "ReplayBuffer";
-pub const AID_OBS_REPLAY_BUFFER_SAVE: &str = "ReplayBufferSave";
-pub const AID_OBS_TOGGLE_SOURCE: &str = "ToggleSource";
-pub const AID_OBS_TOGGLE_MUTE: &str = "ToggleMute";
-pub const AID_OBS_SCENE_SWITCH: &str = "SceneSwitch";
-pub const AID_OBS_PREVIEW_SWITCH: &str = "PreviewSwitch";
-pub const AID_OBS_PREVIEW_PUSH: &str = "PreviewPush";
-pub const AID_OBS_COLLECTION_SWITCH: &str = "CollectionSwitch";
-pub const AID_OBS_CHAPTER_MARKER: &str = "ChapterMarker";
+pub const AID_OBS_STREAM: &str = "JB.OBS.Stream";
+pub const AID_OBS_RECORD: &str = "JB.OBS.Record";
+pub const AID_OBS_RECORD_PAUSE: &str = "JB.OBS.RecordPause";
+pub const AID_OBS_REPLAY_BUFFER: &str = "JB.OBS.ReplayBuffer";
+pub const AID_OBS_REPLAY_BUFFER_SAVE: &str = "JB.OBS.ReplayBufferSave";
+pub const AID_OBS_TOGGLE_SOURCE: &str = "JB.OBS.ToggleSource";
+pub const AID_OBS_TOGGLE_MUTE: &str = "JB.OBS.ToggleMute";
+pub const AID_OBS_SCENE_SWITCH: &str = "JB.OBS.SceneSwitch";
+pub const AID_OBS_PREVIEW_SWITCH: &str = "JB.OBS.PreviewSwitch";
+pub const AID_OBS_PREVIEW_PUSH: &str = "JB.OBS.PreviewPush";
+pub const AID_OBS_COLLECTION_SWITCH: &str = "JB.OBS.CollectionSwitch";
+pub const AID_OBS_CHAPTER_MARKER: &str = "JB.OBS.ChapterMarker";
 
 const ICON_STREAM: ImageSource = include_image!("../../../assets/action-icons/obs-stream.bmp");
 const ICON_RECORD: ImageSource = include_image!("../../../assets/action-icons/obs-record.bmp");
@@ -189,16 +189,12 @@ fn account_warning(ui: &mut Ui, config: ActionModuleConfig) -> Option<()> {
         OBS_PASSWORD.get_or_init(|| Mutex::new(password));
     }
 
-    // let o = config.blocking_lock().obs_access.clone();
     if OBS_CLIENT.get().is_none() {
-        let c = config.clone();
-        let res = Handle::current().block_on(async { create_client(c).await });
-        // if let Err(_) = res {
-        //     let config = config.clone();
-        //     let mut c = config.blocking_lock();
-        //     c.obs_access = None;
-        //     c.save();
-        // }
+        let res = Handle::current().block_on(async { create_client(config.clone()).await });
+        if let Err(_) = res {
+            // if we failed to make client, lets reset the config
+            config.blocking_lock().drain();
+        }
     }
 
     if OBS_CLIENT.get().is_none() || OBS_CLIENT.get().unwrap().blocking_lock().is_none() {

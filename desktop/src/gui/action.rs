@@ -1,9 +1,8 @@
 use std::{path::PathBuf, sync::Arc};
 
 use eframe::egui::{
-    scroll_area::ScrollBarVisibility, vec2, Align, Button, CollapsingHeader, Grid, Image,
-    ImageSource, Layout, Popup, RichText, ScrollArea, TextureFilter, TextureOptions,
-    TextureWrapMode, Ui,
+    Align, Button, CollapsingHeader, Grid, Image, ImageSource, Layout, Popup, RichText, ScrollArea,
+    TextureFilter, TextureOptions, TextureWrapMode, Ui, scroll_area::ScrollBarVisibility, vec2,
 };
 use egui_phosphor::regular as phos;
 use image::EncodableLayout;
@@ -15,7 +14,7 @@ use crate::{
     actions::{
         action::send_input_event,
         meta::AID_META_NO_ACTION,
-        types::{get_icon_bytes, get_icon_cache, ActionError},
+        types::{ActionError, get_icon_bytes, get_icon_cache},
     },
     config::{ActionConfig, ActionIcon, JukeBoxConfig},
     input::InputKey,
@@ -138,12 +137,12 @@ impl JukeBoxGui {
         let icon = if let Some(action_config) = {
             let c = self.config.blocking_lock().clone();
             c.profiles
-                .clone()
                 .get(&c.current_profile)
                 .and_then(|d| d.device_configs.get(device_uid))
                 .and_then(|p| p.key_map.get(&self.editing_key))
+                .cloned()
         } {
-            get_icon_bytes(action_config, &mut get_icon_cache())
+            get_icon_bytes(&action_config, &mut get_icon_cache())
         } else {
             return;
         };
@@ -194,20 +193,40 @@ impl JukeBoxGui {
     }
 
     pub fn is_action_changed(&self) -> bool {
-        let c = self.config.blocking_lock();
-        let current_profile = c.current_profile.clone();
-        let profile = c.profiles.get(&current_profile).unwrap();
-        let d = profile.device_configs.get(&self.current_device).unwrap();
+        let (action, amc) = {
+            let c = self.config.blocking_lock();
+            let current_profile = c.current_profile.clone();
+            let profile = c.profiles.get(&current_profile).unwrap();
+            let action = profile
+                .device_configs
+                .get(&self.current_device)
+                .unwrap()
+                .key_map
+                .get(&self.editing_key)
+                .cloned();
+            let amc = c
+                .action_module_config
+                .get(self.editing_action.get_module())
+                .cloned();
+            (action, amc)
+        };
 
-        if let Some(old_action) = d.key_map.get(&self.editing_key) {
-            let new_action = ActionConfig {
-                action: self.editing_action.clone(),
-                icons: self.editing_action_icons.clone(),
-            };
-            new_action != *old_action
-        } else {
-            false
-        }
+        let action_diff = match action {
+            Some(old_action) => {
+                let new_action = ActionConfig {
+                    action: self.editing_action.clone(),
+                    icons: self.editing_action_icons.clone(),
+                };
+                new_action != old_action
+            }
+            None => false,
+        };
+        let amc_diff = match amc {
+            Some(old_amc) => *self.editing_action_module.blocking_lock() != old_amc,
+            None => false,
+        };
+
+        action_diff || amc_diff
     }
 
     pub fn save_action(&mut self) {
@@ -398,7 +417,7 @@ impl JukeBoxGui {
                 .show(ui, |ui| {
                     for (action_type, label) in options {
                         if ui
-                            .selectable_value(&mut self.editing_action_type, action_type, label)
+                            .selectable_value(&mut self.editing_action_type, action_type, t!(label))
                             .changed()
                         {
                             self.reset_editing_action();
