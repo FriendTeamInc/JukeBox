@@ -216,9 +216,12 @@ async fn create_client(config: ActionModuleConfig, skip_if_no_auth: bool) -> Act
         }
     }
 
-    DISCORD_CLIENT
-        .set(Mutex::new(client))
-        .expect("failed to set DISCORD_CLIENT");
+    // TODO theres a race condition somewhere causing this. we should investigate later.
+    if DISCORD_CLIENT.get().is_none() {
+        DISCORD_CLIENT
+            .set(Mutex::new(client))
+            .expect("failed to set DISCORD_CLIENT");
+    }
 
     Ok(r)
 }

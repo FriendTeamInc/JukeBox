@@ -10,14 +10,14 @@ use jukebox_util::{
     input::InputEvent, peripheral::DeviceType, rgb::RgbProfile, screen::ScreenProfile,
 };
 use tokio::sync::{
-    mpsc::{UnboundedReceiver, UnboundedSender},
     Mutex,
+    mpsc::{UnboundedReceiver, UnboundedSender},
 };
 
 use crate::{
     actions::{
         input::{InputKeyboard, InputMouse},
-        types::{get_icon_bytes, get_icon_cache_async, Action, ActionError, ActionModuleConfig},
+        types::{Action, ActionError, ActionModuleConfig, get_icon_bytes, get_icon_cache_async},
     },
     config::{ActionConfig, JukeBoxConfig},
     input::InputKey,
@@ -209,15 +209,17 @@ pub async fn action_task(
                     let mut new_profile = None;
 
                     for k in pressed {
-                        let Some(p) = profile.remove(k) else { continue };
+                        let Some(mut p) = profile.remove(k) else {
+                            continue;
+                        };
 
                         let m = module_configs
                             .get(p.action.get_module())
                             .cloned()
                             .unwrap_or_default();
                         let _ = module_configs.insert(p.action.get_module().into(), m.clone());
-                        let i = p.icons;
-                        let mut a = p.action;
+                        let i = &p.icons;
+                        let a = &mut p.action;
 
                         // TODO: restore join/join_all futures
 
@@ -225,19 +227,19 @@ pub async fn action_task(
                             Ok(o) => {
                                 if o.save_action_config {
                                     let mut c = config.lock().await;
-                                    let p = c.profiles.get_mut(&profile_uuid).unwrap();
-                                    let d = p.device_configs.get_mut(&device_uid).unwrap();
+                                    let b = c.profiles.get_mut(&profile_uuid).unwrap();
+                                    let d = b.device_configs.get_mut(&device_uid).unwrap();
                                     let k = d.key_map.get_mut(&k).unwrap();
                                     *k = ActionConfig {
-                                        action: a,
-                                        icons: i,
+                                        action: a.clone(),
+                                        icons: i.clone(),
                                     };
                                     c.save();
                                 }
                                 if o.save_module_config {
-                                    let a = profile.get(&k).unwrap();
+                                    // let a = profile.get(&k).unwrap();
                                     let mut c = config.lock().await;
-                                    let amid = a.action.get_module().to_string();
+                                    let amid = a.get_module().to_string();
                                     let m = module_configs.get(&amid).unwrap().lock().await;
                                     let _ = c.action_module_config.insert(amid, m.clone());
                                     c.save();
@@ -246,9 +248,7 @@ pub async fn action_task(
                                     new_profile = Some(p);
                                 }
                                 if o.change_icon {
-                                    if let Some(a) = profile.get(&k) {
-                                        send_scr_icon(&scmd_tx, a, &k).await;
-                                    }
+                                    send_scr_icon(&scmd_tx, &p, &k).await;
                                 }
                             }
                             Err(e) => {
@@ -258,15 +258,17 @@ pub async fn action_task(
                     }
 
                     for k in released {
-                        let Some(r) = profile.remove(k) else { continue };
+                        let Some(mut r) = profile.remove(k) else {
+                            continue;
+                        };
 
                         let m = module_configs
                             .get(r.action.get_module())
                             .cloned()
                             .unwrap_or_default();
                         let _ = module_configs.insert(r.action.get_module().into(), m.clone());
-                        let i = r.icons;
-                        let mut a = r.action;
+                        let i = &r.icons;
+                        let a = &mut r.action;
 
                         match a.on_release(m, &device_uid, k).await {
                             Ok(o) => {
@@ -276,15 +278,14 @@ pub async fn action_task(
                                     let d = p.device_configs.get_mut(&device_uid).unwrap();
                                     let k = d.key_map.get_mut(&k).unwrap();
                                     *k = ActionConfig {
-                                        action: a,
-                                        icons: i,
+                                        action: a.clone(),
+                                        icons: i.clone(),
                                     };
                                     c.save();
                                 }
                                 if o.save_module_config {
-                                    let a = profile.get(&k).unwrap();
                                     let mut c = config.lock().await;
-                                    let amid = a.action.get_module().to_string();
+                                    let amid = a.get_module().to_string();
                                     let m = module_configs.get(&amid).unwrap().lock().await;
                                     let _ = c.action_module_config.insert(amid, m.clone());
                                     c.save();
@@ -293,9 +294,7 @@ pub async fn action_task(
                                     new_profile = Some(p);
                                 }
                                 if o.change_icon {
-                                    if let Some(a) = profile.get(&k) {
-                                        send_scr_icon(&scmd_tx, a, &k).await;
-                                    }
+                                    send_scr_icon(&scmd_tx, &r, &k).await;
                                 }
                             }
                             Err(e) => {
