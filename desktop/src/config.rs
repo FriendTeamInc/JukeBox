@@ -2,7 +2,7 @@
 
 use std::{
     collections::HashMap,
-    fs::{create_dir_all, File},
+    fs::{File, create_dir_all},
     path::PathBuf,
 };
 
@@ -117,9 +117,23 @@ impl JukeBoxConfig {
         p
     }
 
+    pub fn get_logs_dir() -> PathBuf {
+        let mut p = Self::get_dir();
+        p.push("logs");
+        create_dir_all(&p).expect("failed to create logs directory");
+        p
+    }
+
     pub fn get_icon_dir() -> PathBuf {
         let mut p = Self::get_dir();
         p.push("icons");
+        create_dir_all(&p).expect("failed to create icons directory");
+        p
+    }
+
+    pub fn get_app_lock() -> PathBuf {
+        let mut p = Self::get_dir();
+        p.push("app.lock");
         p
     }
 

@@ -5,7 +5,9 @@
 use anyhow::bail;
 use fd_lock::RwLock;
 use reqwest::Client;
-use std::fs::{OpenOptions, create_dir_all};
+use std::fs::OpenOptions;
+
+use crate::config::JukeBoxConfig;
 
 #[macro_use]
 extern crate rust_i18n;
@@ -35,40 +37,35 @@ pub fn get_reqwest_client() -> &'static reqwest::Client {
 }
 
 fn main() -> anyhow::Result<()> {
-    let mut p = dirs::config_dir().expect("failed to find config directory");
-    p.push("JukeBoxDesktop");
-    p.push("logs");
-    if let Err(_) = create_dir_all(&p) {
-        // TODO: add a window popup for an error.
-        bail!("failed to create config directory for app lock. aborting.");
-    }
-    p.pop();
-    p.push("app.lock");
+    // setup config folder
+    JukeBoxConfig::get_dir();
 
+    // we only allow one instance of jukebox to run so lock the app file
     let mut f = RwLock::new(
         OpenOptions::new()
             .read(true)
             .write(true)
             .create(true)
-            .open(p)
+            .open(JukeBoxConfig::get_app_lock())
             .unwrap(),
     );
-    let f = f.try_write();
-    if let Err(_) = f {
+    let fl = f.try_write();
+    if let Err(_) = fl {
         // TODO: send signal to other app to reopen window
         bail!("failed to acquire exclusive lock for application. aborting.");
-    }
+    };
 
+    // set up logging folder
     {
         use flexi_logger::{Duplicate, FileSpec, LogSpecification, Logger};
 
-        let mut p = dirs::config_dir().expect("failed to find config directory");
-        p.push("JukeBoxDesktop");
-        p.push("logs");
-
         Logger::try_with_env_or_str("info")
             .unwrap_or_else(|_| Logger::with(LogSpecification::info()))
-            .log_to_file(FileSpec::default().directory(p).basename("jukebox_desktop"))
+            .log_to_file(
+                FileSpec::default()
+                    .directory(JukeBoxConfig::get_logs_dir())
+                    .basename("jukebox_desktop"),
+            )
             .duplicate_to_stderr(Duplicate::All)
             .start()
             .ok();
@@ -82,7 +79,7 @@ fn main() -> anyhow::Result<()> {
     // GUI launches all the necessary threads when started
     gui::gui::basic_gui();
 
-    drop(f);
+    drop(fl);
 
     Ok(())
 }
