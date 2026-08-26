@@ -79,7 +79,7 @@ jobs:
       - name: "Update Rust"
         uses: dtolnay/rust-toolchain@stable
       - name: "Install cargo-binstall"
-        uses: cargo-bins/cargo-binstall@v1.22
+        uses: cargo-bins/cargo-binstall@v1.22.0
       - name: "Install cross-rs"
         run: cargo binstall cross
       - name: "Build desktop (Windows)"
