@@ -1,0 +1,124 @@
+name: "Build All"
+on:
+  push:
+    paths:
+      - "desktop/**"
+      - "firmware/**"
+      - ".github/workflows/build.yaml"
+
+jobs:
+  build-firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout repo"
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - name: "Update Rust"
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          target: thumbv8m.main-none-eabihf
+      - name: "Get dependencies"
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          version: 1
+          execute_install_scripts: true
+          packages: libudev-dev
+      - name: "Install flip-link"
+        run: cargo install flip-link
+      - name: "Install elf2uf2-rs"
+        run: cargo install elf2uf2-rs
+      - name: "Build binary with Cargo (Keypad)"
+        run: |
+          cd firmware/
+          DEFMT_LOG=off cargo build -F "keypad" --release
+          cd target/thumbv8m.main-none-eabihf/release/
+          elf2uf2-rs jukebox_firmware jukebox_firmware.uf2
+      - name: "Upload binary artifact (Keypad)"
+        uses: actions/upload-artifact@v7
+        with:
+          name: jb-firmware-keypad
+          path: firmware/target/thumbv8m.main-none-eabihf/release/jukebox_firmware.uf2
+          retention-days: 90
+
+  build-desktop-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout repo"
+        uses: actions/checkout@v7
+      - name: "Get dependencies"
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          version: 1
+          execute_install_scripts: true
+          packages: libudev-dev libgtk-3-dev libxdo-dev libpulse-dev
+      - name: "Update Rust"
+        uses: dtolnay/rust-toolchain@stable
+      - name: "Build desktop (Linux)"
+        env:
+          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
+          DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
+        run: |
+          cd desktop/
+          cargo build -F "discord" --release
+          cd target/release/
+          mv jukebox_desktop jukebox_desktop_linux
+      - name: "Upload artifact (Linux)"
+        uses: actions/upload-artifact@v7
+        with:
+          name: jb-desktop-linux
+          path: desktop/target/release/jukebox_desktop_linux
+          retention-days: 90
+
+  build-desktop-windows:
+    runs-on: ubuntu-latest
+    steps:
+      - name: "Checkout repo"
+        uses: actions/checkout@v7
+      - name: "Update Rust"
+        uses: dtolnay/rust-toolchain@stable
+      - name: "Install cargo-binstall"
+        uses: cargo-bins/cargo-binstall@v1.22
+      - name: "Install cross-rs"
+        run: cargo binstall cross
+      - name: "Build desktop (Windows)"
+        env:
+          DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
+          DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
+        run: |
+          cd desktop/
+          cross build --target x86_64-pc-windows-gnu -F "discord" --release
+          cd target/x86_64-pc-windows-gnu/release/
+          mv jukebox_desktop.exe jukebox_desktop_windows.exe
+      - name: "Upload artifact (Windows)"
+        uses: actions/upload-artifact@v7
+        with:
+          name: jb-desktop-windows
+          path: desktop/target/x86_64-pc-windows-gnu/release/jukebox_desktop_windows.exe
+          retention-days: 90
+  
+  combine-all:
+    runs-on: ubuntu-latest
+    needs: [build-firmware, build-desktop-linux, build-desktop-windows]
+    steps:
+      - name: "Get dependencies"
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          version: 1
+          execute_install_scripts: true
+          packages: zip
+      - name: "Download artifact"
+        uses: actions/download-artifact@v8
+        with:
+          pattern: jb-*
+      - name: "Zip artifact"
+        run: |
+          zip jb-${{ github.sha }}.zip jukebox_*
+      - name: "Upload artifact"
+        uses: actions/upload-artifact@v7
+        with:
+          name: jb-desktop-windows
+          path: jukebox.zip
+          retention-days: 90
+
