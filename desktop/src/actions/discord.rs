@@ -216,12 +216,9 @@ async fn create_client(config: ActionModuleConfig, skip_if_no_auth: bool) -> Act
         }
     }
 
-    // TODO theres a race condition somewhere causing this. we should investigate later.
-    if DISCORD_CLIENT.get().is_none() {
-        DISCORD_CLIENT
-            .set(Mutex::new(client))
-            .expect("failed to set DISCORD_CLIENT");
-    }
+    DISCORD_CLIENT
+        .set(Mutex::new(client))
+        .expect("failed to set DISCORD_CLIENT");
 
     Ok(r)
 }
@@ -244,8 +241,8 @@ fn account_warning(ui: &mut Ui, config: ActionModuleConfig) {
                 .clicked()
             {
                 // TODO: send any error to gui
-                tokio::runtime::Handle::current()
-                    .spawn(async move { create_client(config, false).await });
+                let _ = tokio::runtime::Handle::current()
+                    .block_on(async move { create_client(config, false).await });
             }
         }
     } else {
@@ -259,7 +256,7 @@ fn account_warning(ui: &mut Ui, config: ActionModuleConfig) {
             .clicked()
         {
             // TODO: send any error to gui
-            tokio::runtime::Handle::current().spawn(async move {
+            let _ = tokio::runtime::Handle::current().block_on(async move {
                 let mut client = DISCORD_CLIENT.get().unwrap().lock().await;
                 match client.reconnect() {
                     Ok(_) => auth_client(config, &mut client).await,
