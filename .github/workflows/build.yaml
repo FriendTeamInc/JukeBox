@@ -108,7 +108,7 @@ jobs:
           pattern: jb-*
           merge-multiple: true
       - name: "Get short SHA"
-        run: FULL_SHA="${{ github.sha }}" echo "SHORT_SHA=${FULL_SHA:0:7}" >> $GITHUB_ENV
+        run: FULL_SHA="${{ github.sha }}"; echo "SHORT_SHA=${FULL_SHA:0:7}" >> $GITHUB_ENV
       - name: "Upload artifact"
         uses: actions/upload-artifact@v7
         with:
