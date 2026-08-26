@@ -174,29 +174,6 @@ async fn create_client<'a>(
 }
 
 fn account_warning(ui: &mut Ui, config: ActionModuleConfig) -> Option<()> {
-    if OBS_HOST_ADDRESS.get().is_none()
-        && OBS_HOST_PORT.get().is_none()
-        && OBS_PASSWORD.get().is_none()
-    {
-        let c = config.blocking_lock().clone();
-
-        let host = c.get("host").cloned().unwrap_or("localhost".into());
-        let port = c.get("port").cloned().unwrap_or("4455".into());
-        let password = c.get("password").cloned().unwrap_or("".into());
-
-        OBS_HOST_ADDRESS.get_or_init(|| Mutex::new(host));
-        OBS_HOST_PORT.get_or_init(|| Mutex::new(port));
-        OBS_PASSWORD.get_or_init(|| Mutex::new(password));
-    }
-
-    if OBS_CLIENT.get().is_none() {
-        let res = Handle::current().block_on(async { create_client(config.clone()).await });
-        if let Err(_) = res {
-            // if we failed to make client, lets reset the config
-            config.blocking_lock().drain();
-        }
-    }
-
     if OBS_CLIENT.get().is_none() || OBS_CLIENT.get().unwrap().blocking_lock().is_none() {
         ui.vertical_centered(|ui| {
             ui.label(RichText::new(t!("action.obs.setup.help_connect")).size(11.0));
@@ -204,9 +181,26 @@ fn account_warning(ui: &mut Ui, config: ActionModuleConfig) -> Option<()> {
         });
         ui.label("");
         if ui.button(t!("action.obs.setup.button")).clicked() {
-            let res = Handle::current().block_on(async { create_client(config).await });
+            let res = Handle::current().block_on(async { create_client(config.clone()).await });
             match res {
-                Ok(_) => log::error!("connected to obs"),
+                Ok(_) => {
+                    let mut c = config.blocking_lock();
+
+                    c.insert(
+                        "host".into(),
+                        OBS_HOST_ADDRESS.get().unwrap().blocking_lock().clone(),
+                    );
+                    c.insert(
+                        "port".into(),
+                        OBS_HOST_PORT.get().unwrap().blocking_lock().clone(),
+                    );
+                    c.insert(
+                        "password".into(),
+                        OBS_PASSWORD.get().unwrap().blocking_lock().clone(),
+                    );
+
+                    log::error!("connected to obs")
+                }
                 Err(e) => log::error!("failed to connect to obs: {:?}", e),
             }
 
