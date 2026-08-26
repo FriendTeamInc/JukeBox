@@ -114,7 +114,8 @@ jobs:
           pattern: jb-*
       - name: "Zip artifact"
         run: |
-          zip jb-${{ github.sha }}.zip jukebox_*
+          ls
+          zip jb-${{ github.sha }}.zip jb-*
       - name: "Upload artifact"
         uses: actions/upload-artifact@v7
         with:
