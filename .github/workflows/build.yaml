@@ -112,14 +112,15 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           pattern: jb-*
+          merge-multiple: true
       - name: "Zip artifact"
         run: |
           ls
-          zip jb-${{ github.sha }}.zip jb-*
+          zip jb-full-${{ github.sha }}.zip jukebox_*
       - name: "Upload artifact"
         uses: actions/upload-artifact@v7
         with:
-          name: jb-desktop-windows
-          path: jukebox.zip
+          name: jb-full-${{ github.sha }}
+          path: jb-full-${{ github.sha }}.zip
           retention-days: 90
 
