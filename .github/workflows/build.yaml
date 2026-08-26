@@ -102,25 +102,15 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-firmware, build-desktop-linux, build-desktop-windows]
     steps:
-      - name: "Get dependencies"
-        uses: awalsh128/cache-apt-pkgs-action@v1
-        with:
-          version: 1
-          execute_install_scripts: true
-          packages: zip
       - name: "Download artifact"
         uses: actions/download-artifact@v8
         with:
           pattern: jb-*
           merge-multiple: true
-      - name: "Zip artifact"
-        run: |
-          ls
-          zip jb-full-${{ github.sha }}.zip jukebox_*
       - name: "Upload artifact"
         uses: actions/upload-artifact@v7
         with:
           name: jb-full-${{ github.sha }}
-          path: jb-full-${{ github.sha }}.zip
+          path: jukebox_*
           retention-days: 90
 
